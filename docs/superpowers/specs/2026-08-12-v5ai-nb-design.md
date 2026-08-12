@@ -2,7 +2,7 @@
 
 ## 1. 项目概述
 
-`v5ai-nb` 是一个基于 Spring Boot 与 AgentScope Java 构建的中心化企业级 AI 应用平台。项目参考 `snail-ai` 的业务能力，但作为全新项目独立开发，不修改、不依赖 `snail-ai` 的源码、模块、数据库和通信协议。
+`v5ai-nb` 是一个基于 Spring Boot 4、JDK 21 与 AgentScope Java 构建的中心化企业级 AI 应用平台。项目参考 `snail-ai` 的业务能力，但作为全新项目独立开发，不修改、不依赖 `snail-ai` 的源码、模块、数据库和通信协议。
 
 项目采用类似 Dify 的平台架构：平台统一管理模型、Application、知识库、MCP Server、Skill、会话和运行记录；运行时根据已发布的 Application 配置动态构建 AgentScope Agent，并通过 HTTP/SSE 对外提供能力。
 
@@ -14,6 +14,9 @@
 - 数据库表使用 `v5ai_` 前缀，例如 `v5ai_application`、`v5ai_knowledge_base`
 - 不使用 Server-Agent/gRPC 架构
 - 不复用 `snail-ai` 的数据库表和 API 契约
+- JDK 使用 21
+- ORM 使用 MyBatis-Plus
+- 认证使用 Sa-Token，并采用 JWT 会话模式
 
 ## 2. 目标与非目标
 
@@ -106,7 +109,7 @@ v5ai-nb/
 |---|---|
 | `v5ai-common` | 通用响应、分页、异常、ID、JSON、时间、枚举和基础工具 |
 | `v5ai-domain` | 领域模型、领域服务接口、Repository 接口和业务规则 |
-| `v5ai-infrastructure` | MyBatis/JDBC、Redis、MinIO、加密、Flyway 和外部客户端 |
+| `v5ai-infrastructure` | MyBatis-Plus、Redis、MinIO、加密、Flyway 和外部客户端 |
 | `v5ai-model` | Provider、Chat/Embedding/Rerank 模型配置、解析和连通性测试 |
 | `v5ai-runtime` | AgentScope Agent 构建、Context、Tool、Middleware、事件和状态管理 |
 | `v5ai-rag` | 知识库、文档、解析、切片、向量化、检索和引用 |
@@ -329,7 +332,7 @@ v5ai_run_event
 
 ## 10. 安全与可靠性
 
-- 管理 API 使用 Spring Security + JWT/RBAC；运行 API 使用 Application API Key。
+- 管理 API 使用 Sa-Token + JWT/RBAC；运行 API 使用 Application API Key。
 - 模型凭据、MCP Headers、环境变量和第三方 Token 加密存储。
 - 所有 MCP Tool 调用记录 `runId`、工具名、参数摘要、结果状态和耗时。
 - Tool 权限支持允许、人工审批、拒绝三态决策。
@@ -374,7 +377,22 @@ v5ai_run_event
 8. 失败任务可查询并重试；
 9. 会话恢复后上下文保持一致。
 
-## 12. 分阶段交付
+## 12. 技术基线
+
+| 类别 | 选择 |
+|---|---|
+| JDK | 21 |
+| Web | Spring Boot WebFlux/SSE |
+| ORM | MyBatis-Plus |
+| 认证 | Sa-Token + JWT |
+| 数据库 | PostgreSQL |
+| 向量存储 | pgvector |
+| 缓存/任务 | Redis |
+| 对象存储 | MinIO |
+| 迁移 | Flyway |
+| Agent Runtime | AgentScope Java 2.0 |
+
+## 13. 分阶段交付
 
 ### Phase 0：项目骨架
 
@@ -404,7 +422,7 @@ Skill 上传、`SKILL.md` 解析、版本发布、Workspace 注入、绑定、�
 
 在 Agent 基础闭环稳定后，再实现节点、变量、条件、工作流运行记录和可视化编排。
 
-## 13. 设计决策总结
+## 14. 设计决策总结
 
 1. 用 Application 作为发布和运行边界，而不是暴露 Agent Client。
 2. 用 AgentScope Runtime 隔离底层 Agent API 与平台业务。
