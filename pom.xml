@@ -50,7 +50,7 @@
             </dependency>
             <dependency>
                 <groupId>cn.dev33</groupId>
-                <artifactId>sa-token-plugin-jwt</artifactId>
+                <artifactId>sa-token-jwt</artifactId>
                 <version>${sa-token.version}</version>
             </dependency>
         </dependencies>

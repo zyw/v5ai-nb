@@ -1,0 +1,6 @@
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  is-concurrent: false
+  jwt-secret-key: ${V5AI_JWT_SECRET:change-this-development-secret}
+  token-style: uuid

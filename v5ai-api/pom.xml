@@ -6,7 +6,11 @@
     <dependencies>
         <dependency><groupId>xin.v5ai.nb</groupId><artifactId>v5ai-application</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>xin.v5ai.nb</groupId><artifactId>v5ai-model</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>xin.v5ai.nb</groupId><artifactId>v5ai-infrastructure</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webflux</artifactId></dependency>
+        <dependency><groupId>cn.dev33</groupId><artifactId>sa-token-spring-boot3-starter</artifactId></dependency>
+        <dependency><groupId>cn.dev33</groupId><artifactId>sa-token-jwt</artifactId></dependency>
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-crypto</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
     </dependencies>
 </project>
