@@ -4,12 +4,18 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class DefaultProviderIdResolver implements ProviderIdResolver {
+    private final ModelProviderGateway providerGateway;
+
+    public DefaultProviderIdResolver(ModelProviderGateway providerGateway) {
+        this.providerGateway = providerGateway;
+    }
+
     @Override
     public Long resolve(String providerKey) {
-        try {
-            return Long.valueOf(providerKey);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("provider key must resolve to a provider id in phase 1", e);
+        var provider = providerGateway.selectByProviderKey(providerKey);
+        if (provider == null || provider.getId() == null) {
+            throw new IllegalArgumentException("provider key does not exist: " + providerKey);
         }
+        return provider.getId();
     }
 }

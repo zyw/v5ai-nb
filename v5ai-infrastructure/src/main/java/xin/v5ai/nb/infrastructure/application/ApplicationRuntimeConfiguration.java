@@ -1,6 +1,8 @@
 package xin.v5ai.nb.infrastructure.application;
 
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import xin.v5ai.nb.application.Application;
 import xin.v5ai.nb.application.ApplicationRepository;
 import xin.v5ai.nb.application.ApplicationStatus;
+import xin.v5ai.nb.application.ApplicationVersion;
 import xin.v5ai.nb.application.PublishedApplicationResolver;
 
 @Configuration
@@ -28,6 +31,7 @@ public class ApplicationRuntimeConfiguration {
 
     private static final class InMemoryApplicationRepository implements ApplicationRepository {
         private final Map<String, Application> applications = new ConcurrentHashMap<>();
+        private final List<ApplicationVersion> versions = new ArrayList<>();
 
         @Override
         public Application findByAppKey(String appKey) {
@@ -37,6 +41,21 @@ public class ApplicationRuntimeConfiguration {
         @Override
         public void save(Application application) {
             applications.put(application.appKey(), application);
+        }
+
+        @Override
+        public List<Application> list() {
+            return new ArrayList<>(applications.values());
+        }
+
+        @Override
+        public long nextVersion(String appKey) {
+            return versions.stream().filter(version -> version.appKey().equals(appKey)).count() + 1;
+        }
+
+        @Override
+        public void saveVersion(ApplicationVersion version) {
+            versions.add(version);
         }
 
         @Override

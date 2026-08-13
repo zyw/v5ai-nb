@@ -14,10 +14,14 @@ class PersistingAgentRuntimeTest {
     void completedRunPersistsUserAndAssistantMessages() {
         var messageRepository = new RecordingMessageRepository();
         var runRepository = new RecordingRunRecordRepository();
+        var conversationRepository = new RecordingConversationRepository();
+        var runEventRepository = new RecordingRunEventRepository();
         var runtime = new PersistingAgentRuntime(
                 new StubAgentRuntime(),
                 messageRepository,
-                runRepository
+                runRepository,
+                conversationRepository,
+                runEventRepository
         );
 
         StepVerifier.create(runtime.stream(new AgentRunRequest("demo", "conversation-1", "hello")).then())
@@ -29,15 +33,23 @@ class PersistingAgentRuntimeTest {
         assertThat(messageRepository.messages.get(0).content()).isEqualTo("hello");
         assertThat(messageRepository.messages.get(1).content()).isEqualTo("hi there");
         assertThat(runRepository.completedRunIds).containsExactly("run-1");
+        assertThat(conversationRepository.conversations).extracting(Conversation::conversationId)
+                .containsExactly("conversation-1");
+        assertThat(runEventRepository.events).extracting(RuntimeEvent::type)
+                .containsExactly(RuntimeEventType.RUN_STARTED, RuntimeEventType.TEXT_DELTA,
+                        RuntimeEventType.TEXT_DELTA, RuntimeEventType.RUN_COMPLETED);
     }
 
     @Test
     void requestWithoutConversationIdGetsGeneratedConversationId() {
         var messageRepository = new RecordingMessageRepository();
+        var conversationRepository = new RecordingConversationRepository();
         var runtime = new PersistingAgentRuntime(
                 new StubAgentRuntime(),
                 messageRepository,
-                new RecordingRunRecordRepository()
+                new RecordingRunRecordRepository(),
+                conversationRepository,
+                new RecordingRunEventRepository()
         );
 
         StepVerifier.create(runtime.stream(new AgentRunRequest("demo", null, "hello")).then())
@@ -45,6 +57,8 @@ class PersistingAgentRuntimeTest {
 
         assertThat(messageRepository.messages.get(0).conversationId()).isNotBlank();
         assertThat(messageRepository.messages.get(1).conversationId()).isEqualTo(messageRepository.messages.get(0).conversationId());
+        assertThat(conversationRepository.conversations.getFirst().conversationId())
+                .isEqualTo(messageRepository.messages.get(0).conversationId());
     }
 
     private static final class StubAgentRuntime implements AgentRuntime {
@@ -83,6 +97,24 @@ class PersistingAgentRuntimeTest {
         @Override
         public void complete(String runId) {
             completedRunIds.add(runId);
+        }
+    }
+
+    private static final class RecordingConversationRepository implements ConversationRepository {
+        private final List<Conversation> conversations = new ArrayList<>();
+
+        @Override
+        public void ensureConversation(Conversation conversation) {
+            conversations.add(conversation);
+        }
+    }
+
+    private static final class RecordingRunEventRepository implements RunEventRepository {
+        private final List<RuntimeEvent> events = new ArrayList<>();
+
+        @Override
+        public void save(RuntimeEvent event) {
+            events.add(event);
         }
     }
 }

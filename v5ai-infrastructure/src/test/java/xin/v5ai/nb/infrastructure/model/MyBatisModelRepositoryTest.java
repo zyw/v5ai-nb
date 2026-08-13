@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.model.ModelConfig;
 import xin.v5ai.nb.model.ModelType;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MyBatisModelRepositoryTest {
@@ -23,6 +25,11 @@ class MyBatisModelRepositoryTest {
         @Override
         public void insertModel(ModelConfigEntity entity) {
             this.entity = entity;
+        }
+
+        @Override
+        public List<ModelConfigEntity> selectModels() {
+            return List.of();
         }
     }
 }

@@ -19,4 +19,13 @@ class AesCredentialCipherTest {
         assertThat(first).isNotEqualTo(Base64.getEncoder().encodeToString(plaintext.getBytes(StandardCharsets.UTF_8)));
         assertThat(second).isNotEqualTo(first);
     }
+
+    @Test
+    void decryptRestoresPlaintextCredentials() {
+        var cipher = new AesCredentialCipher("0123456789abcdef0123456789abcdef");
+
+        var encrypted = cipher.encrypt("{\"apiKey\":\"sk-test\"}");
+
+        assertThat(cipher.decrypt(encrypted)).isEqualTo("{\"apiKey\":\"sk-test\"}");
+    }
 }

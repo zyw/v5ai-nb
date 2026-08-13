@@ -46,4 +46,28 @@ public class AesCredentialCipher implements CredentialCipher {
             throw new IllegalStateException("failed to encrypt model credentials", e);
         }
     }
+
+    @Override
+    public String decrypt(String ciphertext) {
+        if (ciphertext == null || ciphertext.isBlank()) {
+            return null;
+        }
+        try {
+            var payload = Base64.getDecoder().decode(ciphertext);
+            var buffer = ByteBuffer.wrap(payload);
+            byte version = buffer.get();
+            if (version != 1) {
+                throw new IllegalArgumentException("unsupported credential ciphertext version");
+            }
+            var iv = new byte[IV_BYTES];
+            buffer.get(iv);
+            var encrypted = new byte[buffer.remaining()];
+            buffer.get(encrypted);
+            var cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(TAG_BITS, iv));
+            return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new IllegalStateException("failed to decrypt model credentials", e);
+        }
+    }
 }

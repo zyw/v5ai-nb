@@ -7,7 +7,10 @@ import xin.v5ai.nb.application.Application;
 import xin.v5ai.nb.application.ApplicationPublishException;
 import xin.v5ai.nb.application.ApplicationRepository;
 import xin.v5ai.nb.application.ApplicationStatus;
+import xin.v5ai.nb.application.ApplicationVersion;
 import xin.v5ai.nb.application.PublishedApplicationResolver;
+
+import java.util.List;
 
 class AgentScopeRuntimeTest {
     @Test
@@ -55,6 +58,20 @@ class AgentScopeRuntimeTest {
 
         @Override
         public void save(Application application) {
+        }
+
+        @Override
+        public List<Application> list() {
+            return List.of(application);
+        }
+
+        @Override
+        public long nextVersion(String appKey) {
+            return 1;
+        }
+
+        @Override
+        public void saveVersion(ApplicationVersion version) {
         }
 
         @Override

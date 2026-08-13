@@ -12,9 +12,12 @@ import xin.v5ai.nb.application.PublishedApplicationResolver;
 import xin.v5ai.nb.runtime.AgentScopeHarnessExecutor;
 import xin.v5ai.nb.runtime.AgentRuntime;
 import xin.v5ai.nb.runtime.AgentScopeRuntime;
+import xin.v5ai.nb.runtime.AgentModelResolver;
 import xin.v5ai.nb.runtime.AgentTextExecutor;
+import xin.v5ai.nb.runtime.ConversationRepository;
 import xin.v5ai.nb.runtime.MessageRepository;
 import xin.v5ai.nb.runtime.PersistingAgentRuntime;
+import xin.v5ai.nb.runtime.RunEventRepository;
 import xin.v5ai.nb.runtime.RunRecordRepository;
 
 import java.nio.file.Path;
@@ -23,7 +26,15 @@ import java.nio.file.Path;
 @EnableConfigurationProperties(AgentScopeRuntimeProperties.class)
 public class RuntimeConfiguration {
     @Bean
-    AgentTextExecutor agentTextExecutor(ObjectProvider<Model> modelProvider, AgentScopeRuntimeProperties properties) {
+    AgentTextExecutor agentTextExecutor(
+            ObjectProvider<AgentModelResolver> modelResolverProvider,
+            ObjectProvider<Model> modelProvider,
+            AgentScopeRuntimeProperties properties
+    ) {
+        AgentModelResolver modelResolver = modelResolverProvider.getIfAvailable();
+        if (modelResolver != null) {
+            return new PublishedModelAgentTextExecutor(modelResolver);
+        }
         Model model = modelProvider.getIfAvailable();
         if (model != null) {
             return new AgentScopeHarnessExecutor(
@@ -40,9 +51,12 @@ public class RuntimeConfiguration {
             PublishedApplicationResolver resolver,
             AgentTextExecutor executor,
             MessageRepository messageRepository,
-            RunRecordRepository runRecordRepository
+            RunRecordRepository runRecordRepository,
+            ConversationRepository conversationRepository,
+            RunEventRepository runEventRepository
     ) {
         var runtime = new AgentScopeRuntime(resolver, executor);
-        return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository);
+        return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,
+                conversationRepository, runEventRepository);
     }
 }
