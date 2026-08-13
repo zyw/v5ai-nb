@@ -79,3 +79,4 @@ The response body is:
 - Requests resolve only published Applications.
 - Missing `conversationId` is normalized to a generated UUID in the runtime persistence decorator.
 - The current Agent executor returns a deterministic development placeholder. The real AgentScope SDK adapter will replace `AgentTextExecutor` behind the same runtime boundary.
+- The `v5ai-ui` frontend calls these APIs through Vite proxy during local development.

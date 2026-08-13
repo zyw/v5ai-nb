@@ -24,7 +24,7 @@ public class ChatController {
 
     @PostMapping("/stream")
     public Flux<ServerSentEvent<RuntimeEvent>> stream(
-            @PathVariable String appKey,
+            @PathVariable("appKey") String appKey,
             @RequestBody ChatRequest request
     ) {
         return agentRuntime.stream(new AgentRunRequest(appKey, request.conversationId(), request.query()))
@@ -36,7 +36,7 @@ public class ChatController {
 
     @PostMapping
     public Mono<AgentRunResult> call(
-            @PathVariable String appKey,
+            @PathVariable("appKey") String appKey,
             @RequestBody ChatRequest request
     ) {
         return agentRuntime.call(new AgentRunRequest(appKey, request.conversationId(), request.query()));

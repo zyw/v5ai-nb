@@ -5,13 +5,17 @@
 ```bash
 java -version
 mvn -Dmaven.repo.local=/private/tmp/v5ai-m2 clean verify -Dsurefire.failIfNoSpecifiedTests=false
+cd v5ai-ui
+npm install
+npm run build
 git status --short
 ```
 
 Expected:
 
 - Java reports JDK 21.
-- Maven exits with code 0.
+- Maven exits with code 0 on Spring Boot 4.1.0.
+- The frontend build exits with code 0.
 - Git status is clean after committed changes.
 
 ## Verified Scope
@@ -27,6 +31,7 @@ Expected:
 - SSE chat endpoint returns typed server-sent events.
 - Runtime endpoint rejects missing or invalid Application API Keys.
 - User and assistant messages plus run lifecycle are persisted through runtime ports and MyBatis adapters.
+- `v5ai-ui` provides the first management console skeleton for login, models, Applications, API Keys and chat debugging.
 
 ## Known Phase 1 Limitations
 
