@@ -31,6 +31,22 @@ class PersistingAgentRuntimeTest {
         assertThat(runRepository.completedRunIds).containsExactly("run-1");
     }
 
+    @Test
+    void requestWithoutConversationIdGetsGeneratedConversationId() {
+        var messageRepository = new RecordingMessageRepository();
+        var runtime = new PersistingAgentRuntime(
+                new StubAgentRuntime(),
+                messageRepository,
+                new RecordingRunRecordRepository()
+        );
+
+        StepVerifier.create(runtime.stream(new AgentRunRequest("demo", null, "hello")).then())
+                .verifyComplete();
+
+        assertThat(messageRepository.messages.get(0).conversationId()).isNotBlank();
+        assertThat(messageRepository.messages.get(1).conversationId()).isEqualTo(messageRepository.messages.get(0).conversationId());
+    }
+
     private static final class StubAgentRuntime implements AgentRuntime {
         @Override
         public Flux<RuntimeEvent> stream(AgentRunRequest request) {
