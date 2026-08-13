@@ -19,6 +19,8 @@
         <mybatis-plus.version>3.5.12</mybatis-plus.version>
         <sa-token.version>1.44.0</sa-token.version>
         <jackson2.version>2.19.2</jackson2.version>
+        <redisson.version>3.51.0</redisson.version>
+        <minio.version>8.5.17</minio.version>
         <agentscope.version>2.0.0</agentscope.version>
     </properties>
 
@@ -57,6 +59,21 @@
                 <groupId>cn.dev33</groupId>
                 <artifactId>sa-token-jwt</artifactId>
                 <version>${sa-token.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.minio</groupId>
+                <artifactId>minio</artifactId>
+                <version>${minio.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-harness</artifactId>
+                <version>${agentscope.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>

@@ -2,6 +2,7 @@ package xin.v5ai.nb.api.auth;
 
 import cn.dev33.satoken.stp.StpUtil;
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.auth.UserCredentialStore;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;

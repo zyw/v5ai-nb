@@ -1,0 +1,42 @@
+package xin.v5ai.nb.api.error;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import xin.v5ai.nb.common.api.ApiResponse;
+import xin.v5ai.nb.common.exception.ErrorCode;
+import xin.v5ai.nb.common.exception.V5aiException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(V5aiException.class)
+    public ResponseEntity<ApiResponse<Void>> handleV5aiException(V5aiException exception) {
+        return ResponseEntity
+                .status(statusFor(exception.code()))
+                .body(ApiResponse.failure(exception.code(), exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException exception) {
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, exception.getMessage()));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnknown(Exception exception) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "internal server error"));
+    }
+
+    private HttpStatus statusFor(ErrorCode code) {
+        return switch (code) {
+            case INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST;
+            case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case INTERNAL_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
+        };
+    }
+}

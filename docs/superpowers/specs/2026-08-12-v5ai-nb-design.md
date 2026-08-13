@@ -100,7 +100,8 @@ v5ai-nb/
 ├── v5ai-application
 ├── v5ai-api
 ├── v5ai-worker
-└── v5ai-starter
+├── v5ai-starter
+└── v5ai-ui
 ```
 
 所有 Java 包以 `xin.v5ai.nb` 开头，模块内按领域继续划分，例如 `xin.v5ai.nb.runtime`、`xin.v5ai.nb.rag`。
@@ -119,6 +120,7 @@ v5ai-nb/
 | `v5ai-api` | 管理 API、运行 API、会话 API、SSE 和认证入口 |
 | `v5ai-worker` | 知识库任务、Skill 任务、连接测试和可恢复异步任务 |
 | `v5ai-starter` | Spring Boot 启动类、自动配置、配置文件和部署入口 |
+| `v5ai-ui` | 管理后台、Chat UI 和 OpenAPI Client |
 
 依赖方向必须保持单向：`api/application/runtime/rag/mcp/skill/model` 依赖 `domain`，基础设施实现 `domain` 的接口；业务模块不反向依赖 API。
 

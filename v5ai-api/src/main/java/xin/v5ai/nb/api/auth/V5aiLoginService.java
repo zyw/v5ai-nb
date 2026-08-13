@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.auth;
 
 import org.springframework.stereotype.Service;
+import xin.v5ai.nb.common.auth.UserCredentialStore;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
 
 @Service
