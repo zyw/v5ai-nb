@@ -1,0 +1,110 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { NButton, NCard, NForm, NFormItem, NInput, NSpace, NTag, useMessage } from 'naive-ui'
+import { chat, streamChat } from '../api/client'
+
+const message = useMessage()
+const appKey = ref('demo')
+const appApiKey = ref('')
+const conversationId = ref('')
+const query = ref('你好，介绍一下 v5ai-nb')
+const blockingAnswer = ref('')
+const runId = ref('')
+const streamAnswer = ref('')
+const events = ref<string[]>([])
+const loading = ref(false)
+const streaming = ref(false)
+
+function parseDelta(data: string): string {
+  if (!data) return ''
+  try {
+    const body = JSON.parse(data) as { payload?: string; answer?: string; text?: string }
+    return body.payload ?? body.answer ?? body.text ?? data
+  } catch {
+    return data
+  }
+}
+
+function chatRequest() {
+  return {
+    conversationId: conversationId.value || undefined,
+    query: query.value
+  }
+}
+
+async function handleBlockingChat() {
+  loading.value = true
+  blockingAnswer.value = ''
+  runId.value = ''
+  try {
+    const result = await chat(appKey.value, appApiKey.value, chatRequest())
+    runId.value = result.runId
+    blockingAnswer.value = result.answer
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '阻塞调用失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleStream() {
+  streaming.value = true
+  streamAnswer.value = ''
+  events.value = []
+  try {
+    await streamChat(appKey.value, appApiKey.value, chatRequest(), (event, data) => {
+      events.value.push(event)
+      if (event === 'TEXT_DELTA') {
+        streamAnswer.value += parseDelta(data)
+      }
+      if (event === 'MESSAGE_COMPLETED' && !streamAnswer.value) {
+        streamAnswer.value = parseDelta(data)
+      }
+    })
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '流式调用失败')
+  } finally {
+    streaming.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="grid">
+    <n-card title="Chat 请求" class="panel">
+      <n-form label-placement="top">
+        <n-form-item label="App Key">
+          <n-input v-model:value="appKey" />
+        </n-form-item>
+        <n-form-item label="Application API Key">
+          <n-input v-model:value="appApiKey" type="password" show-password-on="mousedown" />
+        </n-form-item>
+        <n-form-item label="Conversation ID">
+          <n-input v-model:value="conversationId" placeholder="可为空，后端会创建或延续会话" />
+        </n-form-item>
+        <n-form-item label="Query">
+          <n-input v-model:value="query" type="textarea" :autosize="{ minRows: 4, maxRows: 8 }" />
+        </n-form-item>
+        <n-space>
+          <n-button type="primary" :loading="loading" @click="handleBlockingChat">阻塞调用</n-button>
+          <n-button type="info" :loading="streaming" @click="handleStream">流式调用</n-button>
+        </n-space>
+      </n-form>
+    </n-card>
+
+    <n-card title="阻塞响应" class="panel">
+      <div class="summary-row">
+        <span>Run ID</span>
+        <strong>{{ runId || '-' }}</strong>
+      </div>
+      <div class="answer">{{ blockingAnswer || '等待阻塞响应...' }}</div>
+    </n-card>
+
+    <n-card title="流式响应" class="panel wide">
+      <div class="answer">{{ streamAnswer || '等待流式响应...' }}</div>
+      <div class="event-list">
+        <n-tag v-for="(event, index) in events" :key="`${event}-${index}`" size="small">{{ event }}</n-tag>
+      </div>
+    </n-card>
+  </div>
+</template>

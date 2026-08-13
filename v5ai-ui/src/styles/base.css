@@ -70,6 +70,15 @@ body {
   color: #8b949e;
 }
 
+.topbar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.page {
+  padding-bottom: 32px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -112,16 +121,29 @@ body {
 .answer {
   min-height: 92px;
   padding: 14px;
+  margin-top: 14px;
   border-radius: 8px;
   background: #181b22;
   line-height: 1.7;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .event-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 14px;
+}
+
+.code-block {
+  margin: 0;
+  padding: 16px;
+  border-radius: 8px;
+  overflow: auto;
+  background: #181b22;
+  color: #d1d7e0;
+  line-height: 1.7;
 }
 
 @media (max-width: 860px) {
