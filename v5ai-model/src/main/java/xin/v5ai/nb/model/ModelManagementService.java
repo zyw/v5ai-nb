@@ -63,6 +63,11 @@ public class ModelManagementService {
         if (providerRepository == null) {
             return;
         }
+        boolean referenced = repository.list().stream()
+                .anyMatch(model -> model.providerKey().equals(providerKey));
+        if (referenced) {
+            throw new IllegalArgumentException("provider has models and cannot be deleted");
+        }
         providerRepository.delete(providerKey);
     }
 
@@ -106,6 +111,10 @@ public class ModelManagementService {
 
     public void deleteModel(Long id) {
         repository.delete(id);
+    }
+
+    public ModelConfig findModel(Long id) {
+        return repository.findById(id);
     }
 
     public List<ModelConfig> listModels() {

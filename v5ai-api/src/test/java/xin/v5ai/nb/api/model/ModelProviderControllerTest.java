@@ -1,6 +1,12 @@
 package xin.v5ai.nb.api.model;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.application.ApplicationRepository;
+import xin.v5ai.nb.application.ApplicationStatus;
+import xin.v5ai.nb.application.ApplicationVersion;
+import xin.v5ai.nb.common.exception.ErrorCode;
+import xin.v5ai.nb.common.exception.V5aiException;
 import xin.v5ai.nb.model.CreateModelCommand;
 import xin.v5ai.nb.model.CreateProviderCommand;
 import xin.v5ai.nb.model.CredentialCipher;
@@ -15,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ModelProviderControllerTest {
     @Test
@@ -43,10 +50,22 @@ class ModelProviderControllerTest {
     }
 
     @Test
+    void deleteProviderRejectsProviderStillUsedByModels() {
+        var service = service();
+        service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
+        service.createModel(new CreateModelCommand("openai", "gpt-4o", ModelType.CHAT, "secret"));
+        var controller = new ModelProviderController(service);
+
+        assertThatThrownBy(() -> controller.deleteProvider("openai"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("has models");
+    }
+
+    @Test
     void createsAndListsModels() {
         var service = service();
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
-        var controller = new ModelController(service);
+        var controller = new ModelController(service, new RecordingApplicationRepository());
 
         var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret"));
         var models = controller.listModels();
@@ -60,7 +79,7 @@ class ModelProviderControllerTest {
     void updatesDeletesAndTestsModel() {
         var service = service();
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
-        var controller = new ModelController(service);
+        var controller = new ModelController(service, new RecordingApplicationRepository());
         var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret"));
 
         var updated = controller.updateModel(1L, new UpdateModelRequest("gpt-4o-mini", ModelType.CHAT, null, true));
@@ -69,6 +88,32 @@ class ModelProviderControllerTest {
 
         assertThat(updated.modelKey()).isEqualTo("gpt-4o-mini");
         assertThat(testResult.ok()).isFalse();
+    }
+
+    @Test
+    void deleteModelRejectsModelInUseByApplication() {
+        var service = service();
+        service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
+        service.createModel(new CreateModelCommand("openai", "gpt-4o", ModelType.CHAT, "secret"));
+        var applications = new RecordingApplicationRepository();
+        applications.applications.add(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L));
+        var controller = new ModelController(service, applications);
+
+        assertThatThrownBy(() -> controller.deleteModel(1L))
+                .isInstanceOf(V5aiException.class)
+                .extracting(ex -> ((V5aiException) ex).code())
+                .isEqualTo(ErrorCode.CONFLICT);
+    }
+
+    @Test
+    void deleteModelRejectsUnknownModel() {
+        var service = service();
+        var controller = new ModelController(service, new RecordingApplicationRepository());
+
+        assertThatThrownBy(() -> controller.deleteModel(99L))
+                .isInstanceOf(V5aiException.class)
+                .extracting(ex -> ((V5aiException) ex).code())
+                .isEqualTo(ErrorCode.NOT_FOUND);
     }
 
     private static ModelManagementService service() {
@@ -141,6 +186,51 @@ class ModelProviderControllerTest {
         @Override
         public List<ModelProvider> list() {
             return providers;
+        }
+    }
+
+    private static final class RecordingApplicationRepository implements ApplicationRepository {
+        private final List<Application> applications = new ArrayList<>();
+
+        @Override
+        public Application findByAppKey(String appKey) {
+            return applications.stream().filter(app -> app.appKey().equals(appKey)).findFirst().orElse(null);
+        }
+
+        @Override
+        public void save(Application application) {
+            applications.add(application);
+        }
+
+        @Override
+        public void update(Application application) {
+        }
+
+        @Override
+        public void disable(String appKey) {
+        }
+
+        @Override
+        public List<Application> list() {
+            return applications;
+        }
+
+        @Override
+        public long nextVersion(String appKey) {
+            return 1;
+        }
+
+        @Override
+        public void saveVersion(ApplicationVersion version) {
+        }
+
+        @Override
+        public List<ApplicationVersion> listVersions(String appKey) {
+            return List.of();
+        }
+
+        @Override
+        public void publish(String appKey, long version) {
         }
     }
 }

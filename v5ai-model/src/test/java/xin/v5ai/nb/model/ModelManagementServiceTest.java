@@ -93,6 +93,19 @@ class ModelManagementServiceTest {
         assertThat(repository.deletedId).isEqualTo(1L);
     }
 
+    @Test
+    void deleteProviderRejectsProviderStillUsedByModels() {
+        var repository = new RecordingModelRepository();
+        repository.save(new ModelConfig("openai", "gpt-4o", ModelType.CHAT, "cipher"));
+        var providers = new RecordingModelProviderRepository();
+        providers.save(new ModelProvider("openai", "OpenAI", "OPENAI", true));
+        var service = new ModelManagementService(repository, providers, raw -> "ciphertext");
+
+        assertThatThrownBy(() -> service.deleteProvider("openai"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("has models");
+    }
+
     private static final class RecordingModelRepository implements ModelRepository {
         private ModelConfig saved;
         private ModelConfig updated;

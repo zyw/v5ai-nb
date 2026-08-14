@@ -41,4 +41,17 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().code()).isEqualTo(ErrorCode.INTERNAL_ERROR);
         assertThat(response.getBody().message()).isEqualTo("internal server error");
     }
+
+    @Test
+    void mapsDataIntegrityViolationToConflict() {
+        var handler = new GlobalExceptionHandler();
+
+        var response = handler.handleDataIntegrityViolation(
+                new org.springframework.dao.DataIntegrityViolationException(
+                        "foreign key constraint violation"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody().code()).isEqualTo(ErrorCode.CONFLICT);
+        assertThat(response.getBody().message()).contains("referenced by other data");
+    }
 }
