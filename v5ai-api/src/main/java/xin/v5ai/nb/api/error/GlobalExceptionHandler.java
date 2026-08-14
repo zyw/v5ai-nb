@@ -1,5 +1,7 @@
 package xin.v5ai.nb.api.error;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,6 +12,8 @@ import xin.v5ai.nb.common.exception.V5aiException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(V5aiException.class)
     public ResponseEntity<ApiResponse<Void>> handleV5aiException(V5aiException exception) {
         return ResponseEntity
@@ -26,6 +30,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnknown(Exception exception) {
+        LOG.error("Unhandled exception in request", exception);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "internal server error"));
