@@ -2,6 +2,8 @@ package xin.v5ai.nb.infrastructure.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import xin.v5ai.nb.model.CredentialCipher;
 
 @Configuration
@@ -9,6 +11,11 @@ public class SaTokenConfiguration {
     @Bean
     PasswordVerifier passwordVerifier() {
         return new BCryptPasswordVerifier();
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean

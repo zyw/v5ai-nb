@@ -14,6 +14,22 @@ public interface ModelProviderMapper extends BaseMapper<ModelProviderEntity>, Mo
     }
 
     @Override
+    default void updateProvider(ModelProviderEntity entity) {
+        updateById(entity);
+    }
+
+    @Override
+    default void deleteProvider(String providerKey) {
+        delete(new LambdaQueryWrapper<ModelProviderEntity>()
+                .eq(ModelProviderEntity::getProviderKey, providerKey));
+    }
+
+    @Override
+    default ModelProviderEntity selectProviderById(Long id) {
+        return selectById(id);
+    }
+
+    @Override
     default ModelProviderEntity selectByProviderKey(String providerKey) {
         return selectOne(new LambdaQueryWrapper<ModelProviderEntity>()
                 .eq(ModelProviderEntity::getProviderKey, providerKey));

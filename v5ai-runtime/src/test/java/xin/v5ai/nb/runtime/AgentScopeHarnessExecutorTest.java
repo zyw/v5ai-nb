@@ -29,9 +29,11 @@ class AgentScopeHarnessExecutorTest {
                 tempDir.resolve("workspace"));
 
         StepVerifier.create(executor.streamText(
-                        new Application("demo", "Demo", ApplicationStatus.PUBLISHED, 1L, 1L),
+                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L),
                         new AgentRunRequest("demo", "c1", "hello")))
-                .expectNext("agent-scope-ok")
+                .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall call
+                        && call.modelName().equals("fixed-text"))
+                .expectNext(new AgentTextEvent.Text("agent-scope-ok"))
                 .verifyComplete();
     }
 

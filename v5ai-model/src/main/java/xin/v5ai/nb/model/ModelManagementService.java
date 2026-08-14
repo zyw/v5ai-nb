@@ -1,5 +1,6 @@
 package xin.v5ai.nb.model;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -9,15 +10,27 @@ public class ModelManagementService {
     private final ModelRepository repository;
     private final ModelProviderRepository providerRepository;
     private final CredentialCipher cipher;
+    private final ModelConnectionTester connectionTester;
 
     public ModelManagementService(ModelRepository repository, CredentialCipher cipher) {
-        this(repository, null, cipher);
+        this(repository, null, cipher, null);
     }
 
     public ModelManagementService(ModelRepository repository, ModelProviderRepository providerRepository, CredentialCipher cipher) {
+        this(repository, providerRepository, cipher, null);
+    }
+
+    @Autowired
+    public ModelManagementService(
+            ModelRepository repository,
+            ModelProviderRepository providerRepository,
+            CredentialCipher cipher,
+            ModelConnectionTester connectionTester
+    ) {
         this.repository = repository;
         this.providerRepository = providerRepository;
         this.cipher = cipher;
+        this.connectionTester = connectionTester;
     }
 
     public ModelProvider createProvider(CreateProviderCommand command) {
@@ -34,6 +47,23 @@ public class ModelManagementService {
             providerRepository.save(provider);
         }
         return provider;
+    }
+
+    public ModelProvider updateProvider(UpdateProviderCommand command) {
+        var existing = providerRepository == null ? null : providerRepository.findByKey(command.providerKey());
+        if (existing == null) {
+            throw new IllegalArgumentException("provider does not exist: " + command.providerKey());
+        }
+        var provider = new ModelProvider(existing.id(), command.providerKey(), command.name(), command.providerType(), command.enabled());
+        providerRepository.update(provider);
+        return provider;
+    }
+
+    public void deleteProvider(String providerKey) {
+        if (providerRepository == null) {
+            return;
+        }
+        providerRepository.delete(providerKey);
     }
 
     public List<ModelProvider> listProviders() {
@@ -58,7 +88,34 @@ public class ModelManagementService {
         return model;
     }
 
+    public ModelConfig updateModel(UpdateModelCommand command) {
+        var existing = repository.findById(command.id());
+        if (existing == null) {
+            throw new IllegalArgumentException("model does not exist: " + command.id());
+        }
+        var model = new ModelConfig(
+                command.id(),
+                existing.providerKey(),
+                command.modelKey(),
+                command.type(),
+                command.credentials() == null ? existing.credentialsCiphertext() : cipher.encrypt(command.credentials()),
+                command.enabled());
+        repository.update(model);
+        return model;
+    }
+
+    public void deleteModel(Long id) {
+        repository.delete(id);
+    }
+
     public List<ModelConfig> listModels() {
         return repository.list();
+    }
+
+    public boolean testConnection(Long modelId) {
+        if (connectionTester == null) {
+            throw new IllegalStateException("model connection testing is not configured");
+        }
+        return connectionTester.test(modelId);
     }
 }

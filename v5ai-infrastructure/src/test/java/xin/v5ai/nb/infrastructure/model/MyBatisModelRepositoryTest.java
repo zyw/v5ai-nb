@@ -17,10 +17,57 @@ class MyBatisModelRepositoryTest {
         repository.save(new ModelConfig("openai", "gpt-4o", ModelType.CHAT, "ciphertext"));
 
         assertThat(mapper.entity.getProviderId()).isEqualTo(42L);
+        assertThat(mapper.entity.getEnabled()).isTrue();
+    }
+
+    @Test
+    void listUsesJoinedProviderKey() {
+        var mapper = new RecordingModelConfigMapper();
+        var row = new ModelConfigRow();
+        row.setId(1L);
+        row.setProviderKey("openai");
+        row.setModelKey("gpt-4o");
+        row.setModelType("CHAT");
+        row.setCredentialsCiphertext("cipher");
+        row.setEnabled(true);
+        mapper.rows.add(row);
+        var repository = new MyBatisModelRepository(mapper, providerKey -> 42L);
+
+        List<ModelConfig> models = repository.list();
+
+        assertThat(models).hasSize(1);
+        assertThat(models.getFirst().id()).isEqualTo(1L);
+        assertThat(models.getFirst().providerKey()).isEqualTo("openai");
+        assertThat(models.getFirst().enabled()).isTrue();
+    }
+
+    @Test
+    void updateModelWritesEntityWithIdAndProviderId() {
+        var mapper = new RecordingModelConfigMapper();
+        var repository = new MyBatisModelRepository(mapper, providerKey -> 7L);
+
+        repository.update(new ModelConfig(9L, "openai", "gpt-4o-mini", ModelType.CHAT, "cipher-new", true));
+
+        assertThat(mapper.updated.getId()).isEqualTo(9L);
+        assertThat(mapper.updated.getProviderId()).isEqualTo(7L);
+        assertThat(mapper.updated.getModelKey()).isEqualTo("gpt-4o-mini");
+    }
+
+    @Test
+    void deleteModelDelegatesToGateway() {
+        var mapper = new RecordingModelConfigMapper();
+        var repository = new MyBatisModelRepository(mapper, providerKey -> 42L);
+
+        repository.delete(5L);
+
+        assertThat(mapper.deletedId).isEqualTo(5L);
     }
 
     private static final class RecordingModelConfigMapper implements ModelConfigGateway {
         private ModelConfigEntity entity;
+        private ModelConfigEntity updated;
+        private Long deletedId;
+        private final List<ModelConfigRow> rows = new java.util.ArrayList<>();
 
         @Override
         public void insertModel(ModelConfigEntity entity) {
@@ -28,8 +75,28 @@ class MyBatisModelRepositoryTest {
         }
 
         @Override
+        public void updateModel(ModelConfigEntity entity) {
+            this.updated = entity;
+        }
+
+        @Override
+        public void deleteModel(Long modelId) {
+            this.deletedId = modelId;
+        }
+
+        @Override
+        public ModelConfigEntity selectModelById(Long modelId) {
+            return null;
+        }
+
+        @Override
         public List<ModelConfigEntity> selectModels() {
             return List.of();
+        }
+
+        @Override
+        public List<ModelConfigRow> selectModelRows() {
+            return rows;
         }
     }
 }

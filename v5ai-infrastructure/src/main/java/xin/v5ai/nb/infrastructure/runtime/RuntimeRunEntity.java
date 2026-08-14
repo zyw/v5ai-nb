@@ -1,5 +1,6 @@
 package xin.v5ai.nb.infrastructure.runtime;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -10,6 +11,8 @@ public class RuntimeRunEntity {
     private String conversationId;
     private String appKey;
     private String status;
+    @TableField("error_message")
+    private String errorMessage;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -19,4 +22,6 @@ public class RuntimeRunEntity {
     public void setAppKey(String appKey) { this.appKey = appKey; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
 }

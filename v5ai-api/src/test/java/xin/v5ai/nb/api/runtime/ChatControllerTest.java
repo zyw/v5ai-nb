@@ -58,10 +58,21 @@ class ChatControllerTest {
     }
 
     private WebTestClient chatClient(WebFilter filter) {
-        return WebTestClient.bindToController(new ChatController(new StubAgentRuntime()))
+        return WebTestClient.bindToController(new ChatController(new StubAgentRuntime(), new EmptyMessageRepository()))
                 .webFilter(filter)
                 .configureClient()
                 .build();
+    }
+
+    private static final class EmptyMessageRepository implements xin.v5ai.nb.runtime.MessageRepository {
+        @Override
+        public void save(xin.v5ai.nb.runtime.Message message) {
+        }
+
+        @Override
+        public java.util.List<xin.v5ai.nb.runtime.Message> findByConversationId(String conversationId) {
+            return java.util.List.of();
+        }
     }
 
     private static final class StubAgentRuntime implements AgentRuntime {

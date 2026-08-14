@@ -3,6 +3,8 @@ package xin.v5ai.nb.infrastructure.apiKey;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class BcryptApplicationApiKeyVerifierTest {
@@ -29,6 +31,19 @@ class BcryptApplicationApiKeyVerifierTest {
         @Override
         public String findSecretHash(String appKey) {
             return this.appKey.equals(appKey) ? secretHash : null;
+        }
+
+        @Override
+        public void upsertSecret(String appKey, String secretHash) {
+        }
+
+        @Override
+        public List<ApiKeyRecord> list() {
+            return List.of();
+        }
+
+        @Override
+        public void delete(String appKey) {
         }
     }
 }

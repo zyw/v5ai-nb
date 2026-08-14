@@ -11,6 +11,7 @@ import reactor.test.StepVerifier;
 import xin.v5ai.nb.application.Application;
 import xin.v5ai.nb.application.ApplicationStatus;
 import xin.v5ai.nb.runtime.AgentRunRequest;
+import xin.v5ai.nb.runtime.AgentTextEvent;
 
 import java.util.List;
 import java.util.Map;
@@ -20,12 +21,12 @@ class PublishedModelAgentTextExecutorTest {
     void resolvesAgentScopeModelFromPublishedApplicationModelId() {
         var executor = new PublishedModelAgentTextExecutor(
                 modelId -> new FixedTextModel("model-" + modelId),
-                model -> (application, request) -> Flux.just(model.getModelName()));
+                model -> (application, request) -> Flux.just(new AgentTextEvent.Text(model.getModelName())));
 
         StepVerifier.create(executor.streamText(
-                        new Application("demo", "Demo", ApplicationStatus.PUBLISHED, 7L, 1L),
+                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L),
                         new AgentRunRequest("demo", "conversation-1", "hello")))
-                .expectNext("fixed:model-7")
+                .expectNext(new AgentTextEvent.Text("fixed:model-7"))
                 .verifyComplete();
     }
 

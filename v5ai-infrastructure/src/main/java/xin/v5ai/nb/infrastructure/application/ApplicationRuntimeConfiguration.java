@@ -20,7 +20,7 @@ public class ApplicationRuntimeConfiguration {
             @Value("${v5ai.runtime.dev-app-key:demo}") String appKey
     ) {
         var repository = new InMemoryApplicationRepository();
-        repository.save(new Application(appKey, "Demo", ApplicationStatus.PUBLISHED, 1L, 1L));
+        repository.save(new Application(appKey, "Demo", "Development demo application", ApplicationStatus.PUBLISHED, 1L, 1L));
         return repository;
     }
 
@@ -44,6 +44,20 @@ public class ApplicationRuntimeConfiguration {
         }
 
         @Override
+        public void update(Application application) {
+            applications.put(application.appKey(), application);
+        }
+
+        @Override
+        public void disable(String appKey) {
+            var current = applications.get(appKey);
+            if (current != null) {
+                applications.put(appKey, new Application(current.appKey(), current.name(), current.description(),
+                        ApplicationStatus.DISABLED, current.modelId(), current.publishedVersion()));
+            }
+        }
+
+        @Override
         public List<Application> list() {
             return new ArrayList<>(applications.values());
         }
@@ -59,9 +73,15 @@ public class ApplicationRuntimeConfiguration {
         }
 
         @Override
+        public List<ApplicationVersion> listVersions(String appKey) {
+            return versions.stream().filter(version -> version.appKey().equals(appKey)).toList();
+        }
+
+        @Override
         public void publish(String appKey, long version) {
             var current = applications.get(appKey);
-            applications.put(appKey, new Application(current.appKey(), current.name(), ApplicationStatus.PUBLISHED, current.modelId(), version));
+            applications.put(appKey, new Application(current.appKey(), current.name(), current.description(),
+                    ApplicationStatus.PUBLISHED, current.modelId(), version));
         }
     }
 }

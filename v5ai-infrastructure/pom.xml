@@ -29,6 +29,15 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-rag</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>

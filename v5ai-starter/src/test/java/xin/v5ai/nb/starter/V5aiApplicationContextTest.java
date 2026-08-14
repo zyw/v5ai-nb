@@ -4,9 +4,17 @@ import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import io.minio.MinioClient;
+import xin.v5ai.nb.api.application.ApplicationController;
+import xin.v5ai.nb.api.auth.AuthController;
+import xin.v5ai.nb.api.model.ModelController;
+import xin.v5ai.nb.api.model.ModelProviderController;
+import xin.v5ai.nb.api.runtime.ChatController;
+import xin.v5ai.nb.application.ApplicationManagementService;
+import xin.v5ai.nb.model.ModelManagementService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +35,9 @@ class V5aiApplicationContextTest {
     @Autowired
     private Environment environment;
 
+    @Autowired
+    private ApplicationContext applicationContext;
+
     @MockitoBean
     private RedissonClient redissonClient;
 
@@ -45,5 +56,16 @@ class V5aiApplicationContextTest {
                 .isEqualTo("redis://localhost:6379");
         assertThat(environment.getProperty("v5ai.minio.bucket"))
                 .isEqualTo("v5ai");
+    }
+
+    @Test
+    void phase1BeansAreRegisteredByComponentScan() {
+        assertThat(applicationContext.getBean(AuthController.class)).isNotNull();
+        assertThat(applicationContext.getBean(ModelController.class)).isNotNull();
+        assertThat(applicationContext.getBean(ModelProviderController.class)).isNotNull();
+        assertThat(applicationContext.getBean(ApplicationController.class)).isNotNull();
+        assertThat(applicationContext.getBean(ChatController.class)).isNotNull();
+        assertThat(applicationContext.getBean(ModelManagementService.class)).isNotNull();
+        assertThat(applicationContext.getBean(ApplicationManagementService.class)).isNotNull();
     }
 }

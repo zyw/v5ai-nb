@@ -19,22 +19,54 @@ public class MyBatisModelRepository implements ModelRepository {
 
     @Override
     public void save(ModelConfig model) {
-        var entity = new ModelConfigEntity();
+        var entity = toEntity(model);
         entity.setProviderId(providerIdResolver.resolve(model.providerKey()));
-        entity.setModelKey(model.modelKey());
-        entity.setModelType(model.type().name());
-        entity.setCredentialsCiphertext(model.credentialsCiphertext());
         gateway.insertModel(entity);
     }
 
     @Override
+    public ModelConfig findById(Long id) {
+        var entity = gateway.selectModelById(id);
+        if (entity == null) {
+            return null;
+        }
+        return new ModelConfig(entity.getId(), String.valueOf(entity.getProviderId()), entity.getModelKey(),
+                ModelType.valueOf(entity.getModelType()), entity.getCredentialsCiphertext(),
+                Boolean.TRUE.equals(entity.getEnabled()));
+    }
+
+    @Override
+    public void update(ModelConfig model) {
+        var entity = toEntity(model);
+        entity.setId(model.id());
+        entity.setProviderId(providerIdResolver.resolve(model.providerKey()));
+        gateway.updateModel(entity);
+    }
+
+    @Override
+    public void delete(Long id) {
+        gateway.deleteModel(id);
+    }
+
+    @Override
     public List<ModelConfig> list() {
-        return gateway.selectModels().stream()
-                .map(entity -> new ModelConfig(
-                        String.valueOf(entity.getProviderId()),
-                        entity.getModelKey(),
-                        ModelType.valueOf(entity.getModelType()),
-                        entity.getCredentialsCiphertext()))
+        return gateway.selectModelRows().stream()
+                .map(row -> new ModelConfig(
+                        row.getId(),
+                        row.getProviderKey(),
+                        row.getModelKey(),
+                        ModelType.valueOf(row.getModelType()),
+                        row.getCredentialsCiphertext(),
+                        Boolean.TRUE.equals(row.getEnabled())))
                 .toList();
+    }
+
+    private static ModelConfigEntity toEntity(ModelConfig model) {
+        var entity = new ModelConfigEntity();
+        entity.setModelKey(model.modelKey());
+        entity.setModelType(model.type().name());
+        entity.setCredentialsCiphertext(model.credentialsCiphertext());
+        entity.setEnabled(model.enabled());
+        return entity;
     }
 }

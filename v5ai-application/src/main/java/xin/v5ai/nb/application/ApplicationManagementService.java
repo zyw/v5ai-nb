@@ -1,6 +1,7 @@
 package xin.v5ai.nb.application;
 
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -8,8 +9,10 @@ import java.util.function.Predicate;
 public class ApplicationManagementService {
     private final ApplicationRepository repository;
     private final Predicate<Long> modelEnabled;
+
     public ApplicationManagementService(ApplicationRepository repository, Predicate<Long> modelEnabled) {
-        this.repository = repository; this.modelEnabled = modelEnabled;
+        this.repository = repository;
+        this.modelEnabled = modelEnabled;
     }
 
     public Application createApplication(CreateApplicationCommand command) {
@@ -18,13 +21,47 @@ public class ApplicationManagementService {
                 || command.modelId() == null) {
             throw new IllegalArgumentException("app key, name and model are required");
         }
-        var application = new Application(command.appKey(), command.name(), ApplicationStatus.DRAFT, command.modelId(), null);
+        if (repository.findByAppKey(command.appKey()) != null) {
+            throw new IllegalArgumentException("application already exists: " + command.appKey());
+        }
+        var application = new Application(command.appKey(), command.name(), command.description(),
+                ApplicationStatus.DRAFT, command.modelId(), null);
         repository.save(application);
         return application;
     }
 
     public List<Application> listApplications() {
         return repository.list();
+    }
+
+    public Application updateApplication(UpdateApplicationCommand command) {
+        var existing = repository.findByAppKey(command.appKey());
+        if (existing == null) {
+            throw new IllegalArgumentException("application does not exist: " + command.appKey());
+        }
+        var application = new Application(
+                existing.appKey(),
+                command.name() == null || command.name().isBlank() ? existing.name() : command.name(),
+                command.description() == null ? existing.description() : command.description(),
+                existing.status(),
+                command.modelId() == null ? existing.modelId() : command.modelId(),
+                existing.publishedVersion());
+        repository.update(application);
+        return application;
+    }
+
+    public void disable(String appKey) {
+        if (repository.findByAppKey(appKey) == null) {
+            throw new IllegalArgumentException("application does not exist: " + appKey);
+        }
+        repository.disable(appKey);
+    }
+
+    public List<ApplicationVersion> listVersions(String appKey) {
+        if (repository.findByAppKey(appKey) == null) {
+            throw new IllegalArgumentException("application does not exist: " + appKey);
+        }
+        return repository.listVersions(appKey);
     }
 
     public void publish(String appKey) {
@@ -44,7 +81,11 @@ public class ApplicationManagementService {
 
     private String snapshot(Application application) {
         return """
-                {"appKey":"%s","name":"%s","modelId":%d}
-                """.formatted(application.appKey(), application.name(), application.modelId()).trim();
+                {"appKey":"%s","name":"%s","description":"%s","modelId":%d}
+                """.formatted(
+                        application.appKey(),
+                        application.name(),
+                        application.description() == null ? "" : application.description(),
+                        application.modelId()).trim();
     }
 }

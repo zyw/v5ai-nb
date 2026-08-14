@@ -9,14 +9,17 @@ import org.springframework.context.annotation.Configuration;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.application.Application;
 import xin.v5ai.nb.application.PublishedApplicationResolver;
-import xin.v5ai.nb.runtime.AgentScopeHarnessExecutor;
-import xin.v5ai.nb.runtime.AgentRuntime;
-import xin.v5ai.nb.runtime.AgentScopeRuntime;
 import xin.v5ai.nb.runtime.AgentModelResolver;
+import xin.v5ai.nb.runtime.AgentRuntime;
+import xin.v5ai.nb.runtime.AgentScopeHarnessExecutor;
+import xin.v5ai.nb.runtime.AgentScopeRuntime;
+import xin.v5ai.nb.runtime.AgentStateRepository;
+import xin.v5ai.nb.runtime.AgentTextEvent;
 import xin.v5ai.nb.runtime.AgentTextExecutor;
 import xin.v5ai.nb.runtime.ConversationRepository;
 import xin.v5ai.nb.runtime.MessageRepository;
 import xin.v5ai.nb.runtime.PersistingAgentRuntime;
+import xin.v5ai.nb.runtime.RagContextProvider;
 import xin.v5ai.nb.runtime.RunEventRepository;
 import xin.v5ai.nb.runtime.RunRecordRepository;
 
@@ -43,7 +46,7 @@ public class RuntimeConfiguration {
                     Path.of(properties.getWorkspace()));
         }
         return (Application application, xin.v5ai.nb.runtime.AgentRunRequest request) ->
-                Flux.just("Phase 1 runtime placeholder response for: ", request.query());
+                Flux.just(new AgentTextEvent.Text("Phase 1 runtime placeholder response for: " + request.query()));
     }
 
     @Bean
@@ -53,10 +56,12 @@ public class RuntimeConfiguration {
             MessageRepository messageRepository,
             RunRecordRepository runRecordRepository,
             ConversationRepository conversationRepository,
-            RunEventRepository runEventRepository
+            RunEventRepository runEventRepository,
+            ObjectProvider<AgentStateRepository> agentStateRepositoryProvider,
+            ObjectProvider<RagContextProvider> ragContextProviderProvider
     ) {
-        var runtime = new AgentScopeRuntime(resolver, executor);
+        var runtime = new AgentScopeRuntime(resolver, executor, ragContextProviderProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,
-                conversationRepository, runEventRepository);
+                conversationRepository, runEventRepository, agentStateRepositoryProvider.getIfAvailable());
     }
 }

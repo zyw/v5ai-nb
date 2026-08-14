@@ -20,8 +20,25 @@ public class MyBatisModelProviderRepository implements ModelProviderRepository {
     }
 
     @Override
+    public ModelProvider findById(Long id) {
+        return toDomain(gateway.selectProviderById(id));
+    }
+
+    @Override
     public ModelProvider findByKey(String providerKey) {
         return toDomain(gateway.selectByProviderKey(providerKey));
+    }
+
+    @Override
+    public void update(ModelProvider provider) {
+        var entity = toEntity(provider);
+        entity.setId(provider.id());
+        gateway.updateProvider(entity);
+    }
+
+    @Override
+    public void delete(String providerKey) {
+        gateway.deleteProvider(providerKey);
     }
 
     @Override
@@ -44,7 +61,7 @@ public class MyBatisModelProviderRepository implements ModelProviderRepository {
         if (entity == null) {
             return null;
         }
-        return new ModelProvider(entity.getProviderKey(), entity.getName(), entity.getProviderType(),
+        return new ModelProvider(entity.getId(), entity.getProviderKey(), entity.getName(), entity.getProviderType(),
                 Boolean.TRUE.equals(entity.getEnabled()));
     }
 }

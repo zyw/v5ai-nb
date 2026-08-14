@@ -59,14 +59,65 @@ class ModelManagementServiceTest {
                 .hasMessage("provider is not enabled");
     }
 
+    @Test
+    void updateModelEncryptsNewCredentialsAndKeepsProviderKey() {
+        var repository = new RecordingModelRepository();
+        repository.save(new ModelConfig("openai", "gpt-4o", ModelType.CHAT, "cipher-old"));
+        var service = new ModelManagementService(repository, new RecordingModelProviderRepository(), raw -> "cipher:" + raw);
+
+        ModelConfig updated = service.updateModel(new UpdateModelCommand(1L, "gpt-4o-mini", ModelType.CHAT, "new-secret", true));
+
+        assertThat(updated.providerKey()).isEqualTo("openai");
+        assertThat(repository.updated.credentialsCiphertext()).isEqualTo("cipher:new-secret");
+    }
+
+    @Test
+    void updateModelKeepsExistingCredentialsWhenCredentialsAreOmitted() {
+        var repository = new RecordingModelRepository();
+        repository.save(new ModelConfig("openai", "gpt-4o", ModelType.CHAT, "cipher-old"));
+        var service = new ModelManagementService(repository, new RecordingModelProviderRepository(), raw -> "cipher:" + raw);
+
+        ModelConfig updated = service.updateModel(new UpdateModelCommand(1L, "gpt-4o", ModelType.CHAT, null, true));
+
+        assertThat(updated.credentialsCiphertext()).isEqualTo("cipher-old");
+    }
+
+    @Test
+    void deleteModelRemovesIt() {
+        var repository = new RecordingModelRepository();
+        repository.save(new ModelConfig("openai", "gpt-4o", ModelType.CHAT, "cipher"));
+        var service = new ModelManagementService(repository, new RecordingModelProviderRepository(), raw -> "ciphertext");
+
+        service.deleteModel(1L);
+
+        assertThat(repository.deletedId).isEqualTo(1L);
+    }
+
     private static final class RecordingModelRepository implements ModelRepository {
         private ModelConfig saved;
+        private ModelConfig updated;
+        private Long deletedId;
         private final List<ModelConfig> models = new ArrayList<>();
 
         @Override
         public void save(ModelConfig config) {
             saved = config;
             models.add(config);
+        }
+
+        @Override
+        public ModelConfig findById(Long id) {
+            return models.stream().filter(model -> Long.valueOf(1L).equals(id)).findFirst().orElse(null);
+        }
+
+        @Override
+        public void update(ModelConfig model) {
+            updated = model;
+        }
+
+        @Override
+        public void delete(Long id) {
+            deletedId = id;
         }
 
         @Override
@@ -86,11 +137,29 @@ class ModelManagementServiceTest {
         }
 
         @Override
+        public ModelProvider findById(Long id) {
+            return providers.stream()
+                    .filter(provider -> Long.valueOf(1L).equals(id))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        @Override
         public ModelProvider findByKey(String providerKey) {
             return providers.stream()
                     .filter(provider -> provider.providerKey().equals(providerKey))
                     .findFirst()
                     .orElse(null);
+        }
+
+        @Override
+        public void update(ModelProvider provider) {
+            saved = provider;
+        }
+
+        @Override
+        public void delete(String providerKey) {
+            providers.removeIf(provider -> provider.providerKey().equals(providerKey));
         }
 
         @Override

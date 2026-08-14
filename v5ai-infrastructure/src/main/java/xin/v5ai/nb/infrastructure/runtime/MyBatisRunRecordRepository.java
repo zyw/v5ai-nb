@@ -26,4 +26,9 @@ public class MyBatisRunRecordRepository implements RunRecordRepository {
     public void complete(String runId) {
         gateway.markCompleted(runId);
     }
+
+    @Override
+    public void fail(String runId, String message) {
+        gateway.markFailed(runId, message);
+    }
 }

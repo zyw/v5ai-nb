@@ -33,7 +33,7 @@ public class AgentScopeHarnessExecutor implements AgentTextExecutor {
     }
 
     @Override
-    public Flux<String> streamText(Application application, AgentRunRequest request) {
+    public Flux<AgentTextEvent> streamText(Application application, AgentRunRequest request) {
         ensureWorkspaceExists();
         HarnessAgent agent = HarnessAgent.builder()
                 .name(application.name())
@@ -51,9 +51,11 @@ public class AgentScopeHarnessExecutor implements AgentTextExecutor {
                 .disableDynamicSkills()
                 .disableDefaultWorkspaceSkills()
                 .build();
-        return agent.call(request.query(), RuntimeContext.empty())
-                .map(message -> message.getTextContent())
-                .flux()
+        return Flux.concat(
+                        Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
+                        agent.call(request.query(), RuntimeContext.empty())
+                                .map(message -> (AgentTextEvent) new AgentTextEvent.Text(message.getTextContent()))
+                                .flux())
                 .doFinally(signal -> agent.close());
     }
 

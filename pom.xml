@@ -22,6 +22,7 @@
         <redisson.version>3.51.0</redisson.version>
         <minio.version>8.5.17</minio.version>
         <agentscope.version>2.0.0</agentscope.version>
+        <pdfbox.version>3.0.7</pdfbox.version>
     </properties>
 
     <modules>
@@ -31,6 +32,8 @@
         <module>v5ai-model</module>
         <module>v5ai-runtime</module>
         <module>v5ai-application</module>
+        <module>v5ai-rag</module>
+        <module>v5ai-worker</module>
         <module>v5ai-api</module>
         <module>v5ai-starter</module>
     </modules>
@@ -84,6 +87,11 @@
                 <groupId>io.agentscope</groupId>
                 <artifactId>agentscope-extensions-model-dashscope</artifactId>
                 <version>${agentscope.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.pdfbox</groupId>
+                <artifactId>pdfbox</artifactId>
+                <version>${pdfbox.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>

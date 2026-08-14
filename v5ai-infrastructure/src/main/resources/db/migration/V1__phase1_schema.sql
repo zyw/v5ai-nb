@@ -42,6 +42,7 @@ CREATE TABLE v5ai_application (
     app_key VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(200) NOT NULL,
     description TEXT,
+    model_id BIGINT REFERENCES v5ai_model(id),
     status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
     published_version BIGINT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -50,13 +51,12 @@ CREATE TABLE v5ai_application (
 
 CREATE TABLE v5ai_application_version (
     id BIGSERIAL PRIMARY KEY,
-    application_id BIGINT NOT NULL REFERENCES v5ai_application(id),
-    version_no INTEGER NOT NULL,
-    system_prompt TEXT NOT NULL,
-    model_id BIGINT NOT NULL REFERENCES v5ai_model(id),
-    status VARCHAR(30) NOT NULL DEFAULT 'PUBLISHED',
+    app_key VARCHAR(100) NOT NULL,
+    version BIGINT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(application_id, version_no)
+    UNIQUE(app_key, version)
 );
 
 CREATE TABLE v5ai_application_model (
@@ -76,6 +76,7 @@ CREATE TABLE v5ai_conversation (
 CREATE TABLE v5ai_message (
     id BIGSERIAL PRIMARY KEY,
     conversation_id UUID NOT NULL REFERENCES v5ai_conversation(id),
+    app_key VARCHAR(100),
     role VARCHAR(30) NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

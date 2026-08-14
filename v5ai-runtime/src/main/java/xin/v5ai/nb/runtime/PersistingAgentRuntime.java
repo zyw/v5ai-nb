@@ -10,13 +10,14 @@ public class PersistingAgentRuntime implements AgentRuntime {
     private final RunRecordRepository runRecordRepository;
     private final ConversationRepository conversationRepository;
     private final RunEventRepository runEventRepository;
+    private final AgentStateRepository agentStateRepository;
 
     public PersistingAgentRuntime(
             AgentRuntime delegate,
             MessageRepository messageRepository,
             RunRecordRepository runRecordRepository
     ) {
-        this(delegate, messageRepository, runRecordRepository, conversation -> {}, event -> {});
+        this(delegate, messageRepository, runRecordRepository, conversation -> {}, event -> {}, null);
     }
 
     public PersistingAgentRuntime(
@@ -26,11 +27,23 @@ public class PersistingAgentRuntime implements AgentRuntime {
             ConversationRepository conversationRepository,
             RunEventRepository runEventRepository
     ) {
+        this(delegate, messageRepository, runRecordRepository, conversationRepository, runEventRepository, null);
+    }
+
+    public PersistingAgentRuntime(
+            AgentRuntime delegate,
+            MessageRepository messageRepository,
+            RunRecordRepository runRecordRepository,
+            ConversationRepository conversationRepository,
+            RunEventRepository runEventRepository,
+            AgentStateRepository agentStateRepository
+    ) {
         this.delegate = delegate;
         this.messageRepository = messageRepository;
         this.runRecordRepository = runRecordRepository;
         this.conversationRepository = conversationRepository;
         this.runEventRepository = runEventRepository;
+        this.agentStateRepository = agentStateRepository;
     }
 
     @Override
@@ -51,14 +64,29 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (event.type() == RuntimeEventType.TEXT_DELTA) {
                             answer.append(event.payload());
                         }
+                        if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
+                            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
+                            saveAgentState(normalizedRequest, answer.toString());
+                        }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
                             messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
+                            saveAgentState(normalizedRequest, answer.toString());
                             runRecordRepository.complete(event.runId());
                         }
+                        if (event.type() == RuntimeEventType.RUN_FAILED) {
+                            runRecordRepository.fail(event.runId(), event.payload());
+                        }
+                    })
+                    .onErrorResume(exception -> {
+                        var failedRunId = runId[0] == null ? UUID.randomUUID().toString() : runId[0];
+                        runEventRepository.save(RuntimeEvent.failed(failedRunId, exception.getMessage()));
+                        runRecordRepository.fail(failedRunId, exception.getMessage());
+                        return Flux.just(RuntimeEvent.failed(failedRunId, exception.getMessage()));
                     })
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
                             messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
+                            saveAgentState(normalizedRequest, answer.toString());
                         }
                     });
         });
@@ -73,10 +101,21 @@ public class PersistingAgentRuntime implements AgentRuntime {
                 .map(parts -> new AgentRunResult("", String.join("", parts)));
     }
 
+    private void saveAgentState(AgentRunRequest request, String answer) {
+        if (agentStateRepository == null) {
+            return;
+        }
+        agentStateRepository.save(request.conversationId(),
+                """
+                {"appKey":"%s","lastAnswer":"%s"}
+                """.formatted(request.appKey(), answer == null ? "" : answer.replace("\"", "\\\"")).trim());
+    }
+
     private AgentRunRequest normalize(AgentRunRequest request) {
         if (request.conversationId() != null && !request.conversationId().isBlank()) {
             return request;
         }
-        return new AgentRunRequest(request.appKey(), UUID.randomUUID().toString(), request.query());
+        return new AgentRunRequest(request.appKey(), UUID.randomUUID().toString(), request.query(),
+                request.ragContext(), request.history());
     }
 }

@@ -30,6 +30,7 @@ class MyBatisModelProviderRepositoryTest {
 
         ModelProvider provider = repository.findByKey("openai");
 
+        assertThat(provider.id()).isNotNull();
         assertThat(provider.providerKey()).isEqualTo("openai");
         assertThat(provider.enabled()).isTrue();
     }
@@ -47,8 +48,22 @@ class MyBatisModelProviderRepositoryTest {
                 .containsExactly("openai", "dashscope");
     }
 
+    @Test
+    void updateAndDeleteDelegateToGateway() {
+        var mapper = new RecordingModelProviderMapper();
+        mapper.entities.add(entity("openai", "OpenAI", "OPENAI", true));
+        var repository = new MyBatisModelProviderRepository(mapper);
+
+        repository.update(new ModelProvider(1L, "openai", "OpenAI v2", "OPENAI", false));
+        repository.delete("openai");
+
+        assertThat(mapper.updated.getName()).isEqualTo("OpenAI v2");
+        assertThat(mapper.deletedKey).isEqualTo("openai");
+    }
+
     private static ModelProviderEntity entity(String key, String name, String type, boolean enabled) {
         var entity = new ModelProviderEntity();
+        entity.setId(1L);
         entity.setProviderKey(key);
         entity.setName(name);
         entity.setProviderType(type);
@@ -58,12 +73,29 @@ class MyBatisModelProviderRepositoryTest {
 
     private static final class RecordingModelProviderMapper implements ModelProviderGateway {
         private ModelProviderEntity saved;
+        private ModelProviderEntity updated;
+        private String deletedKey;
         private final List<ModelProviderEntity> entities = new ArrayList<>();
 
         @Override
         public void insertProvider(ModelProviderEntity entity) {
             this.saved = entity;
             entities.add(entity);
+        }
+
+        @Override
+        public void updateProvider(ModelProviderEntity entity) {
+            this.updated = entity;
+        }
+
+        @Override
+        public void deleteProvider(String providerKey) {
+            this.deletedKey = providerKey;
+        }
+
+        @Override
+        public ModelProviderEntity selectProviderById(Long id) {
+            return entities.stream().filter(entity -> Long.valueOf(1L).equals(entity.getId())).findFirst().orElse(null);
         }
 
         @Override

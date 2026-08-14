@@ -17,4 +17,12 @@ public interface RuntimeRunMapper extends BaseMapper<RuntimeRunEntity>, RuntimeR
         entity.setStatus("COMPLETED");
         update(entity, new LambdaUpdateWrapper<RuntimeRunEntity>().eq(RuntimeRunEntity::getId, runId));
     }
+
+    @Override
+    default void markFailed(String runId, String errorMessage) {
+        var entity = new RuntimeRunEntity();
+        entity.setStatus("FAILED");
+        entity.setErrorMessage(errorMessage);
+        update(entity, new LambdaUpdateWrapper<RuntimeRunEntity>().eq(RuntimeRunEntity::getId, runId));
+    }
 }

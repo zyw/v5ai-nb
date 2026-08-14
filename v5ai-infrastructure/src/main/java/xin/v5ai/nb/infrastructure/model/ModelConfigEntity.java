@@ -11,6 +11,7 @@ public class ModelConfigEntity {
     private String modelKey;
     private String modelType;
     private String credentialsCiphertext;
+    private Boolean enabled;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -22,4 +23,6 @@ public class ModelConfigEntity {
     public void setModelType(String modelType) { this.modelType = modelType; }
     public String getCredentialsCiphertext() { return credentialsCiphertext; }
     public void setCredentialsCiphertext(String credentialsCiphertext) { this.credentialsCiphertext = credentialsCiphertext; }
+    public Boolean getEnabled() { return enabled; }
+    public void setEnabled(Boolean enabled) { this.enabled = enabled; }
 }

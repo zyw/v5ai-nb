@@ -38,6 +38,11 @@ class MyBatisAgentModelResolverTest {
         public ModelRuntimeConfig findRuntimeConfigByModelId(Long modelId) {
             return new ModelRuntimeConfig(modelId, "gpt-4o", "CHAT", 3L, "openai", "OPENAI", "ciphertext");
         }
+
+        @Override
+        public ModelRuntimeConfig findFirstEmbeddingModel() {
+            return null;
+        }
     }
 
     private static final class RecordingAgentScopeModelFactory extends AgentScopeModelFactory {

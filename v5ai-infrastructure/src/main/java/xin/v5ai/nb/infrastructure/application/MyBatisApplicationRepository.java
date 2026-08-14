@@ -31,6 +31,18 @@ public class MyBatisApplicationRepository implements ApplicationRepository {
     }
 
     @Override
+    public void update(Application application) {
+        var entity = toEntity(application);
+        entity.setId(applicationGateway.selectByAppKey(application.appKey()).getId());
+        applicationGateway.updateApplication(entity);
+    }
+
+    @Override
+    public void disable(String appKey) {
+        applicationGateway.disable(appKey);
+    }
+
+    @Override
     public List<Application> list() {
         return applicationGateway.selectApplications().stream()
                 .map(MyBatisApplicationRepository::toDomain)
@@ -53,6 +65,14 @@ public class MyBatisApplicationRepository implements ApplicationRepository {
     }
 
     @Override
+    public List<ApplicationVersion> listVersions(String appKey) {
+        return versionGateway.selectVersions(appKey).stream()
+                .map(entity -> new ApplicationVersion(entity.getAppKey(), entity.getVersion(),
+                        entity.getSnapshotJson(), entity.getDescription()))
+                .toList();
+    }
+
+    @Override
     public void publish(String appKey, long version) {
         applicationGateway.updatePublished(appKey, ApplicationStatus.PUBLISHED.name(), version);
     }
@@ -61,6 +81,7 @@ public class MyBatisApplicationRepository implements ApplicationRepository {
         var entity = new ApplicationEntity();
         entity.setAppKey(application.appKey());
         entity.setName(application.name());
+        entity.setDescription(application.description());
         entity.setStatus(application.status().name());
         entity.setModelId(application.modelId());
         entity.setPublishedVersion(application.publishedVersion());
@@ -71,7 +92,8 @@ public class MyBatisApplicationRepository implements ApplicationRepository {
         if (entity == null) {
             return null;
         }
-        return new Application(entity.getAppKey(), entity.getName(), ApplicationStatus.valueOf(entity.getStatus()),
+        return new Application(entity.getAppKey(), entity.getName(), entity.getDescription(),
+                ApplicationStatus.valueOf(entity.getStatus()),
                 entity.getModelId(), entity.getPublishedVersion());
     }
 }

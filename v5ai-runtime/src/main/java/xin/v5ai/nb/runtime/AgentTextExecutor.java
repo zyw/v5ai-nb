@@ -5,5 +5,5 @@ import xin.v5ai.nb.application.Application;
 
 @FunctionalInterface
 public interface AgentTextExecutor {
-    Flux<String> streamText(Application application, AgentRunRequest request);
+    Flux<AgentTextEvent> streamText(Application application, AgentRunRequest request);
 }

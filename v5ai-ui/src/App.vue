@@ -2,7 +2,7 @@
 import { computed, h, type Component } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { NConfigProvider, NIcon, NLayout, NLayoutContent, NLayoutSider, NMenu, NMessageProvider, NTag, darkTheme, type MenuOption } from 'naive-ui'
-import { Bot, Boxes, LayoutDashboard, MessageSquare, Rocket, Settings } from 'lucide-vue-next'
+import { Bot, Boxes, Database, LayoutDashboard, MessageSquare, Rocket, Settings } from 'lucide-vue-next'
 import { isLoggedIn } from './stores/session'
 
 const route = useRoute()
@@ -12,6 +12,7 @@ const menuOptions: MenuOption[] = [
   { label: 'Dashboard', key: 'dashboard', icon: () => icon(LayoutDashboard) },
   { label: 'Models', key: 'models', icon: () => icon(Boxes) },
   { label: 'Applications', key: 'applications', icon: () => icon(Rocket) },
+  { label: 'Knowledge Bases', key: 'knowledge-bases', icon: () => icon(Database) },
   { label: 'Chat Debug', key: 'chat', icon: () => icon(MessageSquare) },
   { label: 'Settings', key: 'settings', icon: () => icon(Settings) }
 ]

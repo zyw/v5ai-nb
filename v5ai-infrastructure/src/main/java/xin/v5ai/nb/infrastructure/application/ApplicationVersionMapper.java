@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
+import java.util.List;
+
 @Mapper
 public interface ApplicationVersionMapper extends BaseMapper<ApplicationVersionEntity>, ApplicationVersionGateway {
     @Override
@@ -15,5 +17,12 @@ public interface ApplicationVersionMapper extends BaseMapper<ApplicationVersionE
     default long countVersions(String appKey) {
         return selectCount(new LambdaQueryWrapper<ApplicationVersionEntity>()
                 .eq(ApplicationVersionEntity::getAppKey, appKey));
+    }
+
+    @Override
+    default List<ApplicationVersionEntity> selectVersions(String appKey) {
+        return selectList(new LambdaQueryWrapper<ApplicationVersionEntity>()
+                .eq(ApplicationVersionEntity::getAppKey, appKey)
+                .orderByDesc(ApplicationVersionEntity::getVersion));
     }
 }

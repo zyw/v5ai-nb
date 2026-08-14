@@ -25,6 +25,18 @@ public interface ApplicationMapper extends BaseMapper<ApplicationEntity>, Applic
     }
 
     @Override
+    default void updateApplication(ApplicationEntity entity) {
+        updateById(entity);
+    }
+
+    @Override
+    default void disable(String appKey) {
+        update(new LambdaUpdateWrapper<ApplicationEntity>()
+                .eq(ApplicationEntity::getAppKey, appKey)
+                .set(ApplicationEntity::getStatus, "DISABLED"));
+    }
+
+    @Override
     default void updatePublished(String appKey, String status, Long publishedVersion) {
         update(new LambdaUpdateWrapper<ApplicationEntity>()
                 .eq(ApplicationEntity::getAppKey, appKey)
