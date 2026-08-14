@@ -58,6 +58,46 @@ class SchemaConsistencyTest {
         }
     }
 
+    /**
+     * The platform treats conversation/run ids as opaque strings end to end (API,
+     * domain, entities), so runtime tables must use varchar ids. A uuid column would
+     * make PostgreSQL reject {@code uuid = character varying} comparisons (chat 500s).
+     * V1 historically declared uuid columns; V4 converts them. Guards:
+     * 1) every uuid column in V1 must be converted by V4;
+     * 2) the newest migration must not introduce new uuid columns.
+     */
+    @Test
+    void runtimeSchemaMustNotUseUuidColumns() throws Exception {
+        String v1 = read("V1__phase1_schema.sql");
+        String v4 = read("V4__runtime_columns_to_varchar.sql");
+
+        var uuidColumnPattern = java.util.regex.Pattern.compile("(?m)^\\s*(\\w+)\\s+UUID\\b");
+        var matcher = uuidColumnPattern.matcher(v1);
+        var uuidColumns = new java.util.ArrayList<String>();
+        while (matcher.find()) {
+            uuidColumns.add(matcher.group(1));
+        }
+        assertThat(uuidColumns).as("V1 must declare the uuid columns being converted").isNotEmpty();
+        for (String column : uuidColumns) {
+            assertThat(v4)
+                    .as("V4 must convert uuid column %s to VARCHAR", column)
+                    .contains("ALTER COLUMN " + column + " TYPE VARCHAR(36)");
+        }
+
+        String v4WithoutComments = v4.replaceAll("(?m)^--.*$", "");
+        assertThat(v4WithoutComments)
+                .as("newest migration must not introduce uuid columns")
+                .doesNotContain("uuid")
+                .doesNotContain("UUID");
+    }
+
+    private String read(String filename) throws Exception {
+        var resource = new PathMatchingResourcePatternResolver()
+                .getResource("classpath:db/migration/" + filename);
+        assertThat(resource.exists()).as("migration %s must exist", filename).isTrue();
+        return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    }
+
     private String tableBlock(String migrations, String table) {
         int start = migrations.indexOf("CREATE TABLE " + table + " (");
         String block = "";

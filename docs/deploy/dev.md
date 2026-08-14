@@ -310,6 +310,7 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
 
 | 现象 | 原因 / 处理 |
 |---|---|
+| 对话/SSE 接口报 `operator does not exist: uuid = character varying` | 运行期表（v5ai_conversation/message/run/run_event/agent_state）的 id 列原为 UUID 类型，与应用全程使用 String id 的设计不符。已新增 V4 迁移将列改为 VARCHAR(36)（含外键重建），**重新构建并重启后 Flyway 自动应用** |
 | 上传 PDF 报 `Content-Type 'application/pdf' is not supported` | 运行栈为 Servlet MVC（Sa-Token 传递引入 spring-boot-starter-web/Tomcat），上传已改用 Servlet 的 `MultipartFile`（原先 WebFlux `FilePart` 与 Servlet 不兼容），**重新构建并重启即可** |
 | 上传文档报 `Maximum upload size exceeded` / `The field file exceeds its maximum permitted size of 1048576 bytes` | Tomcat/Spring 默认单文件上限 1MB。已在 `application.yml` 配置 `spring.servlet.multipart.max-file-size=50MB`（可用 `V5AI_UPLOAD_MAX_FILE_SIZE` 覆盖），**重新构建并重启即可**；超限时接口返回 400 `uploaded file exceeds the configured size limit` |
 | `knowledge base does not exist: <19 位大数字>` 等按 ID 查询失败的报错 | 旧版本使用 MyBatis-Plus 默认雪花 ID（19 位），超出 JavaScript 安全整数范围，前端回传 ID 时精度丢失。已改为数据库 `BIGSERIAL` 自增 ID（小数值、JS 安全），**重新构建并重启后重新创建知识库/模型即可**（旧数据中的雪花 ID 在 UI 中无法可靠回传，列表会打"旧数据"标签） |
