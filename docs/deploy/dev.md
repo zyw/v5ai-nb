@@ -310,6 +310,8 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
 
 | 现象 | 原因 / 处理 |
 |---|---|
+| 启动报 `relation "v5ai_knowledge_task" does not exist` 等表不存在错误 | Flyway 迁移未执行。Spring Boot 4 已把 Flyway 自动装配移出核心，必须引入 `spring-boot-starter-flyway` 才会执行 `spring.flyway.*`；本项目已内置该依赖与 `flyway-database-postgresql`，**请重新 `mvn clean verify` 后重启**，首次启动会自动建表（检查 `v5ai_flyway_schema_history` 中有 V1、V2 记录） |
+| 启动报 `Unsupported Database: PostgreSQL` | Flyway 10+ 的数据库方言拆分为独立模块，缺少 `flyway-database-postgresql`（本项目已内置）；若使用旧 jar 请重新构建 |
 | 启动报 `type "vector" does not exist` | pgvector 扩展未安装，见 2.1 |
 | 启动报 `credential cipher key must be 32 bytes` | `V5AI_CREDENTIAL_CIPHER_KEY` 长度必须 32 字节 |
 | Flyway 校验失败 / 迁移报错 | 数据库曾用旧版 schema；开发环境可 `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` 后重建，或直接重建库 |

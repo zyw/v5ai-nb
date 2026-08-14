@@ -2,9 +2,9 @@ spring:
   application:
     name: v5ai-nb
   datasource:
-    url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}
-    username: ${V5AI_DATASOURCE_USERNAME:v5ai}
-    password: ${V5AI_DATASOURCE_PASSWORD:v5ai}
+    url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://192.168.129.6:5432/v5ai_nb}
+    username: ${V5AI_DATASOURCE_USERNAME:pguser}
+    password: ${V5AI_DATASOURCE_PASSWORD:F4ccEi6hi49vWH6}
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
@@ -15,7 +15,7 @@ sa-token:
   token-name: Authorization
   token-prefix: Bearer
   is-concurrent: false
-  jwt-secret-key: ${V5AI_JWT_SECRET:change-this-development-secret}
+  jwt-secret-key: ${V5AI_JWT_SECRET:PFIcuElmiVI4tHg1H7TbQjvWQm4zkz57}
   token-style: uuid
 
 mybatis-plus:
@@ -25,11 +25,11 @@ mybatis-plus:
 
 v5ai:
   redisson:
-    address: ${V5AI_REDIS_ADDRESS:redis://localhost:6379}
-    password: ${V5AI_REDIS_PASSWORD:}
-    database: ${V5AI_REDIS_DATABASE:0}
+    address: ${V5AI_REDIS_ADDRESS:redis://192.168.129.6:6379}
+    password: ${V5AI_REDIS_PASSWORD:redis_MaKmKP}
+    database: ${V5AI_REDIS_DATABASE:11}
   minio:
-    endpoint: ${V5AI_MINIO_ENDPOINT:http://localhost:9000}
+    endpoint: ${V5AI_MINIO_ENDPOINT:http://192.168.129.6:9000}
     access-key: ${V5AI_MINIO_ACCESS_KEY:minioadmin}
     secret-key: ${V5AI_MINIO_SECRET_KEY:minioadmin}
     bucket: ${V5AI_MINIO_BUCKET:v5ai}
