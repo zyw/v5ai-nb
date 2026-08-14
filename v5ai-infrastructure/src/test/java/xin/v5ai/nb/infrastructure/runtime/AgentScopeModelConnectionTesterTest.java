@@ -12,6 +12,7 @@ import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
 import xin.v5ai.nb.model.ConnectionTestResult;
 import xin.v5ai.nb.model.CredentialCipher;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -19,9 +20,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AgentScopeModelConnectionTesterTest {
 
+    private static final String CREDENTIALS_JSON =
+            "{\"apiKey\":\"sk-test\",\"baseUrl\":\"http://model.example.com/v1\"}";
+
     @Test
     void returnsOkWhenModelResponds() {
-        var tester = tester(new RespondingModel("pong"));
+        var tester = tester(new RespondingModel("pong"), Duration.ofSeconds(2));
 
         ConnectionTestResult result = tester.test(2L);
 
@@ -29,18 +33,19 @@ class AgentScopeModelConnectionTesterTest {
     }
 
     @Test
-    void surfacesTheRealErrorMessageInsteadOfGenericFailure() {
-        var tester = tester(new ErroringModel("401 Unauthorized: invalid api key"));
+    void surfacesTheRealErrorMessageWithTargetEndpoint() {
+        var tester = tester(new ErroringModel("401 Unauthorized: invalid api key"), Duration.ofSeconds(2));
 
         ConnectionTestResult result = tester.test(2L);
 
         assertThat(result.ok()).isFalse();
         assertThat(result.message()).contains("401 Unauthorized");
+        assertThat(result.message()).contains("http://model.example.com/v1");
     }
 
     @Test
     void reportsEmptyStreamWithoutResponse() {
-        var tester = tester(new EmptyModel());
+        var tester = tester(new EmptyModel(), Duration.ofSeconds(2));
 
         ConnectionTestResult result = tester.test(2L);
 
@@ -48,7 +53,18 @@ class AgentScopeModelConnectionTesterTest {
         assertThat(result.message()).contains("no response");
     }
 
-    private AgentScopeModelConnectionTester tester(Model model) {
+    @Test
+    void reportsTimeoutWithFriendlyMessage() {
+        var tester = tester(new NeverModel(), Duration.ofSeconds(1));
+
+        ConnectionTestResult result = tester.test(2L);
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.message()).contains("timed out");
+        assertThat(result.message()).contains("http://model.example.com/v1");
+    }
+
+    private AgentScopeModelConnectionTester tester(Model model, Duration timeout) {
         CredentialCipher cipher = new CredentialCipher() {
             @Override
             public String encrypt(String plaintext) {
@@ -57,13 +73,14 @@ class AgentScopeModelConnectionTesterTest {
 
             @Override
             public String decrypt(String ciphertext) {
-                return "plaintext-credentials";
+                return CREDENTIALS_JSON;
             }
         };
         return new AgentScopeModelConnectionTester(
                 new FixedGateway(),
                 cipher,
-                new FixedFactory(model));
+                new FixedFactory(model),
+                timeout);
     }
 
     private static final class FixedGateway implements ModelRuntimeConfigGateway {
@@ -142,6 +159,20 @@ class AgentScopeModelConnectionTesterTest {
                                          List<ToolSchema> tools,
                                          GenerateOptions options) {
             return Flux.empty();
+        }
+
+        @Override
+        public String getModelName() {
+            return "test";
+        }
+    }
+
+    private static final class NeverModel implements Model {
+        @Override
+        public Flux<ChatResponse> stream(List<io.agentscope.core.message.Msg> messages,
+                                         List<ToolSchema> tools,
+                                         GenerateOptions options) {
+            return Flux.never();
         }
 
         @Override

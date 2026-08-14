@@ -3,7 +3,9 @@ package xin.v5ai.nb.infrastructure.runtime;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.GenerateOptions;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfig;
 import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
 import xin.v5ai.nb.model.ConnectionTestResult;
 import xin.v5ai.nb.model.CredentialCipher;
@@ -14,21 +16,33 @@ import java.util.List;
 
 @Component
 public class AgentScopeModelConnectionTester implements ModelConnectionTester {
-    private static final Duration TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(20);
     private static final int MESSAGE_MAX_LENGTH = 200;
 
     private final ModelRuntimeConfigGateway runtimeConfigGateway;
     private final CredentialCipher credentialCipher;
     private final AgentScopeModelFactory modelFactory;
+    private final Duration timeout;
 
+    @Autowired
     public AgentScopeModelConnectionTester(
             ModelRuntimeConfigGateway runtimeConfigGateway,
             CredentialCipher credentialCipher,
             AgentScopeModelFactory modelFactory
     ) {
+        this(runtimeConfigGateway, credentialCipher, modelFactory, DEFAULT_TIMEOUT);
+    }
+
+    AgentScopeModelConnectionTester(
+            ModelRuntimeConfigGateway runtimeConfigGateway,
+            CredentialCipher credentialCipher,
+            AgentScopeModelFactory modelFactory,
+            Duration timeout
+    ) {
         this.runtimeConfigGateway = runtimeConfigGateway;
         this.credentialCipher = credentialCipher;
         this.modelFactory = modelFactory;
+        this.timeout = timeout;
     }
 
     @Override
@@ -37,22 +51,48 @@ public class AgentScopeModelConnectionTester implements ModelConnectionTester {
         if (config == null) {
             throw new IllegalArgumentException("model runtime config not found: " + modelId);
         }
-        var model = modelFactory.create(config, credentialCipher.decrypt(config.credentialsCiphertext()));
+        var plaintextCredentials = credentialCipher.decrypt(config.credentialsCiphertext());
+        var credentials = AgentModelCredentialConfig.parse(plaintextCredentials);
+        var model = modelFactory.create(config, plaintextCredentials);
         var ping = Msg.builder().role(MsgRole.USER).textContent("ping").build();
         try {
             var first = model.stream(
                             List.of(ping),
                             List.of(),
                             GenerateOptions.builder().maxTokens(5).build())
-                    .blockFirst(TIMEOUT);
+                    .blockFirst(timeout);
             return first != null
                     ? ConnectionTestResult.success()
                     : ConnectionTestResult.failure(
-                            "model returned no response within " + TIMEOUT.toSeconds() + "s");
+                            "model returned no response within " + timeout.toSeconds() + "s");
         } catch (Exception exception) {
-            return ConnectionTestResult.failure(sanitize(exception.getMessage(),
-                    exception.getClass().getSimpleName()));
+            return ConnectionTestResult.failure(friendlyMessage(config, credentials, exception));
         }
+    }
+
+    /**
+     * Human-readable failure including the target endpoint so misconfigured
+     * baseUrl/apiKey/modelKey are immediately visible.
+     */
+    private String friendlyMessage(ModelRuntimeConfig config, AgentModelCredentialConfig credentials,
+                                   Exception exception) {
+        var target = describeTarget(config, credentials);
+        var detail = sanitize(exception.getMessage(), exception.getClass().getSimpleName());
+        if (detail.contains("Timeout on blocking read")) {
+            return "timed out after " + timeout.toSeconds() + "s contacting " + target
+                    + " (check baseUrl / network / firewall)";
+        }
+        if (detail.contains("Request cancelled")) {
+            return "request to " + target + " was cancelled (client or server closed the connection)";
+        }
+        return "failed contacting " + target + ": " + detail;
+    }
+
+    private String describeTarget(ModelRuntimeConfig config, AgentModelCredentialConfig credentials) {
+        var baseUrl = credentials.baseUrl() == null || credentials.baseUrl().isBlank()
+                ? "(default endpoint)"
+                : credentials.baseUrl();
+        return baseUrl + " (model " + config.modelKey() + ", provider " + config.providerType() + ")";
     }
 
     private String sanitize(String message, String fallback) {
