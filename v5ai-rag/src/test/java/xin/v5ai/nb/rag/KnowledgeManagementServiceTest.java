@@ -49,6 +49,17 @@ class KnowledgeManagementServiceTest {
     }
 
     @Test
+    void uploadDocumentWithLegacySnowflakeIdIncludesMigrationHint() {
+        var service = service(new RecordingKnowledgeBaseRepository());
+
+        assertThatThrownBy(() -> service.uploadDocument(2088154694704398300L, "a.txt", DocumentFileType.TXT,
+                new byte[]{1}, "a.txt"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("knowledge base does not exist")
+                .hasMessageContaining("JavaScript 安全整数");
+    }
+
+    @Test
     void bindKnowledgeBasesStoresOnlyExistingBases() {
         var repository = new RecordingKnowledgeBaseRepository();
         var bindingRepository = new RecordingBindingRepository();

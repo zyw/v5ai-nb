@@ -200,7 +200,12 @@ onMounted(reload)
       <n-data-table
         :loading="loading"
         :columns="[
-          { title: 'ID', key: 'id', width: 60 },
+          { title: 'ID', key: 'id', width: 200, render: (row: KnowledgeBaseResponse) => h('span', { style: 'display:flex;gap:6px;align-items:center' }, [
+            String(row.id),
+            !Number.isSafeInteger(row.id)
+              ? h(NTag, { type: 'warning', size: 'small' }, { default: () => '旧数据（ID 超 JS 安全整数，无法上传，请新建）' })
+              : null
+          ]) },
           { title: '名称', key: 'name' },
           { title: '描述', key: 'description' },
           { title: '状态', key: 'status' },

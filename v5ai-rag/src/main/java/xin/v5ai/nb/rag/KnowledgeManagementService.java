@@ -136,7 +136,19 @@ public class KnowledgeManagementService {
 
     private void requireKnowledgeBase(Long knowledgeBaseId) {
         if (knowledgeBaseId == null || knowledgeBaseRepository.findById(knowledgeBaseId) == null) {
-            throw new IllegalArgumentException("knowledge base does not exist: " + knowledgeBaseId);
+            throw new IllegalArgumentException(
+                    "knowledge base does not exist: " + knowledgeBaseId + legacyIdHint(knowledgeBaseId));
         }
+    }
+
+    /**
+     * IDs above Number.MAX_SAFE_INTEGER cannot be represented exactly in JavaScript;
+     * they originate from the pre-fix Snowflake id generation and cannot be
+     * round-tripped by the web UI. Surface a hint instead of a confusing lookup miss.
+     */
+    private static String legacyIdHint(Long id) {
+        return id != null && id > 9_007_199_254_740_991L
+                ? " (该 ID 超过 JavaScript 安全整数范围，属于修复前的雪花 ID，前端无法精确回传；请在页面重新创建知识库)"
+                : "";
     }
 }
