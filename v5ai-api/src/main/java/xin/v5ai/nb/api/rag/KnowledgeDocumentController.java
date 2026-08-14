@@ -1,7 +1,5 @@
 package xin.v5ai.nb.api.rag;
 
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,10 +9,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Mono;
+import org.springframework.web.multipart.MultipartFile;
 import xin.v5ai.nb.rag.DocumentFileType;
 import xin.v5ai.nb.rag.KnowledgeManagementService;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Locale;
 
@@ -28,23 +28,20 @@ public class KnowledgeDocumentController {
     }
 
     @PostMapping(value = "/knowledge-bases/{kbId}/documents", consumes = "multipart/form-data")
-    public Mono<DocumentResponse> uploadDocument(
+    public DocumentResponse uploadDocument(
             @PathVariable("kbId") Long kbId,
-            @RequestPart("file") FilePart filePart,
+            @RequestPart("file") MultipartFile file,
             @RequestParam(value = "title", required = false) String title
     ) {
-        var filename = filePart.filename();
+        var filename = file.getOriginalFilename();
         var resolvedTitle = title == null || title.isBlank() ? filename : title;
         var fileType = detectFileType(filename);
-        return DataBufferUtils.join(filePart.content())
-                .map(dataBuffer -> {
-                    var bytes = new byte[dataBuffer.readableByteCount()];
-                    dataBuffer.read(bytes);
-                    DataBufferUtils.release(dataBuffer);
-                    return bytes;
-                })
-                .map(bytes -> DocumentResponse.from(knowledgeManagementService.uploadDocument(
-                        kbId, resolvedTitle, fileType, bytes, filename)));
+        try {
+            return DocumentResponse.from(knowledgeManagementService.uploadDocument(
+                    kbId, resolvedTitle, fileType, file.getBytes(), filename));
+        } catch (IOException exception) {
+            throw new UncheckedIOException("failed to read uploaded file", exception);
+        }
     }
 
     @PostMapping("/knowledge-bases/{kbId}/documents/url")
