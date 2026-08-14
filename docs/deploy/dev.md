@@ -310,6 +310,7 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
 
 | 现象 | 原因 / 处理 |
 |---|---|
+| `knowledge base does not exist: <19 位大数字>` 等按 ID 查询失败的报错 | 旧版本使用 MyBatis-Plus 默认雪花 ID（19 位），超出 JavaScript 安全整数范围，前端回传 ID 时精度丢失。已改为数据库 `BIGSERIAL` 自增 ID（小数值、JS 安全），**重新构建并重启后重新创建知识库/模型即可**（旧数据中的雪花 ID 在 UI 中无法可靠回传） |
 | `/admin/providers` 等管理接口返回 `INTERNAL_ERROR / internal server error` | 多为表/列与实体不一致（如旧库缺 `v5ai_model_provider.provider_type`）。先看服务端日志（`Unhandled exception in request` 会打印真实堆栈）；对应 schema 修正已由 V3 迁移补齐，**重新构建并重启后 Flyway 会自动应用**；若日志提示其他缺失列，检查是否使用了旧版本构建 |
 | 启动报 `relation "v5ai_knowledge_task" does not exist` 等表不存在错误 | Flyway 迁移未执行。Spring Boot 4 已把 Flyway 自动装配移出核心，必须引入 `spring-boot-starter-flyway` 才会执行 `spring.flyway.*`；本项目已内置该依赖与 `flyway-database-postgresql`，**请重新 `mvn clean verify` 后重启**，首次启动会自动建表（检查 `v5ai_flyway_schema_history` 中有 V1、V2、V3 记录） |
 | 启动报 `Unsupported Database: PostgreSQL` | Flyway 10+ 的数据库方言拆分为独立模块，缺少 `flyway-database-postgresql`（本项目已内置）；若使用旧 jar 请重新构建 |
