@@ -21,42 +21,71 @@ import xin.v5ai.nb.infrastructure.runtime.RuntimeMessageEntity;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeRunEntity;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeRunEventEntity;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Guards against entity/schema drift: every MyBatis-Plus entity column must exist in
- * some Flyway migration, otherwise writes fail at runtime (e.g. the missing
- * {@code provider_type} column that surfaced as INTERNAL_ERROR on provider creation).
+ * the CREATE TABLE block of its own table in the Flyway migrations. Column names are
+ * derived the way MyBatis-Plus derives them (a field with {@code @TableId} uses the
+ * {@code @TableId} value or the camelCase-to-snake_case field name — any
+ * {@code @TableField} on the same field is ignored), so the test also catches the
+ * {@code @TableId}+{@code @TableField} conflict (e.g. conversationId mapped to the
+ * non-existent {@code conversation_id} column of {@code v5ai_conversation}).
  */
 class SchemaConsistencyTest {
 
     @Test
-    void everyEntityColumnExistsInMigrations() throws Exception {
+    void everyEntityColumnExistsInItsOwnTableBlock() throws Exception {
         String migrations = readMigrations();
         for (Class<?> entityType : entityTypes()) {
             TableName tableName = entityType.getAnnotation(TableName.class);
             assertThat(tableName).as("entity %s must be @TableName", entityType.getSimpleName()).isNotNull();
-            for (var field : entityType.getDeclaredFields()) {
+            String block = tableBlock(migrations, tableName.value());
+            assertThat(block).as("CREATE TABLE %s must exist in migrations", tableName.value())
+                    .isNotBlank();
+            for (Field field : entityType.getDeclaredFields()) {
                 String column = columnFor(field);
-                assertThat(migrations)
-                        .as("column %s of %s must exist in a Flyway migration", column, entityType.getSimpleName())
+                assertThat(block)
+                        .as("column %s of table %s (entity %s) must exist",
+                                column, tableName.value(), entityType.getSimpleName())
                         .containsIgnoringCase(column);
             }
         }
     }
 
-    private String columnFor(java.lang.reflect.Field field) {
+    private String tableBlock(String migrations, String table) {
+        int start = migrations.indexOf("CREATE TABLE " + table + " (");
+        String block = "";
+        if (start >= 0) {
+            int next = migrations.indexOf("CREATE TABLE", start + 1);
+            block = next < 0 ? migrations.substring(start) : migrations.substring(start, next);
+        }
+        int searchFrom = 0;
+        while (true) {
+            int alter = migrations.indexOf("ALTER TABLE " + table, searchFrom);
+            if (alter < 0) {
+                break;
+            }
+            int end = migrations.indexOf(';', alter);
+            block += "\n" + (end < 0 ? migrations.substring(alter) : migrations.substring(alter, end));
+            searchFrom = alter + 1;
+        }
+        return block;
+    }
+
+    private String columnFor(Field field) {
+        TableId tableId = field.getAnnotation(TableId.class);
+        if (tableId != null) {
+            return tableId.value().isBlank() ? camelToSnake(field.getName()) : tableId.value();
+        }
         TableField tableField = field.getAnnotation(TableField.class);
         if (tableField != null && !tableField.value().isBlank()) {
             return tableField.value();
-        }
-        if (field.getAnnotation(TableId.class) != null && !field.getName().equals("id")) {
-            return camelToSnake(field.getName());
         }
         return camelToSnake(field.getName());
     }

@@ -6,8 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 @TableName("v5ai_agent_state")
 public class AgentStateEntity {
-    @TableId
-    @TableField("conversation_id")
+    @TableId(value = "conversation_id")
     private String conversationId;
     @TableField("state_json")
     private String stateJson;

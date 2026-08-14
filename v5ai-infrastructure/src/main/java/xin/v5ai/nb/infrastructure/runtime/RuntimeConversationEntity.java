@@ -6,8 +6,12 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 @TableName("v5ai_conversation")
 public class RuntimeConversationEntity {
-    @TableId
-    @TableField("id")
+    /**
+     * PK column is {@code id}; @TableId must carry the column name because a
+     * {@code @TableField} on the same field is ignored by MyBatis-Plus and the
+     * field name would be derived as {@code conversation_id} (which does not exist).
+     */
+    @TableId(value = "id")
     private String conversationId;
     @TableField("app_key")
     private String appKey;
