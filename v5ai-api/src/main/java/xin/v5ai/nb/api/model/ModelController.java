@@ -65,9 +65,10 @@ public class ModelController {
     @PostMapping("/{id}/test")
     public TestConnectionResponse testConnection(@PathVariable("id") Long id) {
         try {
-            return modelManagementService.testConnection(id)
+            var result = modelManagementService.testConnection(id);
+            return result.ok()
                     ? TestConnectionResponse.ok(id)
-                    : TestConnectionResponse.failed(id, "model did not respond");
+                    : TestConnectionResponse.failed(id, result.message());
         } catch (Exception exception) {
             return TestConnectionResponse.failed(id, exception.getMessage());
         }

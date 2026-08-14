@@ -121,9 +121,9 @@ public class ModelManagementService {
         return repository.list();
     }
 
-    public boolean testConnection(Long modelId) {
+    public ConnectionTestResult testConnection(Long modelId) {
         if (connectionTester == null) {
-            throw new IllegalStateException("model connection testing is not configured");
+            return ConnectionTestResult.failure("model connection testing is not configured");
         }
         return connectionTester.test(modelId);
     }

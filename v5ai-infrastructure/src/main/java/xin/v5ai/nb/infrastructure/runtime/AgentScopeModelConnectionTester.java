@@ -5,6 +5,7 @@ import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.GenerateOptions;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.model.ConnectionTestResult;
 import xin.v5ai.nb.model.CredentialCipher;
 import xin.v5ai.nb.model.ModelConnectionTester;
 
@@ -14,6 +15,7 @@ import java.util.List;
 @Component
 public class AgentScopeModelConnectionTester implements ModelConnectionTester {
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
+    private static final int MESSAGE_MAX_LENGTH = 200;
 
     private final ModelRuntimeConfigGateway runtimeConfigGateway;
     private final CredentialCipher credentialCipher;
@@ -30,7 +32,7 @@ public class AgentScopeModelConnectionTester implements ModelConnectionTester {
     }
 
     @Override
-    public boolean test(Long modelId) {
+    public ConnectionTestResult test(Long modelId) {
         var config = runtimeConfigGateway.findRuntimeConfigByModelId(modelId);
         if (config == null) {
             throw new IllegalArgumentException("model runtime config not found: " + modelId);
@@ -43,9 +45,23 @@ public class AgentScopeModelConnectionTester implements ModelConnectionTester {
                             List.of(),
                             GenerateOptions.builder().maxTokens(5).build())
                     .blockFirst(TIMEOUT);
-            return first != null;
+            return first != null
+                    ? ConnectionTestResult.success()
+                    : ConnectionTestResult.failure(
+                            "model returned no response within " + TIMEOUT.toSeconds() + "s");
         } catch (Exception exception) {
-            return false;
+            return ConnectionTestResult.failure(sanitize(exception.getMessage(),
+                    exception.getClass().getSimpleName()));
         }
+    }
+
+    private String sanitize(String message, String fallback) {
+        if (message == null || message.isBlank()) {
+            return fallback;
+        }
+        var cleaned = message.replaceAll("\\s+", " ").trim();
+        return cleaned.length() > MESSAGE_MAX_LENGTH
+                ? cleaned.substring(0, MESSAGE_MAX_LENGTH) + "…"
+                : cleaned;
     }
 }
