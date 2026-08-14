@@ -4,6 +4,7 @@ import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.GenerateOptions;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfig;
 import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
@@ -16,7 +17,6 @@ import java.util.List;
 
 @Component
 public class AgentScopeModelConnectionTester implements ModelConnectionTester {
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(20);
     private static final int MESSAGE_MAX_LENGTH = 200;
 
     private final ModelRuntimeConfigGateway runtimeConfigGateway;
@@ -28,9 +28,10 @@ public class AgentScopeModelConnectionTester implements ModelConnectionTester {
     public AgentScopeModelConnectionTester(
             ModelRuntimeConfigGateway runtimeConfigGateway,
             CredentialCipher credentialCipher,
-            AgentScopeModelFactory modelFactory
+            AgentScopeModelFactory modelFactory,
+            @Value("${v5ai.model.connection.test.timeout.ms:90000}") long timeoutMillis
     ) {
-        this(runtimeConfigGateway, credentialCipher, modelFactory, DEFAULT_TIMEOUT);
+        this(runtimeConfigGateway, credentialCipher, modelFactory, Duration.ofMillis(timeoutMillis));
     }
 
     AgentScopeModelConnectionTester(
