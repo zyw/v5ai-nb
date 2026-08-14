@@ -56,11 +56,13 @@ public class PersistingAgentRuntime implements AgentRuntime {
             var runId = new String[1];
             return delegate.stream(normalizedRequest)
                     .doOnNext(event -> {
-                        runEventRepository.save(event);
+                        // v5ai_run_event.run_id references v5ai_run.id: the run row must
+                        // exist before any of its events are persisted.
                         if (event.type() == RuntimeEventType.RUN_STARTED) {
                             runId[0] = event.runId();
                             runRecordRepository.start(event.runId(), normalizedRequest);
                         }
+                        runEventRepository.save(event);
                         if (event.type() == RuntimeEventType.TEXT_DELTA) {
                             answer.append(event.payload());
                         }
@@ -79,6 +81,11 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     })
                     .onErrorResume(exception -> {
                         var failedRunId = runId[0] == null ? UUID.randomUUID().toString() : runId[0];
+                        if (runId[0] == null) {
+                            // error before RUN_STARTED: create the run row first so the
+                            // failed event satisfies its foreign key
+                            runRecordRepository.start(failedRunId, normalizedRequest);
+                        }
                         runEventRepository.save(RuntimeEvent.failed(failedRunId, exception.getMessage()));
                         runRecordRepository.fail(failedRunId, exception.getMessage());
                         return Flux.just(RuntimeEvent.failed(failedRunId, exception.getMessage()));
