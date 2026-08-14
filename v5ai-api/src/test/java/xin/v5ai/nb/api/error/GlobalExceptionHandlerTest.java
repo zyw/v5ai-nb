@@ -54,4 +54,16 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().code()).isEqualTo(ErrorCode.CONFLICT);
         assertThat(response.getBody().message()).contains("referenced by other data");
     }
+
+    @Test
+    void mapsMaxUploadSizeExceededToInvalidArgument() {
+        var handler = new GlobalExceptionHandler();
+
+        var response = handler.handleMaxUploadSize(
+                new org.springframework.web.multipart.MaxUploadSizeExceededException(1048576));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().code()).isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        assertThat(response.getBody().message()).contains("exceeds the configured size limit");
+    }
 }

@@ -56,6 +56,8 @@ class V5aiApplicationContextTest {
                 .isEqualTo("redis://localhost:6379");
         assertThat(environment.getProperty("v5ai.minio.bucket"))
                 .isEqualTo("v5ai");
+        assertThat(environment.getProperty("spring.servlet.multipart.max-file-size"))
+                .isEqualTo("50MB");
     }
 
     @Test

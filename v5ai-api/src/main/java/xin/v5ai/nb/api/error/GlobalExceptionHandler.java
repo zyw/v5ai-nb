@@ -38,6 +38,16 @@ public class GlobalExceptionHandler {
                         "record is referenced by other data and cannot be deleted"));
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(
+            org.springframework.web.multipart.MaxUploadSizeExceededException exception) {
+        LOG.warn("Uploaded file exceeds the configured size limit", exception);
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT,
+                        "uploaded file exceeds the configured size limit (max-file-size/request-size)"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnknown(Exception exception) {
         LOG.error("Unhandled exception in request", exception);
