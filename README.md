@@ -72,6 +72,7 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
 
 更多说明见：
 
+- `docs/deploy/dev.md`（开发环境部署文档）
 - `docs/api/phase1.md`
 - `docs/api/phase2.md`
 - `docs/phase1-verification-update.md`
