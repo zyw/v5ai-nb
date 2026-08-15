@@ -176,7 +176,14 @@ async function requestJson<T>(path: string, init: RequestInit = {}, adminToken?:
   if (!response.ok) {
     throw new Error(await readError(response))
   }
-  return response.json()
+  if (response.status === 204) {
+    return undefined as T
+  }
+  const text = await response.text()
+  if (!text) {
+    return undefined as T
+  }
+  return JSON.parse(text) as T
 }
 
 export async function login(username: string, password: string): Promise<LoginResponse> {

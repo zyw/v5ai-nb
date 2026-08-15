@@ -102,6 +102,9 @@ async function handleStream() {
 
     <n-card title="流式响应" class="panel wide">
       <div class="answer">{{ streamAnswer || '等待流式响应...' }}</div>
+      <n-divider title-placement="left">
+        事件列表
+      </n-divider>
       <div class="event-list">
         <n-tag v-for="(event, index) in events" :key="`${event}-${index}`" size="small">{{ event }}</n-tag>
       </div>
