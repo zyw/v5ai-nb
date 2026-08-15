@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://192.168.10.13:15432/v5ai_nb}
+    username: ${V5AI_DATASOURCE_USERNAME:mypgsql}
+    password: ${V5AI_DATASOURCE_PASSWORD:5dyHfJFKm7tEU4AMZfo3RPH3Jy3AlF}
+    driver-class-name: org.postgresql.Driver
+
+v5ai:
+  redisson:
+    address: ${V5AI_REDIS_ADDRESS:redis://192.168.10.13:6379}
+    password: ${V5AI_REDIS_PASSWORD:9LqZSbo6JL3sfzT3jeTOrjp1cc4D1uU3}
+    database: ${V5AI_REDIS_DATABASE:11}
+  minio:
+    endpoint: ${V5AI_MINIO_ENDPOINT:http://192.168.10.13:9000}
+    access-key: ${V5AI_MINIO_ACCESS_KEY:admin}
+    secret-key: ${V5AI_MINIO_SECRET_KEY:tFhRqfhGIizBfYOSat9EX0hxJBF509W3}
+    bucket: ${V5AI_MINIO_BUCKET:v5ai}
