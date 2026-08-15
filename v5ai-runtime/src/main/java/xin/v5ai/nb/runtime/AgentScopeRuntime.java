@@ -4,6 +4,7 @@ import java.util.UUID;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.application.PublishedApplicationResolver;
+import xin.v5ai.nb.mcp.McpToolPermission;
 
 /**
  * AgentScope 运行时：{@link AgentRuntime} 的默认实现。
@@ -54,14 +55,11 @@ public class AgentScopeRuntime implements AgentRuntime {
                     contextMono.flatMapMany(context -> {
                         // 有有效上下文则拼进请求，否则用原请求
                         var enriched = (context == null || context.isBlank())
-                                ? request
-                                : request.withRagContext(context);
-                        // 将内部事件统一映射为平台 RuntimeEvent
+                                ? request.withRunId(runId)
+                                : request.withRagContext(context).withRunId(runId);
+                        // 将内部事件统一映射为平台 RuntimeEvent（工具事件可展开为多个事件）
                         var events = agentTextExecutor.streamText(application, enriched)
-                                .map(event -> switch (event) {
-                                    case AgentTextEvent.Text text -> RuntimeEvent.textDelta(runId, text.text());
-                                    case AgentTextEvent.ModelCall call -> RuntimeEvent.modelCall(runId, call.modelName());
-                                });
+                                .flatMap(event -> toRuntimeEvents(runId, event));
                         // 有检索上下文时，在 Agent 输出之前先发一个 RETRIEVAL 事件
                         if (context != null && !context.isBlank()) {
                             return Flux.concat(Flux.just(RuntimeEvent.retrieval(runId, context)), events);
@@ -82,5 +80,30 @@ public class AgentScopeRuntime implements AgentRuntime {
                 .map(RuntimeEvent::payload)
                 .collectList()
                 .map(parts -> new AgentRunResult(UUID.randomUUID().toString(), String.join("", parts)));
+    }
+
+    /**
+     * 把执行器内部事件映射为平台事件流。
+     */
+    private static Flux<RuntimeEvent> toRuntimeEvents(String runId, AgentTextEvent event) {
+        return switch (event) {
+            case AgentTextEvent.Text text -> Flux.just(RuntimeEvent.textDelta(runId, text.text()));
+            case AgentTextEvent.ModelCall call -> Flux.just(RuntimeEvent.modelCall(runId, call.modelName()));
+            case AgentTextEvent.ToolCall call -> {
+                var callEvent = Flux.just(RuntimeEvent.toolCall(runId, toolCallPayload(call)));
+                // APPROVE 决策：先发出 PERMISSION_REQUIRED 事件（人工审批提示），随后自动放行
+                if (call.permission() == McpToolPermission.APPROVE) {
+                    yield Flux.concat(callEvent, Flux.just(RuntimeEvent.permissionRequired(runId,
+                            "tool '" + call.toolName() + "' requires approval (auto-approved)")));
+                }
+                yield callEvent;
+            }
+            case AgentTextEvent.ToolResult result -> Flux.just(RuntimeEvent.toolResult(runId,
+                    result.success() ? result.toolName() : result.toolName() + " failed: " + result.message()));
+        };
+    }
+
+    private static String toolCallPayload(AgentTextEvent.ToolCall call) {
+        return "{\"tool\":\"" + call.toolName() + "\",\"permission\":\"" + call.permission() + "\"}";
     }
 }

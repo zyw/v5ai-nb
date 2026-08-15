@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.application.Application;
 import xin.v5ai.nb.application.PublishedApplicationResolver;
+import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
 import xin.v5ai.nb.runtime.AgentModelResolver;
 import xin.v5ai.nb.runtime.AgentRuntime;
 import xin.v5ai.nb.runtime.AgentScopeHarnessExecutor;
@@ -17,6 +18,7 @@ import xin.v5ai.nb.runtime.AgentStateRepository;
 import xin.v5ai.nb.runtime.AgentTextEvent;
 import xin.v5ai.nb.runtime.AgentTextExecutor;
 import xin.v5ai.nb.runtime.ConversationRepository;
+import xin.v5ai.nb.runtime.McpToolResolver;
 import xin.v5ai.nb.runtime.MessageRepository;
 import xin.v5ai.nb.runtime.PersistingAgentRuntime;
 import xin.v5ai.nb.runtime.RagContextProvider;
@@ -32,11 +34,20 @@ public class RuntimeConfiguration {
     AgentTextExecutor agentTextExecutor(
             ObjectProvider<AgentModelResolver> modelResolverProvider,
             ObjectProvider<Model> modelProvider,
-            AgentScopeRuntimeProperties properties
+            AgentScopeRuntimeProperties properties,
+            ObjectProvider<McpToolResolver> mcpToolResolverProvider,
+            ObjectProvider<McpToolCallAuditRepository> auditRepositoryProvider
     ) {
+        McpToolResolver mcpToolResolver = mcpToolResolverProvider.getIfAvailable();
+        McpToolCallAuditRepository auditRepository = auditRepositoryProvider.getIfAvailable();
         AgentModelResolver modelResolver = modelResolverProvider.getIfAvailable();
         if (modelResolver != null) {
-            return new PublishedModelAgentTextExecutor(modelResolver);
+            return new PublishedModelAgentTextExecutor(
+                    modelResolver,
+                    mcpToolResolver,
+                    auditRepository,
+                    new JsonFileAgentStateStore(Path.of(properties.getStateDirectory())),
+                    Path.of(properties.getWorkspace()));
         }
         Model model = modelProvider.getIfAvailable();
         if (model != null) {

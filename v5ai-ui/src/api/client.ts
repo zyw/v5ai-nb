@@ -459,3 +459,136 @@ export function deleteApiKey(adminToken: string, appKey: string): Promise<void> 
     method: 'DELETE'
   }, adminToken)
 }
+
+// ---- MCP servers ----
+
+export type McpTransportType = 'STREAMABLE_HTTP' | 'SSE' | 'STDIO'
+
+export interface McpServerResponse {
+  id: number
+  name: string
+  transportType: McpTransportType
+  endpoint?: string | null
+  args?: string[] | null
+  headers?: Record<string, string> | null
+  envVars?: Record<string, string> | null
+  timeoutSeconds: number
+  status: string
+  lastTestStatus?: string | null
+  lastTestMessage?: string | null
+  lastTestedAt?: string | null
+}
+
+export interface CreateMcpServerRequest {
+  name: string
+  transportType: McpTransportType
+  endpoint?: string
+  args?: string[]
+  headers?: Record<string, string>
+  envVars?: Record<string, string>
+  timeoutSeconds?: number
+}
+
+export interface UpdateMcpServerRequest {
+  name?: string
+  transportType?: McpTransportType
+  endpoint?: string
+  args?: string[]
+  headers?: Record<string, string>
+  envVars?: Record<string, string>
+  timeoutSeconds?: number
+}
+
+export interface McpConnectionTestResponse {
+  serverId: number
+  ok: boolean
+  message: string
+  toolCount: number
+}
+
+export type McpToolPermission = 'ALLOW' | 'APPROVE' | 'DENY'
+
+export interface McpToolResponse {
+  id: number
+  serverId: number
+  toolName: string
+  description?: string | null
+  inputSchema: Record<string, unknown>
+  readOnly: boolean
+  permission: McpToolPermission
+  lastDiscoveredAt?: string | null
+}
+
+export interface McpToolCallAuditResponse {
+  id: number
+  runId: string
+  serverId: number
+  serverName: string
+  toolName: string
+  argumentsSummary?: string | null
+  decision: McpToolPermission
+  status: string
+  durationMs?: number | null
+  message?: string | null
+  createdAt?: string | null
+}
+
+export function listMcpServers(adminToken: string): Promise<McpServerResponse[]> {
+  return requestJson<McpServerResponse[]>('/api/admin/mcp-servers', {}, adminToken)
+}
+
+export function createMcpServer(adminToken: string, request: CreateMcpServerRequest): Promise<McpServerResponse> {
+  return requestJson<McpServerResponse>('/api/admin/mcp-servers', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function updateMcpServer(adminToken: string, id: number, request: UpdateMcpServerRequest): Promise<McpServerResponse> {
+  return requestJson<McpServerResponse>(`/api/admin/mcp-servers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function disableMcpServer(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/mcp-servers/${id}`, { method: 'DELETE' }, adminToken)
+}
+
+export function testMcpServerConnection(adminToken: string, id: number): Promise<McpConnectionTestResponse> {
+  return requestJson<McpConnectionTestResponse>(`/api/admin/mcp-servers/${id}/test-connection`, {
+    method: 'POST'
+  }, adminToken)
+}
+
+export function discoverMcpTools(adminToken: string, id: number): Promise<McpToolResponse[]> {
+  return requestJson<McpToolResponse[]>(`/api/admin/mcp-servers/${id}/discover-tools`, {
+    method: 'POST'
+  }, adminToken)
+}
+
+export function listMcpTools(adminToken: string, id: number): Promise<McpToolResponse[]> {
+  return requestJson<McpToolResponse[]>(`/api/admin/mcp-servers/${id}/tools`, {}, adminToken)
+}
+
+export function updateMcpToolPermission(adminToken: string, id: number, toolName: string, permission: McpToolPermission): Promise<McpToolResponse> {
+  return requestJson<McpToolResponse>(`/api/admin/mcp-servers/${id}/tools/${encodeURIComponent(toolName)}/permission`, {
+    method: 'PUT',
+    body: JSON.stringify({ permission })
+  }, adminToken)
+}
+
+export function listMcpToolCallsByServer(adminToken: string, id: number): Promise<McpToolCallAuditResponse[]> {
+  return requestJson<McpToolCallAuditResponse[]>(`/api/admin/mcp-servers/${id}/tool-calls`, {}, adminToken)
+}
+
+export function bindMcpServers(adminToken: string, appKey: string, mcpServerIds: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/applications/${encodeURIComponent(appKey)}/mcp-bindings`, {
+    method: 'POST',
+    body: JSON.stringify({ mcpServerIds })
+  }, adminToken)
+}
+
+export function getMcpServerBindings(adminToken: string, appKey: string): Promise<number[]> {
+  return requestJson<number[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/mcp-bindings`, {}, adminToken)
+}

@@ -1,16 +1,38 @@
 package xin.v5ai.nb.runtime;
 
+import io.agentscope.core.agent.RuntimeContext;
+import io.agentscope.core.event.AgentEvent;
+import io.agentscope.core.event.ModelCallStartEvent;
+import io.agentscope.core.event.TextBlockDeltaEvent;
+import io.agentscope.core.event.ToolCallStartEvent;
+import io.agentscope.core.event.ToolResultEndEvent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.TextBlock;
+import io.agentscope.core.message.ToolResultState;
 import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
+import io.agentscope.core.state.AgentStateStore;
+import io.agentscope.core.state.JsonFileAgentStateStore;
+import io.agentscope.core.tool.Toolkit;
+import io.agentscope.harness.agent.HarnessAgent;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
+import xin.v5ai.nb.mcp.McpToolPermission;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 直接基于 AgentScope {@link Model} 流式输出的文本执行器。
@@ -18,30 +40,135 @@ import java.util.List;
  * 能力：
  * - 支持多轮对话历史回放（request.history 拼进消息列表）；
  * - 支持注入 RAG 上下文（放进系统提示）；
- * - 发起模型请求前先发 {@code MODEL_CALL} 标记，供运行时转为平台事件。
- *
- * 相比 AgentScopeHarnessExecutor，它不经过 HarnessAgent 封装，
- * 直接调用模型流式接口，更轻量。
+ * - 发起模型请求前先发 {@code MODEL_CALL} 标记，供运行时转为平台事件；
+ * - 可选 MCP 集成：Application 绑定 MCP Server 时，动态注册工具到
+ *   HarnessAgent Toolkit，并通过 AgentScope 事件流映射出 ToolCall/ToolResult 事件。
  */
 public class ModelStreamTextExecutor implements AgentTextExecutor {
     private final Model model;
+    private final McpToolResolver mcpToolResolver;
+    private final McpToolCallAuditRepository auditRepository;
+    private final AgentStateStore stateStore;
+    private final Path workspace;
 
     public ModelStreamTextExecutor(Model model) {
+        this(model, null, null, null, null);
+    }
+
+    public ModelStreamTextExecutor(
+            Model model,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditRepository auditRepository,
+            AgentStateStore stateStore,
+            Path workspace
+    ) {
         this.model = model;
+        this.mcpToolResolver = mcpToolResolver;
+        this.auditRepository = auditRepository;
+        this.stateStore = stateStore;
+        this.workspace = workspace;
     }
 
     @Override
     public Flux<AgentTextEvent> streamText(Application application, AgentRunRequest request) {
-        // 组装完整消息列表（系统提示 + 历史 + 当前提问）
+        var tools = mcpToolResolver == null ? List.<ResolvedMcpTool>of() : mcpToolResolver.resolveTools(application);
+        if (tools.isEmpty()) {
+            return streamDirect(application, request);
+        }
+        return streamWithTools(application, request, tools);
+    }
+
+    /**
+     * 无 MCP 工具的轻量路径：直接调用模型流式接口。
+     */
+    private Flux<AgentTextEvent> streamDirect(Application application, AgentRunRequest request) {
         List<Msg> messages = buildMessages(application, request);
         return Flux.concat(
-                // 先发"模型调用开始"标记
                 Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
-                // 流式调用模型，提取文本增量，过滤空片段，转成 Text 事件
                 model.stream(messages, List.of(), generateOptions())
                         .map(ModelStreamTextExecutor::extractText)
                         .filter(text -> text != null && !text.isEmpty())
                         .map(AgentTextEvent.Text::new));
+    }
+
+    /**
+     * 带 MCP 工具的路径：动态注册工具到 HarnessAgent Toolkit，
+     * 订阅 AgentScope 细粒度事件并映射为平台事件。
+     */
+    private Flux<AgentTextEvent> streamWithTools(
+            Application application, AgentRunRequest request, List<ResolvedMcpTool> tools) {
+        ensureWorkspaceExists();
+        var stateStore = this.stateStore != null ? this.stateStore : new JsonFileAgentStateStore(Path.of(".agentscope/state"));
+        var workspace = this.workspace != null ? this.workspace : Path.of(".agentscope/workspace");
+
+        Toolkit toolkit = new Toolkit();
+        Set<String> mcpToolNames = new HashSet<>();
+        for (ResolvedMcpTool tool : tools) {
+            toolkit.registerAgentTool(new PlatformMcpTool(tool, request.runId(), auditRepository));
+            mcpToolNames.add(tool.toolName());
+        }
+        Map<String, McpToolPermission> toolPermissions = tools.stream()
+                .collect(Collectors.toMap(ResolvedMcpTool::toolName, ResolvedMcpTool::permission));
+
+        HarnessAgent agent = HarnessAgent.builder()
+                .name(application.name())
+                .description("v5ai AgentScope runtime with MCP tools")
+                .model(model)
+                .stateStore(stateStore)
+                .workspace(workspace)
+                .toolkit(toolkit)
+                .disableFilesystemTools()
+                .disableShellTool()
+                .disableMemoryTools()
+                .disableSessionPersistence()
+                .disableWorkspaceContext()
+                .disableSubagents()
+                .disableDynamicSubagents()
+                .disableDynamicSkills()
+                .disableDefaultWorkspaceSkills()
+                .build();
+
+        return Flux.concat(
+                        Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
+                        agent.streamEvents(request.query(), RuntimeContext.empty())
+                                .map(event -> mapAgentEvent(event, mcpToolNames, toolPermissions))
+                                .filter(Objects::nonNull))
+                .doFinally(signal -> {
+                    agent.close();
+                    for (ResolvedMcpTool tool : tools) {
+                        tool.connection().close();
+                    }
+                });
+    }
+
+    private static AgentTextEvent mapAgentEvent(
+            AgentEvent event, Set<String> mcpToolNames, Map<String, McpToolPermission> toolPermissions) {
+        if (event instanceof TextBlockDeltaEvent text) {
+            return new AgentTextEvent.Text(text.getDelta());
+        }
+        if (event instanceof ToolCallStartEvent call && mcpToolNames.contains(call.getToolCallName())) {
+            var permission = toolPermissions.get(call.getToolCallName());
+            return new AgentTextEvent.ToolCall(call.getToolCallName(),
+                    permission == null ? McpToolPermission.ALLOW : permission);
+        }
+        if (event instanceof ToolResultEndEvent result && mcpToolNames.contains(result.getToolCallName())) {
+            var success = ToolResultState.SUCCESS.equals(result.getState());
+            return new AgentTextEvent.ToolResult(result.getToolCallName(), success,
+                    success ? "" : (result.getState() == null ? "tool result error" : result.getState().getValue()));
+        }
+        if (event instanceof ModelCallStartEvent) {
+            // 模型调用标记已在流开头显式发出，避免重复
+            return null;
+        }
+        return null;
+    }
+
+    private void ensureWorkspaceExists() {
+        try {
+            Files.createDirectories(workspace != null ? workspace : Path.of(".agentscope/workspace"));
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Failed to create AgentScope workspace: " + workspace, exception);
+        }
     }
 
     /**

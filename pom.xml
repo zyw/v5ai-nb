@@ -33,6 +33,7 @@
         <module>v5ai-runtime</module>
         <module>v5ai-application</module>
         <module>v5ai-rag</module>
+        <module>v5ai-mcp</module>
         <module>v5ai-worker</module>
         <module>v5ai-api</module>
         <module>v5ai-starter</module>
@@ -72,6 +73,11 @@
                 <groupId>io.minio</groupId>
                 <artifactId>minio</artifactId>
                 <version>${minio.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-core</artifactId>
+                <version>${agentscope.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.agentscope</groupId>

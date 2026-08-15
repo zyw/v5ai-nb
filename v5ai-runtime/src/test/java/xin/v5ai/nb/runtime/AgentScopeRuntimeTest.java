@@ -9,6 +9,7 @@ import xin.v5ai.nb.application.ApplicationRepository;
 import xin.v5ai.nb.application.ApplicationStatus;
 import xin.v5ai.nb.application.ApplicationVersion;
 import xin.v5ai.nb.application.PublishedApplicationResolver;
+import xin.v5ai.nb.mcp.McpToolPermission;
 
 import java.util.List;
 
@@ -55,6 +56,63 @@ class AgentScopeRuntimeTest {
         StepVerifier.create(runtime.stream(new AgentRunRequest("demo", null, "hi")))
                 .expectError(ApplicationPublishException.class)
                 .verify();
+    }
+
+    @Test
+    void streamEmitsToolCallEvents() {
+        var runtime = new AgentScopeRuntime(
+                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                (application, request) -> Flux.just(
+                        new AgentTextEvent.ToolCall("weather", McpToolPermission.ALLOW),
+                        new AgentTextEvent.ToolResult("weather", true, ""),
+                        new AgentTextEvent.Text("23 degrees"))
+        );
+
+        StepVerifier.create(runtime.stream(new AgentRunRequest("demo", "conversation-1", "weather?")))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_STARTED)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TOOL_CALL
+                        && event.payload().contains("weather") && event.payload().contains("ALLOW"))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TOOL_RESULT
+                        && event.payload().contains("weather"))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TEXT_DELTA && event.payload().equals("23 degrees"))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_COMPLETED)
+                .verifyComplete();
+    }
+
+    @Test
+    void streamEmitsPermissionRequiredForApproveTool() {
+        var runtime = new AgentScopeRuntime(
+                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                (application, request) -> Flux.just(
+                        new AgentTextEvent.ToolCall("delete-file", McpToolPermission.APPROVE),
+                        new AgentTextEvent.ToolResult("delete-file", true, ""))
+        );
+
+        StepVerifier.create(runtime.stream(new AgentRunRequest("demo", "conversation-1", "delete it")))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_STARTED)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TOOL_CALL)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.PERMISSION_REQUIRED)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TOOL_RESULT)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_COMPLETED)
+                .verifyComplete();
+    }
+
+    @Test
+    void streamEmitsFailedToolResult() {
+        var runtime = new AgentScopeRuntime(
+                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                (application, request) -> Flux.just(
+                        new AgentTextEvent.ToolCall("git", McpToolPermission.ALLOW),
+                        new AgentTextEvent.ToolResult("git", false, "repo not found"))
+        );
+
+        StepVerifier.create(runtime.stream(new AgentRunRequest("demo", "conversation-1", "git status")))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_STARTED)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TOOL_CALL)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TOOL_RESULT
+                        && event.payload().contains("repo not found"))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_COMPLETED)
+                .verifyComplete();
     }
 
     private PublishedApplicationResolver resolverWith(Application application) {
