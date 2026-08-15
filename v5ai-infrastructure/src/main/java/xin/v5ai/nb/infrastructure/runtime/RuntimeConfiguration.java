@@ -24,6 +24,7 @@ import xin.v5ai.nb.runtime.PersistingAgentRuntime;
 import xin.v5ai.nb.runtime.RagContextProvider;
 import xin.v5ai.nb.runtime.RunEventRepository;
 import xin.v5ai.nb.runtime.RunRecordRepository;
+import xin.v5ai.nb.skill.SkillWorkspaceResolver;
 
 import java.nio.file.Path;
 
@@ -36,16 +37,19 @@ public class RuntimeConfiguration {
             ObjectProvider<Model> modelProvider,
             AgentScopeRuntimeProperties properties,
             ObjectProvider<McpToolResolver> mcpToolResolverProvider,
-            ObjectProvider<McpToolCallAuditRepository> auditRepositoryProvider
+            ObjectProvider<McpToolCallAuditRepository> auditRepositoryProvider,
+            ObjectProvider<SkillWorkspaceResolver> skillWorkspaceResolverProvider
     ) {
         McpToolResolver mcpToolResolver = mcpToolResolverProvider.getIfAvailable();
         McpToolCallAuditRepository auditRepository = auditRepositoryProvider.getIfAvailable();
+        SkillWorkspaceResolver skillWorkspaceResolver = skillWorkspaceResolverProvider.getIfAvailable();
         AgentModelResolver modelResolver = modelResolverProvider.getIfAvailable();
         if (modelResolver != null) {
             return new PublishedModelAgentTextExecutor(
                     modelResolver,
                     mcpToolResolver,
                     auditRepository,
+                    skillWorkspaceResolver,
                     Path.of(properties.getWorkspace()));
         }
         Model model = modelProvider.getIfAvailable();

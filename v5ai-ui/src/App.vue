@@ -2,7 +2,7 @@
 import { computed, h, type Component } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { NConfigProvider, NIcon, NLayout, NLayoutContent, NLayoutSider, NMenu, NMessageProvider, NTag, darkTheme, type MenuOption } from 'naive-ui'
-import { Bot, Boxes, Cable, Database, LayoutDashboard, MessageSquare, Rocket, Settings } from 'lucide-vue-next'
+import { Bot, Boxes, Cable, Database, LayoutDashboard, MessageSquare, Rocket, Settings, Sparkles } from 'lucide-vue-next'
 import { isLoggedIn } from './stores/session'
 
 const route = useRoute()
@@ -14,6 +14,7 @@ const menuOptions: MenuOption[] = [
   { label: 'Applications', key: 'applications', icon: () => icon(Rocket) },
   { label: 'Knowledge Bases', key: 'knowledge-bases', icon: () => icon(Database) },
   { label: 'MCP Servers', key: 'mcp-servers', icon: () => icon(Cable) },
+  { label: 'Skills', key: 'skills', icon: () => icon(Sparkles) },
   { label: 'Chat Debug', key: 'chat', icon: () => icon(MessageSquare) },
   { label: 'Settings', key: 'settings', icon: () => icon(Settings) }
 ]
@@ -53,7 +54,7 @@ function handleMenuUpdate(key: string) {
             </div>
             <div class="topbar-actions">
               <n-tag :type="isLoggedIn ? 'success' : 'warning'" round>{{ isLoggedIn ? 'Admin 已登录' : '未登录' }}</n-tag>
-              <n-tag type="info" round>Phase 1</n-tag>
+              <n-tag type="info" round>Phase 4</n-tag>
             </div>
           </header>
 

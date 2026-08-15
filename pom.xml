@@ -34,6 +34,7 @@
         <module>v5ai-application</module>
         <module>v5ai-rag</module>
         <module>v5ai-mcp</module>
+        <module>v5ai-skill</module>
         <module>v5ai-worker</module>
         <module>v5ai-api</module>
         <module>v5ai-starter</module>

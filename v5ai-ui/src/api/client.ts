@@ -592,3 +592,74 @@ export function bindMcpServers(adminToken: string, appKey: string, mcpServerIds:
 export function getMcpServerBindings(adminToken: string, appKey: string): Promise<number[]> {
   return requestJson<number[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/mcp-bindings`, {}, adminToken)
 }
+
+// ---- Skills ----
+
+export interface SkillResponse {
+  id: number
+  name: string
+  description?: string | null
+  status: string
+  currentVersionId?: number | null
+  currentVersion?: number | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface SkillVersionResponse {
+  id: number
+  skillId: number
+  version: number
+  status: string
+  description?: string | null
+  publishedAt?: string | null
+  createdAt?: string | null
+}
+
+export function listSkills(adminToken: string): Promise<SkillResponse[]> {
+  return requestJson<SkillResponse[]>('/api/admin/skills', {}, adminToken)
+}
+
+export async function uploadSkill(adminToken: string, file: File, description?: string): Promise<SkillResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (description) {
+    formData.append('description', description)
+  }
+  return requestJson<SkillResponse>('/api/admin/skills', {
+    method: 'POST',
+    body: formData
+  }, adminToken)
+}
+
+export function disableSkill(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/skills/${id}`, { method: 'DELETE' }, adminToken)
+}
+
+export function listSkillVersions(adminToken: string, id: number): Promise<SkillVersionResponse[]> {
+  return requestJson<SkillVersionResponse[]>(`/api/admin/skills/${id}/versions`, {}, adminToken)
+}
+
+export function publishSkillVersion(adminToken: string, id: number, versionId: number): Promise<SkillResponse> {
+  return requestJson<SkillResponse>(`/api/admin/skills/${id}/versions/${versionId}/publish`, {
+    method: 'POST'
+  }, adminToken)
+}
+
+export function rollbackSkill(adminToken: string, id: number, versionId: number): Promise<SkillResponse> {
+  return requestJson<SkillResponse>(`/api/admin/skills/${id}/rollback`, {
+    method: 'POST',
+    body: JSON.stringify({ versionId })
+  }, adminToken)
+}
+
+export function bindSkills(adminToken: string, appKey: string, skillIds: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/applications/${encodeURIComponent(appKey)}/skill-bindings`, {
+    method: 'POST',
+    body: JSON.stringify({ skillIds })
+  }, adminToken)
+}
+
+export function getSkillBindings(adminToken: string, appKey: string): Promise<number[]> {
+  return requestJson<number[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/skill-bindings`, {}, adminToken)
+}

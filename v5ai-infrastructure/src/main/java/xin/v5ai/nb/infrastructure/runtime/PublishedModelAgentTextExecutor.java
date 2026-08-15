@@ -10,6 +10,7 @@ import xin.v5ai.nb.runtime.AgentTextEvent;
 import xin.v5ai.nb.runtime.AgentTextExecutor;
 import xin.v5ai.nb.runtime.McpToolResolver;
 import xin.v5ai.nb.runtime.ModelStreamTextExecutor;
+import xin.v5ai.nb.skill.SkillWorkspaceResolver;
 
 import java.nio.file.Path;
 
@@ -22,16 +23,18 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
     }
 
     /**
-     * MCP 感知构造：解析出的每个模型执行器都会携带 MCP 解析器、审计仓储与运行空间。
+     * MCP/Skill 感知构造：解析出的每个模型执行器都会携带 MCP 解析器、审计仓储、
+     * Skill 解析器与运行空间。
      */
     public PublishedModelAgentTextExecutor(
             AgentModelResolver modelResolver,
             McpToolResolver mcpToolResolver,
             McpToolCallAuditRepository auditRepository,
+            SkillWorkspaceResolver skillWorkspaceResolver,
             Path workspace
     ) {
         this(modelResolver, model -> new ModelStreamTextExecutor(
-                model, mcpToolResolver, auditRepository, workspace));
+                model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace));
     }
 
     PublishedModelAgentTextExecutor(AgentModelResolver modelResolver, AgentScopeExecutorFactory executorFactory) {

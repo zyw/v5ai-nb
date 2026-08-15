@@ -1,0 +1,19 @@
+package xin.v5ai.nb.infrastructure.skill;
+
+import java.util.List;
+
+public interface SkillGateway {
+    void insertSkill(SkillEntity entity);
+
+    void updateSkill(SkillEntity entity);
+
+    SkillEntity selectSkillById(Long id);
+
+    SkillEntity selectSkillByName(String name);
+
+    List<SkillRow> selectAllWithCurrentVersion();
+
+    SkillRow selectWithCurrentVersion(Long id);
+
+    void disableSkill(Long id);
+}

@@ -17,6 +17,7 @@ import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
 import xin.v5ai.nb.mcp.McpToolCallResult;
 import xin.v5ai.nb.mcp.McpToolInfo;
 import xin.v5ai.nb.mcp.McpToolPermission;
+import xin.v5ai.nb.skill.ResolvedSkill;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -25,6 +26,8 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 回归测试：MCP 工具注册路径（HarnessAgent + streamEvents）不能因无关事件
@@ -110,6 +113,31 @@ class ModelStreamTextExecutorMcpTest {
                 .expectNextMatches(event -> event instanceof AgentTextEvent.Text text
                         && text.text().contains("direct-ok"))
                 .verifyComplete();
+    }
+
+    @Test
+    void streamWithSkillsInjectsWorkspaceFilesAndCompletes() throws IOException {
+        tempDir = createTempDir();
+        Path workspace = tempDir.resolve("workspace");
+        var executor = new ModelStreamTextExecutor(
+                new FixedTextModel("skill-ok"),
+                null,
+                null,
+                application -> List.of(new ResolvedSkill("weather", "Get weather", Map.of(
+                        "SKILL.md", "---\nname: weather\ndescription: Get weather\n---\nUse the tool.",
+                        "resources/data.txt", "data"), 5L)),
+                workspace);
+
+        StepVerifier.create(executor.streamText(
+                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L),
+                        new AgentRunRequest("demo", "c1", "hello", null, List.of(), "run-1")))
+                .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall)
+                .expectNextMatches(event -> event instanceof AgentTextEvent.Text)
+                .verifyComplete();
+
+        // Workspace 注入断言：已发布 Skill 文件写入 <workspace>/skills/<name>/
+        assertThat(Files.exists(workspace.resolve("skills/weather/SKILL.md"))).isTrue();
+        assertThat(Files.readString(workspace.resolve("skills/weather/resources/data.txt"))).isEqualTo("data");
     }
 
     private static Path createTempDir() {
