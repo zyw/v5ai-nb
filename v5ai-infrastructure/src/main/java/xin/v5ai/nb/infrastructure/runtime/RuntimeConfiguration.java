@@ -46,7 +46,6 @@ public class RuntimeConfiguration {
                     modelResolver,
                     mcpToolResolver,
                     auditRepository,
-                    new JsonFileAgentStateStore(Path.of(properties.getStateDirectory())),
                     Path.of(properties.getWorkspace()));
         }
         Model model = modelProvider.getIfAvailable();

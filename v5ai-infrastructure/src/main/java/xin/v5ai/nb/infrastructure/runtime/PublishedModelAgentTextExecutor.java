@@ -1,7 +1,6 @@
 package xin.v5ai.nb.infrastructure.runtime;
 
 import io.agentscope.core.model.Model;
-import io.agentscope.core.state.AgentStateStore;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.application.Application;
 import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
@@ -29,11 +28,10 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
             AgentModelResolver modelResolver,
             McpToolResolver mcpToolResolver,
             McpToolCallAuditRepository auditRepository,
-            AgentStateStore stateStore,
             Path workspace
     ) {
         this(modelResolver, model -> new ModelStreamTextExecutor(
-                model, mcpToolResolver, auditRepository, stateStore, workspace));
+                model, mcpToolResolver, auditRepository, workspace));
     }
 
     PublishedModelAgentTextExecutor(AgentModelResolver modelResolver, AgentScopeExecutorFactory executorFactory) {

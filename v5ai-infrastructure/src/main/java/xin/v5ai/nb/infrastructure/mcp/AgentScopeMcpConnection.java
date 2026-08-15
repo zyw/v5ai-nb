@@ -42,8 +42,8 @@ public class AgentScopeMcpConnection implements McpConnection {
 
     @Override
     public McpToolCallResult callTool(String toolName, Map<String, Object> arguments) {
-        ensureInitialized();
         try {
+            ensureInitialized();
             var result = wrapper.callTool(toolName, arguments == null ? Map.of() : arguments).block();
             if (result == null) {
                 return McpToolCallResult.failure("MCP tool returned no result: " + toolName);

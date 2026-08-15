@@ -43,7 +43,9 @@ public class PlatformMcpTool extends ToolBase {
                 .inputSchema(tool.inputSchema() == null ? Map.of("type", "object", "properties", Map.of()) : tool.inputSchema())
                 .readOnly(false)
                 .concurrencySafe(false)
-                .externalTool(true)
+                // 注意：不能设置 externalTool(true) —— AgentScope 会把它短路为
+                // "外部编排工具"（suspended 占位结果，状态 RUNNING）而跳过 callAsync，
+                // 导致工具永远不会真正执行
                 .mcp(tool.serverName()));
         this.serverId = tool.serverId();
         this.serverName = tool.serverName();

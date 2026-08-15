@@ -13,12 +13,12 @@ import io.agentscope.core.message.ToolResultState;
 import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
-import io.agentscope.core.state.AgentStateStore;
-import io.agentscope.core.state.JsonFileAgentStateStore;
+import io.agentscope.core.state.InMemoryAgentStateStore;
 import io.agentscope.core.tool.Toolkit;
 import io.agentscope.harness.agent.HarnessAgent;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.mcp.McpConnection;
 import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
 import xin.v5ai.nb.mcp.McpToolPermission;
 
@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,24 +47,21 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     private final Model model;
     private final McpToolResolver mcpToolResolver;
     private final McpToolCallAuditRepository auditRepository;
-    private final AgentStateStore stateStore;
     private final Path workspace;
 
     public ModelStreamTextExecutor(Model model) {
-        this(model, null, null, null, null);
+        this(model, null, null, null);
     }
 
     public ModelStreamTextExecutor(
             Model model,
             McpToolResolver mcpToolResolver,
             McpToolCallAuditRepository auditRepository,
-            AgentStateStore stateStore,
             Path workspace
     ) {
         this.model = model;
         this.mcpToolResolver = mcpToolResolver;
         this.auditRepository = auditRepository;
-        this.stateStore = stateStore;
         this.workspace = workspace;
     }
 
@@ -98,7 +94,6 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     private Flux<AgentTextEvent> streamWithTools(
             Application application, AgentRunRequest request, List<ResolvedMcpTool> tools) {
         ensureWorkspaceExists();
-        var stateStore = this.stateStore != null ? this.stateStore : new JsonFileAgentStateStore(Path.of(".agentscope/state"));
         var workspace = this.workspace != null ? this.workspace : Path.of(".agentscope/workspace");
 
         Toolkit toolkit = new Toolkit();
@@ -114,7 +109,11 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
                 .name(application.name())
                 .description("v5ai AgentScope runtime with MCP tools")
                 .model(model)
-                .stateStore(stateStore)
+                // 每次运行使用全新内存状态存储：上一次运行中断（如工具调用未完成）
+                // 残留的 pending tool call 不会泄漏到本次运行，避免
+                // "Pending tool calls exist without results" 报错
+                .stateStore(new InMemoryAgentStateStore())
+                .enablePendingToolRecovery(true)
                 .workspace(workspace)
                 .toolkit(toolkit)
                 .disableFilesystemTools()
@@ -131,13 +130,16 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         return Flux.concat(
                         Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
                         agent.streamEvents(request.query(), RuntimeContext.empty())
-                                .map(event -> mapAgentEvent(event, mcpToolNames, toolPermissions))
-                                .filter(Objects::nonNull))
+                                // mapAgentEvent 对无关事件返回 null：必须用 mapNotNull，
+                                // 否则 Reactor 的 map 会对 null 抛 "mapper returned a null value"
+                                .mapNotNull(event -> mapAgentEvent(event, mcpToolNames, toolPermissions)))
                 .doFinally(signal -> {
                     agent.close();
-                    for (ResolvedMcpTool tool : tools) {
-                        tool.connection().close();
-                    }
+                    // 同一 Server 的多个工具共享一个连接：按连接去重，只关闭一次
+                    tools.stream()
+                            .map(ResolvedMcpTool::connection)
+                            .distinct()
+                            .forEach(McpConnection::close);
                 });
     }
 
