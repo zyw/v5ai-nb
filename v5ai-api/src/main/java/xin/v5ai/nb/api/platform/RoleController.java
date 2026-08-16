@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.platform.MenuStore;
 import xin.v5ai.nb.common.platform.Role;
 import xin.v5ai.nb.common.platform.RoleStore;
 
@@ -23,10 +24,12 @@ import java.util.List;
 @RequestMapping("/api/admin/roles")
 public class RoleController {
     private final RoleStore roleStore;
+    private final MenuStore menuStore;
     private final AuditRecorder auditRecorder;
 
-    public RoleController(RoleStore roleStore, AuditRecorder auditRecorder) {
+    public RoleController(RoleStore roleStore, MenuStore menuStore, AuditRecorder auditRecorder) {
         this.roleStore = roleStore;
+        this.menuStore = menuStore;
         this.auditRecorder = auditRecorder;
     }
 
@@ -34,6 +37,9 @@ public class RoleController {
     }
 
     public record UpdateRoleRequest(String name, String description) {
+    }
+
+    public record UpdateRoleMenusRequest(List<Long> menuIds) {
     }
 
     @GetMapping
@@ -90,6 +96,26 @@ public class RoleController {
         }
         roleStore.delete(key);
         auditRecorder.record(null, currentActor(), "DELETE", "role", key, "role " + key, null);
+    }
+
+    @GetMapping("/{roleKey}/menus")
+    public List<Long> listMenus(@PathVariable("roleKey") String roleKey) {
+        var key = normalizeKey(roleKey);
+        if (roleStore.findByKey(key) == null) {
+            throw new IllegalArgumentException("role does not exist: " + key);
+        }
+        return menuStore.listMenuIdsByRole(key);
+    }
+
+    @PutMapping("/{roleKey}/menus")
+    public void updateMenus(@PathVariable("roleKey") String roleKey, @RequestBody UpdateRoleMenusRequest request) {
+        var key = normalizeKey(roleKey);
+        if (roleStore.findByKey(key) == null) {
+            throw new IllegalArgumentException("role does not exist: " + key);
+        }
+        var menuIds = request.menuIds() == null ? List.<Long>of() : request.menuIds();
+        menuStore.replaceRoleMenus(key, menuIds);
+        auditRecorder.record(null, currentActor(), "UPDATE_MENUS", "role", key, "menus=" + menuIds, null);
     }
 
     private static String normalizeKey(String key) {

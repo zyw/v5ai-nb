@@ -24,6 +24,7 @@ import {
   Info,
   Layers,
   LayoutDashboard,
+  ListTree,
   LogOut,
   MessageSquare,
   Moon,
@@ -36,7 +37,8 @@ import {
   Users
 } from 'lucide-vue-next'
 import { isDark, toggleTheme } from '../stores/theme'
-import { clearAdminToken, displayName, isAdmin, loadCurrentUser } from '../stores/session'
+import { clearAdminToken, currentMenus, displayName, ensureSession, isAdmin } from '../stores/session'
+import type { Menu } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -49,68 +51,89 @@ function icon(component: Component) {
 
 type NavItem = MenuOption & { key: string }
 
-const nav: NavItem[] = [
-  { label: '总览', key: 'dashboard', icon: icon(LayoutDashboard) },
-  {
-    type: 'submenu',
-    label: '资源',
-    key: 'g-resource',
-    icon: icon(Layers),
-    children: [
-      { label: '模型管理', key: 'models', icon: icon(Boxes) },
-      { label: 'Agent 管理', key: 'agents', icon: icon(Bot) },
-      { label: '知识库管理', key: 'knowledge-bases', icon: icon(Database) },
-      { label: 'MCP 管理', key: 'mcp-servers', icon: icon(Cable) },
-      { label: 'Skill 管理', key: 'skills', icon: icon(Sparkles) }
-    ]
-  },
-  {
-    type: 'submenu',
-    label: '系统管理',
-    key: 'g-system',
-    icon: icon(Settings),
-    children: [
-      { label: '用户管理', key: 'system-users', icon: icon(Users) },
-      { label: '角色管理', key: 'system-roles', icon: icon(ShieldCheck) },
-      { label: '租户管理', key: 'system-tenants', icon: icon(Building2) }
-    ]
-  },
-  {
-    type: 'submenu',
-    label: '运维',
-    key: 'g-ops',
-    icon: icon(Gauge),
-    children: [
-      { label: '可观测性', key: 'observability', icon: icon(Activity) },
-      { label: '调试工具', key: 'chat', icon: icon(MessageSquare) },
-      { label: '系统信息', key: 'settings', icon: icon(Info) }
-    ]
+// 菜单 icon 名 → lucide 组件映射（与后端种子 / 菜单管理界面填写的 icon 字段一致）
+const iconMap: Record<string, Component> = {
+  dashboard: LayoutDashboard,
+  resource: Layers,
+  system: Settings,
+  ops: Gauge,
+  models: Boxes,
+  agents: Bot,
+  'knowledge-bases': Database,
+  'mcp-servers': Cable,
+  skills: Sparkles,
+  users: Users,
+  roles: ShieldCheck,
+  tenants: Building2,
+  menus: ListTree,
+  observability: Activity,
+  chat: MessageSquare,
+  settings: Info
+}
+
+function iconFor(name?: string | null): Component {
+  return (name && iconMap[name]) || LayoutDashboard
+}
+
+// 由当前用户可见菜单构建导航树（DIR -> submenu，MENU -> 叶子）
+const nav = computed<NavItem[]>(() => {
+  const visible = currentMenus.value.filter((m) => m.visible)
+  const byParent = new Map<number | null, Menu[]>()
+  for (const m of visible) {
+    const key = m.parentId ?? null
+    const list = byParent.get(key) ?? []
+    list.push(m)
+    byParent.set(key, list)
   }
-]
+  const build = (parentId: number | null): NavItem[] =>
+    (byParent.get(parentId) ?? [])
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((m) => {
+        if (m.type === 'DIR') {
+          return {
+            type: 'submenu' as const,
+            label: m.name,
+            key: m.code,
+            icon: icon(iconFor(m.icon)),
+            children: build(m.id)
+          }
+        }
+        return {
+          label: m.name,
+          key: m.routeName ?? m.code,
+          icon: icon(iconFor(m.icon))
+        }
+      })
+  return build(null)
+})
 
 const activeKey = computed(() => String(route.name ?? 'dashboard'))
 const pageTitle = computed(() => String(route.meta.title ?? '总览'))
 
-// 一级菜单默认全部展开，且导航到某页时自动展开其所属分组
-const sectionKeys = ['g-resource', 'g-system', 'g-ops']
-const expandedKeys = ref<string[]>([...sectionKeys])
+// 分组默认全部展开，且导航到某页时自动展开其所属分组
+const expandedKeys = ref<string[]>([])
 
-const sectionOf: Record<string, string> = {
-  models: 'g-resource',
-  agents: 'g-resource',
-  'knowledge-bases': 'g-resource',
-  'mcp-servers': 'g-resource',
-  skills: 'g-resource',
-  'system-users': 'g-system',
-  'system-roles': 'g-system',
-  'system-tenants': 'g-system',
-  observability: 'g-ops',
-  chat: 'g-ops',
-  settings: 'g-ops'
-}
+const dirCodes = computed(() => currentMenus.value.filter((m) => m.type === 'DIR').map((m) => m.code))
+watch(dirCodes, (codes) => {
+  expandedKeys.value = [...new Set([...expandedKeys.value, ...codes])]
+}, { immediate: true })
+
+const sectionOf = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const m of currentMenus.value) {
+    if (m.type === 'MENU' && m.routeName && m.parentId) {
+      const parent = currentMenus.value.find((p) => p.id === m.parentId)
+      if (parent) {
+        map[m.routeName] = parent.code
+      }
+    }
+  }
+  return map
+})
 
 watch(activeKey, (key) => {
-  const section = sectionOf[key]
+  const section = sectionOf.value[key]
   if (section && !expandedKeys.value.includes(section)) {
     expandedKeys.value = [...expandedKeys.value, section]
   }
@@ -130,7 +153,7 @@ function handleUserSelect(key: string) {
 }
 
 onMounted(() => {
-  loadCurrentUser()
+  ensureSession()
 })
 </script>
 

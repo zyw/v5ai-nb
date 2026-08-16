@@ -823,6 +823,73 @@ export function deleteRole(adminToken: string, roleKey: string): Promise<void> {
   }, adminToken)
 }
 
+// ---- Menus ----
+
+export interface Menu {
+  id: number
+  parentId?: number | null
+  code: string
+  name: string
+  type: string // 'DIR' | 'MENU'
+  routeName?: string | null
+  path?: string | null
+  icon?: string | null
+  sortOrder: number
+  visible: boolean
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface MenuRequest {
+  parentId?: number | null
+  name: string
+  type: string
+  routeName?: string | null
+  path?: string | null
+  icon?: string | null
+  sortOrder?: number
+  visible?: boolean
+}
+
+export function listMenus(adminToken: string): Promise<Menu[]> {
+  return requestJson<Menu[]>('/api/admin/menus', {}, adminToken)
+}
+
+export function createMenu(adminToken: string, request: MenuRequest & { code: string }): Promise<Menu> {
+  return requestJson<Menu>('/api/admin/menus', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function updateMenu(adminToken: string, id: number, request: MenuRequest): Promise<Menu> {
+  return requestJson<Menu>(`/api/admin/menus/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function deleteMenu(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/menus/${id}`, {
+    method: 'DELETE'
+  }, adminToken)
+}
+
+export function listRoleMenus(adminToken: string, roleKey: string): Promise<number[]> {
+  return requestJson<number[]>(`/api/admin/roles/${encodeURIComponent(roleKey)}/menus`, {}, adminToken)
+}
+
+export function updateRoleMenus(adminToken: string, roleKey: string, menuIds: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/roles/${encodeURIComponent(roleKey)}/menus`, {
+    method: 'PUT',
+    body: JSON.stringify({ menuIds })
+  }, adminToken)
+}
+
+export function fetchMyMenus(adminToken: string): Promise<Menu[]> {
+  return requestJson<Menu[]>('/api/auth/menus', {}, adminToken)
+}
+
 export function getAppQuota(adminToken: string, agentKey: string): Promise<AppQuota> {
   return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(agentKey)}/quota`, {}, adminToken)
 }

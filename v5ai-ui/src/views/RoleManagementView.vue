@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
   NAlert,
   NButton,
@@ -12,6 +12,7 @@ import {
   NModal,
   NSpace,
   NTag,
+  NTree,
   useDialog,
   useMessage,
   type DataTableColumns
@@ -19,7 +20,17 @@ import {
 import { Plus } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RoleTag from '../components/RoleTag.vue'
-import { createRole, deleteRole, listRoles, updateRole, type Role } from '../api/client'
+import {
+  createRole,
+  deleteRole,
+  listMenus,
+  listRoleMenus,
+  listRoles,
+  updateRole,
+  updateRoleMenus,
+  type Menu,
+  type Role
+} from '../api/client'
 import { adminToken } from '../stores/session'
 
 const message = useMessage()
@@ -30,7 +41,38 @@ const showModal = ref(false)
 const editingKey = ref<string | null>(null)
 const saving = ref(false)
 
+const showMenusModal = ref(false)
+const editingMenuRole = ref<Role | null>(null)
+const menus = ref<Menu[]>([])
+const checkedMenuKeys = ref<number[]>([])
+const savingMenus = ref(false)
+
 const form = reactive({ roleKey: '', name: '', description: '' })
+
+type TreeOption = { key: number; label: string; children?: TreeOption[] }
+
+function buildMenuTree(list: Menu[]): TreeOption[] {
+  const byParent = new Map<number | null, Menu[]>()
+  for (const m of list) {
+    const key = m.parentId ?? null
+    const bucket = byParent.get(key) ?? []
+    bucket.push(m)
+    byParent.set(key, bucket)
+  }
+  const build = (parentId: number | null): TreeOption[] =>
+    (byParent.get(parentId) ?? [])
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((m) => {
+        const node: TreeOption = { key: m.id, label: m.name }
+        const kids = build(m.id)
+        if (kids.length) node.children = kids
+        return node
+      })
+  return build(null)
+}
+
+const menuTreeOptions = computed(() => buildMenuTree(menus.value))
 
 const columns: DataTableColumns<Role> = [
   { title: 'Role Key', key: 'roleKey' },
@@ -46,10 +88,11 @@ const columns: DataTableColumns<Role> = [
   {
     title: '操作',
     key: 'actions',
-    width: 150,
+    width: 210,
     render: (row) =>
       h(NSpace, { size: 6 }, { default: () => [
         h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => openEdit(row) }, { default: () => '编辑' }),
+        h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => openMenus(row) }, { default: () => '菜单' }),
         h(NButton, { size: 'small', secondary: true, type: 'error', disabled: row.builtin, onClick: () => handleDelete(row) }, { default: () => '删除' })
       ] })
   }
@@ -126,6 +169,36 @@ async function handleDelete(row: Role) {
   })
 }
 
+async function openMenus(row: Role) {
+  editingMenuRole.value = row
+  checkedMenuKeys.value = []
+  showMenusModal.value = true
+  try {
+    const [allMenus, roleMenus] = await Promise.all([
+      listMenus(adminToken.value),
+      listRoleMenus(adminToken.value, row.roleKey)
+    ])
+    menus.value = allMenus
+    checkedMenuKeys.value = roleMenus
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '加载菜单失败')
+  }
+}
+
+async function handleSaveMenus() {
+  if (!editingMenuRole.value) return
+  savingMenus.value = true
+  try {
+    await updateRoleMenus(adminToken.value, editingMenuRole.value.roleKey, checkedMenuKeys.value)
+    message.success(`${editingMenuRole.value.name} 菜单已更新`)
+    showMenusModal.value = false
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '更新菜单失败')
+  } finally {
+    savingMenus.value = false
+  }
+}
+
 onMounted(reload)
 </script>
 
@@ -141,9 +214,10 @@ onMounted(reload)
     </PageHeader>
 
     <n-alert type="info" :bordered="false">
-      当前授权模型为二元判断：非 GET 的 <code>/api/admin/**</code> 写操作仅对
+      页面级权限由「角色 → 菜单」控制：分配给角色的菜单决定该角色用户可见的页面。
+      后端写操作（非 GET 的 <code>/api/admin/**</code>）仍仅对
       <n-tag type="warning" size="small" :bordered="false">ADMIN</n-tag>
-      角色开放。自定义角色目前作为「标签 / 分组」使用，不参与细粒度权限判定。
+      角色开放。
     </n-alert>
 
     <n-card :bordered="true">
@@ -176,6 +250,29 @@ onMounted(reload)
         <n-space justify="end">
           <n-button @click="showModal = false">取消</n-button>
           <n-button type="primary" :loading="saving" @click="handleSave">保存</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <n-modal
+      v-model:show="showMenusModal"
+      preset="card"
+      :title="`分配菜单（${editingMenuRole?.name ?? ''}）`"
+      style="width: 440px"
+      :bordered="false"
+    >
+      <n-tree
+        checkable
+        cascade
+        :data="menuTreeOptions"
+        :checked-keys="checkedMenuKeys"
+        :default-expand-all="true"
+        @update:checked-keys="(keys: number[]) => (checkedMenuKeys = keys)"
+      />
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showMenusModal = false">取消</n-button>
+          <n-button type="primary" :loading="savingMenus" @click="handleSaveMenus">保存</n-button>
         </n-space>
       </template>
     </n-modal>
