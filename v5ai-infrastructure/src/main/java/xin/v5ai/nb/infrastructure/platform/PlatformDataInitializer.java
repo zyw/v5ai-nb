@@ -30,7 +30,7 @@ public class PlatformDataInitializer implements ApplicationRunner {
         try {
             if (userAccountStore.list().isEmpty()) {
                 userAccountStore.create("admin", passwordEncoder.encode("admin"), "Platform Admin", null,
-                        java.util.List.of(RoleKey.ADMIN));
+                        java.util.List.of(RoleKey.ADMIN.name()));
                 log.warn("Seeded default administrator account 'admin/admin'. Change the password in production.");
             }
         } catch (Exception exception) {

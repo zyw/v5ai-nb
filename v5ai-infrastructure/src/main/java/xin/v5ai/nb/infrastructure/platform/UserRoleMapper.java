@@ -31,4 +31,8 @@ public interface UserRoleMapper extends BaseMapper<UserRoleEntity> {
     default void deleteByRole(String roleKey) {
         delete(new LambdaUpdateWrapper<UserRoleEntity>().eq(UserRoleEntity::getRoleKey, roleKey));
     }
+
+    default long countByRole(String roleKey) {
+        return selectCount(new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getRoleKey, roleKey));
+    }
 }

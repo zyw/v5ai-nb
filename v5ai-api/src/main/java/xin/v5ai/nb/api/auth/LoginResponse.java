@@ -1,7 +1,5 @@
 package xin.v5ai.nb.api.auth;
 
-import xin.v5ai.nb.common.platform.RoleKey;
-
 import java.util.List;
 
 /**
@@ -14,7 +12,7 @@ public record LoginResponse(
         String username,
         String displayName,
         Long tenantId,
-        List<RoleKey> roles
+        List<String> roles
 ) {
     /** 兼容旧字段：仅令牌。 */
     public static LoginResponse of(String tokenType, String token) {

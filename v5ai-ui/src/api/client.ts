@@ -678,6 +678,15 @@ export interface Tenant {
   updatedAt?: string | null
 }
 
+export interface Role {
+  roleKey: string
+  name: string
+  description?: string | null
+  builtin: boolean
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 export interface UserAccount {
   id: number
   username: string
@@ -785,6 +794,32 @@ export function updateUserEnabled(adminToken: string, id: number, enabled: boole
   return requestJson<UserAccount>(`/api/admin/users/${id}/enabled`, {
     method: 'PUT',
     body: JSON.stringify({ enabled })
+  }, adminToken)
+}
+
+// ---- Roles ----
+
+export function listRoles(adminToken: string): Promise<Role[]> {
+  return requestJson<Role[]>('/api/admin/roles', {}, adminToken)
+}
+
+export function createRole(adminToken: string, request: { roleKey: string; name: string; description?: string }): Promise<Role> {
+  return requestJson<Role>('/api/admin/roles', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function updateRole(adminToken: string, roleKey: string, request: { name: string; description?: string }): Promise<Role> {
+  return requestJson<Role>(`/api/admin/roles/${encodeURIComponent(roleKey)}`, {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function deleteRole(adminToken: string, roleKey: string): Promise<void> {
+  return requestJson<void>(`/api/admin/roles/${encodeURIComponent(roleKey)}`, {
+    method: 'DELETE'
   }, adminToken)
 }
 

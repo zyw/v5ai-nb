@@ -7,7 +7,6 @@ import xin.v5ai.nb.common.platform.AppQuota;
 import xin.v5ai.nb.common.platform.AppQuotaService;
 import xin.v5ai.nb.common.platform.AuditLog;
 import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.RoleKey;
 import xin.v5ai.nb.common.platform.Tenant;
 import xin.v5ai.nb.common.platform.TenantStore;
 import xin.v5ai.nb.common.platform.UserAccount;
@@ -55,7 +54,7 @@ class PlatformControllersTest {
         var created = controller.createUser(new UserController.CreateUserRequest(
                 "bob", "secret123", "Bob", 1L, null));
         assertThat(created.username()).isEqualTo("bob");
-        assertThat(created.roles()).containsExactly(RoleKey.USER);
+        assertThat(created.roles()).containsExactly("USER");
         assertThat(controller.listUsers()).extracting(UserAccount::username).containsExactly("bob");
     }
 
@@ -170,14 +169,14 @@ class PlatformControllersTest {
 
         @Override
         public UserAccount create(String username, String passwordHash, String displayName,
-                                  Long tenantId, List<RoleKey> roles) {
+                                  Long tenantId, List<String> roles) {
             var account = new UserAccount(nextId++, username, displayName, tenantId, roles, true);
             stored.add(account);
             return account;
         }
 
         @Override
-        public void updateRoles(Long userId, List<RoleKey> roles) {
+        public void updateRoles(Long userId, List<String> roles) {
         }
 
         @Override

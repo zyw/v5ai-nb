@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.RoleKey;
 import xin.v5ai.nb.common.platform.UserAccount;
 import xin.v5ai.nb.common.platform.UserAccountStore;
 
@@ -34,10 +33,10 @@ public class UserController {
     }
 
     public record CreateUserRequest(String username, String password, String displayName,
-                                    Long tenantId, List<RoleKey> roles) {
+                                    Long tenantId, List<String> roles) {
     }
 
-    public record UpdateRolesRequest(List<RoleKey> roles) {
+    public record UpdateRolesRequest(List<String> roles) {
     }
 
     public record UpdateEnabledRequest(boolean enabled) {
@@ -58,7 +57,7 @@ public class UserController {
             throw new IllegalArgumentException("username already exists: " + request.username());
         }
         var roles = request.roles() == null || request.roles().isEmpty()
-                ? List.of(RoleKey.USER) : request.roles();
+                ? List.of("USER") : request.roles();
         var account = userAccountStore.create(request.username().trim(),
                 passwordEncoder.encode(request.password()), request.displayName(), request.tenantId(), roles);
         auditRecorder.record(request.tenantId(), currentActor(), "CREATE", "user",

@@ -1,7 +1,6 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.platform.RoleKey;
 import xin.v5ai.nb.common.platform.UserAccount;
 import xin.v5ai.nb.common.platform.UserAccountStore;
 import xin.v5ai.nb.infrastructure.auth.UserEntity;
@@ -37,7 +36,7 @@ public class MyBatisUserAccountStore implements UserAccountStore {
 
     @Override
     public UserAccount create(String username, String passwordHash, String displayName,
-                              Long tenantId, List<RoleKey> roles) {
+                              Long tenantId, List<String> roles) {
         var entity = new UserEntity();
         entity.setUsername(username);
         entity.setPasswordHash(passwordHash);
@@ -46,16 +45,16 @@ public class MyBatisUserAccountStore implements UserAccountStore {
         entity.setDisplayName(displayName);
         userMapper.insert(entity);
         if (roles != null && !roles.isEmpty()) {
-            roleMapper.insertRoles(entity.getId(), roles.stream().map(Enum::name).toList());
+            roleMapper.insertRoles(entity.getId(), roles);
         }
         return toDomain(entity);
     }
 
     @Override
-    public void updateRoles(Long userId, List<RoleKey> roles) {
+    public void updateRoles(Long userId, List<String> roles) {
         roleMapper.deleteByUser(userId);
         if (roles != null && !roles.isEmpty()) {
-            roleMapper.insertRoles(userId, roles.stream().map(Enum::name).toList());
+            roleMapper.insertRoles(userId, roles);
         }
     }
 
@@ -71,16 +70,7 @@ public class MyBatisUserAccountStore implements UserAccountStore {
         if (entity == null) {
             return null;
         }
-        List<RoleKey> roles = roleMapper.selectRolesByUser(entity.getId()).stream()
-                .map(role -> {
-                    try {
-                        return RoleKey.valueOf(role);
-                    } catch (IllegalArgumentException e) {
-                        return null;
-                    }
-                })
-                .filter(java.util.Objects::nonNull)
-                .toList();
+        List<String> roles = roleMapper.selectRolesByUser(entity.getId());
         return new UserAccount(entity.getId(), entity.getUsername(), entity.getDisplayName(),
                 entity.getTenantId(), roles, Boolean.TRUE.equals(entity.getEnabled()));
     }

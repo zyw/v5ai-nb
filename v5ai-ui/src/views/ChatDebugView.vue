@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NButton, NCard, NForm, NFormItem, NInput, NSpace, NTag, useMessage } from 'naive-ui'
+import { NButton, NCard, NDivider, NForm, NFormItem, NInput, NSpace, NTag, useMessage } from 'naive-ui'
+import PageHeader from '../components/PageHeader.vue'
 import { chat, streamChat } from '../api/client'
 
 const message = useMessage()
@@ -40,8 +41,8 @@ async function handleBlockingChat() {
     const result = await chat(agentKey.value, appApiKey.value, chatRequest())
     runId.value = result.runId
     blockingAnswer.value = result.answer
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '阻塞调用失败')
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '阻塞调用失败')
   } finally {
     loading.value = false
   }
@@ -61,8 +62,8 @@ async function handleStream() {
         streamAnswer.value = parseDelta(data)
       }
     })
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '流式调用失败')
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '流式调用失败')
   } finally {
     streaming.value = false
   }
@@ -70,44 +71,80 @@ async function handleStream() {
 </script>
 
 <template>
-  <div class="grid">
-    <n-card title="Chat 请求" class="panel">
-      <n-form label-placement="top">
-        <n-form-item label="App Key">
-          <n-input v-model:value="agentKey" />
-        </n-form-item>
-        <n-form-item label="Agent API Key">
-          <n-input v-model:value="appApiKey" type="password" show-password-on="mousedown" />
-        </n-form-item>
-        <n-form-item label="Conversation ID">
-          <n-input v-model:value="conversationId" placeholder="可为空，后端会创建或延续会话" />
-        </n-form-item>
-        <n-form-item label="Query">
-          <n-input v-model:value="query" type="textarea" :autosize="{ minRows: 4, maxRows: 8 }" />
-        </n-form-item>
-        <n-space>
-          <n-button type="primary" :loading="loading" @click="handleBlockingChat">阻塞调用</n-button>
-          <n-button type="info" :loading="streaming" @click="handleStream">流式调用</n-button>
-        </n-space>
-      </n-form>
-    </n-card>
+  <div class="page">
+    <PageHeader title="调试工具" description="用 Agent API Key 直接调用运行时接口，验证发布效果。" />
 
-    <n-card title="阻塞响应" class="panel">
-      <div class="summary-row">
-        <span>Run ID</span>
-        <strong>{{ runId || '-' }}</strong>
-      </div>
-      <div class="answer">{{ blockingAnswer || '等待阻塞响应...' }}</div>
-    </n-card>
+    <div class="chat-grid">
+      <n-card title="请求参数" :bordered="true">
+        <n-form label-placement="top">
+          <n-form-item label="App Key">
+            <n-input v-model:value="agentKey" />
+          </n-form-item>
+          <n-form-item label="Agent API Key">
+            <n-input v-model:value="appApiKey" type="password" show-password-on="click" />
+          </n-form-item>
+          <n-form-item label="Conversation ID">
+            <n-input v-model:value="conversationId" placeholder="可为空，后端会创建或延续会话" />
+          </n-form-item>
+          <n-form-item label="Query">
+            <n-input v-model:value="query" type="textarea" :autosize="{ minRows: 4, maxRows: 8 }" />
+          </n-form-item>
+          <n-space>
+            <n-button type="primary" :loading="loading" @click="handleBlockingChat">阻塞调用</n-button>
+            <n-button type="info" :loading="streaming" @click="handleStream">流式调用</n-button>
+          </n-space>
+        </n-form>
+      </n-card>
 
-    <n-card title="流式响应" class="panel wide">
+      <n-card title="阻塞响应" :bordered="true">
+        <div class="kv">
+          <span>Run ID</span>
+          <strong>{{ runId || '-' }}</strong>
+        </div>
+        <div class="answer">{{ blockingAnswer || '等待阻塞响应...' }}</div>
+      </n-card>
+    </div>
+
+    <n-card title="流式响应" :bordered="true">
       <div class="answer">{{ streamAnswer || '等待流式响应...' }}</div>
-      <n-divider title-placement="left">
-        事件列表
-      </n-divider>
+      <n-divider title-placement="left">事件列表</n-divider>
       <div class="event-list">
-        <n-tag v-for="(event, index) in events" :key="`${event}-${index}`" size="small">{{ event }}</n-tag>
+        <n-tag v-for="(event, index) in events" :key="`${event}-${index}`" size="small" :bordered="false">{{ event }}</n-tag>
       </div>
     </n-card>
   </div>
 </template>
+
+<style scoped>
+.chat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.kv {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.kv span {
+  opacity: 0.55;
+}
+
+.answer {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  min-height: 60px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(128, 128, 128, 0.06);
+}
+
+.event-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+</style>

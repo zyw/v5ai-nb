@@ -17,10 +17,10 @@ public record UserAccount(
         String username,
         String displayName,
         Long tenantId,
-        List<RoleKey> roles,
+        List<String> roles,
         boolean enabled
 ) {
     public boolean hasRole(RoleKey role) {
-        return roles != null && roles.contains(role);
+        return roles != null && roles.contains(role.name());
     }
 }

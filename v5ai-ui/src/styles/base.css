@@ -1,158 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  color-scheme: dark;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #101114;
+  --brand: #7c3aed;
+  --brand-hover: #8b5cf6;
+  --brand-soft: rgba(124, 58, 237, 0.12);
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --sidebar-width: 248px;
+  --sidebar-collapsed: 64px;
+  --topbar-height: 64px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
+  overflow: hidden;
 }
 
-.shell {
+#app {
   min-height: 100vh;
-  background: #101114;
 }
 
-.sider {
-  background: #15171c;
+/* 可访问焦点环：键盘导航可见，鼠标点击不干扰 */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-.brand {
+::selection {
+  background: var(--brand-soft);
+}
+
+/* 细滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.28);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.45);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 布局骨架辅助类 */
+.page {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 72px;
-  padding: 0 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-direction: column;
+  gap: 16px;
 }
 
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.muted {
+  color: var(--n-text-color-3, #8b949e);
+}
+
+/* 品牌标识 */
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: #2f6feb;
-  color: white;
-  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #7c3aed, #0891b2);
+  color: #fff;
+  flex-shrink: 0;
 }
 
-.brand-name {
-  font-size: 17px;
-  font-weight: 700;
+/* 登录页背景网格光斑 */
+.login-bg {
+  position: relative;
+  overflow: hidden;
+}
+.login-bg::before,
+.login-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.login-bg::before {
+  width: 420px;
+  height: 420px;
+  background: #7c3aed;
+  top: -120px;
+  right: -80px;
+}
+.login-bg::after {
+  width: 360px;
+  height: 360px;
+  background: #0891b2;
+  bottom: -120px;
+  left: -60px;
 }
 
-.brand-sub {
-  color: #8b949e;
-  font-size: 12px;
-}
-
-.content {
-  min-height: 100vh;
-  background: #0f1115;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 26px 32px 18px;
-}
-
-.topbar h1 {
-  margin: 0;
-  font-size: 26px;
-}
-
-.topbar p {
-  margin: 6px 0 0;
-  color: #8b949e;
-}
-
-.topbar-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.page {
-  padding-bottom: 32px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  padding: 0 32px 32px;
-}
-
-.panel {
-  border-radius: 8px;
-}
-
-.wide {
-  grid-column: 1 / -1;
-}
-
-.summary-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.summary-row span,
-.hint {
-  color: #8b949e;
-}
-
-.hint {
-  margin-top: 14px;
-  line-height: 1.7;
-}
-
-.token-preview {
-  margin: 14px 0 0;
-  color: #8b949e;
-  word-break: break-all;
-}
-
-.answer {
-  min-height: 92px;
-  padding: 14px;
-  margin-top: 14px;
-  border-radius: 8px;
-  background: #181b22;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.event-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.code-block {
-  margin: 0;
-  padding: 16px;
-  border-radius: 8px;
-  overflow: auto;
-  background: #181b22;
-  color: #d1d7e0;
-  line-height: 1.7;
-}
-
-@media (max-width: 860px) {
-  .grid {
-    grid-template-columns: 1fr;
-    padding: 0 16px 24px;
-  }
-
-  .topbar {
-    padding: 20px 16px 14px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

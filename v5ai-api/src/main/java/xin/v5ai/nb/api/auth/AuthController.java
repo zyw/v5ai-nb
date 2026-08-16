@@ -39,7 +39,7 @@ public class AuthController {
         if (account == null) {
             throw new IllegalArgumentException("current account does not exist");
         }
-        var roles = account.roles() == null ? java.util.List.<xin.v5ai.nb.common.platform.RoleKey>of() : account.roles();
+        var roles = account.roles() == null ? java.util.List.<String>of() : account.roles();
         return new LoginResponse("Bearer", StpUtil.getTokenValue(), account.id(), account.username(),
                 account.displayName(), account.tenantId(), roles);
     }

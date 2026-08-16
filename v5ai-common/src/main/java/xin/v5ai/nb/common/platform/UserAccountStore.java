@@ -13,9 +13,9 @@ public interface UserAccountStore {
 
     List<UserAccount> list();
 
-    UserAccount create(String username, String passwordHash, String displayName, Long tenantId, List<RoleKey> roles);
+    UserAccount create(String username, String passwordHash, String displayName, Long tenantId, List<String> roles);
 
-    void updateRoles(Long userId, List<RoleKey> roles);
+    void updateRoles(Long userId, List<String> roles);
 
     void setEnabled(Long userId, boolean enabled);
 }

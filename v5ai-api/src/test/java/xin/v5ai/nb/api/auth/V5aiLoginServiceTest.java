@@ -3,7 +3,6 @@ package xin.v5ai.nb.api.auth;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.auth.UserCredentialStore;
 import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.RoleKey;
 import xin.v5ai.nb.common.platform.UserAccount;
 import xin.v5ai.nb.common.platform.UserAccountStore;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
@@ -29,7 +28,7 @@ class V5aiLoginServiceTest {
             }
         };
         var service = new V5aiLoginService(store, accountStore(
-                new UserAccount(1L, "alice", "Alice", 1L, List.of(RoleKey.ADMIN), true)),
+                new UserAccount(1L, "alice", "Alice", 1L, List.of("ADMIN"), true)),
                 verifier, tokenIssuer, new RecordingAuditRecorder());
 
         var response = service.login(new LoginRequest("alice", "secret"));
@@ -37,13 +36,13 @@ class V5aiLoginServiceTest {
         assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.token()).isNotBlank();
         assertThat(response.username()).isEqualTo("alice");
-        assertThat(response.roles()).containsExactly(RoleKey.ADMIN);
+        assertThat(response.roles()).containsExactly("ADMIN");
     }
 
     @Test
     void invalidCredentialsAreRejected() {
         var service = new V5aiLoginService(username -> "encoded",
-                accountStore(new UserAccount(1L, "alice", null, null, List.of(RoleKey.USER), true)),
+                accountStore(new UserAccount(1L, "alice", null, null, List.of("USER"), true)),
                 (raw, encoded) -> false,
                 new LoginTokenIssuer() {
                     @Override
@@ -64,7 +63,7 @@ class V5aiLoginServiceTest {
     @Test
     void disabledAccountIsRejected() {
         var service = new V5aiLoginService(username -> "encoded",
-                accountStore(new UserAccount(1L, "alice", null, null, List.of(RoleKey.USER), false)),
+                accountStore(new UserAccount(1L, "alice", null, null, List.of("USER"), false)),
                 (raw, encoded) -> true,
                 new LoginTokenIssuer() {
                     @Override
@@ -102,12 +101,12 @@ class V5aiLoginServiceTest {
 
             @Override
             public UserAccount create(String username, String passwordHash, String displayName,
-                                      Long tenantId, List<RoleKey> roles) {
+                                      Long tenantId, List<String> roles) {
                 return null;
             }
 
             @Override
-            public void updateRoles(Long userId, List<RoleKey> roles) {
+            public void updateRoles(Long userId, List<String> roles) {
             }
 
             @Override

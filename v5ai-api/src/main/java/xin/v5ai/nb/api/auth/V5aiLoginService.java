@@ -4,7 +4,6 @@ import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.auth.UserCredentialStore;
 import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.RoleKey;
 import xin.v5ai.nb.common.platform.UserAccountStore;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
 
@@ -42,11 +41,11 @@ public class V5aiLoginService {
         if (!account.enabled()) {
             throw new IllegalArgumentException("account is disabled");
         }
-        var roles = account.roles() == null ? List.<RoleKey>of() : account.roles();
+        var roles = account.roles() == null ? List.<String>of() : account.roles();
         var token = tokenIssuer.issue(request.username());
         // 角色写入 Sa-Token session，供管理 API RBAC 拦截使用
         try {
-            StpUtil.getSession().set("roles", roles.stream().map(Enum::name).toList());
+            StpUtil.getSession().set("roles", roles);
         } catch (Exception exception) {
             // 无 Sa-Token 上下文（如测试直调）时忽略，生产登录必有上下文
         }
