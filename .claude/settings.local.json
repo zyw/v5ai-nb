@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l -iE \"Controller|@RestController|@GetMapping|@PostMapping\")",
+      "Bash(python scripts/search.py)",
+      "Bash(python ~/.claude/skills/ui-ux-pro-max/scripts/search.py \"AI agent platform admin console enterprise dark\" --design-system -p \"v5ai-nb Console\")",
+      "Bash(grep -viE \"import|//|test\")"
+    ]
+  }
+}
