@@ -1,5 +1,7 @@
 package xin.v5ai.nb.api.mcp;
 
+import cn.dev33.satoken.stp.StpUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.platform.AuditRecorder;
 import xin.v5ai.nb.mcp.CreateMcpServerCommand;
 import xin.v5ai.nb.mcp.McpManagementService;
 import xin.v5ai.nb.mcp.UpdateMcpServerCommand;
@@ -22,15 +25,20 @@ import java.util.List;
 public class McpServerController {
     private final McpManagementService mcpManagementService;
 
+    @Autowired(required = false)
+    private AuditRecorder auditRecorder;
+
     public McpServerController(McpManagementService mcpManagementService) {
         this.mcpManagementService = mcpManagementService;
     }
 
     @PostMapping
     public McpServerResponse createServer(@RequestBody CreateMcpServerRequest request) {
-        return McpServerResponse.from(mcpManagementService.createServer(new CreateMcpServerCommand(
+        var created = McpServerResponse.from(mcpManagementService.createServer(new CreateMcpServerCommand(
                 request.name(), request.transportType(), request.endpoint(), request.args(),
                 request.headers(), request.envVars(), request.timeoutSeconds())));
+        audit("CREATE", "mcp-server", String.valueOf(created.id()), "create mcp server " + created.name());
+        return created;
     }
 
     @GetMapping
@@ -51,6 +59,7 @@ public class McpServerController {
     @DeleteMapping("/{id}")
     public void disableServer(@PathVariable("id") Long id) {
         mcpManagementService.disableServer(id);
+        audit("DISABLE", "mcp-server", String.valueOf(id), "disable mcp server");
     }
 
     @PostMapping("/{id}/test-connection")
@@ -89,5 +98,18 @@ public class McpServerController {
         return mcpManagementService.listToolCallsByServer(id).stream()
                 .map(McpToolCallAuditResponse::from)
                 .toList();
+    }
+
+    private void audit(String action, String targetType, String targetId, String detail) {
+        if (auditRecorder == null) {
+            return;
+        }
+        String actor;
+        try {
+            actor = StpUtil.getLoginIdAsString();
+        } catch (Exception exception) {
+            actor = null;
+        }
+        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
     }
 }

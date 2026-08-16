@@ -29,6 +29,20 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, exception.getMessage()));
     }
 
+    @ExceptionHandler(cn.dev33.satoken.exception.NotLoginException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotLogin(cn.dev33.satoken.exception.NotLoginException exception) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, "not logged in"));
+    }
+
+    @ExceptionHandler(cn.dev33.satoken.exception.NotRoleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotRole(cn.dev33.satoken.exception.NotRoleException exception) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, "insufficient role: admin role required"));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
         LOG.warn("Data integrity violation (foreign key / uniqueness)", exception);

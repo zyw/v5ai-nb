@@ -252,4 +252,93 @@ class PersistingAgentRuntimeTest {
             return savedStateJson;
         }
     }
+
+    @Test
+    void completedRunRecordsUsageAndQuota() {
+        var usageRecorder = new RecordingUsageRecorder();
+        var quotaService = new RecordingQuotaService();
+        var runtime = new PersistingAgentRuntime(
+                new StubAgentRuntime(),
+                new RecordingMessageRepository(),
+                new RecordingRunRecordRepository(),
+                new RecordingConversationRepository(),
+                new RecordingRunEventRepository(),
+                null,
+                usageRecorder,
+                quotaService
+        );
+
+        StepVerifier.create(runtime.stream(new AgentRunRequest("demo", "conversation-1", "hello")).then())
+                .verifyComplete();
+
+        assertThat(usageRecorder.records).hasSize(1);
+        assertThat(usageRecorder.records.get(0).appKey()).isEqualTo("demo");
+        assertThat(usageRecorder.records.get(0).status()).isEqualTo("SUCCESS");
+        assertThat(usageRecorder.records.get(0).totalTokens()).isGreaterThan(0);
+        assertThat(quotaService.recordedAppKeys).containsExactly("demo");
+        assertThat(quotaService.recordedTokens).isGreaterThan(0);
+    }
+
+    @Test
+    void failedRunRecordsFailedUsage() {
+        var usageRecorder = new RecordingUsageRecorder();
+        var runtime = new PersistingAgentRuntime(
+                new FailingAgentRuntime(),
+                new RecordingMessageRepository(),
+                new RecordingRunRecordRepository(),
+                new RecordingConversationRepository(),
+                new RecordingRunEventRepository(),
+                null,
+                usageRecorder,
+                new RecordingQuotaService()
+        );
+
+        StepVerifier.create(runtime.stream(new AgentRunRequest("demo", "conversation-1", "hello")).then())
+                .verifyComplete();
+
+        assertThat(usageRecorder.records).hasSize(1);
+        assertThat(usageRecorder.records.get(0).status()).isEqualTo("FAILED");
+    }
+
+    private static final class RecordingUsageRecorder implements xin.v5ai.nb.common.platform.UsageRecorder {
+        private final List<xin.v5ai.nb.common.platform.UsageRecord> records = new ArrayList<>();
+
+        @Override
+        public void record(xin.v5ai.nb.common.platform.UsageRecord usage) {
+            records.add(usage);
+        }
+    }
+
+    private static final class RecordingQuotaService implements xin.v5ai.nb.common.platform.AppQuotaService {
+        private final List<String> recordedAppKeys = new ArrayList<>();
+        private long recordedTokens;
+
+        @Override
+        public xin.v5ai.nb.common.platform.AppQuota getQuota(String appKey) {
+            return new xin.v5ai.nb.common.platform.AppQuota(appKey, 0, 0, 0, null);
+        }
+
+        @Override
+        public xin.v5ai.nb.common.platform.AppQuota updateQuota(String appKey, Integer dailyModelCalls,
+                                                                Long dailyTokens, Integer ratePerMinute) {
+            return getQuota(appKey);
+        }
+
+        @Override
+        public boolean checkAllowed(String appKey) {
+            return true;
+        }
+
+        @Override
+        public void recordUsage(String appKey, long tokens) {
+            recordedAppKeys.add(appKey);
+            recordedTokens += tokens;
+        }
+
+        @Override
+        public xin.v5ai.nb.common.platform.AppUsage getDailyUsage(String appKey) {
+            return new xin.v5ai.nb.common.platform.AppUsage(appKey, java.time.LocalDate.now(),
+                    recordedAppKeys.size(), recordedTokens);
+        }
+    }
 }

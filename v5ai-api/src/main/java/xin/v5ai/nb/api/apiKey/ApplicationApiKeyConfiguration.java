@@ -23,8 +23,10 @@ public class ApplicationApiKeyConfiguration {
      */
     @Bean
     FilterRegistrationBean<ApplicationApiKeyServletFilter> applicationApiKeyServletFilter(
-            ApplicationApiKeyVerifier verifier) {
-        var registration = new FilterRegistrationBean<>(new ApplicationApiKeyServletFilter(verifier));
+            ApplicationApiKeyVerifier verifier,
+            xin.v5ai.nb.common.platform.AppQuotaService quotaService) {
+        var registration = new FilterRegistrationBean<>(
+                new ApplicationApiKeyServletFilter(verifier, quotaService));
         registration.addUrlPatterns("/api/v1/apps/*");
         registration.setName("applicationApiKeyServletFilter");
         return registration;

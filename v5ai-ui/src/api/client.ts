@@ -663,3 +663,166 @@ export function bindSkills(adminToken: string, appKey: string, skillIds: number[
 export function getSkillBindings(adminToken: string, appKey: string): Promise<number[]> {
   return requestJson<number[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/skill-bindings`, {}, adminToken)
 }
+
+// ---- Platform (Phase 5) ----
+
+export interface Tenant {
+  id: number
+  tenantKey: string
+  name: string
+  status: string
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface UserAccount {
+  id: number
+  username: string
+  displayName?: string | null
+  tenantId?: number | null
+  roles: string[]
+  enabled: boolean
+}
+
+export interface AppQuota {
+  appKey: string
+  dailyModelCalls: number
+  dailyTokens: number
+  ratePerMinute: number
+  updatedAt?: string | null
+}
+
+export interface AppUsage {
+  appKey: string
+  usageDate: string
+  modelCalls: number
+  tokens: number
+}
+
+export interface UsageRecord {
+  id: number
+  runId?: string | null
+  appKey?: string | null
+  modelKey?: string | null
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  durationMs?: number | null
+  status: string
+  createdAt?: string | null
+}
+
+export interface AuditLog {
+  id: number
+  tenantId?: number | null
+  actor?: string | null
+  action: string
+  targetType?: string | null
+  targetId?: string | null
+  detail?: string | null
+  ip?: string | null
+  createdAt?: string | null
+}
+
+export interface OverviewResponse {
+  applications: number
+  models: number
+  knowledgeBases: number
+  skills: number
+  totalRuns: number
+  todayRuns: number
+  todayModelCalls: number
+  todayTokens: number
+}
+
+export interface LoginResponseFull {
+  tokenType: string
+  token: string
+  userId?: number | null
+  username?: string | null
+  displayName?: string | null
+  tenantId?: number | null
+  roles?: string[]
+}
+
+export function listTenants(adminToken: string): Promise<Tenant[]> {
+  return requestJson<Tenant[]>('/api/admin/tenants', {}, adminToken)
+}
+
+export function createTenant(adminToken: string, tenantKey: string, name: string): Promise<Tenant> {
+  return requestJson<Tenant>('/api/admin/tenants', {
+    method: 'POST',
+    body: JSON.stringify({ tenantKey, name })
+  }, adminToken)
+}
+
+export function disableTenant(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/tenants/${id}`, { method: 'DELETE' }, adminToken)
+}
+
+export function listUsers(adminToken: string): Promise<UserAccount[]> {
+  return requestJson<UserAccount[]>('/api/admin/users', {}, adminToken)
+}
+
+export function createUser(adminToken: string, request: { username: string; password: string; displayName?: string; tenantId?: number; roles?: string[] }): Promise<UserAccount> {
+  return requestJson<UserAccount>('/api/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function updateUserRoles(adminToken: string, id: number, roles: string[]): Promise<UserAccount> {
+  return requestJson<UserAccount>(`/api/admin/users/${id}/roles`, {
+    method: 'PUT',
+    body: JSON.stringify({ roles })
+  }, adminToken)
+}
+
+export function updateUserEnabled(adminToken: string, id: number, enabled: boolean): Promise<UserAccount> {
+  return requestJson<UserAccount>(`/api/admin/users/${id}/enabled`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled })
+  }, adminToken)
+}
+
+export function getAppQuota(adminToken: string, appKey: string): Promise<AppQuota> {
+  return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(appKey)}/quota`, {}, adminToken)
+}
+
+export function updateAppQuota(adminToken: string, appKey: string, request: { dailyModelCalls?: number; dailyTokens?: number; ratePerMinute?: number }): Promise<AppQuota> {
+  return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(appKey)}/quota`, {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function getAppDailyUsage(adminToken: string, appKey: string): Promise<AppUsage> {
+  return requestJson<AppUsage>(`/api/admin/apps/${encodeURIComponent(appKey)}/usage/daily`, {}, adminToken)
+}
+
+export function listUsage(adminToken: string, params: { appKey?: string; from?: string; to?: string; limit?: number } = {}): Promise<UsageRecord[]> {
+  const query = new URLSearchParams()
+  if (params.appKey) query.set('appKey', params.appKey)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.limit) query.set('limit', String(params.limit))
+  const qs = query.toString()
+  return requestJson<UsageRecord[]>(`/api/admin/usage${qs ? `?${qs}` : ''}`, {}, adminToken)
+}
+
+export function listAuditLogs(adminToken: string, params: { actor?: string; action?: string; limit?: number } = {}): Promise<AuditLog[]> {
+  const query = new URLSearchParams()
+  if (params.actor) query.set('actor', params.actor)
+  if (params.action) query.set('action', params.action)
+  if (params.limit) query.set('limit', String(params.limit))
+  const qs = query.toString()
+  return requestJson<AuditLog[]>(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`, {}, adminToken)
+}
+
+export function getStatsOverview(adminToken: string): Promise<OverviewResponse> {
+  return requestJson<OverviewResponse>('/api/admin/stats/overview', {}, adminToken)
+}
+
+export function fetchMe(adminToken: string): Promise<LoginResponseFull> {
+  return requestJson<LoginResponseFull>('/api/auth/me', {}, adminToken)
+}

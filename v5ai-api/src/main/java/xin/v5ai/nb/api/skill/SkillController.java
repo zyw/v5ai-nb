@@ -1,5 +1,7 @@
 package xin.v5ai.nb.api.skill;
 
+import cn.dev33.satoken.stp.StpUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import xin.v5ai.nb.common.platform.AuditRecorder;
 import xin.v5ai.nb.skill.SkillManagementService;
 
 import java.io.IOException;
@@ -24,6 +27,9 @@ import java.util.List;
 public class SkillController {
     private final SkillManagementService skillManagementService;
 
+    @Autowired(required = false)
+    private AuditRecorder auditRecorder;
+
     public SkillController(SkillManagementService skillManagementService) {
         this.skillManagementService = skillManagementService;
     }
@@ -34,7 +40,9 @@ public class SkillController {
             @RequestParam(value = "description", required = false) String description
     ) {
         try {
-            return SkillResponse.from(skillManagementService.uploadSkill(file.getBytes(), description));
+            var created = SkillResponse.from(skillManagementService.uploadSkill(file.getBytes(), description));
+            audit("CREATE", "skill", String.valueOf(created.id()), "upload skill " + created.name());
+            return created;
         } catch (IOException exception) {
             throw new UncheckedIOException("failed to read uploaded skill package", exception);
         }
@@ -50,6 +58,7 @@ public class SkillController {
     @DeleteMapping("/{id}")
     public void disableSkill(@PathVariable("id") Long id) {
         skillManagementService.disableSkill(id);
+        audit("DISABLE", "skill", String.valueOf(id), "disable skill");
     }
 
     @GetMapping("/{id}/versions")
@@ -62,6 +71,7 @@ public class SkillController {
     @PostMapping("/{id}/versions/{versionId}/publish")
     public SkillResponse publishVersion(@PathVariable("id") Long id,
                                         @PathVariable("versionId") Long versionId) {
+        audit("PUBLISH", "skill", String.valueOf(id), "publish skill version " + versionId);
         return SkillResponse.from(skillManagementService.publishVersion(id, versionId));
     }
 
@@ -71,6 +81,20 @@ public class SkillController {
         if (request.versionId() == null) {
             throw new IllegalArgumentException("versionId is required");
         }
+        audit("ROLLBACK", "skill", String.valueOf(id), "rollback skill to version " + request.versionId());
         return SkillResponse.from(skillManagementService.rollback(id, request.versionId()));
+    }
+
+    private void audit(String action, String targetType, String targetId, String detail) {
+        if (auditRecorder == null) {
+            return;
+        }
+        String actor;
+        try {
+            actor = StpUtil.getLoginIdAsString();
+        } catch (Exception exception) {
+            actor = null;
+        }
+        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
     }
 }

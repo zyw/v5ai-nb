@@ -72,10 +72,13 @@ public class RuntimeConfiguration {
             ConversationRepository conversationRepository,
             RunEventRepository runEventRepository,
             ObjectProvider<AgentStateRepository> agentStateRepositoryProvider,
-            ObjectProvider<RagContextProvider> ragContextProviderProvider
+            ObjectProvider<RagContextProvider> ragContextProviderProvider,
+            ObjectProvider<xin.v5ai.nb.common.platform.UsageRecorder> usageRecorderProvider,
+            ObjectProvider<xin.v5ai.nb.common.platform.AppQuotaService> quotaServiceProvider
     ) {
         var runtime = new AgentScopeRuntime(resolver, executor, ragContextProviderProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,
-                conversationRepository, runEventRepository, agentStateRepositoryProvider.getIfAvailable());
+                conversationRepository, runEventRepository, agentStateRepositoryProvider.getIfAvailable(),
+                usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
     }
 }

@@ -1,6 +1,8 @@
 package xin.v5ai.nb.runtime;
 
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -16,6 +18,8 @@ import reactor.core.publisher.Mono;
  * 3) 完整：额外传入 Agent 状态仓储。
  */
 public class PersistingAgentRuntime implements AgentRuntime {
+    private static final Logger LOG = LoggerFactory.getLogger(PersistingAgentRuntime.class);
+
     /** 被装饰的真实运行时（实际执行 Agent） */
     private final AgentRuntime delegate;
     /** 消息仓储：保存用户提问与助手回答 */
@@ -28,6 +32,10 @@ public class PersistingAgentRuntime implements AgentRuntime {
     private final RunEventRepository runEventRepository;
     /** Agent 状态仓储（可空）：保存会话级 Agent 状态 */
     private final AgentStateRepository agentStateRepository;
+    /** 用量记录器（可空）：运行完成/失败时记录模型调用用量 */
+    private final xin.v5ai.nb.common.platform.UsageRecorder usageRecorder;
+    /** 应用配额服务（可空）：运行完成后记账（调用次数 + Token） */
+    private final xin.v5ai.nb.common.platform.AppQuotaService quotaService;
 
     public PersistingAgentRuntime(
             AgentRuntime delegate,
@@ -56,12 +64,31 @@ public class PersistingAgentRuntime implements AgentRuntime {
             RunEventRepository runEventRepository,
             AgentStateRepository agentStateRepository
     ) {
+        this(delegate, messageRepository, runRecordRepository, conversationRepository, runEventRepository,
+                agentStateRepository, null, null);
+    }
+
+    /**
+     * 完整构造：附带用量记录与配额记账（Phase 5 可观测性/用量）。
+     */
+    public PersistingAgentRuntime(
+            AgentRuntime delegate,
+            MessageRepository messageRepository,
+            RunRecordRepository runRecordRepository,
+            ConversationRepository conversationRepository,
+            RunEventRepository runEventRepository,
+            AgentStateRepository agentStateRepository,
+            xin.v5ai.nb.common.platform.UsageRecorder usageRecorder,
+            xin.v5ai.nb.common.platform.AppQuotaService quotaService
+    ) {
         this.delegate = delegate;
         this.messageRepository = messageRepository;
         this.runRecordRepository = runRecordRepository;
         this.conversationRepository = conversationRepository;
         this.runEventRepository = runEventRepository;
         this.agentStateRepository = agentStateRepository;
+        this.usageRecorder = usageRecorder;
+        this.quotaService = quotaService;
     }
 
     @Override
@@ -77,13 +104,20 @@ public class PersistingAgentRuntime implements AgentRuntime {
             var answer = new StringBuilder();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
             var runId = new String[1];
+            // 用量埋点状态：模型名、开始时间
+            var modelName = new String[1];
+            var startedAt = new java.time.Instant[1];
             return delegate.stream(normalizedRequest)
                     .doOnNext(event -> {
                         // 外键约束：v5ai_run_event.run_id 引用 v5ai_run.id，
                         // 必须先插入 run 记录再保存其事件
                         if (event.type() == RuntimeEventType.RUN_STARTED) {
                             runId[0] = event.runId();
+                            startedAt[0] = event.createdAt();
                             runRecordRepository.start(event.runId(), normalizedRequest);
+                        }
+                        if (event.type() == RuntimeEventType.MODEL_CALL) {
+                            modelName[0] = event.payload();
                         }
                         // 每一条事件都落库
                         runEventRepository.save(event);
@@ -98,21 +132,27 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
                             runRecordRepository.complete(event.runId());
+                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0], answer.toString(), true);
                         }
                         if (event.type() == RuntimeEventType.RUN_FAILED) {
                             runRecordRepository.fail(event.runId(), event.payload());
+                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0], answer.toString(), false);
                         }
                     })
                     // 异常兜底：把异常转成 RUN_FAILED 事件，同样落库并标记 run 失败
                     .onErrorResume(exception -> {
-                        var failedRunId = runId[0] == null ? UUID.randomUUID().toString() : runId[0];
-                        if (runId[0] == null) {
+                        boolean alreadyStarted = runId[0] != null;
+                        var failedRunId = alreadyStarted ? runId[0] : UUID.randomUUID().toString();
+                        if (!alreadyStarted) {
                             // 错误发生在 RUN_STARTED 之前：先建 run 记录，
                             // 才能让随后的失败事件满足外键约束
                             runRecordRepository.start(failedRunId, normalizedRequest);
                         }
+                        // 同步 runId，避免随后的 doOnComplete 重复记账
+                        runId[0] = failedRunId;
                         runEventRepository.save(RuntimeEvent.failed(failedRunId, exception.getMessage()));
                         runRecordRepository.fail(failedRunId, exception.getMessage());
+                        recordUsage(normalizedRequest, failedRunId, modelName[0], startedAt[0], answer.toString(), false);
                         return Flux.just(RuntimeEvent.failed(failedRunId, exception.getMessage()));
                     })
                     // 正常结束但从未收到 RUN_STARTED（delegate 没发启动事件）时，
@@ -121,9 +161,40 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (runId[0] == null) {
                             messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
+                            recordUsage(normalizedRequest, null, modelName[0], startedAt[0], answer.toString(), true);
                         }
                     });
         });
+    }
+
+    /**
+     * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账（Token 按字符数粗略估算）。
+     */
+    private void recordUsage(AgentRunRequest request, String runId, String modelName,
+                             java.time.Instant startedAt, String answer, boolean success) {
+        if (usageRecorder == null && quotaService == null) {
+            return;
+        }
+        try {
+            long promptChars = (request.query() == null ? 0 : request.query().length())
+                    + (request.ragContext() == null ? 0 : request.ragContext().length());
+            long completionChars = answer == null ? 0 : answer.length();
+            long promptTokens = Math.max(1, promptChars / 4);
+            long completionTokens = Math.max(1, completionChars / 4);
+            long durationMs = startedAt == null ? 0 : java.time.Duration.between(startedAt, java.time.Instant.now()).toMillis();
+            if (usageRecorder != null) {
+                usageRecorder.record(new xin.v5ai.nb.common.platform.UsageRecord(
+                        null, runId, request.appKey(),
+                        modelName == null || modelName.isBlank() ? "unknown" : modelName,
+                        promptTokens, completionTokens, Math.max(durationMs, 0),
+                        success ? "SUCCESS" : "FAILED", java.time.Instant.now()));
+            }
+            if (quotaService != null) {
+                quotaService.recordUsage(request.appKey(), promptTokens + completionTokens);
+            }
+        } catch (Exception exception) {
+            LOG.warn("failed to record usage for run {}: {}", runId, exception.getMessage());
+        }
     }
 
     @Override

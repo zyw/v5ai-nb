@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface UserMapper {
     @Select("""
-            SELECT id, username, password_hash, enabled
+            SELECT id, username, password_hash, enabled, tenant_id, display_name
             FROM v5ai_user
             WHERE username = #{username}
             """)

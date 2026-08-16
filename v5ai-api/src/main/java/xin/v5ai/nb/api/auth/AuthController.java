@@ -1,17 +1,22 @@
 package xin.v5ai.nb.api.auth;
 
+import cn.dev33.satoken.stp.StpUtil;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.platform.UserAccountStore;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
     private final V5aiLoginService loginService;
+    private final UserAccountStore userAccountStore;
 
-    public AuthController(V5aiLoginService loginService) {
+    public AuthController(V5aiLoginService loginService, UserAccountStore userAccountStore) {
         this.loginService = loginService;
+        this.userAccountStore = userAccountStore;
     }
 
     @PostMapping("/login")
@@ -22,5 +27,20 @@ public class AuthController {
     @PostMapping("/logout")
     public void logout() {
         loginService.logout();
+    }
+
+    /**
+     * 当前登录用户信息（需已登录）。
+     */
+    @GetMapping("/me")
+    public LoginResponse me() {
+        var username = StpUtil.getLoginIdAsString();
+        var account = userAccountStore.findByUsername(username);
+        if (account == null) {
+            throw new IllegalArgumentException("current account does not exist");
+        }
+        var roles = account.roles() == null ? java.util.List.<xin.v5ai.nb.common.platform.RoleKey>of() : account.roles();
+        return new LoginResponse("Bearer", StpUtil.getTokenValue(), account.id(), account.username(),
+                account.displayName(), account.tenantId(), roles);
     }
 }
