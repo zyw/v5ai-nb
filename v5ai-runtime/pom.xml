@@ -10,11 +10,6 @@
     <dependencies>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-domain</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-common</artifactId>
             <version>${project.version}</version>
         </dependency>

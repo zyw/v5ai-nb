@@ -28,7 +28,6 @@
 ## 模块
 
 - `v5ai-common`: 公共响应、异常、分页、API Key 校验端口和平台领域（租户/用户/角色/配额/用量/审计/限流）
-- `v5ai-domain`: 预留领域共享模块
 - `v5ai-model`: 模型配置与凭证加密、连通性测试端口
 - `v5ai-agent`: Agent 草稿/更新/禁用/发布/版本解析核心
 - `v5ai-runtime`: Agent 运行时边界、事件模型、会话/消息/run/AgentState 持久化装饰器、用量埋点、RAG 上下文端口

@@ -72,15 +72,15 @@ cd v5ai-nb
 
 ```
 v5ai-nb/
-├── pom.xml                     # 父 POM（模块：common/domain/infrastructure/model/
-│                              #  runtime/application/rag/worker/api/starter）
+├── pom.xml                     # 父 POM（模块：common/infrastructure/model/
+│                              #  runtime/agent/rag/worker/api/starter）
 ├── v5ai-api/                   # 管理 API + 运行 API（SSE）
 ├── v5ai-starter/               # Spring Boot 启动模块（application.yml 在此）
 ├── v5ai-infrastructure/        # MyBatis-Plus/pgvector/加密/各端口实现
 ├── v5ai-rag/                   # 知识库/文档/任务领域与检索
 ├── v5ai-worker/                # 文档索引 Worker（@Scheduled）
 ├── v5ai-runtime/               # Agent 运行时边界与事件
-├── v5ai-model/ v5ai-agent/ v5ai-common/ v5ai-domain/
+├── v5ai-model/ v5ai-agent/ v5ai-common/
 └── v5ai-ui/                    # Vue 3 + Vite 管理前端
 ```
 

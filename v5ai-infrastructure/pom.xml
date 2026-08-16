@@ -15,11 +15,6 @@
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-domain</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-model</artifactId>
             <version>${project.version}</version>
         </dependency>
