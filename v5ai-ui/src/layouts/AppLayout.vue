@@ -34,7 +34,8 @@ import {
   ShieldCheck,
   Sparkles,
   Sun,
-  Users
+  Users,
+  Workflow
 } from 'lucide-vue-next'
 import { isDark, toggleTheme } from '../stores/theme'
 import { clearAdminToken, currentMenus, displayName, ensureSession, isAdmin } from '../stores/session'
@@ -62,6 +63,7 @@ const iconMap: Record<string, Component> = {
   'knowledge-bases': Database,
   'mcp-servers': Cable,
   skills: Sparkles,
+  workflows: Workflow,
   users: Users,
   roles: ShieldCheck,
   tenants: Building2,

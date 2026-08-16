@@ -22,6 +22,8 @@ const MAP: Record<string, { type: TagType; label: string }> = {
   PENDING: { type: 'warning', label: '待处理' },
   PROCESSING: { type: 'info', label: '处理中' },
   RUNNING: { type: 'info', label: '运行中' },
+  SUCCEEDED: { type: 'success', label: '成功' },
+  SKIPPED: { type: 'default', label: '跳过' },
   FAILED: { type: 'error', label: '失败' },
   ERROR: { type: 'error', label: '错误' }
 }

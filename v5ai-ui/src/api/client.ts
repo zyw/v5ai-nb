@@ -931,3 +931,132 @@ export function getStatsOverview(adminToken: string): Promise<OverviewResponse> 
 export function fetchMe(adminToken: string): Promise<LoginResponseFull> {
   return requestJson<LoginResponseFull>('/api/auth/me', {}, adminToken)
 }
+
+// ---- Workflows ----
+
+export type WorkflowNodeType = 'START' | 'AGENT' | 'CONDITION' | 'END'
+
+export interface WorkflowNode {
+  id: string
+  type: WorkflowNodeType
+  name: string
+  config?: Record<string, unknown> | null
+}
+
+export interface WorkflowEdge {
+  id: string
+  source: string
+  target: string
+  sourceHandle?: string | null
+}
+
+export interface WorkflowDefinition {
+  nodes: WorkflowNode[]
+  edges: WorkflowEdge[]
+}
+
+export interface WorkflowResponse {
+  id: number
+  workflowKey: string
+  name: string
+  description?: string | null
+  status: string // DRAFT | PUBLISHED | DISABLED
+  draftDefinition?: WorkflowDefinition | null
+  publishedDefinition?: WorkflowDefinition | null
+  publishedVersion?: number | null
+  publishedAt?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface CreateWorkflowRequest {
+  workflowKey: string
+  name: string
+  description?: string
+}
+
+export interface UpdateWorkflowRequest {
+  name?: string
+  description?: string
+  definition?: WorkflowDefinition
+}
+
+export interface WorkflowRunResponse {
+  runId: string
+  workflowKey: string
+  workflowVersion?: number | null
+  status: string // RUNNING | SUCCEEDED | FAILED
+  inputs?: Record<string, unknown> | null
+  outputs?: Record<string, unknown> | null
+  error?: string | null
+  startedAt?: string | null
+  finishedAt?: string | null
+  createdAt?: string | null
+}
+
+export interface WorkflowNodeRunResponse {
+  id: number
+  runId: string
+  nodeId: string
+  nodeType: string
+  status: string // PENDING | RUNNING | SUCCEEDED | FAILED | SKIPPED
+  inputs?: Record<string, unknown> | null
+  outputs?: Record<string, unknown> | null
+  error?: string | null
+  startedAt?: string | null
+  finishedAt?: string | null
+}
+
+export interface WorkflowRunDetailResponse {
+  run: WorkflowRunResponse
+  nodeRuns: WorkflowNodeRunResponse[]
+}
+
+export function listWorkflows(adminToken: string): Promise<WorkflowResponse[]> {
+  return requestJson<WorkflowResponse[]>('/api/admin/workflows', {}, adminToken)
+}
+
+export function getWorkflow(adminToken: string, workflowKey: string): Promise<WorkflowResponse> {
+  return requestJson<WorkflowResponse>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}`, {}, adminToken)
+}
+
+export function createWorkflow(adminToken: string, request: CreateWorkflowRequest): Promise<WorkflowResponse> {
+  return requestJson<WorkflowResponse>('/api/admin/workflows', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function updateWorkflow(adminToken: string, workflowKey: string, request: UpdateWorkflowRequest): Promise<WorkflowResponse> {
+  return requestJson<WorkflowResponse>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}`, {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function publishWorkflow(adminToken: string, workflowKey: string): Promise<WorkflowResponse> {
+  return requestJson<WorkflowResponse>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/publish`, {
+    method: 'POST'
+  }, adminToken)
+}
+
+export function disableWorkflow(adminToken: string, workflowKey: string): Promise<void> {
+  return requestJson<void>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}`, {
+    method: 'DELETE'
+  }, adminToken)
+}
+
+export function runWorkflow(adminToken: string, workflowKey: string, inputs?: Record<string, unknown>): Promise<WorkflowRunResponse> {
+  return requestJson<WorkflowRunResponse>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/run`, {
+    method: 'POST',
+    body: JSON.stringify({ inputs: inputs ?? {} })
+  }, adminToken)
+}
+
+export function listWorkflowRuns(adminToken: string, workflowKey: string): Promise<WorkflowRunResponse[]> {
+  return requestJson<WorkflowRunResponse[]>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/runs`, {}, adminToken)
+}
+
+export function getWorkflowRun(adminToken: string, runId: string): Promise<WorkflowRunDetailResponse> {
+  return requestJson<WorkflowRunDetailResponse>(`/api/admin/workflows/runs/${encodeURIComponent(runId)}`, {}, adminToken)
+}

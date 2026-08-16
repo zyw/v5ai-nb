@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://192.168.10.13:15432/v5ai_nb}
+    url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://pg.v5ai.xin:15432/v5ai_nb}
     username: ${V5AI_DATASOURCE_USERNAME:mypgsql}
     password: ${V5AI_DATASOURCE_PASSWORD:5dyHfJFKm7tEU4AMZfo3RPH3Jy3AlF}
     driver-class-name: org.postgresql.Driver
