@@ -23,18 +23,18 @@ cd v5ai-ui && npx vue-tsc --noEmit   # 前端类型检查
 - 端口：`McpServerRepository`、`McpToolRepository`、`ApplicationMcpBindingRepository`、
   `McpToolCallAuditRepository`、`McpClientFactory`、`McpConnection`、`StdioCommandPolicy`。
 - `McpManagementService`：Server CRUD（禁用即逻辑删除）、连接测试（记录最近结果）、
-  Tool 发现（upsert + 保留自定义权限 + 清理下线工具）、Application 绑定校验、
+  Tool 发现（upsert + 保留自定义权限 + 清理下线工具）、Agent 绑定校验、
   权限调整、审计查询。默认权限：只读 `ALLOW`、可写 `APPROVE`。
 
 ### 基础设施（AgentScope McpClientBuilder 传输层）
 
 - `V5__mcp_schema.sql`：`v5ai_mcp_server`（headers/env 密文列）、`v5ai_mcp_tool`
-  （(server_id, tool_name) 唯一 + permission）、`v5ai_application_mcp`（app_key 绑定）、
+  （(server_id, tool_name) 唯一 + permission）、`v5ai_application_mcp`（agent_key 绑定）、
   `v5ai_mcp_tool_call`（run_id/server_id 索引审计表）。
 - `AgentScopeMcpClientFactory` / `AgentScopeMcpConnection`：Streamable HTTP / SSE / Stdio
   三种传输；Stdio 受 `PropertyStdioCommandPolicy` 白名单 + 纯命令名校验。
 - 加密：headers/envVars 经 `CredentialCipher`（AES-GCM）加密落库，读取时解密。
-- `ApplicationMcpToolResolver`：按已发布 Application 绑定解析 ACTIVE Server 的
+- `ApplicationMcpToolResolver`：按已发布 Agent 绑定解析 ACTIVE Server 的
   已发现工具（DENY 过滤），单 Server 失败跳过不中断运行。
 
 ### 运行时（动态 Tool 注册 + 权限 + 审计）
@@ -55,7 +55,7 @@ cd v5ai-ui && npx vue-tsc --noEmit   # 前端类型检查
 - `McpServerController`（/api/admin/mcp-servers CRUD + test-connection + discover-tools +
   tools + permission + tool-calls）、`ApplicationMcpBindingController`（mcp-bindings）、
   `McpToolCallController`（按 runId/serverId 查审计）。
-- 前端：`McpServersView`（创建 Server、测试连接、发现工具、权限下拉、Application 绑定）、
+- 前端：`McpServersView`（创建 Server、测试连接、发现工具、权限下拉、Agent 绑定）、
   router 与菜单注册；`client.ts` 补齐全部 MCP API 类型与函数。
 
 ## 说明 / 限制

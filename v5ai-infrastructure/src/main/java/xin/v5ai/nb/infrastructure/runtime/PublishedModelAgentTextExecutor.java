@@ -2,7 +2,7 @@ package xin.v5ai.nb.infrastructure.runtime;
 
 import io.agentscope.core.model.Model;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.agent.Agent;
 import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
 import xin.v5ai.nb.runtime.AgentModelResolver;
 import xin.v5ai.nb.runtime.AgentRunRequest;
@@ -43,7 +43,7 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
     }
 
     @Override
-    public Flux<AgentTextEvent> streamText(Application application, AgentRunRequest request) {
+    public Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request) {
         var model = modelResolver.resolve(application.modelId());
         if (model == null) {
             return Flux.error(new IllegalArgumentException("model is not resolvable: " + application.modelId()));

@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * MCP 管理服务：Server 增删改查、连接测试、Tool 发现、Application 绑定、
+ * MCP 管理服务：Server 增删改查、连接测试、Tool 发现、Agent 绑定、
  * 权限调整与调用审计查询。本模块不依赖任何具体 MCP 传输库，
  * 连接能力通过 {@link McpClientFactory} 注入（基础设施层实现）。
  */
@@ -16,7 +16,7 @@ public class McpManagementService {
 
     private final McpServerRepository serverRepository;
     private final McpToolRepository toolRepository;
-    private final ApplicationMcpBindingRepository bindingRepository;
+    private final AgentMcpBindingRepository bindingRepository;
     private final McpToolCallAuditRepository auditRepository;
     private final McpClientFactory clientFactory;
     private final StdioCommandPolicy stdioCommandPolicy;
@@ -24,7 +24,7 @@ public class McpManagementService {
     public McpManagementService(
             McpServerRepository serverRepository,
             McpToolRepository toolRepository,
-            ApplicationMcpBindingRepository bindingRepository,
+            AgentMcpBindingRepository bindingRepository,
             McpToolCallAuditRepository auditRepository,
             McpClientFactory clientFactory,
             StdioCommandPolicy stdioCommandPolicy
@@ -94,11 +94,11 @@ public class McpManagementService {
         return serverRepository.list();
     }
 
-    // ---------- Application 绑定 ----------
+    // ---------- Agent 绑定 ----------
 
-    public void bindServers(String appKey, List<Long> mcpServerIds) {
-        if (appKey == null || appKey.isBlank()) {
-            throw new IllegalArgumentException("appKey is required");
+    public void bindServers(String agentKey, List<Long> mcpServerIds) {
+        if (agentKey == null || agentKey.isBlank()) {
+            throw new IllegalArgumentException("agentKey is required");
         }
         if (mcpServerIds == null) {
             throw new IllegalArgumentException("mcpServerIds is required");
@@ -106,11 +106,11 @@ public class McpManagementService {
         for (Long serverId : mcpServerIds) {
             requireActiveServer(serverId);
         }
-        bindingRepository.save(appKey, mcpServerIds);
+        bindingRepository.save(agentKey, mcpServerIds);
     }
 
-    public List<Long> getServerBindings(String appKey) {
-        return bindingRepository.findByAppKey(appKey);
+    public List<Long> getServerBindings(String agentKey) {
+        return bindingRepository.findByAgentKey(agentKey);
     }
 
     // ---------- 连接测试 ----------

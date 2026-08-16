@@ -6,12 +6,12 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import xin.v5ai.nb.infrastructure.apiKey.ApiKeyEntity;
-import xin.v5ai.nb.infrastructure.application.ApplicationEntity;
-import xin.v5ai.nb.infrastructure.application.ApplicationVersionEntity;
+import xin.v5ai.nb.infrastructure.agent.AgentEntity;
+import xin.v5ai.nb.infrastructure.agent.AgentVersionEntity;
 import xin.v5ai.nb.infrastructure.auth.UserEntity;
 import xin.v5ai.nb.infrastructure.model.ModelConfigEntity;
 import xin.v5ai.nb.infrastructure.model.ModelProviderEntity;
-import xin.v5ai.nb.infrastructure.rag.ApplicationKnowledgeBindingEntity;
+import xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingEntity;
 import xin.v5ai.nb.infrastructure.rag.KnowledgeBaseEntity;
 import xin.v5ai.nb.infrastructure.rag.KnowledgeDocumentEntity;
 import xin.v5ai.nb.infrastructure.rag.KnowledgeTaskEntity;
@@ -38,6 +38,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * non-existent {@code conversation_id} column of {@code v5ai_conversation}).
  */
 class SchemaConsistencyTest {
+
+    /**
+     * V8 把 Application 相关表重命名为 Agent 表；重命名后的表没有自己的 CREATE TABLE
+     * 块，校验时回退到原表名的 CREATE 块（列以最新迁移的 ALTER 为准）。
+     */
+    private static final java.util.Map<String, String> RENAMED_FROM = java.util.Map.of(
+            "v5ai_agent", "v5ai_application",
+            "v5ai_agent_version", "v5ai_application_version",
+            "v5ai_agent_knowledge", "v5ai_application_knowledge");
 
     @Test
     void everyEntityColumnExistsInItsOwnTableBlock() throws Exception {
@@ -99,21 +108,26 @@ class SchemaConsistencyTest {
     }
 
     private String tableBlock(String migrations, String table) {
-        int start = migrations.indexOf("CREATE TABLE " + table + " (");
+        // 重命名后的表回退到原表名的 CREATE 块（列由后续 ALTER 追加）
+        String createTable = RENAMED_FROM.containsKey(table) ? RENAMED_FROM.get(table) : table;
+        int start = migrations.indexOf("CREATE TABLE " + createTable + " (");
         String block = "";
         if (start >= 0) {
             int next = migrations.indexOf("CREATE TABLE", start + 1);
             block = next < 0 ? migrations.substring(start) : migrations.substring(start, next);
         }
-        int searchFrom = 0;
-        while (true) {
-            int alter = migrations.indexOf("ALTER TABLE " + table, searchFrom);
-            if (alter < 0) {
-                break;
+        // 追加该表（或原表名）的全部 ALTER 段，覆盖列重命名/新增
+        for (String candidate : new String[]{table, createTable}) {
+            int searchFrom = 0;
+            while (true) {
+                int alter = migrations.indexOf("ALTER TABLE " + candidate, searchFrom);
+                if (alter < 0) {
+                    break;
+                }
+                int end = migrations.indexOf(';', alter);
+                block += "\n" + (end < 0 ? migrations.substring(alter) : migrations.substring(alter, end));
+                searchFrom = alter + 1;
             }
-            int end = migrations.indexOf(';', alter);
-            block += "\n" + (end < 0 ? migrations.substring(alter) : migrations.substring(alter, end));
-            searchFrom = alter + 1;
         }
         return block;
     }
@@ -140,8 +154,8 @@ class SchemaConsistencyTest {
                 ApiKeyEntity.class,
                 ModelProviderEntity.class,
                 ModelConfigEntity.class,
-                ApplicationEntity.class,
-                ApplicationVersionEntity.class,
+                AgentEntity.class,
+                AgentVersionEntity.class,
                 RuntimeConversationEntity.class,
                 RuntimeMessageEntity.class,
                 RuntimeRunEntity.class,
@@ -150,7 +164,7 @@ class SchemaConsistencyTest {
                 KnowledgeBaseEntity.class,
                 KnowledgeDocumentEntity.class,
                 KnowledgeTaskEntity.class,
-                ApplicationKnowledgeBindingEntity.class
+                AgentKnowledgeBindingEntity.class
         );
     }
 

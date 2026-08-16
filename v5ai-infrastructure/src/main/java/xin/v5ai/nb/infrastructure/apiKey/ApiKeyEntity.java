@@ -8,16 +8,16 @@ import com.baomidou.mybatisplus.annotation.TableName;
 public class ApiKeyEntity {
     @TableId
     private Long id;
-    @TableField("app_key")
-    private String appKey;
+    @TableField("agent_key")
+    private String agentKey;
     @TableField("secret_hash")
     private String secretHash;
     private Boolean enabled;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public String getAppKey() { return appKey; }
-    public void setAppKey(String appKey) { this.appKey = appKey; }
+    public String getAgentKey() { return agentKey; }
+    public void setAgentKey(String agentKey) { this.agentKey = agentKey; }
     public String getSecretHash() { return secretHash; }
     public void setSecretHash(String secretHash) { this.secretHash = secretHash; }
     public Boolean getEnabled() { return enabled; }

@@ -22,7 +22,7 @@ class MyBatisRuntimePersistenceTest {
         repository.save(new Message("00000000-0000-0000-0000-000000000001", "demo", MessageRole.USER, "hello"));
 
         assertThat(mapper.entity.getConversationId()).isEqualTo("00000000-0000-0000-0000-000000000001");
-        assertThat(mapper.entity.getAppKey()).isEqualTo("demo");
+        assertThat(mapper.entity.getAgentKey()).isEqualTo("demo");
         assertThat(mapper.entity.getRole()).isEqualTo("USER");
         assertThat(mapper.entity.getContent()).isEqualTo("hello");
     }
@@ -37,7 +37,7 @@ class MyBatisRuntimePersistenceTest {
 
         assertThat(messages).hasSize(1);
         assertThat(messages.getFirst().role()).isEqualTo(MessageRole.USER);
-        assertThat(messages.getFirst().appKey()).isEqualTo("demo");
+        assertThat(messages.getFirst().agentKey()).isEqualTo("demo");
     }
 
     @Test
@@ -51,7 +51,7 @@ class MyBatisRuntimePersistenceTest {
         repository.fail("20000000-0000-0000-0000-000000000001", "boom");
 
         assertThat(mapper.started.getStatus()).isEqualTo("RUNNING");
-        assertThat(mapper.started.getAppKey()).isEqualTo("demo");
+        assertThat(mapper.started.getAgentKey()).isEqualTo("demo");
         assertThat(mapper.completedRunId).isEqualTo("10000000-0000-0000-0000-000000000001");
         assertThat(mapper.failedRunId).isEqualTo("20000000-0000-0000-0000-000000000001");
         assertThat(mapper.failedMessage).isEqualTo("boom");
@@ -76,7 +76,7 @@ class MyBatisRuntimePersistenceTest {
         repository.ensureConversation(new Conversation("conversation-1", "demo"));
 
         assertThat(mapper.entity.getConversationId()).isEqualTo("conversation-1");
-        assertThat(mapper.entity.getAppKey()).isEqualTo("demo");
+        assertThat(mapper.entity.getAgentKey()).isEqualTo("demo");
     }
 
     @Test
@@ -91,10 +91,10 @@ class MyBatisRuntimePersistenceTest {
         assertThat(mapper.entity.getPayload()).isEqualTo("hello");
     }
 
-    private static RuntimeMessageEntity entity(String conversationId, String appKey, String role, String content) {
+    private static RuntimeMessageEntity entity(String conversationId, String agentKey, String role, String content) {
         var entity = new RuntimeMessageEntity();
         entity.setConversationId(conversationId);
-        entity.setAppKey(appKey);
+        entity.setAgentKey(agentKey);
         entity.setRole(role);
         entity.setContent(content);
         return entity;

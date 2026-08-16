@@ -88,7 +88,7 @@ class RetrievalContextBuilderTest {
         }
     }
 
-    private static final class StubBindingRepository implements ApplicationKnowledgeBindingRepository {
+    private static final class StubBindingRepository implements AgentKnowledgeBindingRepository {
         private final List<Long> ids;
 
         private StubBindingRepository(List<Long> ids) {
@@ -96,16 +96,16 @@ class RetrievalContextBuilderTest {
         }
 
         @Override
-        public void save(String appKey, List<Long> knowledgeBaseIds) {
+        public void save(String agentKey, List<Long> knowledgeBaseIds) {
         }
 
         @Override
-        public List<Long> findByAppKey(String appKey) {
+        public List<Long> findByAgentKey(String agentKey) {
             return ids;
         }
 
         @Override
-        public void delete(String appKey) {
+        public void delete(String agentKey) {
         }
     }
 

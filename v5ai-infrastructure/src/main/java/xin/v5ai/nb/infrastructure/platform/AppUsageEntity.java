@@ -8,8 +8,8 @@ import java.time.Instant;
 
 @TableName("v5ai_app_usage")
 public class AppUsageEntity {
-    @TableId(value = "app_key")
-    private String appKey;
+    @TableId(value = "agent_key")
+    private String agentKey;
     @TableField("usage_date")
     private java.time.LocalDate usageDate;
     @TableField("model_calls")
@@ -17,8 +17,8 @@ public class AppUsageEntity {
     private Long tokens;
     private Instant updatedAt;
 
-    public String getAppKey() { return appKey; }
-    public void setAppKey(String appKey) { this.appKey = appKey; }
+    public String getAgentKey() { return agentKey; }
+    public void setAgentKey(String agentKey) { this.agentKey = agentKey; }
     public java.time.LocalDate getUsageDate() { return usageDate; }
     public void setUsageDate(java.time.LocalDate usageDate) { this.usageDate = usageDate; }
     public Integer getModelCalls() { return modelCalls; }

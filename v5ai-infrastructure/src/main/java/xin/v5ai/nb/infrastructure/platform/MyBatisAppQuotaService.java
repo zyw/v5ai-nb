@@ -26,19 +26,19 @@ public class MyBatisAppQuotaService implements AppQuotaService {
     }
 
     @Override
-    public AppQuota getQuota(String appKey) {
-        var entity = quotaMapper.selectByApp(appKey);
+    public AppQuota getQuota(String agentKey) {
+        var entity = quotaMapper.selectByApp(agentKey);
         return entity == null
-                ? new AppQuota(appKey, 0, 0, 0, null)
-                : new AppQuota(entity.getAppKey(), nz(entity.getDailyModelCalls()),
+                ? new AppQuota(agentKey, 0, 0, 0, null)
+                : new AppQuota(entity.getAgentKey(), nz(entity.getDailyModelCalls()),
                         nz(entity.getDailyTokens()), nz(entity.getRatePerMinute()), entity.getUpdatedAt());
     }
 
     @Override
-    public AppQuota updateQuota(String appKey, Integer dailyModelCalls, Long dailyTokens, Integer ratePerMinute) {
-        var existing = quotaMapper.selectByApp(appKey);
+    public AppQuota updateQuota(String agentKey, Integer dailyModelCalls, Long dailyTokens, Integer ratePerMinute) {
+        var existing = quotaMapper.selectByApp(agentKey);
         var entity = existing != null ? existing : new AppQuotaEntity();
-        entity.setAppKey(appKey);
+        entity.setAgentKey(agentKey);
         entity.setDailyModelCalls(dailyModelCalls != null ? dailyModelCalls : nz(entity.getDailyModelCalls()));
         entity.setDailyTokens(dailyTokens != null ? dailyTokens : nz(entity.getDailyTokens()));
         entity.setRatePerMinute(ratePerMinute != null ? ratePerMinute : nz(entity.getRatePerMinute()));
@@ -48,19 +48,19 @@ public class MyBatisAppQuotaService implements AppQuotaService {
         } else {
             quotaMapper.updateById(entity);
         }
-        return new AppQuota(entity.getAppKey(), nz(entity.getDailyModelCalls()), nz(entity.getDailyTokens()),
+        return new AppQuota(entity.getAgentKey(), nz(entity.getDailyModelCalls()), nz(entity.getDailyTokens()),
                 nz(entity.getRatePerMinute()), entity.getUpdatedAt());
     }
 
     @Override
-    public boolean checkAllowed(String appKey) {
-        var quota = getQuota(appKey);
+    public boolean checkAllowed(String agentKey) {
+        var quota = getQuota(agentKey);
         // 每分钟限流
-        if (quota.ratePerMinute() > 0 && !rateLimiter.tryAcquire(appKey, quota.ratePerMinute())) {
+        if (quota.ratePerMinute() > 0 && !rateLimiter.tryAcquire(agentKey, quota.ratePerMinute())) {
             return false;
         }
         // 每日调用次数配额
-        var usage = usageMapper.selectByAppAndDate(appKey, LocalDate.now());
+        var usage = usageMapper.selectByAppAndDate(agentKey, LocalDate.now());
         if (quota.dailyModelCalls() > 0 && usage != null && usage.getModelCalls() >= quota.dailyModelCalls()) {
             return false;
         }
@@ -68,12 +68,12 @@ public class MyBatisAppQuotaService implements AppQuotaService {
     }
 
     @Override
-    public void recordUsage(String appKey, long tokens) {
+    public void recordUsage(String agentKey, long tokens) {
         var today = LocalDate.now();
-        var entity = usageMapper.selectByAppAndDate(appKey, today);
+        var entity = usageMapper.selectByAppAndDate(agentKey, today);
         if (entity == null) {
             entity = new AppUsageEntity();
-            entity.setAppKey(appKey);
+            entity.setAgentKey(agentKey);
             entity.setUsageDate(today);
             entity.setModelCalls(1);
             entity.setTokens(Math.max(tokens, 0));
@@ -88,11 +88,11 @@ public class MyBatisAppQuotaService implements AppQuotaService {
     }
 
     @Override
-    public AppUsage getDailyUsage(String appKey) {
-        var entity = usageMapper.selectByAppAndDate(appKey, LocalDate.now());
+    public AppUsage getDailyUsage(String agentKey) {
+        var entity = usageMapper.selectByAppAndDate(agentKey, LocalDate.now());
         return entity == null
-                ? new AppUsage(appKey, LocalDate.now(), 0, 0)
-                : new AppUsage(appKey, entity.getUsageDate(), nz(entity.getModelCalls()), nz(entity.getTokens()));
+                ? new AppUsage(agentKey, LocalDate.now(), 0, 0)
+                : new AppUsage(agentKey, entity.getUsageDate(), nz(entity.getModelCalls()), nz(entity.getTokens()));
     }
 
     private static int nz(Integer value) {

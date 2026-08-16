@@ -252,22 +252,22 @@ class KnowledgeManagementServiceTest {
         }
     }
 
-    private static final class RecordingBindingRepository implements ApplicationKnowledgeBindingRepository {
+    private static final class RecordingBindingRepository implements AgentKnowledgeBindingRepository {
         private final java.util.Map<String, List<Long>> bound = new java.util.HashMap<>();
 
         @Override
-        public void save(String appKey, List<Long> knowledgeBaseIds) {
-            bound.put(appKey, knowledgeBaseIds);
+        public void save(String agentKey, List<Long> knowledgeBaseIds) {
+            bound.put(agentKey, knowledgeBaseIds);
         }
 
         @Override
-        public List<Long> findByAppKey(String appKey) {
-            return bound.getOrDefault(appKey, List.of());
+        public List<Long> findByAgentKey(String agentKey) {
+            return bound.getOrDefault(agentKey, List.of());
         }
 
         @Override
-        public void delete(String appKey) {
-            bound.remove(appKey);
+        public void delete(String agentKey) {
+            bound.remove(agentKey);
         }
     }
 

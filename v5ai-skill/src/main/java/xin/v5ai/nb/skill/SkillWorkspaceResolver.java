@@ -1,11 +1,11 @@
 package xin.v5ai.nb.skill;
 
-import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.agent.Agent;
 
 import java.util.List;
 
 /**
- * 运行时 Skill 解析器：根据已发布 Application 的绑定配置，解析出本次运行要注入的
+ * 运行时 Skill 解析器：根据已发布 Agent 的绑定配置，解析出本次运行要注入的
  * 已发布 Skill 集合。
  *
  * 约定：
@@ -16,10 +16,10 @@ import java.util.List;
 public interface SkillWorkspaceResolver {
 
     /**
-     * 解析 Application 绑定的 Skill。
+     * 解析 Agent 绑定的 Skill。
      *
-     * @param application 已发布的 Application
+     * @param application 已发布的 Agent
      * @return 本次运行可注入的 Skill（可能为空列表）
      */
-    List<ResolvedSkill> resolveSkills(Application application);
+    List<ResolvedSkill> resolveSkills(Agent application);
 }

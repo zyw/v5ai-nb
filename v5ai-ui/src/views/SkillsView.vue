@@ -5,13 +5,13 @@ import {
   bindSkills,
   disableSkill,
   getSkillBindings,
-  listApplications,
+  listAgents,
   listSkills,
   listSkillVersions,
   publishSkillVersion,
   rollbackSkill,
   uploadSkill,
-  type ApplicationResponse,
+  type AgentResponse,
   type SkillResponse,
   type SkillVersionResponse
 } from '../api/client'
@@ -20,7 +20,7 @@ import { adminToken, isLoggedIn } from '../stores/session'
 const message = useMessage()
 const loading = ref(false)
 const skills = ref<SkillResponse[]>([])
-const applications = ref<ApplicationResponse[]>([])
+const agents = ref<AgentResponse[]>([])
 const selectedSkill = ref<SkillResponse | null>(null)
 const versions = ref<SkillVersionResponse[]>([])
 
@@ -30,7 +30,7 @@ const uploadForm = reactive({
 const file = ref<File | null>(null)
 
 const bindForm = reactive({
-  appKey: 'demo',
+  agentKey: 'demo',
   skillIds: [] as number[]
 })
 
@@ -86,10 +86,10 @@ async function reload() {
   try {
     const [skillRows, appRows] = await Promise.all([
       listSkills(adminToken.value),
-      listApplications(adminToken.value)
+      listAgents(adminToken.value)
     ])
     skills.value = skillRows
-    applications.value = appRows
+    agents.value = appRows
   } catch (error) {
     message.error(error instanceof Error ? error.message : '加载 Skill 数据失败')
   } finally {
@@ -158,7 +158,7 @@ async function handleDisable(skill: SkillResponse) {
 
 async function reloadBindings() {
   try {
-    bindForm.skillIds = await getSkillBindings(adminToken.value, bindForm.appKey)
+    bindForm.skillIds = await getSkillBindings(adminToken.value, bindForm.agentKey)
   } catch {
     bindForm.skillIds = []
   }
@@ -166,8 +166,8 @@ async function reloadBindings() {
 
 async function handleBind() {
   try {
-    await bindSkills(adminToken.value, bindForm.appKey, bindForm.skillIds)
-    message.success(`已更新 ${bindForm.appKey} 的 Skill 绑定`)
+    await bindSkills(adminToken.value, bindForm.agentKey, bindForm.skillIds)
+    message.success(`已更新 ${bindForm.agentKey} 的 Skill 绑定`)
     await reloadBindings()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '绑定失败')
@@ -176,8 +176,8 @@ async function handleBind() {
 
 onMounted(async () => {
   await reload()
-  if (applications.value.length > 0) {
-    bindForm.appKey = applications.value[0].appKey
+  if (agents.value.length > 0) {
+    bindForm.agentKey = agents.value[0].agentKey
   }
   await reloadBindings()
 })
@@ -193,7 +193,7 @@ onMounted(async () => {
       <n-form label-placement="top">
         <n-alert type="info" :show-icon="true">
           支持 .zip / .skill 包，结构：SKILL.md（YAML Front Matter 含 name、description）+ prompts/ + resources/ 文本资源。
-          上传后生成 DRAFT 版本，需发布后绑定到 Application 才会在运行时注入。
+          上传后生成 DRAFT 版本，需发布后绑定到 Agent 才会在运行时注入。
         </n-alert>
         <n-form-item label="技能包文件">
           <input type="file" accept=".zip,.skill" @change="onFileChange" />
@@ -205,14 +205,14 @@ onMounted(async () => {
       </n-form>
     </n-card>
 
-    <n-card title="Application 绑定 Skill" class="panel">
+    <n-card title="Agent 绑定 Skill" class="panel">
       <n-form label-placement="top">
-        <n-form-item label="Application App Key">
+        <n-form-item label="Agent App Key">
           <n-select
-            v-model:value="bindForm.appKey"
+            v-model:value="bindForm.agentKey"
             filterable
             tag
-            :options="applications.map(item => ({ label: item.appKey, value: item.appKey }))"
+            :options="agents.map(item => ({ label: item.agentKey, value: item.agentKey }))"
             @update:value="reloadBindings"
           />
         </n-form-item>
@@ -223,7 +223,7 @@ onMounted(async () => {
             clearable
             :options="skills.filter(s => s.status === 'ACTIVE' && s.currentVersionId !== null)
               .map(s => ({ label: `${s.name} (v${s.currentVersion})`, value: s.id }))"
-            placeholder="选择该 Application 可用的 Skill（仅已发布可选）"
+            placeholder="选择该 Agent 可用的 Skill（仅已发布可选）"
           />
         </n-form-item>
         <n-button secondary type="info" :disabled="!isLoggedIn" @click="handleBind">保存 Skill 绑定</n-button>

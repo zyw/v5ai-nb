@@ -41,13 +41,13 @@ class MyBatisAppQuotaServiceTest {
         var quotaMapper = mock(AppQuotaMapper.class);
         var usageMapper = mock(AppUsageMapper.class);
         var quotaEntity = new AppQuotaEntity();
-        quotaEntity.setAppKey("demo");
+        quotaEntity.setAgentKey("demo");
         quotaEntity.setDailyModelCalls(5);
         quotaEntity.setDailyTokens(0L);
         quotaEntity.setRatePerMinute(0);
         when(quotaMapper.selectByApp("demo")).thenReturn(quotaEntity);
         var usageEntity = new AppUsageEntity();
-        usageEntity.setAppKey("demo");
+        usageEntity.setAgentKey("demo");
         usageEntity.setUsageDate(LocalDate.now());
         usageEntity.setModelCalls(5);
         when(usageMapper.selectByAppAndDate("demo", LocalDate.now())).thenReturn(usageEntity);
@@ -60,7 +60,7 @@ class MyBatisAppQuotaServiceTest {
     void rateLimitBlocksWhenExceeded() {
         var quotaMapper = mock(AppQuotaMapper.class);
         var quotaEntity = new AppQuotaEntity();
-        quotaEntity.setAppKey("demo");
+        quotaEntity.setAgentKey("demo");
         quotaEntity.setRatePerMinute(10);
         when(quotaMapper.selectByApp("demo")).thenReturn(quotaEntity);
 
@@ -78,7 +78,7 @@ class MyBatisAppQuotaServiceTest {
 
         var captor = ArgumentCaptor.forClass(AppUsageEntity.class);
         verify(usageMapper).insert(captor.capture());
-        assertThat(captor.getValue().getAppKey()).isEqualTo("demo");
+        assertThat(captor.getValue().getAgentKey()).isEqualTo("demo");
         assertThat(captor.getValue().getModelCalls()).isEqualTo(1);
         assertThat(captor.getValue().getTokens()).isEqualTo(123);
         assertThat(captor.getValue().getUpdatedAt()).isNotNull();

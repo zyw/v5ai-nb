@@ -8,7 +8,7 @@ public interface RateLimiter {
     /**
      * 尝试获取 1 个许可。
      *
-     * @param key          限流维度（如 appKey）
+     * @param key          限流维度（如 agentKey）
      * @param permitsPerMinute 每分钟许可上限（0 表示不限）
      * @return true 放行；false 超出限流
      */

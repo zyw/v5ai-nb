@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 完成 Phase 1 的 Provider/Model 管理、Application 管理与发布、基础对话/SSE、会话与消息持久化、RunEvent 持久化，以及发布模型到 AgentScope Runtime 的解析边界。
+**Goal:** 完成 Phase 1 的 Provider/Model 管理、Agent 管理与发布、基础对话/SSE、会话与消息持久化、RunEvent 持久化，以及发布模型到 AgentScope Runtime 的解析边界。
 
-**Architecture:** 沿用现有 `v5ai-*` 多模块：`v5ai-model` 负责 Provider/Model 业务服务，`v5ai-application` 负责 Application 和发布版本，`v5ai-runtime` 负责运行时端口和事件，`v5ai-infrastructure` 提供 MyBatis/AgentScope 适配，`v5ai-api` 暴露 Admin 与 Runtime API。运行时只读取已发布 Application 版本，API DTO 不暴露 AgentScope SDK 类型。
+**Architecture:** 沿用现有 `v5ai-*` 多模块：`v5ai-model` 负责 Provider/Model 业务服务，`v5ai-agent` 负责 Agent 和发布版本，`v5ai-runtime` 负责运行时端口和事件，`v5ai-infrastructure` 提供 MyBatis/AgentScope 适配，`v5ai-api` 暴露 Admin 与 Runtime API。运行时只读取已发布 Agent 版本，API DTO 不暴露 AgentScope SDK 类型。
 
 **Tech Stack:** JDK 21, Spring Boot 4.1.0, MyBatis-Plus, PostgreSQL, Flyway, Sa-Token + JWT, Redisson, MinIO, AgentScope Java Harness 2.0, Reactor, JUnit 5.
 
@@ -20,7 +20,7 @@
 - Redis 使用 Redisson。
 - 不使用 Server-Agent 架构，使用 Dify 架构。
 - Phase 1 不实现 RAG、MCP、Skill、Workflow。
-- Runtime 只能读取已发布 Application 版本。
+- Runtime 只能读取已发布 Agent 版本。
 - API DTO 不暴露 AgentScope Java SDK 类型。
 - 所有新增行为先写失败测试，再写实现。
 
@@ -70,19 +70,19 @@
 - [ ] Implement entities, mappers, repositories, and provider id resolution through `v5ai_model_provider`.
 - [ ] Run infrastructure model tests and verify they pass.
 
-## Task 3: Application CRUD and published version persistence
+## Task 3: Agent CRUD and published version persistence
 
 **Files:**
-- Create: `v5ai-application/src/main/java/xin/v5ai/nb/application/CreateApplicationCommand.java`
-- Create: `v5ai-application/src/main/java/xin/v5ai/nb/application/PublishApplicationCommand.java`
-- Modify: `v5ai-application/src/main/java/xin/v5ai/nb/application/ApplicationManagementService.java`
+- Create: `v5ai-agent/src/main/java/xin/v5ai/nb/application/CreateApplicationCommand.java`
+- Create: `v5ai-agent/src/main/java/xin/v5ai/nb/application/PublishApplicationCommand.java`
+- Modify: `v5ai-agent/src/main/java/xin/v5ai/nb/application/ApplicationManagementService.java`
 - Create: `v5ai-api/src/main/java/xin/v5ai/nb/api/application/ApplicationController.java`
 - Create: `v5ai-infrastructure/src/main/java/xin/v5ai/nb/infrastructure/application/ApplicationEntity.java`
 - Create: `v5ai-infrastructure/src/main/java/xin/v5ai/nb/infrastructure/application/ApplicationVersionEntity.java`
 - Create: `v5ai-infrastructure/src/main/java/xin/v5ai/nb/infrastructure/application/ApplicationMapper.java`
 - Create: `v5ai-infrastructure/src/main/java/xin/v5ai/nb/infrastructure/application/ApplicationVersionMapper.java`
 - Modify: `v5ai-infrastructure/src/main/java/xin/v5ai/nb/infrastructure/application/ApplicationRuntimeConfiguration.java`
-- Test: `v5ai-application/src/test/java/xin/v5ai/nb/application/ApplicationManagementServiceTest.java`
+- Test: `v5ai-agent/src/test/java/xin/v5ai/nb/application/ApplicationManagementServiceTest.java`
 - Test: `v5ai-infrastructure/src/test/java/xin/v5ai/nb/infrastructure/application/MyBatisApplicationRepositoryTest.java`
 
 **Interfaces:**
@@ -132,7 +132,7 @@
 - Test: `v5ai-infrastructure/src/test/java/xin/v5ai/nb/infrastructure/runtime/PublishedModelAgentTextExecutorTest.java`
 
 **Interfaces:**
-- Consumes: published `Application.modelId`
+- Consumes: published `Agent.modelId`
 - Produces: `AgentTextExecutor` that resolves a model per published application, then delegates to `AgentScopeHarnessExecutor`.
 
 - [ ] Write failing tests for resolving model per application and falling back to development placeholder only when no resolver/model exists.

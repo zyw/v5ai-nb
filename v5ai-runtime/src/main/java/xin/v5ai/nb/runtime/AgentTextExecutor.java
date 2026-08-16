@@ -1,7 +1,7 @@
 package xin.v5ai.nb.runtime;
 
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.agent.Agent;
 
 /**
  * 文本型 Agent 执行器：把应用配置 + 运行请求转化为文本事件流。
@@ -19,5 +19,5 @@ public interface AgentTextExecutor {
      * @param request     本次运行的请求（含 query 与可选 RAG 上下文）
      * @return 文本事件流（Text 增量 / ModelCall 标记）
      */
-    Flux<AgentTextEvent> streamText(Application application, AgentRunRequest request);
+    Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request);
 }

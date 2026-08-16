@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-import xin.v5ai.nb.application.Application;
-import xin.v5ai.nb.application.ApplicationStatus;
+import xin.v5ai.nb.agent.Agent;
+import xin.v5ai.nb.agent.AgentStatus;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -29,7 +29,7 @@ class AgentScopeHarnessExecutorTest {
                 tempDir.resolve("workspace"));
 
         StepVerifier.create(executor.streamText(
-                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L),
+                        new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 1L, 1L),
                         new AgentRunRequest("demo", "c1", "hello")))
                 .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall call
                         && call.modelName().equals("fixed-text"))

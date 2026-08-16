@@ -8,14 +8,14 @@ import java.time.Instant;
 @TableName("v5ai_app_quota")
 public class AppQuotaEntity {
     @TableId
-    private String appKey;
+    private String agentKey;
     private Integer dailyModelCalls;
     private Long dailyTokens;
     private Integer ratePerMinute;
     private Instant updatedAt;
 
-    public String getAppKey() { return appKey; }
-    public void setAppKey(String appKey) { this.appKey = appKey; }
+    public String getAgentKey() { return agentKey; }
+    public void setAgentKey(String agentKey) { this.agentKey = agentKey; }
     public Integer getDailyModelCalls() { return dailyModelCalls; }
     public void setDailyModelCalls(Integer dailyModelCalls) { this.dailyModelCalls = dailyModelCalls; }
     public Long getDailyTokens() { return dailyTokens; }

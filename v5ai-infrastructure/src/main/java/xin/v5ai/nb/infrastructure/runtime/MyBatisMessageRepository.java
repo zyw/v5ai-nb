@@ -19,7 +19,7 @@ public class MyBatisMessageRepository implements MessageRepository {
     public void save(Message message) {
         var entity = new RuntimeMessageEntity();
         entity.setConversationId(message.conversationId());
-        entity.setAppKey(message.appKey());
+        entity.setAgentKey(message.agentKey());
         entity.setRole(message.role().name());
         entity.setContent(message.content());
         gateway.insertMessage(entity);
@@ -28,7 +28,7 @@ public class MyBatisMessageRepository implements MessageRepository {
     @Override
     public List<Message> findByConversationId(String conversationId) {
         return gateway.selectMessagesByConversationId(conversationId).stream()
-                .map(entity -> new Message(entity.getConversationId(), entity.getAppKey(),
+                .map(entity -> new Message(entity.getConversationId(), entity.getAgentKey(),
                         MessageRole.valueOf(entity.getRole()), entity.getContent()))
                 .toList();
     }

@@ -1,7 +1,7 @@
 package xin.v5ai.nb.api.skill;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.skill.ApplicationSkillBindingRepository;
+import xin.v5ai.nb.skill.AgentSkillBindingRepository;
 import xin.v5ai.nb.skill.Skill;
 import xin.v5ai.nb.skill.SkillFileRepository;
 import xin.v5ai.nb.skill.SkillManagementService;
@@ -190,22 +190,22 @@ class SkillControllerTest {
         }
     }
 
-    private static final class RecordingBindingRepository implements ApplicationSkillBindingRepository {
+    private static final class RecordingBindingRepository implements AgentSkillBindingRepository {
         private final Map<String, List<Long>> bindings = new LinkedHashMap<>();
 
         @Override
-        public void save(String appKey, List<Long> skillIds) {
-            bindings.put(appKey, new ArrayList<>(skillIds));
+        public void save(String agentKey, List<Long> skillIds) {
+            bindings.put(agentKey, new ArrayList<>(skillIds));
         }
 
         @Override
-        public List<Long> findByAppKey(String appKey) {
-            return bindings.getOrDefault(appKey, List.of());
+        public List<Long> findByAgentKey(String agentKey) {
+            return bindings.getOrDefault(agentKey, List.of());
         }
 
         @Override
-        public void delete(String appKey) {
-            bindings.remove(appKey);
+        public void delete(String agentKey) {
+            bindings.remove(agentKey);
         }
     }
 }

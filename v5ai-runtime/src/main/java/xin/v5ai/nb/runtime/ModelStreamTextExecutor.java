@@ -19,7 +19,7 @@ import io.agentscope.harness.agent.HarnessAgent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.agent.Agent;
 import xin.v5ai.nb.mcp.McpConnection;
 import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
 import xin.v5ai.nb.mcp.McpToolPermission;
@@ -45,9 +45,9 @@ import java.util.stream.Collectors;
  * - 支持多轮对话历史回放（request.history 拼进消息列表）；
  * - 支持注入 RAG 上下文（放进系统提示）；
  * - 发起模型请求前先发 {@code MODEL_CALL} 标记，供运行时转为平台事件；
- * - 可选 MCP 集成：Application 绑定 MCP Server 时，动态注册工具到
+ * - 可选 MCP 集成：Agent 绑定 MCP Server 时，动态注册工具到
  *   HarnessAgent Toolkit，并通过 AgentScope 事件流映射出 ToolCall/ToolResult 事件；
- * - 可选 Skill 集成：Application 绑定 Skill 时，把已发布版本文件注入 workspace
+ * - 可选 Skill 集成：Agent 绑定 Skill 时，把已发布版本文件注入 workspace
  *   （{@code skills/<name>/}）并注册只读 Skill 仓库，让 SkillRuntime 把
  *   {@code <available_skills>} 注入系统提示。
  */
@@ -88,7 +88,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     }
 
     @Override
-    public Flux<AgentTextEvent> streamText(Application application, AgentRunRequest request) {
+    public Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request) {
         var tools = mcpToolResolver == null ? List.<ResolvedMcpTool>of() : mcpToolResolver.resolveTools(application);
         var skills = skillWorkspaceResolver == null ? List.<ResolvedSkill>of() : skillWorkspaceResolver.resolveSkills(application);
         if (tools.isEmpty() && skills.isEmpty()) {
@@ -100,7 +100,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     /**
      * 无 MCP/Skill 的轻量路径：直接调用模型流式接口。
      */
-    private Flux<AgentTextEvent> streamDirect(Application application, AgentRunRequest request) {
+    private Flux<AgentTextEvent> streamDirect(Agent application, AgentRunRequest request) {
         List<Msg> messages = buildMessages(application, request);
         return Flux.concat(
                 Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
@@ -116,7 +116,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      * 并映射为平台事件。
      */
     private Flux<AgentTextEvent> streamWithExtensions(
-            Application application, AgentRunRequest request,
+            Agent application, AgentRunRequest request,
             List<ResolvedMcpTool> tools, List<ResolvedSkill> skills) {
         ensureWorkspaceExists();
         var workspace = this.workspace != null ? this.workspace : Path.of(".agentscope/workspace");
@@ -249,12 +249,17 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      * 2) 历史消息：按角色映射为 USER/ASSISTANT；
      * 3) 当前用户提问。
      */
-    private static List<Msg> buildMessages(Application application, AgentRunRequest request) {
+    private static List<Msg> buildMessages(Agent application, AgentRunRequest request) {
         List<Msg> messages = new ArrayList<>();
         var system = new StringBuilder();
-        system.append("You are the assistant for application \"").append(application.name()).append("\".");
-        if (application.description() != null && !application.description().isBlank()) {
-            system.append(' ').append(application.description());
+        // 配置了系统提示词则优先使用，否则回退默认（应用身份 + 描述）
+        if (application.systemPrompt() != null && !application.systemPrompt().isBlank()) {
+            system.append(application.systemPrompt());
+        } else {
+            system.append("You are the assistant for application \"").append(application.name()).append("\".");
+            if (application.description() != null && !application.description().isBlank()) {
+                system.append(' ').append(application.description());
+            }
         }
         if (request.ragContext() != null && !request.ragContext().isBlank()) {
             system.append("\n\nUse the following knowledge base context when relevant:\n")

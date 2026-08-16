@@ -13,7 +13,7 @@ public class KnowledgeManagementService {
     private final KnowledgeDocumentRepository documentRepository;
     private final KnowledgeDocumentContentStore contentStore;
     private final KnowledgeTaskRepository taskRepository;
-    private final ApplicationKnowledgeBindingRepository bindingRepository;
+    private final AgentKnowledgeBindingRepository bindingRepository;
     private final VectorStore vectorStore;
     private final UrlContentFetcher urlContentFetcher;
 
@@ -22,7 +22,7 @@ public class KnowledgeManagementService {
             KnowledgeDocumentRepository documentRepository,
             KnowledgeDocumentContentStore contentStore,
             KnowledgeTaskRepository taskRepository,
-            ApplicationKnowledgeBindingRepository bindingRepository,
+            AgentKnowledgeBindingRepository bindingRepository,
             VectorStore vectorStore,
             UrlContentFetcher urlContentFetcher
     ) {
@@ -114,18 +114,18 @@ public class KnowledgeManagementService {
         return taskRepository.findByDocumentId(documentId);
     }
 
-    public void bindKnowledgeBases(String appKey, List<Long> knowledgeBaseIds) {
+    public void bindKnowledgeBases(String agentKey, List<Long> knowledgeBaseIds) {
         if (knowledgeBaseIds == null) {
             throw new IllegalArgumentException("knowledgeBaseIds is required");
         }
         for (Long id : knowledgeBaseIds) {
             requireKnowledgeBase(id);
         }
-        bindingRepository.save(appKey, knowledgeBaseIds);
+        bindingRepository.save(agentKey, knowledgeBaseIds);
     }
 
-    public List<Long> getKnowledgeBindings(String appKey) {
-        return bindingRepository.findByAppKey(appKey);
+    public List<Long> getKnowledgeBindings(String agentKey) {
+        return bindingRepository.findByAgentKey(agentKey);
     }
 
     private void submitIndexTask(KnowledgeDocument document) {

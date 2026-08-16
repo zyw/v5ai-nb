@@ -15,14 +15,14 @@ public class SkillManagementService {
     private final SkillRepository skillRepository;
     private final SkillVersionRepository versionRepository;
     private final SkillFileRepository fileRepository;
-    private final ApplicationSkillBindingRepository bindingRepository;
+    private final AgentSkillBindingRepository bindingRepository;
     private final SkillPackageParser packageParser;
 
     public SkillManagementService(
             SkillRepository skillRepository,
             SkillVersionRepository versionRepository,
             SkillFileRepository fileRepository,
-            ApplicationSkillBindingRepository bindingRepository,
+            AgentSkillBindingRepository bindingRepository,
             SkillPackageParser packageParser
     ) {
         this.skillRepository = skillRepository;
@@ -109,11 +109,11 @@ public class SkillManagementService {
         return skillRepository.update(skill.withCurrentVersion(version.id(), version.version()));
     }
 
-    // ---------- Application 绑定 ----------
+    // ---------- Agent 绑定 ----------
 
-    public void bindSkills(String appKey, List<Long> skillIds) {
-        if (appKey == null || appKey.isBlank()) {
-            throw new IllegalArgumentException("appKey is required");
+    public void bindSkills(String agentKey, List<Long> skillIds) {
+        if (agentKey == null || agentKey.isBlank()) {
+            throw new IllegalArgumentException("agentKey is required");
         }
         if (skillIds == null) {
             throw new IllegalArgumentException("skillIds is required");
@@ -121,11 +121,11 @@ public class SkillManagementService {
         for (Long skillId : skillIds) {
             requireBindableSkill(skillId);
         }
-        bindingRepository.save(appKey, skillIds);
+        bindingRepository.save(agentKey, skillIds);
     }
 
-    public List<Long> getSkillBindings(String appKey) {
-        return bindingRepository.findByAppKey(appKey);
+    public List<Long> getSkillBindings(String agentKey) {
+        return bindingRepository.findByAgentKey(agentKey);
     }
 
     // ---------- 运行时解析 ----------

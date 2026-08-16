@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Phase 1 Vue frontend around `vue-router`, consuming the existing authentication, Provider/Model, Application publish, and chat runtime APIs.
+**Goal:** Build the Phase 1 Vue frontend around `vue-router`, consuming the existing authentication, Provider/Model, Agent publish, and chat runtime APIs.
 
 **Architecture:** Keep the frontend as a Vue 3 + Naive UI Vite app. `App.vue` becomes a shell with a routed content area; route pages own their forms/tables and call a typed API client. Admin JWT is stored in a tiny reactive session module backed by `localStorage`.
 
@@ -14,7 +14,7 @@
 - Frontend routing must use `vue-router`.
 - Do not change backend APIs for this slice.
 - Consume existing endpoints under `/api`.
-- Application creation currently requires numeric `modelId`; the current model list response does not expose `id`, so the UI will accept `modelId` manually until the backend response is extended.
+- Agent creation currently requires numeric `modelId`; the current model list response does not expose `id`, so the UI will accept `modelId` manually until the backend response is extended.
 
 ---
 
@@ -65,7 +65,7 @@
 - [ ] Provide admin login and token persistence.
 - [ ] Build Provider create/list UI.
 - [ ] Build Model create/list UI with credentials JSON textarea.
-- [ ] Build Application create/list/publish UI.
+- [ ] Build Agent create/list/publish UI.
 - [ ] Document Phase 1 runtime assumptions in Settings.
 
 ### Task 4: Chat Debug View
@@ -77,8 +77,8 @@
 **Interfaces:**
 - Consumes `chat` and `streamChat` from Task 2.
 
-- [ ] Add blocking chat call for `/api/v1/apps/{appKey}/chat`.
-- [ ] Add streaming chat call for `/api/v1/apps/{appKey}/chat/stream`.
+- [ ] Add blocking chat call for `/api/v1/agents/{agentKey}/chat`.
+- [ ] Add streaming chat call for `/api/v1/agents/{agentKey}/chat/stream`.
 - [ ] Render accumulated answer and runtime events.
 - [ ] Add layout CSS for cards, tables, forms, and chat output.
 

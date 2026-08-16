@@ -53,30 +53,33 @@ export interface TestConnectionResponse {
   message: string
 }
 
-export interface ApplicationResponse {
-  appKey: string
+export interface AgentResponse {
+  agentKey: string
   name: string
   description?: string | null
   status: string
   modelId: number
   publishedVersion?: number | null
+  systemPrompt?: string | null
 }
 
-export interface CreateApplicationRequest {
-  appKey: string
+export interface CreateAgentRequest {
+  agentKey: string
   name: string
   description?: string
   modelId: number
+  systemPrompt?: string
 }
 
-export interface UpdateApplicationRequest {
+export interface UpdateAgentRequest {
   name?: string
   description?: string
   modelId?: number
+  systemPrompt?: string
 }
 
-export interface ApplicationVersionResponse {
-  appKey: string
+export interface AgentVersionResponse {
+  agentKey: string
   version: number
   snapshotJson: string
   description?: string | null
@@ -135,12 +138,12 @@ export interface TaskResponse {
 }
 
 export interface CreateApiKeyResult {
-  appKey: string
+  agentKey: string
   apiKey: string
 }
 
 export interface ApiKeyRecord {
-  appKey: string
+  agentKey: string
   enabled: boolean
 }
 
@@ -251,38 +254,38 @@ export function testModelConnection(adminToken: string, id: number): Promise<Tes
   }, adminToken)
 }
 
-// ---- Application ----
+// ---- Agent ----
 
-export function listApplications(adminToken: string): Promise<ApplicationResponse[]> {
-  return requestJson<ApplicationResponse[]>('/api/admin/applications', {}, adminToken)
+export function listAgents(adminToken: string): Promise<AgentResponse[]> {
+  return requestJson<AgentResponse[]>('/api/admin/agents', {}, adminToken)
 }
 
-export function createApplication(adminToken: string, request: CreateApplicationRequest): Promise<ApplicationResponse> {
-  return requestJson<ApplicationResponse>('/api/admin/applications', {
+export function createAgent(adminToken: string, request: CreateAgentRequest): Promise<AgentResponse> {
+  return requestJson<AgentResponse>('/api/admin/agents', {
     method: 'POST',
     body: JSON.stringify(request)
   }, adminToken)
 }
 
-export function updateApplication(adminToken: string, appKey: string, request: UpdateApplicationRequest): Promise<ApplicationResponse> {
-  return requestJson<ApplicationResponse>(`/api/admin/applications/${encodeURIComponent(appKey)}`, {
+export function updateAgent(adminToken: string, agentKey: string, request: UpdateAgentRequest): Promise<AgentResponse> {
+  return requestJson<AgentResponse>(`/api/admin/agents/${encodeURIComponent(agentKey)}`, {
     method: 'PUT',
     body: JSON.stringify(request)
   }, adminToken)
 }
 
-export function disableApplication(adminToken: string, appKey: string): Promise<void> {
-  return requestJson<void>(`/api/admin/applications/${encodeURIComponent(appKey)}`, {
+export function disableAgent(adminToken: string, agentKey: string): Promise<void> {
+  return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}`, {
     method: 'DELETE'
   }, adminToken)
 }
 
-export function listApplicationVersions(adminToken: string, appKey: string): Promise<ApplicationVersionResponse[]> {
-  return requestJson<ApplicationVersionResponse[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/versions`, {}, adminToken)
+export function listAgentVersions(adminToken: string, agentKey: string): Promise<AgentVersionResponse[]> {
+  return requestJson<AgentVersionResponse[]>(`/api/admin/agents/${encodeURIComponent(agentKey)}/versions`, {}, adminToken)
 }
 
-export function publishApplication(adminToken: string, appKey: string, description: string): Promise<ApplicationResponse> {
-  return requestJson<ApplicationResponse>(`/api/admin/applications/${encodeURIComponent(appKey)}/publish`, {
+export function publishAgent(adminToken: string, agentKey: string, description: string): Promise<AgentResponse> {
+  return requestJson<AgentResponse>(`/api/admin/agents/${encodeURIComponent(agentKey)}/publish`, {
     method: 'POST',
     body: JSON.stringify({ description })
   }, adminToken)
@@ -290,8 +293,8 @@ export function publishApplication(adminToken: string, appKey: string, descripti
 
 // ---- Runtime chat ----
 
-export function chat(appKey: string, apiKey: string, request: ChatRequest): Promise<AgentRunResult> {
-  return requestJson<AgentRunResult>(`/api/v1/apps/${encodeURIComponent(appKey)}/chat`, {
+export function chat(agentKey: string, apiKey: string, request: ChatRequest): Promise<AgentRunResult> {
+  return requestJson<AgentRunResult>(`/api/v1/agents/${encodeURIComponent(agentKey)}/chat`, {
     method: 'POST',
     headers: {
       Authorization: normalizeBearer(apiKey)
@@ -301,12 +304,12 @@ export function chat(appKey: string, apiKey: string, request: ChatRequest): Prom
 }
 
 export async function streamChat(
-  appKey: string,
+  agentKey: string,
   apiKey: string,
   request: ChatRequest,
   onEvent: (event: string, data: string) => void
 ): Promise<void> {
-  const response = await fetch(`${apiBase}/api/v1/apps/${appKey}/chat/stream`, {
+  const response = await fetch(`${apiBase}/api/v1/agents/${agentKey}/chat/stream`, {
     method: 'POST',
     headers: {
       Authorization: normalizeBearer(apiKey),
@@ -337,21 +340,21 @@ export async function streamChat(
   }
 }
 
-export function getConversationMessages(appKey: string, apiKey: string, conversationId: string): Promise<ConversationMessageResponse[]> {
+export function getConversationMessages(agentKey: string, apiKey: string, conversationId: string): Promise<ConversationMessageResponse[]> {
   return requestJson<ConversationMessageResponse[]>(
-    `/api/v1/apps/${encodeURIComponent(appKey)}/chat/conversations/${encodeURIComponent(conversationId)}`,
+    `/api/v1/agents/${encodeURIComponent(agentKey)}/chat/conversations/${encodeURIComponent(conversationId)}`,
     { headers: { Authorization: normalizeBearer(apiKey) } }
   )
 }
 
 export async function resumeConversation(
-  appKey: string,
+  agentKey: string,
   apiKey: string,
   conversationId: string,
   query: string,
   onEvent: (event: string, data: string) => void
 ): Promise<void> {
-  const response = await fetch(`${apiBase}/api/v1/apps/${appKey}/chat/conversations/${conversationId}/resume`, {
+  const response = await fetch(`${apiBase}/api/v1/agents/${agentKey}/chat/conversations/${conversationId}/resume`, {
     method: 'POST',
     headers: {
       Authorization: normalizeBearer(apiKey),
@@ -431,21 +434,21 @@ export function listTasks(adminToken: string, kbId: number): Promise<TaskRespons
   return requestJson<TaskResponse[]>(`/api/admin/knowledge-bases/${kbId}/tasks`, {}, adminToken)
 }
 
-export function bindKnowledgeBases(adminToken: string, appKey: string, knowledgeBaseIds: number[]): Promise<void> {
-  return requestJson<void>(`/api/admin/applications/${encodeURIComponent(appKey)}/knowledge-bindings`, {
+export function bindKnowledgeBases(adminToken: string, agentKey: string, knowledgeBaseIds: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/knowledge-bindings`, {
     method: 'POST',
     body: JSON.stringify({ knowledgeBaseIds })
   }, adminToken)
 }
 
-export function getKnowledgeBindings(adminToken: string, appKey: string): Promise<number[]> {
-  return requestJson<number[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/knowledge-bindings`, {}, adminToken)
+export function getKnowledgeBindings(adminToken: string, agentKey: string): Promise<number[]> {
+  return requestJson<number[]>(`/api/admin/agents/${encodeURIComponent(agentKey)}/knowledge-bindings`, {}, adminToken)
 }
 
 // ---- API keys ----
 
-export function createApiKey(adminToken: string, appKey: string): Promise<CreateApiKeyResult> {
-  return requestJson<CreateApiKeyResult>(`/api/admin/applications/${encodeURIComponent(appKey)}/api-keys`, {
+export function createApiKey(adminToken: string, agentKey: string): Promise<CreateApiKeyResult> {
+  return requestJson<CreateApiKeyResult>(`/api/admin/agents/${encodeURIComponent(agentKey)}/api-keys`, {
     method: 'POST'
   }, adminToken)
 }
@@ -454,8 +457,8 @@ export function listApiKeys(adminToken: string): Promise<ApiKeyRecord[]> {
   return requestJson<ApiKeyRecord[]>('/api/admin/api-keys', {}, adminToken)
 }
 
-export function deleteApiKey(adminToken: string, appKey: string): Promise<void> {
-  return requestJson<void>(`/api/admin/applications/${encodeURIComponent(appKey)}/api-keys`, {
+export function deleteApiKey(adminToken: string, agentKey: string): Promise<void> {
+  return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/api-keys`, {
     method: 'DELETE'
   }, adminToken)
 }
@@ -582,15 +585,15 @@ export function listMcpToolCallsByServer(adminToken: string, id: number): Promis
   return requestJson<McpToolCallAuditResponse[]>(`/api/admin/mcp-servers/${id}/tool-calls`, {}, adminToken)
 }
 
-export function bindMcpServers(adminToken: string, appKey: string, mcpServerIds: number[]): Promise<void> {
-  return requestJson<void>(`/api/admin/applications/${encodeURIComponent(appKey)}/mcp-bindings`, {
+export function bindMcpServers(adminToken: string, agentKey: string, mcpServerIds: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/mcp-bindings`, {
     method: 'POST',
     body: JSON.stringify({ mcpServerIds })
   }, adminToken)
 }
 
-export function getMcpServerBindings(adminToken: string, appKey: string): Promise<number[]> {
-  return requestJson<number[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/mcp-bindings`, {}, adminToken)
+export function getMcpServerBindings(adminToken: string, agentKey: string): Promise<number[]> {
+  return requestJson<number[]>(`/api/admin/agents/${encodeURIComponent(agentKey)}/mcp-bindings`, {}, adminToken)
 }
 
 // ---- Skills ----
@@ -653,15 +656,15 @@ export function rollbackSkill(adminToken: string, id: number, versionId: number)
   }, adminToken)
 }
 
-export function bindSkills(adminToken: string, appKey: string, skillIds: number[]): Promise<void> {
-  return requestJson<void>(`/api/admin/applications/${encodeURIComponent(appKey)}/skill-bindings`, {
+export function bindSkills(adminToken: string, agentKey: string, skillIds: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/skill-bindings`, {
     method: 'POST',
     body: JSON.stringify({ skillIds })
   }, adminToken)
 }
 
-export function getSkillBindings(adminToken: string, appKey: string): Promise<number[]> {
-  return requestJson<number[]>(`/api/admin/applications/${encodeURIComponent(appKey)}/skill-bindings`, {}, adminToken)
+export function getSkillBindings(adminToken: string, agentKey: string): Promise<number[]> {
+  return requestJson<number[]>(`/api/admin/agents/${encodeURIComponent(agentKey)}/skill-bindings`, {}, adminToken)
 }
 
 // ---- Platform (Phase 5) ----
@@ -685,7 +688,7 @@ export interface UserAccount {
 }
 
 export interface AppQuota {
-  appKey: string
+  agentKey: string
   dailyModelCalls: number
   dailyTokens: number
   ratePerMinute: number
@@ -693,7 +696,7 @@ export interface AppQuota {
 }
 
 export interface AppUsage {
-  appKey: string
+  agentKey: string
   usageDate: string
   modelCalls: number
   tokens: number
@@ -702,7 +705,7 @@ export interface AppUsage {
 export interface UsageRecord {
   id: number
   runId?: string | null
-  appKey?: string | null
+  agentKey?: string | null
   modelKey?: string | null
   promptTokens: number
   completionTokens: number
@@ -725,7 +728,7 @@ export interface AuditLog {
 }
 
 export interface OverviewResponse {
-  applications: number
+  agents: number
   models: number
   knowledgeBases: number
   skills: number
@@ -785,24 +788,24 @@ export function updateUserEnabled(adminToken: string, id: number, enabled: boole
   }, adminToken)
 }
 
-export function getAppQuota(adminToken: string, appKey: string): Promise<AppQuota> {
-  return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(appKey)}/quota`, {}, adminToken)
+export function getAppQuota(adminToken: string, agentKey: string): Promise<AppQuota> {
+  return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(agentKey)}/quota`, {}, adminToken)
 }
 
-export function updateAppQuota(adminToken: string, appKey: string, request: { dailyModelCalls?: number; dailyTokens?: number; ratePerMinute?: number }): Promise<AppQuota> {
-  return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(appKey)}/quota`, {
+export function updateAppQuota(adminToken: string, agentKey: string, request: { dailyModelCalls?: number; dailyTokens?: number; ratePerMinute?: number }): Promise<AppQuota> {
+  return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(agentKey)}/quota`, {
     method: 'PUT',
     body: JSON.stringify(request)
   }, adminToken)
 }
 
-export function getAppDailyUsage(adminToken: string, appKey: string): Promise<AppUsage> {
-  return requestJson<AppUsage>(`/api/admin/apps/${encodeURIComponent(appKey)}/usage/daily`, {}, adminToken)
+export function getAppDailyUsage(adminToken: string, agentKey: string): Promise<AppUsage> {
+  return requestJson<AppUsage>(`/api/admin/apps/${encodeURIComponent(agentKey)}/usage/daily`, {}, adminToken)
 }
 
-export function listUsage(adminToken: string, params: { appKey?: string; from?: string; to?: string; limit?: number } = {}): Promise<UsageRecord[]> {
+export function listUsage(adminToken: string, params: { agentKey?: string; from?: string; to?: string; limit?: number } = {}): Promise<UsageRecord[]> {
   const query = new URLSearchParams()
-  if (params.appKey) query.set('appKey', params.appKey)
+  if (params.agentKey) query.set('agentKey', params.agentKey)
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
   if (params.limit) query.set('limit', String(params.limit))

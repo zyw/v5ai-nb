@@ -80,7 +80,7 @@ v5ai-nb/
 ├── v5ai-rag/                   # 知识库/文档/任务领域与检索
 ├── v5ai-worker/                # 文档索引 Worker（@Scheduled）
 ├── v5ai-runtime/               # Agent 运行时边界与事件
-├── v5ai-model/ v5ai-application/ v5ai-common/ v5ai-domain/
+├── v5ai-model/ v5ai-agent/ v5ai-common/ v5ai-domain/
 └── v5ai-ui/                    # Vue 3 + Vite 管理前端
 ```
 
@@ -243,21 +243,21 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
    curl -s -X POST http://localhost:8080/api/admin/models/<modelId>/test -H "Authorization: Bearer $TOKEN"
    ```
 
-4. **创建并发布 Application**
+4. **创建并发布 Agent**
 
    ```bash
-   curl -s http://localhost:8080/api/admin/applications -H "Authorization: Bearer $TOKEN" \
+   curl -s http://localhost:8080/api/admin/agents -H "Authorization: Bearer $TOKEN" \
      -H 'Content-Type: application/json' \
-     -d '{"appKey":"demo","name":"Demo App","modelId":<modelId>}'
-   curl -s -X POST http://localhost:8080/api/admin/applications/demo/publish \
+     -d '{"agentKey":"demo","name":"Demo App","modelId":<modelId>}'
+   curl -s -X POST http://localhost:8080/api/admin/agents/demo/publish \
      -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"description":"v1"}'
    ```
 
 5. **生成运行 API Key**（仅返回一次）
 
    ```bash
-   curl -s -X POST http://localhost:8080/api/admin/applications/demo/api-keys -H "Authorization: Bearer $TOKEN"
-   # 返回 {"appKey":"demo","apiKey":"v5ai_..."}，记下 $APP_KEY
+   curl -s -X POST http://localhost:8080/api/admin/agents/demo/api-keys -H "Authorization: Bearer $TOKEN"
+   # 返回 {"agentKey":"demo","apiKey":"v5ai_..."}，记下 $APP_KEY
    ```
 
 6. **配置知识库并上传文档**（Worker 异步索引）
@@ -271,17 +271,17 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
    # 未配置 EMBEDDING 模型时自动使用本地 Hash 嵌入，同样可完成索引
    ```
 
-7. **绑定知识库到 Application**
+7. **绑定知识库到 Agent**
 
    ```bash
-   curl -s -X POST http://localhost:8080/api/admin/applications/demo/knowledge-bindings \
+   curl -s -X POST http://localhost:8080/api/admin/agents/demo/knowledge-bindings \
      -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"knowledgeBaseIds":[1]}'
    ```
 
 8. **流式对话（带 RAG 上下文）**
 
    ```bash
-   curl -N http://localhost:8080/api/v1/apps/demo/chat/stream \
+   curl -N http://localhost:8080/api/v1/agents/demo/chat/stream \
      -H "Authorization: Bearer $APP_KEY" -H 'Content-Type: application/json' \
      -d '{"query":"根据知识库回答：v5ai 是什么？"}'
    # SSE 事件顺序示例：
@@ -295,9 +295,9 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
 9. **会话历史与恢复**
 
    ```bash
-   curl -s http://localhost:8080/api/v1/apps/demo/chat/conversations/<conversationId> \
+   curl -s http://localhost:8080/api/v1/agents/demo/chat/conversations/<conversationId> \
      -H "Authorization: Bearer $APP_KEY"
-   curl -N -X POST http://localhost:8080/api/v1/apps/demo/chat/conversations/<conversationId>/resume \
+   curl -N -X POST http://localhost:8080/api/v1/agents/demo/chat/conversations/<conversationId>/resume \
      -H "Authorization: Bearer $APP_KEY" -H 'Content-Type: application/json' -d '{"query":"继续"}'
    ```
 
@@ -322,7 +322,7 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
 | Flyway 校验失败 / 迁移报错 | 数据库曾用旧版 schema；开发环境可 `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` 后重建，或直接重建库 |
 | 登录返回 `invalid credentials` | `v5ai_user` 未初始化（见 4.3）或密码哈希非 BCrypt |
 | 运行接口返回 401 | 未携带 `Authorization: Bearer <application-api-key>`，或该 app 尚未生成 Key（见 6.5） |
-| 对话返回 `application is not published` | Application 未发布，先调 `publish`（见 6.4） |
+| 对话返回 `application is not published` | Agent 未发布，先调 `publish`（见 6.4） |
 | 对话返回 `application requires an enabled model` | 绑定模型的 provider/model 未启用或 model id 不存在 |
 | 知识库文档一直是 PENDING/FAILED | Worker 每 5 秒扫描一次；FAILED 可查看 `errorMessage` 并通过 `POST /api/admin/documents/{id}/retry` 重置 |
 | 流式对话没有 RETRIEVAL 事件 | 未绑定知识库、检索无命中，或文档索引未完成（见 6.6/6.7） |
@@ -347,7 +347,7 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
 
 ## 9. 部署相关已知限制
 
-- **管理接口鉴权**：目前只有运行接口（`/api/v1/apps/**`）强制校验 Application API Key；
+- **管理接口鉴权**：目前只有运行接口（`/api/v1/agents/**`）强制校验 Agent API Key；
   `/api/admin/**` 尚未接入服务端 Token 校验（前端已携带，但服务端未强制）。生产部署前需补
   Sa-Token 拦截器/网关鉴权。
 - **文档存储**：文档内容当前存入数据库（BYTEA）；MinIO 对象存储归档留待后续阶段。

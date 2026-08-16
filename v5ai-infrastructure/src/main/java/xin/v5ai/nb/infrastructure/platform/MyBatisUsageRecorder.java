@@ -18,7 +18,7 @@ public class MyBatisUsageRecorder implements UsageRecorder {
     public void record(UsageRecord usage) {
         var entity = new ModelUsageEntity();
         entity.setRunId(usage.runId());
-        entity.setAppKey(usage.appKey());
+        entity.setAgentKey(usage.agentKey());
         entity.setModelKey(usage.modelKey());
         entity.setPromptTokens(usage.promptTokens());
         entity.setCompletionTokens(usage.completionTokens());

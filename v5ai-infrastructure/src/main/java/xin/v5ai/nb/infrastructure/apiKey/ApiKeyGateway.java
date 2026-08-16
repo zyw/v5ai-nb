@@ -5,9 +5,9 @@ import java.util.List;
 public interface ApiKeyGateway {
     void upsert(ApiKeyEntity entity);
 
-    ApiKeyEntity selectByAppKey(String appKey);
+    ApiKeyEntity selectByAgentKey(String agentKey);
 
     List<ApiKeyEntity> selectAll();
 
-    void deleteByAppKey(String appKey);
+    void deleteByAgentKey(String agentKey);
 }

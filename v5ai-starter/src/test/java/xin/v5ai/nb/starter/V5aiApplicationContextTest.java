@@ -8,12 +8,12 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import io.minio.MinioClient;
-import xin.v5ai.nb.api.application.ApplicationController;
+import xin.v5ai.nb.api.agent.AgentController;
 import xin.v5ai.nb.api.auth.AuthController;
 import xin.v5ai.nb.api.model.ModelController;
 import xin.v5ai.nb.api.model.ModelProviderController;
 import xin.v5ai.nb.api.runtime.ChatController;
-import xin.v5ai.nb.application.ApplicationManagementService;
+import xin.v5ai.nb.agent.AgentManagementService;
 import xin.v5ai.nb.model.ModelManagementService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,9 +65,9 @@ class V5aiApplicationContextTest {
         assertThat(applicationContext.getBean(AuthController.class)).isNotNull();
         assertThat(applicationContext.getBean(ModelController.class)).isNotNull();
         assertThat(applicationContext.getBean(ModelProviderController.class)).isNotNull();
-        assertThat(applicationContext.getBean(ApplicationController.class)).isNotNull();
+        assertThat(applicationContext.getBean(AgentController.class)).isNotNull();
         assertThat(applicationContext.getBean(ChatController.class)).isNotNull();
         assertThat(applicationContext.getBean(ModelManagementService.class)).isNotNull();
-        assertThat(applicationContext.getBean(ApplicationManagementService.class)).isNotNull();
+        assertThat(applicationContext.getBean(AgentManagementService.class)).isNotNull();
     }
 }

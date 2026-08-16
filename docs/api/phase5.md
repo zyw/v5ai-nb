@@ -48,19 +48,19 @@ PUT  /api/admin/users/{id}/enabled # { enabled: true|false }
 ## 应用配额 / 限流 / 用量
 
 ```http
-GET /api/admin/apps/{appKey}/quota
-PUT /api/admin/apps/{appKey}/quota
+GET /api/admin/apps/{agentKey}/quota
+PUT /api/admin/apps/{agentKey}/quota
 { "dailyModelCalls": 100, "dailyTokens": 50000, "ratePerMinute": 30 }   # 0 = 不限
 
-GET /api/admin/apps/{appKey}/usage/daily   # 当日调用次数 + Token
-GET /api/admin/usage?appKey=&from=&to=&limit=   # 用量明细（v5ai_model_usage）
+GET /api/admin/apps/{agentKey}/usage/daily   # 当日调用次数 + Token
+GET /api/admin/usage?agentKey=&from=&to=&limit=   # 用量明细（v5ai_model_usage）
 ```
 
-运行时 API（`/api/v1/apps/{appKey}/chat/stream` 等）在 API Key 校验通过后：
+运行时 API（`/api/v1/agents/{agentKey}/chat/stream` 等）在 API Key 校验通过后：
 
-- **限流**：按 appKey 每分钟滑动窗口（配额 `ratePerMinute`，0 不限），超限返回 429；
+- **限流**：按 agentKey 每分钟滑动窗口（配额 `ratePerMinute`，0 不限），超限返回 429；
 - **每日配额**：调用次数 / Token 上限（0 不限），超限返回 429；
-- **用量埋点**：每次运行完成/失败写 `v5ai_model_usage`（runId、appKey、模型、token 估算、耗时、状态），并递增 `v5ai_app_usage` 当日计数。
+- **用量埋点**：每次运行完成/失败写 `v5ai_model_usage`（runId、agentKey、模型、token 估算、耗时、状态），并递增 `v5ai_app_usage` 当日计数。
 
 Token 按字符数粗略估算（`字符数/4`），后续可对接真实 usage 数据。
 
@@ -97,5 +97,5 @@ GET /api/admin/stats/overview      # 应用/模型/知识库/Skill/运行总数/
 
 ## AgentState 持久化
 
-会话级 Agent 状态已持久化到 `v5ai_agent_state`（每次运行完成保存 appKey + 最后回答），
-会话历史可通过 `GET /api/v1/apps/{appKey}/chat/conversations/{conversationId}` 查询。
+会话级 Agent 状态已持久化到 `v5ai_agent_state`（每次运行完成保存 agentKey + 最后回答），
+会话历史可通过 `GET /api/v1/agents/{agentKey}/chat/conversations/{conversationId}` 查询。

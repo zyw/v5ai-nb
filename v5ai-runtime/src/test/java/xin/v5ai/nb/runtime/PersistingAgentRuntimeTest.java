@@ -100,7 +100,7 @@ class PersistingAgentRuntimeTest {
                 .verifyComplete();
 
         assertThat(stateRepository.savedConversationId).isEqualTo("conversation-1");
-        assertThat(stateRepository.savedStateJson).contains("\"appKey\":\"demo\"");
+        assertThat(stateRepository.savedStateJson).contains("\"agentKey\":\"demo\"");
     }
 
     @Test
@@ -272,10 +272,10 @@ class PersistingAgentRuntimeTest {
                 .verifyComplete();
 
         assertThat(usageRecorder.records).hasSize(1);
-        assertThat(usageRecorder.records.get(0).appKey()).isEqualTo("demo");
+        assertThat(usageRecorder.records.get(0).agentKey()).isEqualTo("demo");
         assertThat(usageRecorder.records.get(0).status()).isEqualTo("SUCCESS");
         assertThat(usageRecorder.records.get(0).totalTokens()).isGreaterThan(0);
-        assertThat(quotaService.recordedAppKeys).containsExactly("demo");
+        assertThat(quotaService.recordedAgentKeys).containsExactly("demo");
         assertThat(quotaService.recordedTokens).isGreaterThan(0);
     }
 
@@ -310,35 +310,35 @@ class PersistingAgentRuntimeTest {
     }
 
     private static final class RecordingQuotaService implements xin.v5ai.nb.common.platform.AppQuotaService {
-        private final List<String> recordedAppKeys = new ArrayList<>();
+        private final List<String> recordedAgentKeys = new ArrayList<>();
         private long recordedTokens;
 
         @Override
-        public xin.v5ai.nb.common.platform.AppQuota getQuota(String appKey) {
-            return new xin.v5ai.nb.common.platform.AppQuota(appKey, 0, 0, 0, null);
+        public xin.v5ai.nb.common.platform.AppQuota getQuota(String agentKey) {
+            return new xin.v5ai.nb.common.platform.AppQuota(agentKey, 0, 0, 0, null);
         }
 
         @Override
-        public xin.v5ai.nb.common.platform.AppQuota updateQuota(String appKey, Integer dailyModelCalls,
+        public xin.v5ai.nb.common.platform.AppQuota updateQuota(String agentKey, Integer dailyModelCalls,
                                                                 Long dailyTokens, Integer ratePerMinute) {
-            return getQuota(appKey);
+            return getQuota(agentKey);
         }
 
         @Override
-        public boolean checkAllowed(String appKey) {
+        public boolean checkAllowed(String agentKey) {
             return true;
         }
 
         @Override
-        public void recordUsage(String appKey, long tokens) {
-            recordedAppKeys.add(appKey);
+        public void recordUsage(String agentKey, long tokens) {
+            recordedAgentKeys.add(agentKey);
             recordedTokens += tokens;
         }
 
         @Override
-        public xin.v5ai.nb.common.platform.AppUsage getDailyUsage(String appKey) {
-            return new xin.v5ai.nb.common.platform.AppUsage(appKey, java.time.LocalDate.now(),
-                    recordedAppKeys.size(), recordedTokens);
+        public xin.v5ai.nb.common.platform.AppUsage getDailyUsage(String agentKey) {
+            return new xin.v5ai.nb.common.platform.AppUsage(agentKey, java.time.LocalDate.now(),
+                    recordedAgentKeys.size(), recordedTokens);
         }
     }
 }

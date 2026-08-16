@@ -23,15 +23,15 @@ cd v5ai-ui && npx vue-tsc --noEmit
 - `SkillPackageParser`：zip 包解析与校验（大小/数量/路径穿越/绝对路径/UTF-8 文本/SKILL.md
   结构与必填字段/技能名安全）；支持 `metadata.yaml` 合并（frontmatter 优先）。
 - `SkillManagementService`：上传（生成 DRAFT 版本）、版本发布、回滚（当前版本指针）、
-  Application 绑定（要求已发布 + ACTIVE）、禁用、当前版本文件解析。
+  Agent 绑定（要求已发布 + ACTIVE）、禁用、当前版本文件解析。
 
 ### 基础设施
 
 - `V6__skill_schema.sql`：`v5ai_skill`（current_version_id 不建外键避免循环引用）、
   `v5ai_skill_version`（skill_id+version 唯一）、`v5ai_skill_file`（version_id+file_path 唯一）、
-  `v5ai_application_skill`（app_key 绑定）。
+  `v5ai_application_skill`（agent_key 绑定）。
 - 实体/Mapper/仓储：Skill 列表 JOIN 带出当前版本号；版本列表按版本号降序。
-- `ApplicationSkillWorkspaceResolver`：按已发布 Application 绑定解析 ACTIVE + 已发布 Skill
+- `ApplicationSkillWorkspaceResolver`：按已发布 Agent 绑定解析 ACTIVE + 已发布 Skill
   的当前版本文件，单 Skill 失败跳过。
 
 ### 运行时（Workspace 注入）
@@ -47,7 +47,7 @@ cd v5ai-ui && npx vue-tsc --noEmit
 
 - `SkillController`（上传 multipart、列表、禁用、版本列表、发布、回滚）、
   `ApplicationSkillBindingController`（skill-bindings）。
-- 前端：`SkillsView`（上传 zip、版本表发布/回滚、Application 绑定）、router 与菜单注册；
+- 前端：`SkillsView`（上传 zip、版本表发布/回滚、Agent 绑定）、router 与菜单注册；
   `client.ts` 补齐 Skill API。
 
 ## 说明 / 限制

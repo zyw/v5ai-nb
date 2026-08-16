@@ -317,22 +317,22 @@ class McpManagementServiceTest {
         }
     }
 
-    private static final class InMemoryBindingRepository implements ApplicationMcpBindingRepository {
+    private static final class InMemoryBindingRepository implements AgentMcpBindingRepository {
         private final Map<String, List<Long>> bindings = new HashMap<>();
 
         @Override
-        public void save(String appKey, List<Long> mcpServerIds) {
-            bindings.put(appKey, new ArrayList<>(mcpServerIds));
+        public void save(String agentKey, List<Long> mcpServerIds) {
+            bindings.put(agentKey, new ArrayList<>(mcpServerIds));
         }
 
         @Override
-        public List<Long> findByAppKey(String appKey) {
-            return bindings.getOrDefault(appKey, List.of());
+        public List<Long> findByAgentKey(String agentKey) {
+            return bindings.getOrDefault(agentKey, List.of());
         }
 
         @Override
-        public void delete(String appKey) {
-            bindings.remove(appKey);
+        public void delete(String agentKey) {
+            bindings.remove(agentKey);
         }
     }
 

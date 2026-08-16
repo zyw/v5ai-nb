@@ -1,11 +1,11 @@
 package xin.v5ai.nb.runtime;
 
-import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.agent.Agent;
 
 import java.util.List;
 
 /**
- * 运行时 MCP Tool 解析器：根据已发布 Application 的绑定配置，
+ * 运行时 MCP Tool 解析器：根据已发布 Agent 的绑定配置，
  * 解析出本次运行要注册（动态注册）的 MCP 工具集合。
  *
  * 实现约定：
@@ -16,10 +16,10 @@ import java.util.List;
 public interface McpToolResolver {
 
     /**
-     * 解析 Application 绑定的 MCP 工具。
+     * 解析 Agent 绑定的 MCP 工具。
      *
-     * @param application 已发布的 Application
+     * @param application 已发布的 Agent
      * @return 本次运行可用的 MCP 工具（可能为空列表）
      */
-    List<ResolvedMcpTool> resolveTools(Application application);
+    List<ResolvedMcpTool> resolveTools(Agent application);
 }

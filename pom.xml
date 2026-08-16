@@ -31,7 +31,7 @@
         <module>v5ai-infrastructure</module>
         <module>v5ai-model</module>
         <module>v5ai-runtime</module>
-        <module>v5ai-application</module>
+        <module>v5ai-agent</module>
         <module>v5ai-rag</module>
         <module>v5ai-mcp</module>
         <module>v5ai-skill</module>

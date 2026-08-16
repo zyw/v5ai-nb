@@ -3,7 +3,7 @@ import { h, onMounted, ref } from 'vue'
 import { NAlert, NCard, NDataTable, NInput, NSelect, NStatistic, NTag, useMessage, type DataTableColumns } from 'naive-ui'
 import {
   getStatsOverview,
-  listApplications,
+  listAgents,
   listAuditLogs,
   listUsage,
   type AuditLog,
@@ -16,13 +16,13 @@ const message = useMessage()
 const overview = ref<OverviewResponse | null>(null)
 const usage = ref<UsageRecord[]>([])
 const audits = ref<AuditLog[]>([])
-const apps = ref<{ appKey: string }[]>([])
+const apps = ref<{ agentKey: string }[]>([])
 const filterAppKey = ref('')
 const filterAction = ref('')
 
 const usageColumns: DataTableColumns<UsageRecord> = [
   { title: 'ID', key: 'id', width: 70 },
-  { title: 'App', key: 'appKey' },
+  { title: 'App', key: 'agentKey' },
   { title: '模型', key: 'modelKey' },
   { title: '输入 Token', key: 'promptTokens' },
   { title: '输出 Token', key: 'completionTokens' },
@@ -47,7 +47,7 @@ const auditColumns: DataTableColumns<AuditLog> = [
 
 async function reloadUsage() {
   try {
-    usage.value = await listUsage(adminToken.value, { appKey: filterAppKey.value || undefined, limit: 100 })
+    usage.value = await listUsage(adminToken.value, { agentKey: filterAppKey.value || undefined, limit: 100 })
   } catch (error) {
     message.error(error instanceof Error ? error.message : '加载用量失败')
   }
@@ -66,7 +66,7 @@ onMounted(async () => {
   try {
     const [overviewData, appRows] = await Promise.all([
       getStatsOverview(adminToken.value),
-      listApplications(adminToken.value)
+      listAgents(adminToken.value)
     ])
     overview.value = overviewData
     apps.value = appRows
@@ -86,7 +86,7 @@ onMounted(async () => {
 
     <n-card title="平台总览" class="panel wide">
       <n-space size="large" wrap>
-        <n-statistic label="Application" :value="overview?.applications ?? 0" />
+        <n-statistic label="Agent" :value="overview?.agents ?? 0" />
         <n-statistic label="模型" :value="overview?.models ?? 0" />
         <n-statistic label="知识库" :value="overview?.knowledgeBases ?? 0" />
         <n-statistic label="Skill" :value="overview?.skills ?? 0" />
@@ -105,7 +105,7 @@ onMounted(async () => {
           clearable
           placeholder="按 App 筛选"
           style="width: 220px"
-          :options="apps.map(a => ({ label: a.appKey, value: a.appKey }))"
+          :options="apps.map(a => ({ label: a.agentKey, value: a.agentKey }))"
           @update:value="reloadUsage"
         />
       </n-space>

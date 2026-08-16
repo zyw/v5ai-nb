@@ -23,7 +23,7 @@ The response shape is:
 }
 ```
 
-Runtime chat APIs use Application API Keys. The key is passed as:
+Runtime chat APIs use Agent API Keys. The key is passed as:
 
 ```http
 Authorization: Bearer <application-api-key>
@@ -32,7 +32,7 @@ Authorization: Bearer <application-api-key>
 ## Streaming Chat
 
 ```http
-POST /api/v1/apps/{appKey}/chat/stream
+POST /api/v1/agents/{agentKey}/chat/stream
 Authorization: Bearer <application-api-key>
 Content-Type: application/json
 Accept: text/event-stream
@@ -54,7 +54,7 @@ The API does not expose AgentScope Java implementation classes.
 ## Blocking Chat
 
 ```http
-POST /api/v1/apps/{appKey}/chat
+POST /api/v1/agents/{agentKey}/chat
 Authorization: Bearer <application-api-key>
 Content-Type: application/json
 
@@ -75,7 +75,7 @@ The response body is:
 
 ## Phase 1 Notes
 
-- Runtime endpoints require an Application API Key.
+- Runtime endpoints require an Agent API Key.
 - Requests resolve only published Applications.
 - Missing `conversationId` is normalized to a generated UUID in the runtime persistence decorator.
 - The current Agent executor returns a deterministic development placeholder. The real AgentScope SDK adapter will replace `AgentTextExecutor` behind the same runtime boundary.
@@ -111,12 +111,12 @@ Runtime model credentials are stored encrypted. Before encryption, the credentia
 
 `baseUrl`, `temperature`, and `maxTokens` are optional. `EMBEDDING` and `RERANK` models can be managed, but cannot be used as Agent Runtime chat models.
 
-## Admin Application APIs
+## Admin Agent APIs
 
 ```http
-POST /api/admin/applications
-GET /api/admin/applications
-POST /api/admin/applications/{appKey}/publish
+POST /api/admin/agents
+GET /api/admin/agents
+POST /api/admin/agents/{agentKey}/publish
 ```
 
 Publishing creates an immutable application version snapshot in `v5ai_application_version` and marks the application as `PUBLISHED`.

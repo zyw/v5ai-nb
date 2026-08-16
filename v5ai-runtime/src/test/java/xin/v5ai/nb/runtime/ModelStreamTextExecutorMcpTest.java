@@ -9,8 +9,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-import xin.v5ai.nb.application.Application;
-import xin.v5ai.nb.application.ApplicationStatus;
+import xin.v5ai.nb.agent.Agent;
+import xin.v5ai.nb.agent.AgentStatus;
 import xin.v5ai.nb.mcp.McpConnection;
 import xin.v5ai.nb.mcp.McpToolCallAudit;
 import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
@@ -72,7 +72,7 @@ class ModelStreamTextExecutorMcpTest {
                 tempDir.resolve("workspace"));
 
         StepVerifier.create(executor.streamText(
-                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L),
+                        new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 1L, 1L),
                         new AgentRunRequest("demo", "c1", "hello", null, List.of(), "run-1")))
                 .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall call
                         && call.modelName().equals("fixed-text"))
@@ -92,7 +92,7 @@ class ModelStreamTextExecutorMcpTest {
                         Map.of("type", "object"), McpToolPermission.ALLOW, new RecordingConnection())),
                 new RecordingAuditRepository(),
                 tempDir.resolve("workspace"));
-        var application = new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L);
+        var application = new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 1L, 1L);
 
         for (int i = 0; i < 2; i++) {
             StepVerifier.create(executor.streamText(application,
@@ -104,10 +104,52 @@ class ModelStreamTextExecutorMcpTest {
     }
 
     @Test
+    void systemPromptIsInjectedIntoSystemMessage() {
+        // 无 MCP/Skill：走 streamDirect，通过 RecordingModel 捕获构建的消息
+        var model = new RecordingModel("direct-ok");
+        var executor = new ModelStreamTextExecutor(model);
+        StepVerifier.create(executor.streamText(
+                        new Agent("demo", "Demo", "desc", AgentStatus.PUBLISHED, 1L, 1L,
+                                "You are a senior architect. Always answer in Chinese."),
+                        new AgentRunRequest("demo", "c1", "hello")))
+                .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall)
+                .expectNextMatches(event -> event instanceof AgentTextEvent.Text text
+                        && text.text().contains("direct-ok"))
+                .verifyComplete();
+
+        assertThat(model.lastMessages).isNotEmpty();
+        var systemMessage = model.lastMessages.stream()
+                .filter(msg -> msg.getRole() == io.agentscope.core.message.MsgRole.SYSTEM)
+                .findFirst()
+                .orElseThrow();
+        assertThat(systemMessage.getTextContent()).contains("You are a senior architect");
+        assertThat(systemMessage.getTextContent()).doesNotContain("assistant for application");
+    }
+
+    @Test
+    void defaultSystemMessageUsedWhenNoSystemPrompt() {
+        var model = new RecordingModel("direct-ok");
+        var executor = new ModelStreamTextExecutor(model);
+        StepVerifier.create(executor.streamText(
+                        new Agent("demo", "Demo", "desc", AgentStatus.PUBLISHED, 1L, 1L),
+                        new AgentRunRequest("demo", "c1", "hello")))
+                .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall)
+                .expectNextMatches(event -> event instanceof AgentTextEvent.Text)
+                .verifyComplete();
+
+        var systemMessage = model.lastMessages.stream()
+                .filter(msg -> msg.getRole() == io.agentscope.core.message.MsgRole.SYSTEM)
+                .findFirst()
+                .orElseThrow();
+        assertThat(systemMessage.getTextContent()).contains("assistant for application \"Demo\"");
+        assertThat(systemMessage.getTextContent()).contains("desc");
+    }
+
+    @Test
     void streamDirectWithoutToolsStillWorks() {
         var executor = new ModelStreamTextExecutor(new FixedTextModel("direct-ok"));
         StepVerifier.create(executor.streamText(
-                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L),
+                        new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 1L, 1L),
                         new AgentRunRequest("demo", "c1", "hello")))
                 .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall)
                 .expectNextMatches(event -> event instanceof AgentTextEvent.Text text
@@ -129,7 +171,7 @@ class ModelStreamTextExecutorMcpTest {
                 workspace);
 
         StepVerifier.create(executor.streamText(
-                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L),
+                        new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 1L, 1L),
                         new AgentRunRequest("demo", "c1", "hello", null, List.of(), "run-1")))
                 .expectNextMatches(event -> event instanceof AgentTextEvent.ModelCall)
                 .expectNextMatches(event -> event instanceof AgentTextEvent.Text)
@@ -205,6 +247,33 @@ class ModelStreamTextExecutorMcpTest {
         @Override
         public String getModelName() {
             return "fixed-text";
+        }
+    }
+
+    /** 记录最后一次收到的消息列表，用于断言系统提示词注入。 */
+    private static final class RecordingModel implements Model {
+        private final String response;
+        private List<io.agentscope.core.message.Msg> lastMessages = List.of();
+
+        private RecordingModel(String response) {
+            this.response = response;
+        }
+
+        @Override
+        public Flux<ChatResponse> stream(List<io.agentscope.core.message.Msg> messages,
+                                         List<ToolSchema> tools,
+                                         GenerateOptions options) {
+            this.lastMessages = messages;
+            return Flux.just(ChatResponse.builder()
+                    .content(List.of(TextBlock.builder().text(response).build()))
+                    .metadata(Map.of())
+                    .finishReason("stop")
+                    .build());
+        }
+
+        @Override
+        public String getModelName() {
+            return "recording";
         }
     }
 }

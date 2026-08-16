@@ -10,7 +10,7 @@
     <dependencies>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-application</artifactId>
+            <artifactId>v5ai-agent</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

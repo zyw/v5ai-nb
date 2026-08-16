@@ -29,13 +29,13 @@ Expected:
 - Runtime rejects unpublished Applications through `PublishedApplicationResolver`.
 - Agent events are mapped to platform-owned `RuntimeEvent`.
 - SSE chat endpoint returns typed server-sent events.
-- Runtime endpoint rejects missing or invalid Application API Keys.
+- Runtime endpoint rejects missing or invalid Agent API Keys.
 - User and assistant messages plus run lifecycle are persisted through runtime ports and MyBatis adapters.
 - `v5ai-ui` provides the first management console skeleton for login, models, Applications, API Keys and chat debugging.
 
 ## Known Phase 1 Limitations
 
 - The default local Agent executor is a deterministic placeholder behind `AgentTextExecutor`.
-- Application and provider CRUD APIs are not complete yet.
-- The development Application repository is in-memory for local startup.
+- Agent and provider CRUD APIs are not complete yet.
+- The development Agent repository is in-memory for local startup.
 - RAG, MCP, Skill and Workflow modules are intentionally out of Phase 1.

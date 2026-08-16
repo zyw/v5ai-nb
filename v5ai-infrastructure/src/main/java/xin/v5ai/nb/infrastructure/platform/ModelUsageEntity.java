@@ -10,7 +10,7 @@ public class ModelUsageEntity {
     @TableId
     private Long id;
     private String runId;
-    private String appKey;
+    private String agentKey;
     private String modelKey;
     private Long promptTokens;
     private Long completionTokens;
@@ -23,8 +23,8 @@ public class ModelUsageEntity {
     public void setId(Long id) { this.id = id; }
     public String getRunId() { return runId; }
     public void setRunId(String runId) { this.runId = runId; }
-    public String getAppKey() { return appKey; }
-    public void setAppKey(String appKey) { this.appKey = appKey; }
+    public String getAgentKey() { return agentKey; }
+    public void setAgentKey(String agentKey) { this.agentKey = agentKey; }
     public String getModelKey() { return modelKey; }
     public void setModelKey(String modelKey) { this.modelKey = modelKey; }
     public Long getPromptTokens() { return promptTokens; }

@@ -6,7 +6,7 @@ export const router = createRouter({
     { path: '/', redirect: { name: 'dashboard' } },
     { path: '/dashboard', name: 'dashboard', component: () => import('../views/DashboardView.vue') },
     { path: '/models', name: 'models', component: () => import('../views/ModelsView.vue') },
-    { path: '/applications', name: 'applications', component: () => import('../views/ApplicationsView.vue') },
+    { path: '/agents', name: 'agents', component: () => import('../views/AgentsView.vue') },
     { path: '/knowledge-bases', name: 'knowledge-bases', component: () => import('../views/KnowledgeBasesView.vue') },
     { path: '/mcp-servers', name: 'mcp-servers', component: () => import('../views/McpServersView.vue') },
     { path: '/skills', name: 'skills', component: () => import('../views/SkillsView.vue') },

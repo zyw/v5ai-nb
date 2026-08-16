@@ -8,7 +8,7 @@ public class RuntimeMessageEntity {
     @TableId
     private Long id;
     private String conversationId;
-    private String appKey;
+    private String agentKey;
     private String role;
     private String content;
 
@@ -16,8 +16,8 @@ public class RuntimeMessageEntity {
     public void setId(Long id) { this.id = id; }
     public String getConversationId() { return conversationId; }
     public void setConversationId(String conversationId) { this.conversationId = conversationId; }
-    public String getAppKey() { return appKey; }
-    public void setAppKey(String appKey) { this.appKey = appKey; }
+    public String getAgentKey() { return agentKey; }
+    public void setAgentKey(String agentKey) { this.agentKey = agentKey; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
     public String getContent() { return content; }

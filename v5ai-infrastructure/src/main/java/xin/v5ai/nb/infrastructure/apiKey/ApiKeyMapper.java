@@ -10,7 +10,7 @@ import java.util.List;
 public interface ApiKeyMapper extends BaseMapper<ApiKeyEntity>, ApiKeyGateway {
     @Override
     default void upsert(ApiKeyEntity entity) {
-        var existing = selectByAppKey(entity.getAppKey());
+        var existing = selectByAgentKey(entity.getAgentKey());
         if (existing == null) {
             insert(entity);
         } else {
@@ -20,9 +20,9 @@ public interface ApiKeyMapper extends BaseMapper<ApiKeyEntity>, ApiKeyGateway {
     }
 
     @Override
-    default ApiKeyEntity selectByAppKey(String appKey) {
+    default ApiKeyEntity selectByAgentKey(String agentKey) {
         return selectOne(new LambdaQueryWrapper<ApiKeyEntity>()
-                .eq(ApiKeyEntity::getAppKey, appKey));
+                .eq(ApiKeyEntity::getAgentKey, agentKey));
     }
 
     @Override
@@ -31,8 +31,8 @@ public interface ApiKeyMapper extends BaseMapper<ApiKeyEntity>, ApiKeyGateway {
     }
 
     @Override
-    default void deleteByAppKey(String appKey) {
+    default void deleteByAgentKey(String agentKey) {
         delete(new LambdaQueryWrapper<ApiKeyEntity>()
-                .eq(ApiKeyEntity::getAppKey, appKey));
+                .eq(ApiKeyEntity::getAgentKey, agentKey));
     }
 }

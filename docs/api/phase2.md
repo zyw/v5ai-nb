@@ -34,15 +34,15 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 
 文档状态：`PENDING → PROCESSING → COMPLETED | FAILED`（Worker 异步处理，最多重试 3 次）。
 
-## Application 绑定知识库
+## Agent 绑定知识库
 
 ```http
-POST /api/admin/applications/{appKey}/knowledge-bindings
+POST /api/admin/agents/{agentKey}/knowledge-bindings
 Content-Type: application/json
 
 { "knowledgeBaseIds": [1, 2] }
 
-GET /api/admin/applications/{appKey}/knowledge-bindings
+GET /api/admin/agents/{agentKey}/knowledge-bindings
 ```
 
 运行时只检索**已绑定**知识库的切片。
@@ -50,16 +50,16 @@ GET /api/admin/applications/{appKey}/knowledge-bindings
 ## API Key 管理
 
 ```http
-POST   /api/admin/applications/{appKey}/api-keys   # 生成新 Key（仅返回一次，BCrypt 存哈希）
+POST   /api/admin/agents/{agentKey}/api-keys   # 生成新 Key（仅返回一次，BCrypt 存哈希）
 GET    /api/admin/api-keys
-DELETE /api/admin/applications/{appKey}/api-keys
+DELETE /api/admin/agents/{agentKey}/api-keys
 ```
 
 ## 运行时（RAG 注入）
 
-`POST /api/v1/apps/{appKey}/chat/stream` 会自动：
+`POST /api/v1/agents/{agentKey}/chat/stream` 会自动：
 
-1. 解析已发布 Application；
+1. 解析已发布 Agent；
 2. 查询绑定的知识库，对用户问题做向量检索（无 EMBEDDING 模型时回退 Hash 嵌入；向量为空回退关键词检索）；
 3. 命中时先发出 `RETRIEVAL` 事件（payload 为引用上下文），再把上下文注入 System Prompt；
 4. 之后发出 `MODEL_CALL` / `TEXT_DELTA` / `MESSAGE_COMPLETED` / `RUN_COMPLETED`（失败为 `RUN_FAILED`）。
@@ -67,8 +67,8 @@ DELETE /api/admin/applications/{appKey}/api-keys
 ## 会话历史与恢复
 
 ```http
-GET  /api/v1/apps/{appKey}/chat/conversations/{conversationId}   # 历史消息列表
-POST /api/v1/apps/{appKey}/chat/conversations/{conversationId}/resume
+GET  /api/v1/agents/{agentKey}/chat/conversations/{conversationId}   # 历史消息列表
+POST /api/v1/agents/{agentKey}/chat/conversations/{conversationId}/resume
 Content-Type: application/json
 
 { "query": "继续上一个问题" }

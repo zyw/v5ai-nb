@@ -277,22 +277,22 @@ class SkillManagementServiceTest {
         }
     }
 
-    private static final class InMemoryBindingRepository implements ApplicationSkillBindingRepository {
+    private static final class InMemoryBindingRepository implements AgentSkillBindingRepository {
         private final Map<String, List<Long>> bindings = new LinkedHashMap<>();
 
         @Override
-        public void save(String appKey, List<Long> skillIds) {
-            bindings.put(appKey, new ArrayList<>(skillIds));
+        public void save(String agentKey, List<Long> skillIds) {
+            bindings.put(agentKey, new ArrayList<>(skillIds));
         }
 
         @Override
-        public List<Long> findByAppKey(String appKey) {
-            return bindings.getOrDefault(appKey, List.of());
+        public List<Long> findByAgentKey(String agentKey) {
+            return bindings.getOrDefault(agentKey, List.of());
         }
 
         @Override
-        public void delete(String appKey) {
-            bindings.remove(appKey);
+        public void delete(String agentKey) {
+            bindings.remove(agentKey);
         }
     }
 }

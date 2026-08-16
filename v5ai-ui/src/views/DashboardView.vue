@@ -19,7 +19,7 @@ const router = useRouter()
         <span>Backend Style</span>
         <strong>Dify 风格中心化运行时</strong>
       </div>
-      <div class="hint">当前前端覆盖模型 Provider、模型、Application 发布，以及阻塞/流式 Chat Debug。</div>
+      <div class="hint">当前前端覆盖模型 Provider、模型、Agent 发布，以及阻塞/流式 Chat Debug。</div>
     </n-card>
 
     <n-card title="快速入口" class="panel wide">
@@ -28,7 +28,7 @@ const router = useRouter()
           <n-button block secondary type="info" @click="router.push({ name: 'models' })">配置 Provider / Model</n-button>
         </n-gi>
         <n-gi>
-          <n-button block secondary type="success" @click="router.push({ name: 'applications' })">创建并发布 Application</n-button>
+          <n-button block secondary type="success" @click="router.push({ name: 'agents' })">创建并发布 Agent</n-button>
         </n-gi>
         <n-gi>
           <n-button block secondary type="warning" @click="router.push({ name: 'chat' })">运行 Chat Debug</n-button>

@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.application.Application;
-import xin.v5ai.nb.application.PublishedApplicationResolver;
+import xin.v5ai.nb.agent.Agent;
+import xin.v5ai.nb.agent.PublishedAgentResolver;
 import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
 import xin.v5ai.nb.runtime.AgentModelResolver;
 import xin.v5ai.nb.runtime.AgentRuntime;
@@ -59,13 +59,13 @@ public class RuntimeConfiguration {
                     new JsonFileAgentStateStore(Path.of(properties.getStateDirectory())),
                     Path.of(properties.getWorkspace()));
         }
-        return (Application application, xin.v5ai.nb.runtime.AgentRunRequest request) ->
+        return (Agent application, xin.v5ai.nb.runtime.AgentRunRequest request) ->
                 Flux.just(new AgentTextEvent.Text("Phase 1 runtime placeholder response for: " + request.query()));
     }
 
     @Bean
     AgentRuntime agentRuntime(
-            PublishedApplicationResolver resolver,
+            PublishedAgentResolver resolver,
             AgentTextExecutor executor,
             MessageRepository messageRepository,
             RunRecordRepository runRecordRepository,

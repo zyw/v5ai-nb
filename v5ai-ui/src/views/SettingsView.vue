@@ -17,8 +17,8 @@
 
     <n-card title="运行时说明" class="panel">
       <div class="hint">
-        管理接口使用管理员 JWT。运行时接口使用 Application API Key，通过 `Authorization: Bearer &lt;key&gt;`
-        调用 `/api/v1/apps/{appKey}/chat` 和 `/api/v1/apps/{appKey}/chat/stream`。
+        管理接口使用管理员 JWT。运行时接口使用 Agent API Key，通过 `Authorization: Bearer &lt;key&gt;`
+        调用 `/api/v1/agents/{agentKey}/chat` 和 `/api/v1/agents/{agentKey}/chat/stream`。
       </div>
     </n-card>
 

@@ -4,7 +4,7 @@
 
 **Goal:** Build the first runnable `v5ai-nb` platform slice with JDK 21, MyBatis-Plus, Sa-Token + JWT, dynamic model configuration, published Applications, AgentScope execution, SSE streaming, and persisted conversations.
 
-**Architecture:** Create a new modular Maven project under `v5ai-nb`, independent from `snail-ai`. Keep domain contracts separate from infrastructure implementations, expose all AgentScope execution through `v5ai-runtime`, and use a single Spring Boot application with an asynchronous boundary reserved for later phases. Runtime requests resolve only published Application versions.
+**Architecture:** Create a new modular Maven project under `v5ai-nb`, independent from `snail-ai`. Keep domain contracts separate from infrastructure implementations, expose all AgentScope execution through `v5ai-runtime`, and use a single Spring Boot application with an asynchronous boundary reserved for later phases. Runtime requests resolve only published Agent versions.
 
 **Tech Stack:** JDK 21, Spring Boot 4.x, Spring WebFlux, Project Reactor, AgentScope Java 2.0, MyBatis-Plus, PostgreSQL, Flyway, Sa-Token with JWT, BCrypt, Jackson, JUnit 5, Mockito, and Testcontainers where available.
 
@@ -21,7 +21,7 @@
 - Authentication is Sa-Token with JWT session mode.
 - Use TDD: every production behavior task starts with a failing test and records the red result before implementation.
 - Do not expose AgentScope implementation classes from API DTOs.
-- Runtime reads only published Application versions.
+- Runtime reads only published Agent versions.
 - No RAG, MCP, Skill, Workflow, or frontend implementation in Phase 1; create only extension interfaces needed by the runtime boundary.
 
 ---
@@ -38,7 +38,7 @@ v5ai-nb/
 ├── v5ai-infrastructure/
 ├── v5ai-model/
 ├── v5ai-runtime/
-├── v5ai-application/
+├── v5ai-agent/
 ├── v5ai-api/
 └── v5ai-starter/
 ```
@@ -54,7 +54,7 @@ The phase intentionally keeps `v5ai-rag`, `v5ai-mcp`, `v5ai-skill`, and `v5ai-wo
 - Create: `v5ai-infrastructure/pom.xml`
 - Create: `v5ai-model/pom.xml`
 - Create: `v5ai-runtime/pom.xml`
-- Create: `v5ai-application/pom.xml`
+- Create: `v5ai-agent/pom.xml`
 - Create: `v5ai-api/pom.xml`
 - Create: `v5ai-starter/pom.xml`
 - Create: `README.md`
@@ -290,13 +290,13 @@ git add v5ai-domain/src/main/java v5ai-model v5ai-infrastructure/src/main/java v
 git commit -m "feat: 增加模型 Provider 和配置管理"
 ```
 
-## Task 5: Implement Application draft and publish lifecycle
+## Task 5: Implement Agent draft and publish lifecycle
 
 **Files:**
-- Create: `v5ai-domain/src/main/java/xin/v5ai/nb/application/Application.java`
+- Create: `v5ai-domain/src/main/java/xin/v5ai/nb/application/Agent.java`
 - Create: `v5ai-domain/src/main/java/xin/v5ai/nb/application/ApplicationVersion.java`
-- Create: `v5ai-application/src/main/java/xin/v5ai/nb/application/ApplicationManagementService.java`
-- Create: `v5ai-application/src/main/java/xin/v5ai/nb/application/ApplicationPublishValidator.java`
+- Create: `v5ai-agent/src/main/java/xin/v5ai/nb/application/ApplicationManagementService.java`
+- Create: `v5ai-agent/src/main/java/xin/v5ai/nb/application/ApplicationPublishValidator.java`
 - Create: `v5ai-infrastructure/src/main/java/xin/v5ai/nb/infrastructure/application/ApplicationMapper.java`
 - Create: `v5ai-infrastructure/src/main/java/xin/v5ai/nb/infrastructure/application/ApplicationVersionMapper.java`
 - Create: `v5ai-api/src/main/java/xin/v5ai/nb/api/application/ApplicationController.java`
@@ -306,7 +306,7 @@ git commit -m "feat: 增加模型 Provider 和配置管理"
 - `ApplicationManagementService.create(CreateApplicationCommand)` creates a draft.
 - `ApplicationManagementService.updateDraft(UpdateApplicationCommand)` changes only the draft.
 - `ApplicationManagementService.publish(ApplicationId)` validates and publishes an immutable version.
-- `PublishedApplicationResolver.resolve(String appKey)` returns only the published version.
+- `PublishedApplicationResolver.resolve(String agentKey)` returns only the published version.
 
 - [ ] **Step 1: Write failing lifecycle tests**
 
@@ -325,25 +325,25 @@ void runtimeResolverNeverReturnsDraft() {
 
 - [ ] **Step 2: Run the tests and verify failure**
 
-Run: `./mvnw -pl v5ai-application -am test -Dtest=ApplicationManagementServiceTest,PublishedApplicationResolverTest`
+Run: `./mvnw -pl v5ai-agent -am test -Dtest=ApplicationManagementServiceTest,PublishedApplicationResolverTest`
 
 Expected: FAIL because lifecycle services do not exist.
 
-- [ ] **Step 3: Implement Application lifecycle and persistence**
+- [ ] **Step 3: Implement Agent lifecycle and persistence**
 
-Application updates write draft configuration. Publishing creates an immutable version number, validates that the selected model exists and is enabled, and atomically updates the published version pointer. Resolver queries must include `status=PUBLISHED`.
+Agent updates write draft configuration. Publishing creates an immutable version number, validates that the selected model exists and is enabled, and atomically updates the published version pointer. Resolver queries must include `status=PUBLISHED`.
 
 - [ ] **Step 4: Run the tests and verify they pass**
 
-Run: `./mvnw -pl v5ai-application -am test -Dtest=ApplicationManagementServiceTest,PublishedApplicationResolverTest`
+Run: `./mvnw -pl v5ai-agent -am test -Dtest=ApplicationManagementServiceTest,PublishedApplicationResolverTest`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add v5ai-domain/src/main/java v5ai-application v5ai-infrastructure/src/main/java v5ai-api/src/main/java
-git commit -m "feat: 增加 Application 草稿发布生命周期"
+git add v5ai-domain/src/main/java v5ai-agent v5ai-infrastructure/src/main/java v5ai-api/src/main/java
+git commit -m "feat: 增加 Agent 草稿发布生命周期"
 ```
 
 ## Task 6: Build the AgentScope runtime boundary
@@ -389,7 +389,7 @@ Expected: FAIL because AgentScope runtime adapters do not exist.
 
 - [ ] **Step 3: Implement the minimal AgentScope adapter**
 
-Resolve the published Application, create the configured `ChatModel`, construct a basic AgentScope Agent, invoke it with the request message, and map AgentScope events into `RuntimeEvent`. Keep RAG, MCP, Skill, and permission resolvers represented by interfaces returning empty implementations in Phase 1.
+Resolve the published Agent, create the configured `ChatModel`, construct a basic AgentScope Agent, invoke it with the request message, and map AgentScope events into `RuntimeEvent`. Keep RAG, MCP, Skill, and permission resolvers represented by interfaces returning empty implementations in Phase 1.
 
 - [ ] **Step 4: Run the runtime tests**
 
@@ -419,7 +419,7 @@ git commit -m "feat: 增加 AgentScope 运行时边界"
 
 **Interfaces:**
 - `PersistingAgentRuntime.stream(request)` creates or loads a conversation, persists the user message, persists run start and terminal status, and persists the assistant message on completion.
-- Persisted records include `tenantId`, `userId`, `appKey`, `conversationId`, `runId`, status, error code, and timestamps.
+- Persisted records include `tenantId`, `userId`, `agentKey`, `conversationId`, `runId`, status, error code, and timestamps.
 
 - [ ] **Step 1: Write failing persistence tests**
 
@@ -469,10 +469,10 @@ git commit -m "feat: 持久化会话消息和 Agent 运行记录"
 - Create: `.env.example`
 
 **Interfaces:**
-- `POST /api/v1/apps/{appKey}/chat/stream` accepts `{ "conversationId": "...", "query": "..." }` and returns `text/event-stream`.
-- `POST /api/v1/apps/{appKey}/chat` returns the completed `AgentRunResult`.
-- Admin model and Application endpoints require Sa-Token JWT.
-- Runtime endpoints require an Application API Key resolved by `appKey`.
+- `POST /api/v1/agents/{agentKey}/chat/stream` accepts `{ "conversationId": "...", "query": "..." }` and returns `text/event-stream`.
+- `POST /api/v1/agents/{agentKey}/chat` returns the completed `AgentRunResult`.
+- Admin model and Agent endpoints require Sa-Token JWT.
+- Runtime endpoints require an Agent API Key resolved by `agentKey`.
 
 - [ ] **Step 1: Write failing WebFlux API tests**
 
@@ -500,7 +500,7 @@ Expected: FAIL because the controller, API-key filter, and runtime configuration
 
 - [ ] **Step 3: Implement the streaming and completion endpoints**
 
-Use `Flux<ServerSentEvent<RuntimeEvent>>` for streaming. Validate `appKey`, query length, conversation ownership, and request content before calling `PersistingAgentRuntime`. Map runtime failures to terminal SSE error events and a stable JSON error response for non-streaming calls. Never log API keys or model credentials.
+Use `Flux<ServerSentEvent<RuntimeEvent>>` for streaming. Validate `agentKey`, query length, conversation ownership, and request content before calling `PersistingAgentRuntime`. Map runtime failures to terminal SSE error events and a stable JSON error response for non-streaming calls. Never log API keys or model credentials.
 
 - [ ] **Step 4: Run all Phase 1 tests**
 
@@ -524,7 +524,7 @@ git commit -m "feat: 增加 Agent 对话和 SSE 运行接口"
 
 - [ ] **Step 1: Document local setup**
 
-Document JDK 21, PostgreSQL with pgvector, Redis, environment variables, Flyway startup, development admin login, model configuration, Application publish, and SSE curl example.
+Document JDK 21, PostgreSQL with pgvector, Redis, environment variables, Flyway startup, development admin login, model configuration, Agent publish, and SSE curl example.
 
 - [ ] **Step 2: Run the complete verification matrix**
 
@@ -539,7 +539,7 @@ java -version
 Verify manually with a deterministic test model or configured OpenAI-compatible endpoint:
 
 ```bash
-curl -N -X POST http://localhost:8080/api/v1/apps/demo/chat/stream \
+curl -N -X POST http://localhost:8080/api/v1/agents/demo/chat/stream \
   -H 'Authorization: Bearer <application-api-key>' \
   -H 'Content-Type: application/json' \
   -d '{"query":"你好"}'
@@ -568,10 +568,10 @@ git commit -m "docs: 增加 v5ai-nb 一期运行文档"
 - [ ] All Phase 1 tables start with `v5ai_`.
 - [ ] Sa-Token JWT login and protected admin endpoint tests pass.
 - [ ] Model credentials are encrypted before persistence.
-- [ ] Application cannot publish without an enabled model.
+- [ ] Agent cannot publish without an enabled model.
 - [ ] Runtime rejects drafts and disabled Applications.
 - [ ] AgentScope events are mapped to platform-owned events.
-- [ ] SSE endpoint requires Application API Key.
+- [ ] SSE endpoint requires Agent API Key.
 - [ ] Conversations, messages, runs, and terminal events are persisted.
 - [ ] `./mvnw clean verify` passes.
 - [ ] No Server-Agent, gRPC, RAG, MCP, Skill, or Workflow code has been added beyond Phase 1 extension interfaces.

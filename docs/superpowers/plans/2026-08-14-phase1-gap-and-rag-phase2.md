@@ -9,7 +9,7 @@
 - 不使用 Server-Agent/gRPC；不依赖 `snail-ai` 源码。
 - JDK 21、Spring Boot 4.1.0、MyBatis-Plus、Sa-Token + JWT、PostgreSQL + pgvector、Flyway。
 - API DTO 不暴露 AgentScope Java SDK 类型。
-- 运行时只读已发布 Application。
+- 运行时只读已发布 Agent。
 - 新增行为先写失败测试，再实现（沿用现有 Recording-Mapper 单测模式）。
 
 ## 关键发现（Phase 1 隐藏缺口）
@@ -29,29 +29,29 @@ Repository、Configuration）从未被注册：应用能启动但没有任何 AP
    新增 `PUT/DELETE /api/admin/providers/{providerKey}`、`PUT/DELETE /api/admin/models/{id}`。
 3. **模型连通性测试**：`ModelConnectionTester` 端口（v5ai-model）+ AgentScope 实现（infrastructure），
    `POST /api/admin/models/{id}/test`。
-4. **Application 补全**：`description` 字段、更新、禁用；`GET /api/admin/applications/{appKey}/versions`；
+4. **Agent 补全**：`description` 字段、更新、禁用；`GET /api/admin/agents/{agentKey}/versions`；
    `ApplicationResponse` 暴露 `description`。
 5. **事件模型扩展**：`RuntimeEventType` 增加 `MODEL_CALL/TOOL_CALL/TOOL_RESULT/PERMISSION_REQUIRED/
    MESSAGE_COMPLETED/RUN_FAILED/RETRIEVAL`；`RunRecordRepository.fail(runId, message)`；
    `PersistingAgentRuntime` 失败时发 `RUN_FAILED` 并落库、完成时发 `MESSAGE_COMPLETED`。
 6. **流式执行器重构**：新增 `ModelStreamTextExecutor`（`Model.stream` 逐块文本增量、发 `MODEL_CALL`、
    支持 RAG 上下文注入）；保留 HarnessAgent 占位路径。
-7. **会话历史与恢复**：`MessageRepository.findByConversationId`、`GET /api/v1/apps/{appKey}/conversations/{id}`；
-   `POST /api/v1/apps/{appKey}/conversations/{id}/resume`（带历史上下文重跑并持久化）。
+7. **会话历史与恢复**：`MessageRepository.findByConversationId`、`GET /api/v1/agents/{agentKey}/conversations/{id}`；
+   `POST /api/v1/agents/{agentKey}/conversations/{id}/resume`（带历史上下文重跑并持久化）。
 8. **AgentState 持久化**：`AgentStateRepository`（save/load）+ MyBatis 适配（`v5ai_agent_state`）+ 测试。
 9. **API Key 存储升级**：`MyBatisApplicationApiKeyStore`（读 `v5ai_api_key` 表）替换开发期配置存储；
-   `POST /api/admin/applications/{appKey}/api-keys`（生成并 BCrypt 存哈希）、`GET/DELETE`。
+   `POST /api/admin/agents/{agentKey}/api-keys`（生成并 BCrypt 存哈希）、`GET/DELETE`。
 
 ## Part B — RAG Phase 2
 
 1. **模块与迁移**：新增 `v5ai-rag`、`v5ai-worker` 模块；父 POM 注册；
    `V2__rag_schema.sql`：`CREATE EXTENSION vector`、`v5ai_knowledge_base`、
    `v5ai_knowledge_document`（含 BYTEA content）、`v5ai_knowledge_chunk`（`vector(1536)` 列 + ivfflat 索引）、
-   `v5ai_knowledge_task`（状态机 + 重试计数）、`v5ai_application_knowledge`（app_key + kb_id 绑定）。
+   `v5ai_knowledge_task`（状态机 + 重试计数）、`v5ai_application_knowledge`（agent_key + kb_id 绑定）。
 2. **v5ai-rag 领域与端口**：`KnowledgeBase/Document/Chunk/Task` 记录与枚举；Repository 端口；
    `DocumentParser`、`DocumentChunker`、`EmbeddingClient`、`VectorStore` 端口；
    `KnowledgeManagementService`（建库、上传、任务提交/重试、绑定）；`RetrievalContextBuilder`
-   （appKey → 绑定知识库 → 向量/关键词检索 → 引用上下文）。
+   （agentKey → 绑定知识库 → 向量/关键词检索 → 引用上下文）。
 3. **v5ai-infrastructure 实现**：实体/Mapper/Gateway/MyBatis 仓库；
    TXT/MD、PDF（PDFBox 3.0.7）、DOCX（zip+XML 轻量解析）解析器；固定 800/100 切片器；
    `OpenAiCompatibleEmbeddingClient`（Java HttpClient 调 `/v1/embeddings`，未配置 EMBEDDING 模型时
@@ -60,7 +60,7 @@ Repository、Configuration）从未被注册：应用能启动但没有任何 AP
 4. **v5ai-worker**：`KnowledgeIndexingService`（PENDING→PROCESSING→COMPLETED/FAILED 状态机、
    attempt/max_attempts 重试、幂等 re-index）；`KnowledgeTaskScheduler`（`@Scheduled` 扫描 PENDING/可重试 FAILED）。
 5. **v5ai-api**：`KnowledgeBaseController`（CRUD）、`KnowledgeDocumentController`
-   （multipart 上传、URL 导入、列表、重试、删除）、任务查询；`PUT/GET /api/admin/applications/{appKey}/knowledge-bindings`。
+   （multipart 上传、URL 导入、列表、重试、删除）、任务查询；`PUT/GET /api/admin/agents/{agentKey}/knowledge-bindings`。
 6. **v5ai-runtime 集成**：`RagContextProvider` 端口（v5ai-runtime），impl 在 v5ai-rag；
    `AgentScopeRuntime` 可选注入，检索结果以 `RETRIEVAL` 事件输出、上下文注入
    `AgentRunRequest.ragContext` → `ModelStreamTextExecutor` 拼入提示词。

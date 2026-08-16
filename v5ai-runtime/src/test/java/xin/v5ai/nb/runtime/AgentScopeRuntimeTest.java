@@ -3,12 +3,12 @@ package xin.v5ai.nb.runtime;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-import xin.v5ai.nb.application.Application;
-import xin.v5ai.nb.application.ApplicationPublishException;
-import xin.v5ai.nb.application.ApplicationRepository;
-import xin.v5ai.nb.application.ApplicationStatus;
-import xin.v5ai.nb.application.ApplicationVersion;
-import xin.v5ai.nb.application.PublishedApplicationResolver;
+import xin.v5ai.nb.agent.Agent;
+import xin.v5ai.nb.agent.AgentPublishException;
+import xin.v5ai.nb.agent.AgentRepository;
+import xin.v5ai.nb.agent.AgentStatus;
+import xin.v5ai.nb.agent.AgentVersion;
+import xin.v5ai.nb.agent.PublishedAgentResolver;
 import xin.v5ai.nb.mcp.McpToolPermission;
 
 import java.util.List;
@@ -17,7 +17,7 @@ class AgentScopeRuntimeTest {
     @Test
     void streamConvertsAgentTextToPlatformTextDelta() {
         var runtime = new AgentScopeRuntime(
-                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                resolverWith(new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 7L, 1L)),
                 (application, request) -> Flux.just(new AgentTextEvent.Text("hello"), new AgentTextEvent.Text(" world"))
         );
 
@@ -32,7 +32,7 @@ class AgentScopeRuntimeTest {
     @Test
     void streamEmitsModelCallAndRetrievalEvents() {
         var runtime = new AgentScopeRuntime(
-                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                resolverWith(new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 7L, 1L)),
                 (application, request) -> Flux.just(new AgentTextEvent.ModelCall("gpt-4o"), new AgentTextEvent.Text("answer")),
                 (application, request) -> reactor.core.publisher.Mono.just("[knowledge context]")
         );
@@ -49,19 +49,19 @@ class AgentScopeRuntimeTest {
     @Test
     void runtimeRejectsUnpublishedApplication() {
         var runtime = new AgentScopeRuntime(
-                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.DRAFT, 7L, null)),
+                resolverWith(new Agent("demo", "Demo", null, AgentStatus.DRAFT, 7L, null)),
                 (application, request) -> Flux.just(new AgentTextEvent.Text("never"))
         );
 
         StepVerifier.create(runtime.stream(new AgentRunRequest("demo", null, "hi")))
-                .expectError(ApplicationPublishException.class)
+                .expectError(AgentPublishException.class)
                 .verify();
     }
 
     @Test
     void streamEmitsToolCallEvents() {
         var runtime = new AgentScopeRuntime(
-                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                resolverWith(new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 7L, 1L)),
                 (application, request) -> Flux.just(
                         new AgentTextEvent.ToolCall("weather", McpToolPermission.ALLOW),
                         new AgentTextEvent.ToolResult("weather", true, ""),
@@ -82,7 +82,7 @@ class AgentScopeRuntimeTest {
     @Test
     void streamEmitsPermissionRequiredForApproveTool() {
         var runtime = new AgentScopeRuntime(
-                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                resolverWith(new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 7L, 1L)),
                 (application, request) -> Flux.just(
                         new AgentTextEvent.ToolCall("delete-file", McpToolPermission.APPROVE),
                         new AgentTextEvent.ToolResult("delete-file", true, ""))
@@ -100,7 +100,7 @@ class AgentScopeRuntimeTest {
     @Test
     void streamEmitsFailedToolResult() {
         var runtime = new AgentScopeRuntime(
-                resolverWith(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L)),
+                resolverWith(new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 7L, 1L)),
                 (application, request) -> Flux.just(
                         new AgentTextEvent.ToolCall("git", McpToolPermission.ALLOW),
                         new AgentTextEvent.ToolResult("git", false, "repo not found"))
@@ -115,55 +115,55 @@ class AgentScopeRuntimeTest {
                 .verifyComplete();
     }
 
-    private PublishedApplicationResolver resolverWith(Application application) {
-        return new PublishedApplicationResolver(new InMemoryApplicationRepository(application));
+    private PublishedAgentResolver resolverWith(Agent application) {
+        return new PublishedAgentResolver(new InMemoryAgentRepository(application));
     }
 
-    private static final class InMemoryApplicationRepository implements ApplicationRepository {
-        private final Application application;
+    private static final class InMemoryAgentRepository implements AgentRepository {
+        private final Agent application;
 
-        private InMemoryApplicationRepository(Application application) {
+        private InMemoryAgentRepository(Agent application) {
             this.application = application;
         }
 
         @Override
-        public Application findByAppKey(String appKey) {
-            return appKey.equals(application.appKey()) ? application : null;
+        public Agent findByAgentKey(String agentKey) {
+            return agentKey.equals(application.agentKey()) ? application : null;
         }
 
         @Override
-        public void save(Application application) {
+        public void save(Agent application) {
         }
 
         @Override
-        public void update(Application application) {
+        public void update(Agent application) {
         }
 
         @Override
-        public void disable(String appKey) {
+        public void disable(String agentKey) {
         }
 
         @Override
-        public List<Application> list() {
+        public List<Agent> list() {
             return List.of(application);
         }
 
         @Override
-        public long nextVersion(String appKey) {
+        public long nextVersion(String agentKey) {
             return 1;
         }
 
         @Override
-        public void saveVersion(ApplicationVersion version) {
+        public void saveVersion(AgentVersion version) {
         }
 
         @Override
-        public List<ApplicationVersion> listVersions(String appKey) {
+        public List<AgentVersion> listVersions(String agentKey) {
             return List.of();
         }
 
         @Override
-        public void publish(String appKey, long version) {
+        public void publish(String agentKey, long version) {
         }
     }
 }

@@ -3,7 +3,7 @@ package xin.v5ai.nb.runtime;
 import java.util.UUID;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.application.PublishedApplicationResolver;
+import xin.v5ai.nb.agent.PublishedAgentResolver;
 import xin.v5ai.nb.mcp.McpToolPermission;
 
 /**
@@ -14,8 +14,8 @@ import xin.v5ai.nb.mcp.McpToolPermission;
  * 整个执行是惰性的（Flux.defer），订阅时才真正开始运行。
  */
 public class AgentScopeRuntime implements AgentRuntime {
-    /** 已发布应用解析器：根据 appKey 找到已发布的应用配置 */
-    private final PublishedApplicationResolver applicationResolver;
+    /** 已发布应用解析器：根据 agentKey 找到已发布的应用配置 */
+    private final PublishedAgentResolver applicationResolver;
     /** 底层文本执行器：真正驱动 Agent 跑模型 */
     private final AgentTextExecutor agentTextExecutor;
     /** RAG 上下文构建器（可空，为空则不做知识检索） */
@@ -24,14 +24,14 @@ public class AgentScopeRuntime implements AgentRuntime {
     /**
      * 无 RAG 的构造器：不配置知识检索能力。
      */
-    public AgentScopeRuntime(PublishedApplicationResolver applicationResolver, AgentTextExecutor agentTextExecutor) {
+    public AgentScopeRuntime(PublishedAgentResolver applicationResolver, AgentTextExecutor agentTextExecutor) {
         this(applicationResolver, agentTextExecutor, null);
     }
 
     /**
      * 全参构造：可附带 RAG 上下文构建器。
      */
-    public AgentScopeRuntime(PublishedApplicationResolver applicationResolver, AgentTextExecutor agentTextExecutor,
+    public AgentScopeRuntime(PublishedAgentResolver applicationResolver, AgentTextExecutor agentTextExecutor,
                              RagContextProvider ragContextProvider) {
         this.applicationResolver = applicationResolver;
         this.agentTextExecutor = agentTextExecutor;
@@ -42,7 +42,7 @@ public class AgentScopeRuntime implements AgentRuntime {
     public Flux<RuntimeEvent> stream(AgentRunRequest request) {
         // defer：延迟到订阅时才解析应用、生成 runId，避免每次构建都执行副作用
         return Flux.defer(() -> {
-            var application = applicationResolver.resolve(request.appKey());
+            var application = applicationResolver.resolve(request.agentKey());
             var runId = UUID.randomUUID().toString();
             // 若未配置 RAG，则上下文为空串；否则异步构建检索上下文
             var contextMono = ragContextProvider == null

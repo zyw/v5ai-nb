@@ -16,7 +16,7 @@ public class MyBatisConversationRepository implements ConversationRepository {
     public void ensureConversation(Conversation conversation) {
         var entity = new RuntimeConversationEntity();
         entity.setConversationId(conversation.conversationId());
-        entity.setAppKey(conversation.appKey());
+        entity.setAgentKey(conversation.agentKey());
         gateway.upsertConversation(entity);
     }
 }

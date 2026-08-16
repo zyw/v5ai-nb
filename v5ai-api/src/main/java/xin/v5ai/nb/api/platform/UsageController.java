@@ -27,18 +27,18 @@ public class UsageController {
 
     @GetMapping
     public List<UsageRecord> listUsage(
-            @RequestParam(value = "appKey", required = false) String appKey,
+            @RequestParam(value = "agentKey", required = false) String agentKey,
             @RequestParam(value = "from", required = false) String from,
             @RequestParam(value = "to", required = false) String to,
             @RequestParam(value = "limit", defaultValue = "100") int limit
     ) {
         var fromInstant = parseDayStart(from);
         var toInstant = parseDayEnd(to);
-        List<ModelUsageEntity> entities = (appKey == null || appKey.isBlank())
+        List<ModelUsageEntity> entities = (agentKey == null || agentKey.isBlank())
                 ? usageMapper.selectRecent(limit)
-                : usageMapper.selectByAppRange(appKey, fromInstant, toInstant, limit);
+                : usageMapper.selectByAppRange(agentKey, fromInstant, toInstant, limit);
         return entities.stream().map(entity -> new UsageRecord(
-                entity.getId(), entity.getRunId(), entity.getAppKey(), entity.getModelKey(),
+                entity.getId(), entity.getRunId(), entity.getAgentKey(), entity.getModelKey(),
                 entity.getPromptTokens(), entity.getCompletionTokens(), entity.getDurationMs(),
                 entity.getStatus(), entity.getCreatedAt())).toList();
     }

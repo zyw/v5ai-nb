@@ -6,7 +6,7 @@ import io.agentscope.core.state.AgentStateStore;
 import io.agentscope.core.state.JsonFileAgentStateStore;
 import io.agentscope.harness.agent.HarnessAgent;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.application.Application;
+import xin.v5ai.nb.agent.Agent;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -16,7 +16,7 @@ import java.nio.file.Path;
 /**
  * 基于 AgentScope HarnessAgent 的文本流式执行器。
  *
- * 把应用配置（Application）与模型绑定到一个 HarnessAgent 上，
+ * 把应用配置（Agent）与模型绑定到一个 HarnessAgent 上，
  * 以响应式流的形式对外暴露 Agent 的文本输出。
  *
  * 说明：这里刻意禁用了文件系统工具、Shell、记忆、子代理、技能等
@@ -54,7 +54,7 @@ public class AgentScopeHarnessExecutor implements AgentTextExecutor {
     }
 
     @Override
-    public Flux<AgentTextEvent> streamText(Application application, AgentRunRequest request) {
+    public Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request) {
         ensureWorkspaceExists();
         // 按应用信息构建 HarnessAgent，并关闭各类扩展能力（最小运行形态）
         HarnessAgent agent = HarnessAgent.builder()

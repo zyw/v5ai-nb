@@ -4,7 +4,7 @@ import { NButton, NCard, NForm, NFormItem, NInput, NSpace, NTag, useMessage } fr
 import { chat, streamChat } from '../api/client'
 
 const message = useMessage()
-const appKey = ref('demo')
+const agentKey = ref('demo')
 const appApiKey = ref('')
 const conversationId = ref('')
 const query = ref('你好，介绍一下 v5ai-nb')
@@ -37,7 +37,7 @@ async function handleBlockingChat() {
   blockingAnswer.value = ''
   runId.value = ''
   try {
-    const result = await chat(appKey.value, appApiKey.value, chatRequest())
+    const result = await chat(agentKey.value, appApiKey.value, chatRequest())
     runId.value = result.runId
     blockingAnswer.value = result.answer
   } catch (error) {
@@ -52,7 +52,7 @@ async function handleStream() {
   streamAnswer.value = ''
   events.value = []
   try {
-    await streamChat(appKey.value, appApiKey.value, chatRequest(), (event, data) => {
+    await streamChat(agentKey.value, appApiKey.value, chatRequest(), (event, data) => {
       events.value.push(event)
       if (event === 'TEXT_DELTA') {
         streamAnswer.value += parseDelta(data)
@@ -74,9 +74,9 @@ async function handleStream() {
     <n-card title="Chat 请求" class="panel">
       <n-form label-placement="top">
         <n-form-item label="App Key">
-          <n-input v-model:value="appKey" />
+          <n-input v-model:value="agentKey" />
         </n-form-item>
-        <n-form-item label="Application API Key">
+        <n-form-item label="Agent API Key">
           <n-input v-model:value="appApiKey" type="password" show-password-on="mousedown" />
         </n-form-item>
         <n-form-item label="Conversation ID">

@@ -18,7 +18,7 @@ import xin.v5ai.nb.runtime.RuntimeEvent;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/apps/{appKey}/chat")
+@RequestMapping("/api/v1/agents/{agentKey}/chat")
 public class ChatController {
     private final AgentRuntime agentRuntime;
     private final MessageRepository messageRepository;
@@ -30,23 +30,23 @@ public class ChatController {
 
     @PostMapping("/stream")
     public Flux<ServerSentEvent<RuntimeEvent>> stream(
-            @PathVariable("appKey") String appKey,
+            @PathVariable("agentKey") String agentKey,
             @RequestBody ChatRequest request
     ) {
-        return toSse(agentRuntime.stream(new AgentRunRequest(appKey, request.conversationId(), request.query())));
+        return toSse(agentRuntime.stream(new AgentRunRequest(agentKey, request.conversationId(), request.query())));
     }
 
     @PostMapping
     public Mono<AgentRunResult> call(
-            @PathVariable("appKey") String appKey,
+            @PathVariable("agentKey") String agentKey,
             @RequestBody ChatRequest request
     ) {
-        return agentRuntime.call(new AgentRunRequest(appKey, request.conversationId(), request.query()));
+        return agentRuntime.call(new AgentRunRequest(agentKey, request.conversationId(), request.query()));
     }
 
     @GetMapping("/conversations/{conversationId}")
     public List<ConversationMessageResponse> conversationMessages(
-            @PathVariable("appKey") String appKey,
+            @PathVariable("agentKey") String agentKey,
             @PathVariable("conversationId") String conversationId
     ) {
         return messageRepository.findByConversationId(conversationId).stream()
@@ -56,12 +56,12 @@ public class ChatController {
 
     @PostMapping("/conversations/{conversationId}/resume")
     public Flux<ServerSentEvent<RuntimeEvent>> resume(
-            @PathVariable("appKey") String appKey,
+            @PathVariable("agentKey") String agentKey,
             @PathVariable("conversationId") String conversationId,
             @RequestBody ChatRequest request
     ) {
         var history = messageRepository.findByConversationId(conversationId);
-        var resumeRequest = new AgentRunRequest(appKey, conversationId, request.query()).withHistory(history);
+        var resumeRequest = new AgentRunRequest(agentKey, conversationId, request.query()).withHistory(history);
         return toSse(agentRuntime.stream(resumeRequest));
     }
 

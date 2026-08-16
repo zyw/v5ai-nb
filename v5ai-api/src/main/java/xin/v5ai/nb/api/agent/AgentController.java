@@ -1,0 +1,90 @@
+package xin.v5ai.nb.api.agent;
+
+import cn.dev33.satoken.stp.StpUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.agent.AgentManagementService;
+import xin.v5ai.nb.agent.CreateAgentCommand;
+import xin.v5ai.nb.agent.PublishAgentCommand;
+import xin.v5ai.nb.agent.UpdateAgentCommand;
+import xin.v5ai.nb.common.platform.AuditRecorder;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/admin/agents")
+public class AgentController {
+    private final AgentManagementService agentManagementService;
+
+    @Autowired(required = false)
+    private AuditRecorder auditRecorder;
+
+    public AgentController(AgentManagementService agentManagementService) {
+        this.agentManagementService = agentManagementService;
+    }
+
+    @PostMapping
+    public AgentResponse createAgent(@RequestBody CreateAgentRequest request) {
+        var created = AgentResponse.from(agentManagementService.createAgent(
+                new CreateAgentCommand(request.agentKey(), request.name(), request.description(),
+                        request.modelId(), request.systemPrompt())));
+        audit("CREATE", "agent", request.agentKey(), "create agent");
+        return created;
+    }
+
+    @GetMapping
+    public List<AgentResponse> listAgents() {
+        return agentManagementService.listAgents().stream()
+                .map(AgentResponse::from)
+                .toList();
+    }
+
+    @PutMapping("/{agentKey}")
+    public AgentResponse updateAgent(@PathVariable("agentKey") String agentKey,
+                                     @RequestBody UpdateAgentRequest request) {
+        audit("UPDATE", "agent", agentKey, "update agent");
+        return AgentResponse.from(agentManagementService.updateAgent(
+                new UpdateAgentCommand(agentKey, request.name(), request.description(),
+                        request.modelId(), request.systemPrompt())));
+    }
+
+    @DeleteMapping("/{agentKey}")
+    public void disableAgent(@PathVariable("agentKey") String agentKey) {
+        agentManagementService.disable(agentKey);
+        audit("DISABLE", "agent", agentKey, "disable agent");
+    }
+
+    @GetMapping("/{agentKey}/versions")
+    public List<AgentVersionResponse> listVersions(@PathVariable("agentKey") String agentKey) {
+        return agentManagementService.listVersions(agentKey).stream()
+                .map(AgentVersionResponse::from)
+                .toList();
+    }
+
+    @PostMapping("/{agentKey}/publish")
+    public void publishAgent(@PathVariable("agentKey") String agentKey,
+                             @RequestBody PublishAgentRequest request) {
+        agentManagementService.publish(new PublishAgentCommand(agentKey, request.description()));
+        audit("PUBLISH", "agent", agentKey, "publish agent");
+    }
+
+    private void audit(String action, String targetType, String targetId, String detail) {
+        if (auditRecorder == null) {
+            return;
+        }
+        String actor;
+        try {
+            actor = StpUtil.getLoginIdAsString();
+        } catch (Exception exception) {
+            actor = null;
+        }
+        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
+    }
+}

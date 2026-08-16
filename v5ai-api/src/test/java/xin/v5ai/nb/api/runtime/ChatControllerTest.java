@@ -6,7 +6,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.api.apiKey.ApplicationApiKeyAuthenticationFilter;
+import xin.v5ai.nb.api.apiKey.AgentApiKeyAuthenticationFilter;
 import xin.v5ai.nb.runtime.AgentRunRequest;
 import xin.v5ai.nb.runtime.AgentRunResult;
 import xin.v5ai.nb.runtime.AgentRuntime;
@@ -15,10 +15,10 @@ import xin.v5ai.nb.runtime.RuntimeEvent;
 class ChatControllerTest {
     @Test
     void streamEndpointReturnsTypedSseEvents() {
-        var client = chatClient(new ApplicationApiKeyAuthenticationFilter((appKey, apiKey) -> true));
+        var client = chatClient(new AgentApiKeyAuthenticationFilter((agentKey, apiKey) -> true));
 
         client.post()
-                .uri("/api/v1/apps/demo/chat/stream")
+                .uri("/api/v1/agents/demo/chat/stream")
                 .header("Authorization", "Bearer app-secret")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new ChatRequest("conversation-1", "hello"))
@@ -34,10 +34,10 @@ class ChatControllerTest {
 
     @Test
     void streamEndpointRejectsMissingApiKey() {
-        var client = chatClient(new ApplicationApiKeyAuthenticationFilter((appKey, apiKey) -> true));
+        var client = chatClient(new AgentApiKeyAuthenticationFilter((agentKey, apiKey) -> true));
 
         client.post()
-                .uri("/api/v1/apps/demo/chat/stream")
+                .uri("/api/v1/agents/demo/chat/stream")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new ChatRequest("conversation-1", "hello"))
                 .exchange()
@@ -46,10 +46,10 @@ class ChatControllerTest {
 
     @Test
     void streamEndpointRejectsInvalidApiKeyForApp() {
-        var client = chatClient(new ApplicationApiKeyAuthenticationFilter((appKey, apiKey) -> false));
+        var client = chatClient(new AgentApiKeyAuthenticationFilter((agentKey, apiKey) -> false));
 
         client.post()
-                .uri("/api/v1/apps/demo/chat/stream")
+                .uri("/api/v1/agents/demo/chat/stream")
                 .header("Authorization", "Bearer wrong")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new ChatRequest("conversation-1", "hello"))

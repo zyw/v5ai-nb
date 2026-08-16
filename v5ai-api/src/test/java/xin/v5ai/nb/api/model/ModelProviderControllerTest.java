@@ -1,10 +1,10 @@
 package xin.v5ai.nb.api.model;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.application.Application;
-import xin.v5ai.nb.application.ApplicationRepository;
-import xin.v5ai.nb.application.ApplicationStatus;
-import xin.v5ai.nb.application.ApplicationVersion;
+import xin.v5ai.nb.agent.Agent;
+import xin.v5ai.nb.agent.AgentRepository;
+import xin.v5ai.nb.agent.AgentStatus;
+import xin.v5ai.nb.agent.AgentVersion;
 import xin.v5ai.nb.common.exception.ErrorCode;
 import xin.v5ai.nb.common.exception.V5aiException;
 import xin.v5ai.nb.model.CreateModelCommand;
@@ -65,7 +65,7 @@ class ModelProviderControllerTest {
     void createsAndListsModels() {
         var service = service();
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
-        var controller = new ModelController(service, new RecordingApplicationRepository());
+        var controller = new ModelController(service, new RecordingAgentRepository());
 
         var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret"));
         var models = controller.listModels();
@@ -79,7 +79,7 @@ class ModelProviderControllerTest {
     void updatesDeletesAndTestsModel() {
         var service = service();
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
-        var controller = new ModelController(service, new RecordingApplicationRepository());
+        var controller = new ModelController(service, new RecordingAgentRepository());
         var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret"));
 
         var updated = controller.updateModel(1L, new UpdateModelRequest("gpt-4o-mini", ModelType.CHAT, null, true));
@@ -95,9 +95,9 @@ class ModelProviderControllerTest {
         var service = service();
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
         service.createModel(new CreateModelCommand("openai", "gpt-4o", ModelType.CHAT, "secret"));
-        var applications = new RecordingApplicationRepository();
-        applications.applications.add(new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 1L, 1L));
-        var controller = new ModelController(service, applications);
+        var agents = new RecordingAgentRepository();
+        agents.agents.add(new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 1L, 1L));
+        var controller = new ModelController(service, agents);
 
         assertThatThrownBy(() -> controller.deleteModel(1L))
                 .isInstanceOf(V5aiException.class)
@@ -108,7 +108,7 @@ class ModelProviderControllerTest {
     @Test
     void deleteModelRejectsUnknownModel() {
         var service = service();
-        var controller = new ModelController(service, new RecordingApplicationRepository());
+        var controller = new ModelController(service, new RecordingAgentRepository());
 
         assertThatThrownBy(() -> controller.deleteModel(99L))
                 .isInstanceOf(V5aiException.class)
@@ -189,48 +189,48 @@ class ModelProviderControllerTest {
         }
     }
 
-    private static final class RecordingApplicationRepository implements ApplicationRepository {
-        private final List<Application> applications = new ArrayList<>();
+    private static final class RecordingAgentRepository implements AgentRepository {
+        private final List<Agent> agents = new ArrayList<>();
 
         @Override
-        public Application findByAppKey(String appKey) {
-            return applications.stream().filter(app -> app.appKey().equals(appKey)).findFirst().orElse(null);
+        public Agent findByAgentKey(String agentKey) {
+            return agents.stream().filter(app -> app.agentKey().equals(agentKey)).findFirst().orElse(null);
         }
 
         @Override
-        public void save(Application application) {
-            applications.add(application);
+        public void save(Agent application) {
+            agents.add(application);
         }
 
         @Override
-        public void update(Application application) {
+        public void update(Agent application) {
         }
 
         @Override
-        public void disable(String appKey) {
+        public void disable(String agentKey) {
         }
 
         @Override
-        public List<Application> list() {
-            return applications;
+        public List<Agent> list() {
+            return agents;
         }
 
         @Override
-        public long nextVersion(String appKey) {
+        public long nextVersion(String agentKey) {
             return 1;
         }
 
         @Override
-        public void saveVersion(ApplicationVersion version) {
+        public void saveVersion(AgentVersion version) {
         }
 
         @Override
-        public List<ApplicationVersion> listVersions(String appKey) {
+        public List<AgentVersion> listVersions(String agentKey) {
             return List.of();
         }
 
         @Override
-        public void publish(String appKey, long version) {
+        public void publish(String agentKey, long version) {
         }
     }
 }

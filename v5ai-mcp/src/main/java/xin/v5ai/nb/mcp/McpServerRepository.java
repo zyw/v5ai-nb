@@ -11,6 +11,6 @@ public interface McpServerRepository {
 
     List<McpServer> list();
 
-    /** 禁用（逻辑删除）：绑定的 Application 不再加载该 Server 的 Tool。 */
+    /** 禁用（逻辑删除）：绑定的 Agent 不再加载该 Server 的 Tool。 */
     void disable(Long id);
 }

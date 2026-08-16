@@ -4,7 +4,7 @@
 
 `v5ai-nb` 是一个基于 Spring Boot 4、JDK 21 与 AgentScope Java 构建的中心化企业级 AI 应用平台。项目参考 `snail-ai` 的业务能力，但作为全新项目独立开发，不修改、不依赖 `snail-ai` 的源码、模块、数据库和通信协议。
 
-项目采用类似 Dify 的平台架构：平台统一管理模型、Application、知识库、MCP Server、Skill、会话和运行记录；运行时根据已发布的 Application 配置动态构建 AgentScope Agent，并通过 HTTP/SSE 对外提供能力。
+项目采用类似 Dify 的平台架构：平台统一管理模型、Agent、知识库、MCP Server、Skill、会话和运行记录；运行时根据已发布的 Agent 配置动态构建 AgentScope Agent，并通过 HTTP/SSE 对外提供能力。
 
 固定命名约束：
 
@@ -25,7 +25,7 @@
 第一阶段完成一个可运行的中心化 AI 应用平台，打通以下闭环：
 
 ```text
-配置模型 → 创建 Application → 绑定知识库/MCP/Skill → 发布 Application
+配置模型 → 创建 Agent → 绑定知识库/MCP/Skill → 发布 Agent
 → 通过 API 发起对话 → AgentScope 执行 → SSE 输出事件
 → 保存会话、消息和运行记录
 ```
@@ -34,9 +34,9 @@
 
 - 多模型 Provider 与模型配置管理；
 - 基于 AgentScope Java 的 ReAct/Tool Calling Agent；
-- Application 草稿、发布版本和运行时配置隔离；
+- Agent 草稿、发布版本和运行时配置隔离；
 - 知识库、文档解析、切片、Embedding、向量检索和引用返回；
-- MCP Server 注册、连接测试、Tool 发现和 Application 绑定；
+- MCP Server 注册、连接测试、Tool 发现和 Agent 绑定；
 - Skill 包上传、解析、版本发布、回滚和 Workspace 注入；
 - 会话、消息、AgentState、运行事件和用量记录；
 - 管理 API、运行 API 和 SSE 流式事件；
@@ -83,7 +83,7 @@
         +------------------+
 ```
 
-运行时不由 Controller 直接组装。所有运行请求都进入 `v5ai-runtime`，由它读取已发布 Application、解析依赖并构造 AgentScope Agent。
+运行时不由 Controller 直接组装。所有运行请求都进入 `v5ai-runtime`，由它读取已发布 Agent、解析依赖并构造 AgentScope Agent。
 
 ## 4. Maven 模块与职责
 
@@ -97,7 +97,7 @@ v5ai-nb/
 ├── v5ai-rag
 ├── v5ai-mcp
 ├── v5ai-skill
-├── v5ai-application
+├── v5ai-agent
 ├── v5ai-api
 ├── v5ai-worker
 ├── v5ai-starter
@@ -116,7 +116,7 @@ v5ai-nb/
 | `v5ai-rag` | 知识库、文档、解析、切片、向量化、检索和引用 |
 | `v5ai-mcp` | MCP Server、凭据、连接、Tool 发现、缓存和运行时适配 |
 | `v5ai-skill` | Skill 包、`SKILL.md`、版本、发布和 Workspace 内容 |
-| `v5ai-application` | Application 配置、资源绑定、草稿、发布版本和校验 |
+| `v5ai-agent` | Agent 配置、资源绑定、草稿、发布版本和校验 |
 | `v5ai-api` | 管理 API、运行 API、会话 API、SSE 和认证入口 |
 | `v5ai-worker` | 知识库任务、Skill 任务、连接测试和可恢复异步任务 |
 | `v5ai-starter` | Spring Boot 启动类、自动配置、配置文件和部署入口 |
@@ -126,13 +126,13 @@ v5ai-nb/
 
 ## 5. 核心领域模型
 
-### 5.1 Application
+### 5.1 Agent
 
-Application 是平台对外发布的 AI 应用单元，包含系统提示词、模型、知识库、MCP、Skill、工具和记忆策略。
+Agent 是平台对外发布的 AI 应用单元，包含系统提示词、模型、知识库、MCP、Skill、工具和记忆策略。
 
 ```text
-Application
-├── id / appKey / name / description
+Agent
+├── id / agentKey / name / description
 ├── type: CHAT | COMPLETION
 ├── status: DRAFT | PUBLISHED | DISABLED
 ├── draftVersion
@@ -164,7 +164,7 @@ Provider 适配器通过统一接口提供凭据校验和运行时模型创建�
 
 MCP Server 保存传输类型、Endpoint/Command、参数、Headers、环境变量和超时配置。第一阶段支持 Streamable HTTP、SSE 和 Stdio。
 
-MCP Tool 元数据可缓存，但运行时必须根据 Application 已发布配置建立隔离的 Tool 集合。Stdio 命令执行必须受白名单、工作目录和超时限制。
+MCP Tool 元数据可缓存，但运行时必须根据 Agent 已发布配置建立隔离的 Tool 集合。Stdio 命令执行必须受白名单、工作目录和超时限制。
 
 ### 5.5 Skill
 
@@ -178,7 +178,7 @@ skill-package/
 └── resources/
 ```
 
-只有已发布版本可以绑定 Application。运行时通过 Workspace 和 Context 注入 Skill 内容，禁止直接加载用户上传但未校验的文件。
+只有已发布版本可以绑定 Agent。运行时通过 Workspace 和 Context 注入 Skill 内容，禁止直接加载用户上传但未校验的文件。
 
 ## 6. AgentScope Runtime 设计
 
@@ -213,7 +213,7 @@ AgentScopeRuntime
 
 每次运行的步骤：
 
-1. 根据 `appKey` 加载 Application 发布版本；
+1. 根据 `agentKey` 加载 Agent 发布版本；
 2. 根据 `userId`、`conversationId` 和 `tenantId` 加载上下文；
 3. 解析 Chat Model；
 4. 执行知识检索并构造引用上下文；
@@ -258,7 +258,7 @@ RAG 作为 Runtime 的上下文构建阶段，而不是强制暴露为普通 Too
 
 ```text
 /api/admin/models
-/api/admin/applications
+/api/admin/agents
 /api/admin/knowledge-bases
 /api/admin/documents
 /api/admin/mcp-servers
@@ -270,8 +270,8 @@ RAG 作为 Runtime 的上下文构建阶段，而不是强制暴露为普通 Too
 运行 API：
 
 ```text
-POST /api/v1/apps/{appKey}/chat
-POST /api/v1/apps/{appKey}/chat/stream
+POST /api/v1/agents/{agentKey}/chat
+POST /api/v1/agents/{agentKey}/chat/stream
 GET  /api/v1/conversations/{conversationId}
 POST /api/v1/conversations/{conversationId}/resume
 ```
@@ -334,7 +334,7 @@ v5ai_run_event
 
 ## 10. 安全与可靠性
 
-- 管理 API 使用 Sa-Token + JWT/RBAC；运行 API 使用 Application API Key。
+- 管理 API 使用 Sa-Token + JWT/RBAC；运行 API 使用 Agent API Key。
 - 模型凭据、MCP Headers、环境变量和第三方 Token 加密存储。
 - 所有 MCP Tool 调用记录 `runId`、工具名、参数摘要、结果状态和耗时。
 - Tool 权限支持允许、人工审批、拒绝三态决策。
@@ -348,7 +348,7 @@ v5ai_run_event
 
 ### 单元测试
 
-- Application 发布校验；
+- Agent 发布校验；
 - 模型 Provider 配置解析；
 - 文档切片；
 - Skill 包结构校验；
@@ -370,12 +370,12 @@ v5ai_run_event
 完成以下端到端场景：
 
 1. 创建模型并通过连通性测试；
-2. 创建 Application、绑定模型并发布；
+2. 创建 Agent、绑定模型并发布；
 3. 通过 SSE 完成一次基础对话；
 4. 上传文档并完成知识库索引；
-5. Application 使用知识库回答并返回引用；
-6. Application 调用 MCP Tool 并输出工具事件；
-7. Application 加载 Skill 并完成对应任务；
+5. Agent 使用知识库回答并返回引用；
+6. Agent 调用 MCP Tool 并输出工具事件；
+7. Agent 加载 Skill 并完成对应任务；
 8. 失败任务可查询并重试；
 9. 会话恢复后上下文保持一致。
 
@@ -402,7 +402,7 @@ Maven 多模块、Spring Boot、PostgreSQL、Redis、MinIO、Flyway、认证、�
 
 ### Phase 1：模型与 Agent
 
-Provider/Model 管理、Application、发布版本、AgentScope Runtime、基础对话、SSE、会话和消息持久化。
+Provider/Model 管理、Agent、发布版本、AgentScope Runtime、基础对话、SSE、会话和消息持久化。
 
 ### Phase 2：RAG
 
@@ -410,7 +410,7 @@ Provider/Model 管理、Application、发布版本、AgentScope Runtime、基础
 
 ### Phase 3：MCP
 
-MCP Server、连接测试、Tool 发现、Application 绑定、动态 Tool 注册、权限和审计。
+MCP Server、连接测试、Tool 发现、Agent 绑定、动态 Tool 注册、权限和审计。
 
 ### Phase 4：Skill
 
@@ -426,7 +426,7 @@ Skill 上传、`SKILL.md` 解析、版本发布、Workspace 注入、绑定、�
 
 ## 14. 设计决策总结
 
-1. 用 Application 作为发布和运行边界，而不是暴露 Agent Client。
+1. 用 Agent 作为发布和运行边界，而不是暴露 Agent Client。
 2. 用 AgentScope Runtime 隔离底层 Agent API 与平台业务。
 3. 用发布版本保证运行配置稳定。
 4. 用异步 Worker 处理知识库和长任务。

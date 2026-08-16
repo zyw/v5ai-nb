@@ -2,7 +2,7 @@ package xin.v5ai.nb.api.platform;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import xin.v5ai.nb.application.ApplicationRepository;
+import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.common.platform.AppQuota;
 import xin.v5ai.nb.common.platform.AppQuotaService;
 import xin.v5ai.nb.common.platform.AuditLog;
@@ -83,12 +83,12 @@ class PlatformControllersTest {
 
     @Test
     void statsControllerCountsResources() {
-        var applications = mock(ApplicationRepository.class);
+        var agents = mock(AgentRepository.class);
         var models = mock(ModelRepository.class);
         var knowledge = mock(KnowledgeBaseRepository.class);
         var skills = mock(SkillRepository.class);
-        when(applications.list()).thenReturn(List.of(new xin.v5ai.nb.application.Application(
-                "a", "A", null, xin.v5ai.nb.application.ApplicationStatus.PUBLISHED, 1L, null)));
+        when(agents.list()).thenReturn(List.of(new xin.v5ai.nb.agent.Agent(
+                "a", "A", null, xin.v5ai.nb.agent.AgentStatus.PUBLISHED, 1L, null)));
         when(models.list()).thenReturn(List.of(new xin.v5ai.nb.model.ModelConfig("p", "m", xin.v5ai.nb.model.ModelType.CHAT, "c")));
         when(knowledge.list()).thenReturn(List.of(new xin.v5ai.nb.rag.KnowledgeBase(1L, "kb", null, xin.v5ai.nb.rag.KnowledgeBaseStatus.ACTIVE)));
         when(skills.list()).thenReturn(List.of(new xin.v5ai.nb.skill.Skill(1L, "skill", "d", xin.v5ai.nb.skill.SkillStatus.ACTIVE, null, null, null, null)));
@@ -96,9 +96,9 @@ class PlatformControllersTest {
         when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(7L);
         when(jdbc.queryForObject(anyString(), eq(Long.class), any())).thenReturn(3L);
 
-        var overview = new StatsController(jdbc, applications, models, knowledge, skills).overview();
+        var overview = new StatsController(jdbc, agents, models, knowledge, skills).overview();
 
-        assertThat(overview.applications()).isEqualTo(1);
+        assertThat(overview.agents()).isEqualTo(1);
         assertThat(overview.totalRuns()).isEqualTo(7);
         assertThat(overview.todayModelCalls()).isEqualTo(3);
     }

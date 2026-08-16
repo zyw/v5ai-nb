@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.application.ApplicationRepository;
+import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.common.exception.ErrorCode;
 import xin.v5ai.nb.common.exception.V5aiException;
 import xin.v5ai.nb.model.CreateModelCommand;
@@ -21,11 +21,11 @@ import java.util.List;
 @RequestMapping("/api/admin/models")
 public class ModelController {
     private final ModelManagementService modelManagementService;
-    private final ApplicationRepository applicationRepository;
+    private final AgentRepository agentRepository;
 
-    public ModelController(ModelManagementService modelManagementService, ApplicationRepository applicationRepository) {
+    public ModelController(ModelManagementService modelManagementService, AgentRepository agentRepository) {
         this.modelManagementService = modelManagementService;
-        this.applicationRepository = applicationRepository;
+        this.agentRepository = agentRepository;
     }
 
     @PostMapping
@@ -53,7 +53,7 @@ public class ModelController {
         if (modelManagementService.findModel(id) == null) {
             throw new V5aiException(ErrorCode.NOT_FOUND, "model does not exist: " + id);
         }
-        boolean referenced = applicationRepository.list().stream()
+        boolean referenced = agentRepository.list().stream()
                 .anyMatch(application -> application.modelId() != null && application.modelId().equals(id));
         if (referenced) {
             throw new V5aiException(ErrorCode.CONFLICT,

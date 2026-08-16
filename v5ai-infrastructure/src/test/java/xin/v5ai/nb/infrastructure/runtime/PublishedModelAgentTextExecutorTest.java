@@ -8,8 +8,8 @@ import io.agentscope.core.model.ToolSchema;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-import xin.v5ai.nb.application.Application;
-import xin.v5ai.nb.application.ApplicationStatus;
+import xin.v5ai.nb.agent.Agent;
+import xin.v5ai.nb.agent.AgentStatus;
 import xin.v5ai.nb.runtime.AgentRunRequest;
 import xin.v5ai.nb.runtime.AgentTextEvent;
 
@@ -24,7 +24,7 @@ class PublishedModelAgentTextExecutorTest {
                 model -> (application, request) -> Flux.just(new AgentTextEvent.Text(model.getModelName())));
 
         StepVerifier.create(executor.streamText(
-                        new Application("demo", "Demo", null, ApplicationStatus.PUBLISHED, 7L, 1L),
+                        new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 7L, 1L),
                         new AgentRunRequest("demo", "conversation-1", "hello")))
                 .expectNext(new AgentTextEvent.Text("fixed:model-7"))
                 .verifyComplete();

@@ -7,12 +7,12 @@ import {
   disableMcpServer,
   discoverMcpTools,
   getMcpServerBindings,
-  listApplications,
+  listAgents,
   listMcpServers,
   listMcpTools,
   testMcpServerConnection,
   updateMcpToolPermission,
-  type ApplicationResponse,
+  type AgentResponse,
   type McpServerResponse,
   type McpToolPermission,
   type McpToolResponse,
@@ -23,7 +23,7 @@ import { adminToken, isLoggedIn } from '../stores/session'
 const message = useMessage()
 const loading = ref(false)
 const servers = ref<McpServerResponse[]>([])
-const applications = ref<ApplicationResponse[]>([])
+const agents = ref<AgentResponse[]>([])
 const selectedServerTools = ref<McpToolResponse[]>([])
 const activeServerId = ref<number | null>(null)
 
@@ -38,7 +38,7 @@ const form = reactive({
 })
 
 const bindForm = reactive({
-  appKey: 'demo',
+  agentKey: 'demo',
   serverIds: [] as number[]
 })
 
@@ -115,10 +115,10 @@ async function reload() {
   try {
     const [serverRows, appRows] = await Promise.all([
       listMcpServers(adminToken.value),
-      listApplications(adminToken.value)
+      listAgents(adminToken.value)
     ])
     servers.value = serverRows
-    applications.value = appRows
+    agents.value = appRows
   } catch (error) {
     message.error(error instanceof Error ? error.message : '加载 MCP 数据失败')
   } finally {
@@ -203,7 +203,7 @@ async function handleDisable(row: McpServerResponse) {
 
 async function reloadBindings() {
   try {
-    bindForm.serverIds = await getMcpServerBindings(adminToken.value, bindForm.appKey)
+    bindForm.serverIds = await getMcpServerBindings(adminToken.value, bindForm.agentKey)
   } catch {
     bindForm.serverIds = []
   }
@@ -211,8 +211,8 @@ async function reloadBindings() {
 
 async function handleBind() {
   try {
-    await bindMcpServers(adminToken.value, bindForm.appKey, bindForm.serverIds)
-    message.success(`已更新 ${bindForm.appKey} 的 MCP 绑定`)
+    await bindMcpServers(adminToken.value, bindForm.agentKey, bindForm.serverIds)
+    message.success(`已更新 ${bindForm.agentKey} 的 MCP 绑定`)
     await reloadBindings()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '绑定失败')
@@ -238,8 +238,8 @@ const serverOptions = computed(() =>
 
 onMounted(async () => {
   await reload()
-  if (applications.value.length > 0) {
-    bindForm.appKey = applications.value[0].appKey
+  if (agents.value.length > 0) {
+    bindForm.agentKey = agents.value[0].agentKey
   }
   await reloadBindings()
 })
@@ -278,14 +278,14 @@ onMounted(async () => {
       </n-form>
     </n-card>
 
-    <n-card title="Application 绑定 MCP" class="panel">
+    <n-card title="Agent 绑定 MCP" class="panel">
       <n-form label-placement="top">
-        <n-form-item label="Application App Key">
+        <n-form-item label="Agent App Key">
           <n-select
-            v-model:value="bindForm.appKey"
+            v-model:value="bindForm.agentKey"
             filterable
             tag
-            :options="applications.map(item => ({ label: item.appKey, value: item.appKey }))"
+            :options="agents.map(item => ({ label: item.agentKey, value: item.agentKey }))"
             @update:value="reloadBindings"
           />
         </n-form-item>
@@ -295,7 +295,7 @@ onMounted(async () => {
             multiple
             clearable
             :options="serverOptions"
-            placeholder="选择该 Application 可用的 MCP Server（发布前请先完成 Tool 发现）"
+            placeholder="选择该 Agent 可用的 MCP Server（发布前请先完成 Tool 发现）"
           />
         </n-form-item>
         <n-button secondary type="info" :disabled="!isLoggedIn" @click="handleBind">保存 MCP 绑定</n-button>
@@ -312,7 +312,7 @@ onMounted(async () => {
     <n-card v-if="activeServerId !== null" :title="`工具列表（Server #${activeServerId}）`" class="panel wide">
       <n-space vertical>
         <n-alert type="info" :show-icon="true">
-          运行时会根据 Application 已发布配置动态注册这些工具；DENY 权限的工具不会被注册。
+          运行时会根据 Agent 已发布配置动态注册这些工具；DENY 权限的工具不会被注册。
         </n-alert>
         <n-data-table :columns="toolColumns" :data="selectedServerTools" />
       </n-space>

@@ -17,7 +17,7 @@ public class MyBatisRunRecordRepository implements RunRecordRepository {
         var entity = new RuntimeRunEntity();
         entity.setId(runId);
         entity.setConversationId(request.conversationId());
-        entity.setAppKey(request.appKey());
+        entity.setAgentKey(request.agentKey());
         entity.setStatus("RUNNING");
         gateway.insertRun(entity);
     }

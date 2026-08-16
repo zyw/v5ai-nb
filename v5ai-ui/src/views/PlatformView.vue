@@ -7,7 +7,7 @@ import {
   disableTenant,
   getAppDailyUsage,
   getAppQuota,
-  listApplications,
+  listAgents,
   listTenants,
   listUsers,
   updateAppQuota,
@@ -22,11 +22,11 @@ import { adminToken, isLoggedIn } from '../stores/session'
 const message = useMessage()
 const tenants = ref<Tenant[]>([])
 const users = ref<UserAccount[]>([])
-const apps = ref<{ appKey: string }[]>([])
+const apps = ref<{ agentKey: string }[]>([])
 
 const tenantForm = reactive({ tenantKey: 'acme', name: 'Acme Corp' })
 const userForm = reactive({ username: 'bob', password: 'secret123', displayName: '', tenantId: null as number | null })
-const quotaForm = reactive({ appKey: 'demo', dailyModelCalls: 0, dailyTokens: 0, ratePerMinute: 0 })
+const quotaForm = reactive({ agentKey: 'demo', dailyModelCalls: 0, dailyTokens: 0, ratePerMinute: 0 })
 const dailyUsage = ref('')
 
 const roleOptions = [
@@ -82,7 +82,7 @@ async function reload() {
   const [tenantRows, userRows, appRows] = await Promise.all([
     listTenants(adminToken.value),
     listUsers(adminToken.value),
-    listApplications(adminToken.value)
+    listAgents(adminToken.value)
   ])
   tenants.value = tenantRows
   users.value = userRows
@@ -147,8 +147,8 @@ async function handleEnabled(row: UserAccount) {
 async function reloadQuota() {
   try {
     const [quota, usage] = await Promise.all([
-      getAppQuota(adminToken.value, quotaForm.appKey),
-      getAppDailyUsage(adminToken.value, quotaForm.appKey)
+      getAppQuota(adminToken.value, quotaForm.agentKey),
+      getAppDailyUsage(adminToken.value, quotaForm.agentKey)
     ])
     quotaForm.dailyModelCalls = quota.dailyModelCalls
     quotaForm.dailyTokens = quota.dailyTokens
@@ -164,7 +164,7 @@ async function reloadQuota() {
 
 async function handleSaveQuota() {
   try {
-    await updateAppQuota(adminToken.value, quotaForm.appKey, {
+    await updateAppQuota(adminToken.value, quotaForm.agentKey, {
       dailyModelCalls: quotaForm.dailyModelCalls,
       dailyTokens: quotaForm.dailyTokens,
       ratePerMinute: quotaForm.ratePerMinute
@@ -178,7 +178,7 @@ async function handleSaveQuota() {
 onMounted(async () => {
   await reload()
   if (apps.value.length > 0) {
-    quotaForm.appKey = apps.value[0].appKey
+    quotaForm.agentKey = apps.value[0].agentKey
   }
   await reloadQuota()
 })
@@ -227,12 +227,12 @@ onMounted(async () => {
 
     <n-card title="应用配额（0 = 不限）" class="panel">
       <n-form label-placement="top">
-        <n-form-item label="Application">
+        <n-form-item label="Agent">
           <n-select
-            v-model:value="quotaForm.appKey"
+            v-model:value="quotaForm.agentKey"
             filterable
             tag
-            :options="apps.map(a => ({ label: a.appKey, value: a.appKey }))"
+            :options="apps.map(a => ({ label: a.agentKey, value: a.agentKey }))"
             @update:value="reloadQuota"
           />
         </n-form-item>

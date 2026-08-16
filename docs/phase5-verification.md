@@ -27,16 +27,16 @@ cd v5ai-ui && npx vue-tsc --noEmit
 
 ### API Key 增强（限流 + 配额挂接）
 
-- `ApplicationApiKeyServletFilter` 在密钥校验后按 appKey 检查每分钟限流与每日配额，超限 429；
+- `ApplicationApiKeyServletFilter` 在密钥校验后按 agentKey 检查每分钟限流与每日配额，超限 429；
 - 配额配置 `v5ai_app_quota`（每日调用次数 / 每日 Token / 每分钟限流，0=不限）；
 - `InMemorySlidingWindowRateLimiter`（进程内滑动窗口，多实例需换 Redis）。
 
 ### 用量
 
-- `v5ai_model_usage` 明细（runId/appKey/modelKey/prompt/completion/total tokens/duration/status）；
+- `v5ai_model_usage` 明细（runId/agentKey/modelKey/prompt/completion/total tokens/duration/status）；
 - `PersistingAgentRuntime` 运行完成/失败埋点（token 按字符数/4 估算），同时递增
   `v5ai_app_usage` 当日计数（配额记账）；修复了失败路径重复记账缺陷（onErrorResume 同步 runId）；
-- 查询 API：`GET /api/admin/usage`、`GET /api/admin/apps/{appKey}/usage/daily`。
+- 查询 API：`GET /api/admin/usage`、`GET /api/admin/apps/{agentKey}/usage/daily`。
 
 ### 审计
 
@@ -46,7 +46,7 @@ cd v5ai-ui && npx vue-tsc --noEmit
 
 ### AgentState 持久化
 
-- 既有 `v5ai_agent_state` 保存/加载闭环保留（每轮运行保存 appKey + 最后回答），
+- 既有 `v5ai_agent_state` 保存/加载闭环保留（每轮运行保存 agentKey + 最后回答），
   会话历史恢复 API 可用；本轮补充文档说明。
 
 ### 可观测性
@@ -65,6 +65,6 @@ cd v5ai-ui && npx vue-tsc --noEmit
 
 - 限流器为进程内实现（单实例）；多实例部署需替换为 Redis 实现。
 - Token 用量按字符数估算（中文约 1 字符 ≈ 1 token 的实际偏差），未对接模型真实 usage 字段。
-- 配额/用量按 appKey 维度（与现有无租户模型一致）；租户维度配额留待应用租户化后扩展。
+- 配额/用量按 agentKey 维度（与现有无租户模型一致）；租户维度配额留待应用租户化后扩展。
 - 默认管理员 `admin/admin` 由启动器自动创建，生产环境应通过用户 API 修改密码或停用。
 - 管理 API 现在强制登录：存量前端调用已带 token；未登录访问将收到 401。

@@ -98,8 +98,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
             // 若未传 conversationId，则先自动生成一个（normalize 负责）
             var normalizedRequest = normalize(request);
             // 1) 登记会话 + 保存用户提问
-            conversationRepository.ensureConversation(new Conversation(normalizedRequest.conversationId(), normalizedRequest.appKey()));
-            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.USER, normalizedRequest.query()));
+            conversationRepository.ensureConversation(new Conversation(normalizedRequest.conversationId(), normalizedRequest.agentKey()));
+            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query()));
             // 累积最终回答文本（把 TEXT_DELTA 片段拼起来）
             var answer = new StringBuilder();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
@@ -125,11 +125,11 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             answer.append(event.payload());
                         }
                         if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
-                            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
+                            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
                         }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-                            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
+                            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
                             runRecordRepository.complete(event.runId());
                             recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0], answer.toString(), true);
@@ -159,7 +159,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     // 也要把回答落库，保证消息完整
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
-                            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.appKey(), MessageRole.ASSISTANT, answer.toString()));
+                            messageRepository.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
                             recordUsage(normalizedRequest, null, modelName[0], startedAt[0], answer.toString(), true);
                         }
@@ -184,13 +184,13 @@ public class PersistingAgentRuntime implements AgentRuntime {
             long durationMs = startedAt == null ? 0 : java.time.Duration.between(startedAt, java.time.Instant.now()).toMillis();
             if (usageRecorder != null) {
                 usageRecorder.record(new xin.v5ai.nb.common.platform.UsageRecord(
-                        null, runId, request.appKey(),
+                        null, runId, request.agentKey(),
                         modelName == null || modelName.isBlank() ? "unknown" : modelName,
                         promptTokens, completionTokens, Math.max(durationMs, 0),
                         success ? "SUCCESS" : "FAILED", java.time.Instant.now()));
             }
             if (quotaService != null) {
-                quotaService.recordUsage(request.appKey(), promptTokens + completionTokens);
+                quotaService.recordUsage(request.agentKey(), promptTokens + completionTokens);
             }
         } catch (Exception exception) {
             LOG.warn("failed to record usage for run {}: {}", runId, exception.getMessage());
@@ -208,7 +208,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
     }
 
     /**
-     * 保存会话级 Agent 状态（可选能力）：把 appKey 与最后一次回答写入状态仓储。
+     * 保存会话级 Agent 状态（可选能力）：把 agentKey 与最后一次回答写入状态仓储。
      * 未配置 agentStateRepository 时直接跳过。
      */
     private void saveAgentState(AgentRunRequest request, String answer) {
@@ -218,8 +218,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
         // 序列化为简单的 JSON 字符串，并对回答中的引号做转义
         agentStateRepository.save(request.conversationId(),
                 """
-                {"appKey":"%s","lastAnswer":"%s"}
-                """.formatted(request.appKey(), answer == null ? "" : answer.replace("\"", "\\\"")).trim());
+                {"agentKey":"%s","lastAnswer":"%s"}
+                """.formatted(request.agentKey(), answer == null ? "" : answer.replace("\"", "\\\"")).trim());
     }
 
     /**
@@ -230,7 +230,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
         if (request.conversationId() != null && !request.conversationId().isBlank()) {
             return request;
         }
-        return new AgentRunRequest(request.appKey(), UUID.randomUUID().toString(), request.query(),
+        return new AgentRunRequest(request.agentKey(), UUID.randomUUID().toString(), request.query(),
                 request.ragContext(), request.history(), request.runId());
     }
 }

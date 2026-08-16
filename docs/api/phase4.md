@@ -48,24 +48,24 @@ Content-Type: application/json
 - 运行时只注入「当前版本」的不可变文件内容；
 - 只能发布 DRAFT 版本、只能回滚到已发布的版本。
 
-## Application 绑定
+## Agent 绑定
 
 ```http
-POST /api/admin/applications/{appKey}/skill-bindings
+POST /api/admin/agents/{agentKey}/skill-bindings
 Content-Type: application/json
 
 { "skillIds": [1, 2] }                     # 全量替换
 
-GET /api/admin/applications/{appKey}/skill-bindings
+GET /api/admin/agents/{agentKey}/skill-bindings
 ```
 
 绑定前校验：Skill 必须 ACTIVE 且已有当前发布版本。
 
 ## 运行时（Workspace 注入）
 
-`POST /api/v1/apps/{appKey}/chat/stream` 在 Application 绑定了 Skill 时：
+`POST /api/v1/agents/{agentKey}/chat/stream` 在 Agent 绑定了 Skill 时：
 
-1. 解析已发布 Application 的 Skill 绑定；
+1. 解析已发布 Agent 的 Skill 绑定；
 2. 读取每个 Skill 当前发布版本的完整文件；
 3. **Workspace 注入**：把文件写入 `<workspace>/skills/<name>/`（SKILL.md + prompts/ + resources/）；
 4. 注册只读 Skill 仓库（唯一技能来源，隔离其它应用/历史残留），
@@ -76,5 +76,5 @@ GET /api/admin/applications/{appKey}/skill-bindings
 
 ```text
 打包 SKILL.md（frontmatter 含 name/description）→ 上传 → 发布版本
-→ Application 绑定 Skill → 发布 Application → 对话时自动注入 → 回滚/禁用
+→ Agent 绑定 Skill → 发布 Agent → 对话时自动注入 → 回滚/禁用
 ```

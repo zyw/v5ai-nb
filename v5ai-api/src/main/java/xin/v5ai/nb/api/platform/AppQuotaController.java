@@ -16,7 +16,7 @@ import xin.v5ai.nb.common.platform.AuditRecorder;
  * 应用配额与当日用量 API（限流/配额/用量管理）。
  */
 @RestController
-@RequestMapping("/api/admin/apps/{appKey}")
+@RequestMapping("/api/admin/apps/{agentKey}")
 public class AppQuotaController {
     private final AppQuotaService quotaService;
     private final AuditRecorder auditRecorder;
@@ -30,22 +30,22 @@ public class AppQuotaController {
     }
 
     @GetMapping("/quota")
-    public AppQuota getQuota(@PathVariable("appKey") String appKey) {
-        return quotaService.getQuota(appKey);
+    public AppQuota getQuota(@PathVariable("agentKey") String agentKey) {
+        return quotaService.getQuota(agentKey);
     }
 
     @PutMapping("/quota")
-    public AppQuota updateQuota(@PathVariable("appKey") String appKey, @RequestBody UpdateQuotaRequest request) {
-        var quota = quotaService.updateQuota(appKey, request.dailyModelCalls(), request.dailyTokens(),
+    public AppQuota updateQuota(@PathVariable("agentKey") String agentKey, @RequestBody UpdateQuotaRequest request) {
+        var quota = quotaService.updateQuota(agentKey, request.dailyModelCalls(), request.dailyTokens(),
                 request.ratePerMinute());
-        auditRecorder.record(null, currentActor(), "UPDATE_QUOTA", "application",
-                appKey, "quota=" + quota, null);
+        auditRecorder.record(null, currentActor(), "UPDATE_QUOTA", "agent",
+                agentKey, "quota=" + quota, null);
         return quota;
     }
 
     @GetMapping("/usage/daily")
-    public AppUsage getDailyUsage(@PathVariable("appKey") String appKey) {
-        return quotaService.getDailyUsage(appKey);
+    public AppUsage getDailyUsage(@PathVariable("agentKey") String agentKey) {
+        return quotaService.getDailyUsage(agentKey);
     }
 
     private static String currentActor() {

@@ -1,7 +1,7 @@
 package xin.v5ai.nb.api.mcp;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.mcp.ApplicationMcpBindingRepository;
+import xin.v5ai.nb.mcp.AgentMcpBindingRepository;
 import xin.v5ai.nb.mcp.CreateMcpServerCommand;
 import xin.v5ai.nb.mcp.McpClientFactory;
 import xin.v5ai.nb.mcp.McpConnection;
@@ -177,18 +177,18 @@ class McpServerControllerTest {
         }
     }
 
-    private static final class RecordingBindingRepository implements ApplicationMcpBindingRepository {
+    private static final class RecordingBindingRepository implements AgentMcpBindingRepository {
         @Override
-        public void save(String appKey, List<Long> mcpServerIds) {
+        public void save(String agentKey, List<Long> mcpServerIds) {
         }
 
         @Override
-        public List<Long> findByAppKey(String appKey) {
+        public List<Long> findByAgentKey(String agentKey) {
             return List.of();
         }
 
         @Override
-        public void delete(String appKey) {
+        public void delete(String agentKey) {
         }
     }
 

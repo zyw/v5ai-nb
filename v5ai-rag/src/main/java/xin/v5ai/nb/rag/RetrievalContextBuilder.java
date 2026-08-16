@@ -15,13 +15,13 @@ import java.util.stream.Collectors;
 public class RetrievalContextBuilder {
     private static final int DEFAULT_TOP_K = 4;
 
-    private final ApplicationKnowledgeBindingRepository bindingRepository;
+    private final AgentKnowledgeBindingRepository bindingRepository;
     private final VectorStore vectorStore;
     private final EmbeddingClient embeddingClient;
     private final KnowledgeDocumentRepository documentRepository;
 
     public RetrievalContextBuilder(
-            ApplicationKnowledgeBindingRepository bindingRepository,
+            AgentKnowledgeBindingRepository bindingRepository,
             VectorStore vectorStore,
             EmbeddingClient embeddingClient,
             KnowledgeDocumentRepository documentRepository
@@ -32,8 +32,8 @@ public class RetrievalContextBuilder {
         this.documentRepository = documentRepository;
     }
 
-    public RetrievalResult build(String appKey, String query) {
-        var knowledgeBaseIds = bindingRepository.findByAppKey(appKey);
+    public RetrievalResult build(String agentKey, String query) {
+        var knowledgeBaseIds = bindingRepository.findByAgentKey(agentKey);
         if (knowledgeBaseIds.isEmpty()) {
             return RetrievalResult.empty();
         }

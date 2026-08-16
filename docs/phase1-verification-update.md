@@ -14,12 +14,12 @@
   - `GET /api/admin/models`
   - 凭据经 `CredentialCipher` 加密后保存到 `v5ai_model`
 
-- Application 管理与发布：
-  - `POST /api/admin/applications`
-  - `GET /api/admin/applications`
-  - `POST /api/admin/applications/{appKey}/publish`
+- Agent 管理与发布：
+  - `POST /api/admin/agents`
+  - `GET /api/admin/agents`
+  - `POST /api/admin/agents/{agentKey}/publish`
   - 发布时生成 `v5ai_application_version.snapshot_json`
-  - Runtime resolver 只接受 `PUBLISHED` Application
+  - Runtime resolver 只接受 `PUBLISHED` Agent
 
 - Runtime 持久化：
   - 自动确保 `v5ai_conversation`

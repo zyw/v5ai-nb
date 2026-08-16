@@ -9,9 +9,9 @@ import java.util.List;
 
 @Mapper
 public interface ModelUsageMapper extends BaseMapper<ModelUsageEntity> {
-    default List<ModelUsageEntity> selectByAppRange(String appKey, Instant from, Instant to, int limit) {
+    default List<ModelUsageEntity> selectByAppRange(String agentKey, Instant from, Instant to, int limit) {
         return selectList(new LambdaQueryWrapper<ModelUsageEntity>()
-                .eq(ModelUsageEntity::getAppKey, appKey)
+                .eq(ModelUsageEntity::getAgentKey, agentKey)
                 .ge(ModelUsageEntity::getCreatedAt, from)
                 .le(ModelUsageEntity::getCreatedAt, to)
                 .orderByDesc(ModelUsageEntity::getId)

@@ -66,25 +66,25 @@ Content-Type: application/json
 - `APPROVE`：运行时先发 `PERMISSION_REQUIRED` 事件（人工审批提示），随后自动放行；
 - `DENY`：运行时**不注册**该工具（模型不可见，调用即被拒绝）。
 
-## Application 绑定
+## Agent 绑定
 
 ```http
-POST /api/admin/applications/{appKey}/mcp-bindings
+POST /api/admin/agents/{agentKey}/mcp-bindings
 Content-Type: application/json
 
 { "mcpServerIds": [1, 2] }   # 全量替换
 
-GET /api/admin/applications/{appKey}/mcp-bindings
+GET /api/admin/agents/{agentKey}/mcp-bindings
 ```
 
 绑定前会校验 Server 存在且处于 ACTIVE 状态。运行时只解析**已绑定** Server 的
-已发现工具（DENY 过滤），并按 Application 已发布配置建立隔离的 Tool 集合。
+已发现工具（DENY 过滤），并按 Agent 已发布配置建立隔离的 Tool 集合。
 
 ## 运行时（动态 Tool 注册）
 
-`POST /api/v1/apps/{appKey}/chat/stream` 在 Application 绑定了 MCP Server 时：
+`POST /api/v1/agents/{agentKey}/chat/stream` 在 Agent 绑定了 MCP Server 时：
 
-1. 解析已发布 Application 的 MCP 绑定；
+1. 解析已发布 Agent 的 MCP 绑定；
 2. 为每个 ACTIVE Server 建立独立连接，读取缓存的 Tool 元数据（DENY 过滤）；
 3. 把工具动态注册到 AgentScope Toolkit（HarnessAgent）；
 4. 模型发起工具调用时发出 `TOOL_CALL` 事件，返回结果发出 `TOOL_RESULT` 事件
@@ -121,5 +121,5 @@ GET /api/admin/mcp-tool-calls?serverId=<id>                 # 按 Server
 
 ```text
 创建 MCP Server → 测试连接 → 发现工具 → 调整权限（可选）
-→ Application 绑定 MCP Server → 发布 Application → SSE 对话触发工具调用 → 查询审计
+→ Agent 绑定 MCP Server → 发布 Agent → SSE 对话触发工具调用 → 查询审计
 ```

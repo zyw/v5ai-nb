@@ -147,18 +147,18 @@ class KnowledgeBaseControllerTest {
         }
     }
 
-    private static final class RecordingBindingRepository implements xin.v5ai.nb.rag.ApplicationKnowledgeBindingRepository {
+    private static final class RecordingBindingRepository implements xin.v5ai.nb.rag.AgentKnowledgeBindingRepository {
         @Override
-        public void save(String appKey, List<Long> knowledgeBaseIds) {
+        public void save(String agentKey, List<Long> knowledgeBaseIds) {
         }
 
         @Override
-        public List<Long> findByAppKey(String appKey) {
+        public List<Long> findByAgentKey(String agentKey) {
             return List.of();
         }
 
         @Override
-        public void delete(String appKey) {
+        public void delete(String agentKey) {
         }
     }
 

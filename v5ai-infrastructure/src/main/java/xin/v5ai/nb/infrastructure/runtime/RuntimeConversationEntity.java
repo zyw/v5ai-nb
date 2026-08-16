@@ -13,11 +13,11 @@ public class RuntimeConversationEntity {
      */
     @TableId(value = "id")
     private String conversationId;
-    @TableField("app_key")
-    private String appKey;
+    @TableField("agent_key")
+    private String agentKey;
 
     public String getConversationId() { return conversationId; }
     public void setConversationId(String conversationId) { this.conversationId = conversationId; }
-    public String getAppKey() { return appKey; }
-    public void setAppKey(String appKey) { this.appKey = appKey; }
+    public String getAgentKey() { return agentKey; }
+    public void setAgentKey(String agentKey) { this.agentKey = agentKey; }
 }
