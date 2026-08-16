@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref, type Component } from 'vue'
+import { computed, h, onMounted, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NAvatar,
@@ -20,6 +20,9 @@ import {
   Building2,
   Cable,
   Database,
+  Gauge,
+  Info,
+  Layers,
   LayoutDashboard,
   LogOut,
   MessageSquare,
@@ -49,9 +52,10 @@ type NavItem = MenuOption & { key: string }
 const nav: NavItem[] = [
   { label: '总览', key: 'dashboard', icon: icon(LayoutDashboard) },
   {
-    type: 'group',
+    type: 'submenu',
     label: '资源',
     key: 'g-resource',
+    icon: icon(Layers),
     children: [
       { label: '模型管理', key: 'models', icon: icon(Boxes) },
       { label: 'Agent 管理', key: 'agents', icon: icon(Bot) },
@@ -61,9 +65,10 @@ const nav: NavItem[] = [
     ]
   },
   {
-    type: 'group',
+    type: 'submenu',
     label: '系统管理',
     key: 'g-system',
+    icon: icon(Settings),
     children: [
       { label: '用户管理', key: 'system-users', icon: icon(Users) },
       { label: '角色管理', key: 'system-roles', icon: icon(ShieldCheck) },
@@ -71,19 +76,45 @@ const nav: NavItem[] = [
     ]
   },
   {
-    type: 'group',
+    type: 'submenu',
     label: '运维',
     key: 'g-ops',
+    icon: icon(Gauge),
     children: [
       { label: '可观测性', key: 'observability', icon: icon(Activity) },
       { label: '调试工具', key: 'chat', icon: icon(MessageSquare) },
-      { label: '系统信息', key: 'settings', icon: icon(Settings) }
+      { label: '系统信息', key: 'settings', icon: icon(Info) }
     ]
   }
 ]
 
 const activeKey = computed(() => String(route.name ?? 'dashboard'))
 const pageTitle = computed(() => String(route.meta.title ?? '总览'))
+
+// 一级菜单默认全部展开，且导航到某页时自动展开其所属分组
+const sectionKeys = ['g-resource', 'g-system', 'g-ops']
+const expandedKeys = ref<string[]>([...sectionKeys])
+
+const sectionOf: Record<string, string> = {
+  models: 'g-resource',
+  agents: 'g-resource',
+  'knowledge-bases': 'g-resource',
+  'mcp-servers': 'g-resource',
+  skills: 'g-resource',
+  'system-users': 'g-system',
+  'system-roles': 'g-system',
+  'system-tenants': 'g-system',
+  observability: 'g-ops',
+  chat: 'g-ops',
+  settings: 'g-ops'
+}
+
+watch(activeKey, (key) => {
+  const section = sectionOf[key]
+  if (section && !expandedKeys.value.includes(section)) {
+    expandedKeys.value = [...expandedKeys.value, section]
+  }
+})
 
 function handleMenuUpdate(key: string) {
   router.push({ name: key })
@@ -129,11 +160,13 @@ onMounted(() => {
         :collapsed="collapsed"
         :collapsed-width="64"
         :collapsed-icon-size="20"
+        :expanded-keys="expandedKeys"
         @update:value="handleMenuUpdate"
+        @update:expanded-keys="(keys: string[]) => (expandedKeys = keys)"
       />
 
       <div class="sider-footer">
-        <n-button quaternary block @click="collapsed = !collapsed">
+        <n-button quaternary block :title="collapsed ? '展开菜单' : '收起菜单'" @click="collapsed = !collapsed">
           <template #icon>
             <n-icon :component="collapsed ? PanelLeftOpen : PanelLeftClose" />
           </template>
