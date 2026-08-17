@@ -146,6 +146,11 @@
             </dependency>
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-common-satoken</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-api</artifactId>
                 <version>${revision}</version>
             </dependency>

@@ -10,7 +10,7 @@
     <dependencies>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-common-core</artifactId>
+            <artifactId>v5ai-common-satoken</artifactId>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>

@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.auth;
 
 import cn.dev33.satoken.stp.StpUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.auth.UserCredentialStore;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class V5aiLoginService implements PermissionService {
     private final UserCredentialStore credentialStore;
@@ -45,18 +47,22 @@ public class V5aiLoginService implements PermissionService {
             auditRecorder.record(account == null ? null : account.tenantId(),
                     request.username(), "LOGIN_FAILED", "auth", request.username(),
                     "invalid credentials", null);
+            log.warn("invalid credentials for {}", request.username());
             throw new IllegalArgumentException("invalid credentials");
         }
         if (!account.enabled()) {
+            log.warn("account {} is disabled", account.username());
             throw new IllegalArgumentException("account is disabled");
         }
         var roles = account.roles() == null ? List.<String>of() : account.roles();
+
         var token = tokenIssuer.issue(request.username());
         // 角色写入 Sa-Token session，供管理 API RBAC 拦截使用
         try {
             StpUtil.getSession().set("roles", roles);
         } catch (Exception exception) {
             // 无 Sa-Token 上下文（如测试直调）时忽略，生产登录必有上下文
+            log.error("no Sa-Token context, ignore session write", exception);
         }
         auditRecorder.record(account.tenantId(), account.username(), "LOGIN",
                 "auth", request.username(), "login success", null);
@@ -76,6 +82,7 @@ public class V5aiLoginService implements PermissionService {
     public Set<String> getRolePermission(Long userId) {
         var account = userAccountStore.findById(userId);
         if (account == null || account.roles() == null) {
+            log.warn("user {} has no roles", userId);
             return Set.of();
         }
         return new HashSet<>(account.roles());
@@ -85,6 +92,7 @@ public class V5aiLoginService implements PermissionService {
     public Set<String> getMenuPermission(Long userId) {
         var account = userAccountStore.findById(userId);
         if (account == null || account.roles() == null || account.roles().isEmpty()) {
+            log.warn("user {} has no roles for menu", userId);
             return Set.of();
         }
         return menuStore.listByRoleKeys(account.roles()).stream()
