@@ -144,7 +144,21 @@ cd v5ai-ui && npm install && npm run build
 | `docs/phase*-verification*.md` | 各阶段验证报告 |
 | `docs/deploy/dev.md` | 开发环境部署（PostgreSQL/pgvector/Redis/MinIO 安装与配置） |
 
-## 13. 常见任务入口（给 Agent 的提示）
+## 13. 工作流约定（重要）
+
+**开发新功能/较大改动前，必须先输出实现方案供用户确认，确认后才开始编码。**
+
+流程：
+1. 理解需求（复述理解 + 列出约束与不确定点）；
+2. 输出方案（涉及文件、改动点、数据库迁移、API 变更、风险）；
+3. 等待用户确认；
+4. 确认后才写代码。
+
+- 小改动（bug 修复、字段调整、样式微调）可跳过方案直接实现；
+- 需求模糊时优先提问澄清，而不是猜测实现；
+- 可在对话中输入 `/plan <需求>` 触发项目级方案模板（`.pi/prompts/plan.md`）。
+
+## 14. 常见任务入口（给 Agent 的提示）
 
 - **加一个新管理实体**（如某种资源）：common 定义领域模型+端口 → infrastructure 实现 Mapper/服务 → api 加 Controller + record DTO → 新增 Flyway 迁移 → ui 加 view/路由 → 写测试与 docs/api。
 - **改运行时行为**：入口在 `v5ai-runtime`（`AgentRuntime` 接口与各 Executor），持久化在 `PersistingAgentRuntime`，事件模型在 `RuntimeEvent`。
