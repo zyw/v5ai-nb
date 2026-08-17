@@ -59,6 +59,23 @@ class AgentScopeRuntimeTest {
     }
 
     @Test
+    void debugResolverAllowsDraftApplication() {
+        var draft = new Agent("draft", "Draft", null, AgentStatus.DRAFT, 7L, null);
+        // 调试运行时：直接注入 Function 解析器（等价于 PublishedAgentResolver::resolveForDebug）
+        var runtime = new AgentScopeRuntime(
+                agentKey -> agentKey.equals("draft") ? draft : null,
+                (application, request) -> Flux.just(new AgentTextEvent.Text("draft answer")),
+                null
+        );
+
+        StepVerifier.create(runtime.stream(new AgentRunRequest("draft", "conversation-1", "hi")))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_STARTED)
+                .expectNextMatches(event -> event.type() == RuntimeEventType.TEXT_DELTA && event.payload().equals("draft answer"))
+                .expectNextMatches(event -> event.type() == RuntimeEventType.RUN_COMPLETED)
+                .verifyComplete();
+    }
+
+    @Test
     void streamEmitsToolCallEvents() {
         var runtime = new AgentScopeRuntime(
                 resolverWith(new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 7L, 1L)),

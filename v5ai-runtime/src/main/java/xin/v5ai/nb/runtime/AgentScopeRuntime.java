@@ -1,37 +1,47 @@
 package xin.v5ai.nb.runtime;
 
 import java.util.UUID;
+import java.util.function.Function;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import xin.v5ai.nb.agent.Agent;
 import xin.v5ai.nb.agent.PublishedAgentResolver;
 import xin.v5ai.nb.mcp.McpToolPermission;
 
 /**
  * AgentScope 运行时：{@link AgentRuntime} 的默认实现。
  *
- * 流程编排：解析已发布应用 → 生成 runId → 可选构建 RAG 上下文 →
- * 委托 AgentTextExecutor 流式执行 → 把内部事件映射为统一 RuntimeEvent。
+ * 流程编排：解析 Agent（正式路径仅已发布；也可注入调试解析器允许草稿态）→ 生成 runId →
+ * 可选构建 RAG 上下文 → 委托 AgentTextExecutor 流式执行 → 把内部事件映射为统一 RuntimeEvent。
  * 整个执行是惰性的（Flux.defer），订阅时才真正开始运行。
  */
 public class AgentScopeRuntime implements AgentRuntime {
-    /** 已发布应用解析器：根据 agentKey 找到已发布的应用配置 */
-    private final PublishedAgentResolver applicationResolver;
+    /** Agent 解析器：根据 agentKey 得到 Agent 配置（正式路径要求已发布，调试路径允许草稿） */
+    private final Function<String, Agent> applicationResolver;
     /** 底层文本执行器：真正驱动 Agent 跑模型 */
     private final AgentTextExecutor agentTextExecutor;
     /** RAG 上下文构建器（可空，为空则不做知识检索） */
     private final RagContextProvider ragContextProvider;
 
     /**
-     * 无 RAG 的构造器：不配置知识检索能力。
+     * 无 RAG 的构造器：不配置知识检索能力；仅解析已发布 Agent。
      */
     public AgentScopeRuntime(PublishedAgentResolver applicationResolver, AgentTextExecutor agentTextExecutor) {
-        this(applicationResolver, agentTextExecutor, null);
+        this(applicationResolver::resolve, agentTextExecutor, null);
     }
 
     /**
-     * 全参构造：可附带 RAG 上下文构建器。
+     * 全参构造：可附带 RAG 上下文构建器；仅解析已发布 Agent。
      */
     public AgentScopeRuntime(PublishedAgentResolver applicationResolver, AgentTextExecutor agentTextExecutor,
+                             RagContextProvider ragContextProvider) {
+        this(applicationResolver::resolve, agentTextExecutor, ragContextProvider);
+    }
+
+    /**
+     * 自定义解析器构造：支持传入调试解析器（如允许草稿态的 {@code resolveForDebug}）。
+     */
+    public AgentScopeRuntime(Function<String, Agent> applicationResolver, AgentTextExecutor agentTextExecutor,
                              RagContextProvider ragContextProvider) {
         this.applicationResolver = applicationResolver;
         this.agentTextExecutor = agentTextExecutor;
@@ -42,7 +52,7 @@ public class AgentScopeRuntime implements AgentRuntime {
     public Flux<RuntimeEvent> stream(AgentRunRequest request) {
         // defer：延迟到订阅时才解析应用、生成 runId，避免每次构建都执行副作用
         return Flux.defer(() -> {
-            var application = applicationResolver.resolve(request.agentKey());
+            var application = applicationResolver.apply(request.agentKey());
             var runId = UUID.randomUUID().toString();
             // 若未配置 RAG，则上下文为空串；否则异步构建检索上下文
             var contextMono = ragContextProvider == null

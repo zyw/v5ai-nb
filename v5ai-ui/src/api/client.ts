@@ -61,6 +61,14 @@ export interface AgentResponse {
   modelId: number
   publishedVersion?: number | null
   systemPrompt?: string | null
+  avatar?: string | null
+  greeting?: string | null
+  presetQuestions?: string | null
+  memoryEnabled?: boolean
+  mcpEnabled?: boolean
+  skillEnabled?: boolean
+  webSearchEnabled?: boolean
+  ragEnabled?: boolean
 }
 
 export interface CreateAgentRequest {
@@ -69,6 +77,14 @@ export interface CreateAgentRequest {
   description?: string
   modelId: number
   systemPrompt?: string
+  avatar?: string
+  greeting?: string
+  presetQuestions?: string
+  memoryEnabled?: boolean
+  mcpEnabled?: boolean
+  skillEnabled?: boolean
+  webSearchEnabled?: boolean
+  ragEnabled?: boolean
 }
 
 export interface UpdateAgentRequest {
@@ -76,6 +92,14 @@ export interface UpdateAgentRequest {
   description?: string
   modelId?: number
   systemPrompt?: string
+  avatar?: string
+  greeting?: string
+  presetQuestions?: string
+  memoryEnabled?: boolean
+  mcpEnabled?: boolean
+  skillEnabled?: boolean
+  webSearchEnabled?: boolean
+  ragEnabled?: boolean
 }
 
 export interface AgentVersionResponse {
@@ -83,6 +107,19 @@ export interface AgentVersionResponse {
   version: number
   snapshotJson: string
   description?: string | null
+}
+
+export interface GenerateAgentConfigRequest {
+  modelId: number
+  description: string
+}
+
+export interface GenerateAgentConfigResponse {
+  name: string
+  description?: string | null
+  greeting?: string | null
+  presetQuestions?: string[]
+  systemPrompt?: string | null
 }
 
 export interface ChatRequest {
@@ -291,6 +328,16 @@ export function publishAgent(adminToken: string, agentKey: string, description: 
   }, adminToken)
 }
 
+export function generateAgentConfig(
+  adminToken: string,
+  request: GenerateAgentConfigRequest
+): Promise<GenerateAgentConfigResponse> {
+  return requestJson<GenerateAgentConfigResponse>('/api/admin/agents/generate', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
 // ---- Runtime chat ----
 
 export function chat(agentKey: string, apiKey: string, request: ChatRequest): Promise<AgentRunResult> {
@@ -309,13 +356,42 @@ export async function streamChat(
   request: ChatRequest,
   onEvent: (event: string, data: string) => void
 ): Promise<void> {
-  const response = await fetch(`${apiBase}/api/v1/agents/${agentKey}/chat/stream`, {
+  await streamSse(
+    `/api/v1/agents/${encodeURIComponent(agentKey)}/chat/stream`,
+    { Authorization: normalizeBearer(apiKey) },
+    request,
+    onEvent
+  )
+}
+
+/** 管理端调试：使用管理 Sa-Token 鉴权（免 API Key），供后台预览/调试面板使用。 */
+export async function adminDebugStream(
+  agentKey: string,
+  adminToken: string,
+  request: ChatRequest,
+  onEvent: (event: string, data: string) => void
+): Promise<void> {
+  await streamSse(
+    `/api/admin/agents/${encodeURIComponent(agentKey)}/chat/stream`,
+    { Authorization: normalizeBearer(adminToken) },
+    request,
+    onEvent
+  )
+}
+
+async function streamSse(
+  path: string,
+  headers: Record<string, string>,
+  body: unknown,
+  onEvent: (event: string, data: string) => void
+): Promise<void> {
+  const response = await fetch(`${apiBase}${path}`, {
     method: 'POST',
     headers: {
-      Authorization: normalizeBearer(apiKey),
+      ...headers,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(request)
+    body: JSON.stringify(body)
   })
 
   if (!response.ok || !response.body) {

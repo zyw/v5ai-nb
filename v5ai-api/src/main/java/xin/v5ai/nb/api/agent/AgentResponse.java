@@ -10,10 +10,21 @@ public record AgentResponse(
         AgentStatus status,
         Long modelId,
         Long publishedVersion,
-        String systemPrompt
+        String systemPrompt,
+        String avatar,
+        String greeting,
+        String presetQuestions,
+        boolean memoryEnabled,
+        boolean mcpEnabled,
+        boolean skillEnabled,
+        boolean webSearchEnabled,
+        boolean ragEnabled
 ) {
     static AgentResponse from(Agent agent) {
         return new AgentResponse(agent.agentKey(), agent.name(), agent.description(),
-                agent.status(), agent.modelId(), agent.publishedVersion(), agent.systemPrompt());
+                agent.status(), agent.modelId(), agent.publishedVersion(), agent.systemPrompt(),
+                agent.avatar(), agent.greeting(), agent.presetQuestions(),
+                agent.memoryEnabled(), agent.mcpEnabled(), agent.skillEnabled(),
+                agent.webSearchEnabled(), agent.ragEnabled());
     }
 }

@@ -25,7 +25,13 @@ public class AgentManagementService {
             throw new IllegalArgumentException("agent already exists: " + command.agentKey());
         }
         var agent = new Agent(command.agentKey(), command.name(), command.description(),
-                AgentStatus.DRAFT, command.modelId(), null, command.systemPrompt());
+                AgentStatus.DRAFT, command.modelId(), null, command.systemPrompt(),
+                command.avatar(), command.greeting(), command.presetQuestions(),
+                Boolean.TRUE.equals(command.memoryEnabled()),
+                Boolean.TRUE.equals(command.mcpEnabled()),
+                Boolean.TRUE.equals(command.skillEnabled()),
+                Boolean.TRUE.equals(command.webSearchEnabled()),
+                Boolean.TRUE.equals(command.ragEnabled()));
         repository.save(agent);
         return agent;
     }
@@ -46,7 +52,15 @@ public class AgentManagementService {
                 existing.status(),
                 command.modelId() == null ? existing.modelId() : command.modelId(),
                 existing.publishedVersion(),
-                command.systemPrompt() == null ? existing.systemPrompt() : command.systemPrompt());
+                command.systemPrompt() == null ? existing.systemPrompt() : command.systemPrompt(),
+                command.avatar() == null ? existing.avatar() : command.avatar(),
+                command.greeting() == null ? existing.greeting() : command.greeting(),
+                command.presetQuestions() == null ? existing.presetQuestions() : command.presetQuestions(),
+                command.memoryEnabled() == null ? existing.memoryEnabled() : command.memoryEnabled(),
+                command.mcpEnabled() == null ? existing.mcpEnabled() : command.mcpEnabled(),
+                command.skillEnabled() == null ? existing.skillEnabled() : command.skillEnabled(),
+                command.webSearchEnabled() == null ? existing.webSearchEnabled() : command.webSearchEnabled(),
+                command.ragEnabled() == null ? existing.ragEnabled() : command.ragEnabled());
         repository.update(agent);
         return agent;
     }
@@ -82,12 +96,31 @@ public class AgentManagementService {
 
     private String snapshot(Agent agent) {
         return """
-                {"agentKey":"%s","name":"%s","description":"%s","modelId":%d,"systemPrompt":"%s"}
+                {"agentKey":"%s","name":"%s","description":"%s","modelId":%d,"systemPrompt":"%s","avatar":"%s","greeting":"%s","presetQuestions":"%s","memoryEnabled":%b,"mcpEnabled":%b,"skillEnabled":%b,"webSearchEnabled":%b,"ragEnabled":%b}
                 """.formatted(
-                        agent.agentKey(),
-                        agent.name(),
-                        agent.description() == null ? "" : agent.description(),
+                        jsonEscape(agent.agentKey()),
+                        jsonEscape(agent.name()),
+                        jsonEscape(agent.description()),
                         agent.modelId(),
-                        agent.systemPrompt() == null ? "" : agent.systemPrompt().replace("\"", "\\\"")).trim();
+                        jsonEscape(agent.systemPrompt()),
+                        jsonEscape(agent.avatar()),
+                        jsonEscape(agent.greeting()),
+                        jsonEscape(agent.presetQuestions()),
+                        agent.memoryEnabled(),
+                        agent.mcpEnabled(),
+                        agent.skillEnabled(),
+                        agent.webSearchEnabled(),
+                        agent.ragEnabled()).trim();
+    }
+
+    private static String jsonEscape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 }

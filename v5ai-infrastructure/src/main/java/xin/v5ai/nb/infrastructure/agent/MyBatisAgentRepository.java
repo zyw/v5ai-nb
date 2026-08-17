@@ -86,6 +86,14 @@ public class MyBatisAgentRepository implements AgentRepository {
         entity.setModelId(application.modelId());
         entity.setPublishedVersion(application.publishedVersion());
         entity.setSystemPrompt(application.systemPrompt());
+        entity.setAvatar(application.avatar());
+        entity.setGreeting(application.greeting());
+        entity.setPresetQuestions(application.presetQuestions());
+        entity.setMemoryEnabled(application.memoryEnabled());
+        entity.setMcpEnabled(application.mcpEnabled());
+        entity.setSkillEnabled(application.skillEnabled());
+        entity.setWebSearchEnabled(application.webSearchEnabled());
+        entity.setRagEnabled(application.ragEnabled());
         return entity;
     }
 
@@ -95,6 +103,12 @@ public class MyBatisAgentRepository implements AgentRepository {
         }
         return new Agent(entity.getAgentKey(), entity.getName(), entity.getDescription(),
                 AgentStatus.valueOf(entity.getStatus()),
-                entity.getModelId(), entity.getPublishedVersion(), entity.getSystemPrompt());
+                entity.getModelId(), entity.getPublishedVersion(), entity.getSystemPrompt(),
+                entity.getAvatar(), entity.getGreeting(), entity.getPresetQuestions(),
+                Boolean.TRUE.equals(entity.getMemoryEnabled()),
+                Boolean.TRUE.equals(entity.getMcpEnabled()),
+                Boolean.TRUE.equals(entity.getSkillEnabled()),
+                Boolean.TRUE.equals(entity.getWebSearchEnabled()),
+                Boolean.TRUE.equals(entity.getRagEnabled()));
     }
 }

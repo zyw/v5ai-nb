@@ -87,6 +87,55 @@ class AgentManagementServiceTest {
     }
 
     @Test
+    void createAgentCarriesDisplayAndFeatureFields() {
+        var repository = new InMemoryAgentRepository();
+        var service = new AgentManagementService(repository, modelId -> true);
+
+        var agent = service.createAgent(new CreateAgentCommand("demo", "Demo", "desc", 7L, "prompt",
+                "https://example.com/avatar.png", "你好", "[\"q1\"]", true, true, true, true, false));
+
+        assertThat(agent.avatar()).isEqualTo("https://example.com/avatar.png");
+        assertThat(agent.greeting()).isEqualTo("你好");
+        assertThat(agent.presetQuestions()).isEqualTo("[\"q1\"]");
+        assertThat(agent.memoryEnabled()).isTrue();
+        assertThat(agent.mcpEnabled()).isTrue();
+        assertThat(agent.skillEnabled()).isTrue();
+        assertThat(agent.webSearchEnabled()).isTrue();
+        assertThat(agent.ragEnabled()).isFalse();
+    }
+
+    @Test
+    void updateAgentKeepsUnspecifiedFeatureFlags() {
+        var repository = new InMemoryAgentRepository();
+        repository.save(new Agent("demo", "Demo", null, AgentStatus.DRAFT, 7L, null));
+        var service = new AgentManagementService(repository, modelId -> true);
+
+        var updated = service.updateAgent(new UpdateAgentCommand("demo", "Demo v2", null, null, null,
+                null, "欢迎语", null, null, null, null, null, true));
+
+        assertThat(updated.greeting()).isEqualTo("欢迎语");
+        assertThat(updated.ragEnabled()).isTrue();
+        assertThat(updated.memoryEnabled()).isFalse();
+        assertThat(updated.mcpEnabled()).isFalse();
+    }
+
+    @Test
+    void resolveForDebugAllowsDraftAndRejectsDisabled() {
+        var repository = new InMemoryAgentRepository();
+        var resolver = new PublishedAgentResolver(repository);
+        repository.save(new Agent("draft", "Draft", null, AgentStatus.DRAFT, 7L, null));
+        repository.save(new Agent("disabled", "Disabled", null, AgentStatus.DISABLED, 7L, null));
+
+        assertThat(resolver.resolveForDebug("draft").status()).isEqualTo(AgentStatus.DRAFT);
+        assertThatThrownBy(() -> resolver.resolveForDebug("disabled"))
+                .isInstanceOf(AgentPublishException.class)
+                .hasMessageContaining("disabled");
+        assertThatThrownBy(() -> resolver.resolveForDebug("missing"))
+                .isInstanceOf(AgentPublishException.class)
+                .hasMessageContaining("does not exist");
+    }
+
+    @Test
     void publishingApplicationUsesModelIdAndPublishesVersion() {
         var repository = new InMemoryAgentRepository();
         repository.save(new Agent("demo", "Demo", null, AgentStatus.DRAFT, 7L, null));

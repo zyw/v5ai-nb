@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.agent.AgentConfigGenerator;
 import xin.v5ai.nb.agent.AgentManagementService;
 import xin.v5ai.nb.agent.CreateAgentCommand;
 import xin.v5ai.nb.agent.PublishAgentCommand;
@@ -22,19 +23,32 @@ import java.util.List;
 @RequestMapping("/api/admin/agents")
 public class AgentController {
     private final AgentManagementService agentManagementService;
+    private final AgentConfigGenerator agentConfigGenerator;
 
     @Autowired(required = false)
     private AuditRecorder auditRecorder;
 
-    public AgentController(AgentManagementService agentManagementService) {
+    public AgentController(AgentManagementService agentManagementService, AgentConfigGenerator agentConfigGenerator) {
         this.agentManagementService = agentManagementService;
+        this.agentConfigGenerator = agentConfigGenerator;
+    }
+
+    /** 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。 */
+    @PostMapping("/generate")
+    public GenerateAgentConfigResponse generateAgentConfig(@RequestBody GenerateAgentConfigRequest request) {
+        audit("GENERATE", "agent-config", null, "generate agent config");
+        return GenerateAgentConfigResponse.from(
+                agentConfigGenerator.generate(request.modelId(), request.description()));
     }
 
     @PostMapping
     public AgentResponse createAgent(@RequestBody CreateAgentRequest request) {
         var created = AgentResponse.from(agentManagementService.createAgent(
                 new CreateAgentCommand(request.agentKey(), request.name(), request.description(),
-                        request.modelId(), request.systemPrompt())));
+                        request.modelId(), request.systemPrompt(),
+                        request.avatar(), request.greeting(), request.presetQuestions(),
+                        request.memoryEnabled(), request.mcpEnabled(), request.skillEnabled(),
+                        request.webSearchEnabled(), request.ragEnabled())));
         audit("CREATE", "agent", request.agentKey(), "create agent");
         return created;
     }
@@ -52,7 +66,10 @@ public class AgentController {
         audit("UPDATE", "agent", agentKey, "update agent");
         return AgentResponse.from(agentManagementService.updateAgent(
                 new UpdateAgentCommand(agentKey, request.name(), request.description(),
-                        request.modelId(), request.systemPrompt())));
+                        request.modelId(), request.systemPrompt(),
+                        request.avatar(), request.greeting(), request.presetQuestions(),
+                        request.memoryEnabled(), request.mcpEnabled(), request.skillEnabled(),
+                        request.webSearchEnabled(), request.ragEnabled())));
     }
 
     @DeleteMapping("/{agentKey}")

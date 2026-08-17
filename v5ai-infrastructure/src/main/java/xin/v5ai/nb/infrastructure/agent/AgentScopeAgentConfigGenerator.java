@@ -1,0 +1,188 @@
+package xin.v5ai.nb.infrastructure.agent;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.agentscope.core.message.Msg;
+import io.agentscope.core.message.MsgRole;
+import io.agentscope.core.message.TextBlock;
+import io.agentscope.core.model.ChatResponse;
+import io.agentscope.core.model.GenerateOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import xin.v5ai.nb.agent.AgentConfigGenerator;
+import xin.v5ai.nb.agent.GeneratedAgentConfig;
+import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.infrastructure.runtime.AgentScopeModelFactory;
+import xin.v5ai.nb.model.CredentialCipher;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 基于 AgentScope 模型的 Agent 配置生成器：
+ * 根据用户描述，要求模型输出严格 JSON（name/description/greeting/presetQuestions/systemPrompt），
+ * 解析后回填「新建智能体」向导。
+ */
+@Component
+public class AgentScopeAgentConfigGenerator implements AgentConfigGenerator {
+    private static final Logger log = LoggerFactory.getLogger(AgentScopeAgentConfigGenerator.class);
+    private static final int MAX_RESPONSE_CHARS = 20000;
+
+    private final ModelRuntimeConfigGateway runtimeConfigGateway;
+    private final CredentialCipher credentialCipher;
+    private final AgentScopeModelFactory modelFactory;
+    private final Duration timeout;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    public AgentScopeAgentConfigGenerator(
+            ModelRuntimeConfigGateway runtimeConfigGateway,
+            CredentialCipher credentialCipher,
+            AgentScopeModelFactory modelFactory,
+            @Value("${v5ai.model.connection.test.timeout.ms:90000}") long timeoutMillis
+    ) {
+        this(runtimeConfigGateway, credentialCipher, modelFactory, Duration.ofMillis(timeoutMillis));
+    }
+
+    AgentScopeAgentConfigGenerator(
+            ModelRuntimeConfigGateway runtimeConfigGateway,
+            CredentialCipher credentialCipher,
+            AgentScopeModelFactory modelFactory,
+            Duration timeout
+    ) {
+        this.runtimeConfigGateway = runtimeConfigGateway;
+        this.credentialCipher = credentialCipher;
+        this.modelFactory = modelFactory;
+        this.timeout = timeout;
+    }
+
+    @Override
+    public GeneratedAgentConfig generate(Long modelId, String description) {
+        if (modelId == null) {
+            throw new IllegalArgumentException("model is required");
+        }
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("description is required");
+        }
+        var config = runtimeConfigGateway.findRuntimeConfigByModelId(modelId);
+        if (config == null) {
+            throw new IllegalArgumentException("model runtime config not found: " + modelId);
+        }
+        var plaintextCredentials = credentialCipher.decrypt(config.credentialsCiphertext());
+        var model = modelFactory.create(config, plaintextCredentials);
+
+        var messages = List.of(
+                Msg.builder().role(MsgRole.SYSTEM)
+                        .textContent("""
+                                You are a professional AI application designer. Based on the user's description, \
+                                design an AI agent and return ONLY a JSON object (no markdown code fences, no extra text) with exactly these fields:
+                                - "name": short agent name, no more than 20 characters
+                                - "description": one or two sentences describing what the agent does
+                                - "greeting": a friendly welcome message shown when a conversation starts
+                                - "presetQuestions": an array of 3 to 5 typical questions users might ask
+                                - "systemPrompt": a complete system prompt that defines the agent's role, tone and behaviour
+                                """)
+                        .build(),
+                Msg.builder().role(MsgRole.USER).textContent(description).build());
+
+        String raw;
+        long started = System.currentTimeMillis();
+        try {
+            var responses = model.stream(messages, List.of(), GenerateOptions.builder().stream(true).build())
+                    .collectList()
+                    .block(timeout);
+            raw = extractText(responses);
+        } catch (Exception exception) {
+            log.warn("agent config generation failed for model {}: {}", modelId, exception.getMessage());
+            throw new IllegalArgumentException("模型生成失败: " + friendlyMessage(exception));
+        }
+        long elapsed = System.currentTimeMillis() - started;
+        log.info("agent config generated by model {} in {}ms", modelId, elapsed);
+        return parse(raw);
+    }
+
+    private GeneratedAgentConfig parse(String raw) {
+        var json = stripCodeFence(raw);
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            if (node == null || !node.isObject()) {
+                throw new IllegalArgumentException("模型输出不是 JSON 对象");
+            }
+            var name = text(node, "name");
+            var description = text(node, "description");
+            var greeting = text(node, "greeting");
+            var systemPrompt = text(node, "systemPrompt");
+            var presetQuestions = new ArrayList<String>();
+            var array = node.path("presetQuestions");
+            if (array.isArray()) {
+                array.forEach(item -> {
+                    var question = item.asText("").trim();
+                    if (!question.isEmpty()) {
+                        presetQuestions.add(question);
+                    }
+                });
+            }
+            if (name.isEmpty()) {
+                throw new IllegalArgumentException("模型未返回 agent 名称（name）");
+            }
+            return new GeneratedAgentConfig(name, description, greeting, presetQuestions, systemPrompt);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("模型输出无法解析为 JSON: " + truncate(raw));
+        }
+    }
+
+    private static String text(JsonNode node, String field) {
+        return node.path(field).asText("").trim();
+    }
+
+    /** 剥离模型常见的 ```json ... ``` 代码围栏。 */
+    private static String stripCodeFence(String raw) {
+        var s = raw == null ? "" : raw.trim();
+        if (s.startsWith("```")) {
+            int firstNewline = s.indexOf('\n');
+            int lastFence = s.lastIndexOf("```");
+            if (firstNewline > 0 && lastFence > firstNewline) {
+                s = s.substring(firstNewline + 1, lastFence).trim();
+            }
+        }
+        return s;
+    }
+
+    private static String extractText(List<ChatResponse> responses) {
+        if (responses == null) {
+            return "";
+        }
+        var text = new StringBuilder();
+        for (var response : responses) {
+            if (response.getContent() == null) {
+                continue;
+            }
+            for (var block : response.getContent()) {
+                if (block instanceof TextBlock textBlock && textBlock.getText() != null) {
+                    text.append(textBlock.getText());
+                }
+            }
+        }
+        return text.toString();
+    }
+
+    private static String friendlyMessage(Exception exception) {
+        var detail = exception.getMessage();
+        if (detail != null && detail.contains("Timeout on blocking read")) {
+            return "模型响应超时，请检查模型连通性";
+        }
+        return detail == null || detail.isBlank() ? exception.getClass().getSimpleName() : detail;
+    }
+
+    private static String truncate(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= MAX_RESPONSE_CHARS ? value : value.substring(0, MAX_RESPONSE_CHARS) + "...";
+    }
+}

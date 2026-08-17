@@ -81,4 +81,27 @@ public class RuntimeConfiguration {
                 conversationRepository, runEventRepository, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
     }
+
+    /**
+     * 管理端调试运行时：允许草稿态 Agent 运行（{@code resolveForDebug}），
+     * 供后台「预览与调试」面板在未发布时直接调试；仅禁用状态拒绝。
+     */
+    @Bean
+    AgentRuntime agentDebugRuntime(
+            PublishedAgentResolver resolver,
+            AgentTextExecutor executor,
+            MessageRepository messageRepository,
+            RunRecordRepository runRecordRepository,
+            ConversationRepository conversationRepository,
+            RunEventRepository runEventRepository,
+            ObjectProvider<AgentStateRepository> agentStateRepositoryProvider,
+            ObjectProvider<RagContextProvider> ragContextProviderProvider,
+            ObjectProvider<xin.v5ai.nb.common.platform.UsageRecorder> usageRecorderProvider,
+            ObjectProvider<xin.v5ai.nb.common.platform.AppQuotaService> quotaServiceProvider
+    ) {
+        var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable());
+        return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,
+                conversationRepository, runEventRepository, agentStateRepositoryProvider.getIfAvailable(),
+                usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
+    }
 }
