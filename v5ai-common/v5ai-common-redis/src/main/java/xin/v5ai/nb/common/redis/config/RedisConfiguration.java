@@ -3,13 +3,14 @@ package xin.v5ai.nb.common.redis.config;
 import cn.hutool.core.util.ObjectUtil;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.client.codec.StringCodec;
 import org.redisson.codec.CompositeCodec;
 import org.redisson.codec.TypedJsonJackson3Codec;
 import org.redisson.spring.starter.RedissonAutoConfigurationCustomizer;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import tools.jackson.databind.DefaultTyping;
@@ -35,7 +36,7 @@ import java.util.TimeZone;
 @EnableConfigurationProperties(RedissonProperties.class)
 public class RedisConfiguration {
 
-    @Autowired
+    @Resource
     private RedissonProperties redissonProperties;
 
     /**
@@ -44,6 +45,7 @@ public class RedisConfiguration {
      * @return Redisson 自动配置定制器
      */
     @Bean
+    @ConditionalOnMissingBean
     public RedissonAutoConfigurationCustomizer redissonCustomizer() {
         return config -> {
             SimpleModule simpleModule = new SimpleModule();

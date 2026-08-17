@@ -133,6 +133,7 @@
                 <version>${jackson2.version}</version>
             </dependency>
 
+            <!-- 项目依赖配置 -->
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-common-core</artifactId>
@@ -141,6 +142,56 @@
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-common-redis</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-infrastructure</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-model</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-runtime</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-rag</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-skill</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-worker</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-workflow</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-agent</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-mcp</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>

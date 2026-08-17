@@ -14,28 +14,27 @@
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-model</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-runtime</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-rag</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-skill</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-workflow</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

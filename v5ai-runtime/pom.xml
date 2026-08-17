@@ -15,17 +15,14 @@
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-agent</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-mcp</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-skill</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>

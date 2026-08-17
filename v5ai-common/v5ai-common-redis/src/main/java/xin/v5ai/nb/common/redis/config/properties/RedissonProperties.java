@@ -12,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author Lion Li
  */
 @Data
-@ConfigurationProperties(prefix = "redisson")
+@ConfigurationProperties(prefix = "v5ai.redisson")
 public class RedissonProperties {
 
     /**

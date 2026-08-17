@@ -1,17 +1,45 @@
 spring:
   datasource:
-    url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://pg.v5ai.xin:15432/v5ai_nb}
+    url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://192.168.10.13:15432/v5ai_nb}
     username: ${V5AI_DATASOURCE_USERNAME:mypgsql}
-    password: ${V5AI_DATASOURCE_PASSWORD:5dyHfJFKm7tEU4AMZfo3RPH3Jy3AlF}
+    password: ${V5AI_DATASOURCE_PASSWORD:xxxx}
     driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${V5AI_REDIS_HOST:192.168.10.13}
+      port: ${V5AI_REDIS_PORT:6379}
+      # redis 密码必须配置
+      password: ${V5AI_REDIS_PASSWORD:xxxxxxxxxx}
+      database: ${V5AI_REDIS_DATABASE:11}
+      # 需要使用数字
+      timeout: 10000
+      ssl.enabled: false
 
 v5ai:
+  # redisson 配置
   redisson:
-    address: ${V5AI_REDIS_ADDRESS:redis://192.168.10.13:6379}
-    password: ${V5AI_REDIS_PASSWORD:9LqZSbo6JL3sfzT3jeTOrjp1cc4D1uU3}
-    database: ${V5AI_REDIS_DATABASE:11}
+    # redis key前缀
+    keyPrefix: ${V5AI_REDIS_KEY_PREFIX:v5ai}
+    # 线程池数量
+    threads: 4
+    # Netty线程池数量
+    nettyThreads: 8
+    # 单节点配置
+    singleServerConfig:
+      # 客户端名称
+      clientName: ${spring.application.name}
+      # 最小空闲连接数
+      connectionMinimumIdleSize: 8
+      # 连接池大小
+      connectionPoolSize: 32
+      # 连接空闲超时，单位：毫秒
+      idleConnectionTimeout: 10000
+      # 命令等待超时，单位：毫秒
+      timeout: 3000
+      # 发布和订阅连接池大小
+      subscriptionConnectionPoolSize: 50
   minio:
     endpoint: ${V5AI_MINIO_ENDPOINT:http://192.168.10.13:9000}
     access-key: ${V5AI_MINIO_ACCESS_KEY:admin}
-    secret-key: ${V5AI_MINIO_SECRET_KEY:tFhRqfhGIizBfYOSat9EX0hxJBF509W3}
+    secret-key: ${V5AI_MINIO_SECRET_KEY:xxxxxxxxxxxxxxxxxxx}
     bucket: ${V5AI_MINIO_BUCKET:v5ai}
