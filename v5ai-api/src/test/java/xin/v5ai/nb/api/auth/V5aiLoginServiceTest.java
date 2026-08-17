@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.core.auth.UserCredentialStore;
 import xin.v5ai.nb.common.core.platform.AuditLog;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.Menu;
+import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccount;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
@@ -30,7 +32,7 @@ class V5aiLoginServiceTest {
         };
         var service = new V5aiLoginService(store, accountStore(
                 new UserAccount(1L, "alice", "Alice", 1L, List.of("ADMIN"), true)),
-                verifier, tokenIssuer, new RecordingAuditRecorder());
+                verifier, tokenIssuer, new RecordingAuditRecorder(), noOpMenuStore());
 
         var response = service.login(new LoginRequest("alice", "secret"));
 
@@ -55,7 +57,7 @@ class V5aiLoginServiceTest {
                     public void logout() {
                     }
                 },
-                new RecordingAuditRecorder());
+                new RecordingAuditRecorder(), noOpMenuStore());
 
         assertThatThrownBy(() -> service.login(new LoginRequest("alice", "bad")))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -76,11 +78,101 @@ class V5aiLoginServiceTest {
                     public void logout() {
                     }
                 },
-                new RecordingAuditRecorder());
+                new RecordingAuditRecorder(), noOpMenuStore());
 
         assertThatThrownBy(() -> service.login(new LoginRequest("alice", "secret")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("disabled");
+    }
+
+    @Test
+    void getRolePermissionReturnsUserRoleKeys() {
+        var service = new V5aiLoginService(username -> "encoded",
+                accountStore(new UserAccount(1L, "alice", null, null, List.of("ADMIN", "USER"), true)),
+                (raw, encoded) -> true,
+                new LoginTokenIssuer() {
+                    @Override
+                    public String issue(String username) {
+                        return "unused";
+                    }
+
+                    @Override
+                    public void logout() {
+                    }
+                },
+                new RecordingAuditRecorder(), noOpMenuStore());
+
+        assertThat(service.getRolePermission(1L)).containsExactlyInAnyOrder("ADMIN", "USER");
+        assertThat(service.getRolePermission(999L)).isEmpty();
+    }
+
+    @Test
+    void getMenuPermissionReturnsMenuCodesByRoles() {
+        var menuStore = new MenuStore() {
+            @Override
+            public List<Menu> list() { return List.of(); }
+            @Override
+            public Menu findById(Long id) { return null; }
+            @Override
+            public Menu findByCode(String code) { return null; }
+            @Override
+            public Menu create(Long parentId, String code, String name, String type, String routeName,
+                               String path, String icon, int sortOrder, boolean visible) { return null; }
+            @Override
+            public Menu update(Long id, Long parentId, String name, String type, String routeName,
+                               String path, String icon, int sortOrder, boolean visible) { return null; }
+            @Override
+            public void delete(Long id) { }
+            @Override
+            public long countChildren(Long id) { return 0; }
+            @Override
+            public List<Long> listMenuIdsByRole(String roleKey) { return List.of(); }
+            @Override
+            public void replaceRoleMenus(String roleKey, List<Long> menuIds) { }
+            @Override
+            public List<Menu> listByRoleKeys(List<String> roleKeys) {
+                if (!roleKeys.contains("ADMIN")) {
+                    return List.of();
+                }
+                return List.of(
+                        new Menu(1L, null, "dashboard", "总览", "MENU", "dashboard", "/dashboard", "dashboard", 1, true, null, null),
+                        new Menu(2L, null, "agents", "Agent", "MENU", "agents", "/agents", "agents", 2, true, null, null));
+            }
+        };
+        var service = new V5aiLoginService(username -> "encoded",
+                accountStore(new UserAccount(1L, "alice", null, null, List.of("ADMIN"), true)),
+                (raw, encoded) -> true,
+                new LoginTokenIssuer() {
+                    @Override
+                    public String issue(String username) {
+                        return "unused";
+                    }
+
+                    @Override
+                    public void logout() {
+                    }
+                },
+                new RecordingAuditRecorder(), menuStore);
+
+        assertThat(service.getMenuPermission(1L)).containsExactlyInAnyOrder("dashboard", "agents");
+        assertThat(service.getMenuPermission(999L)).isEmpty();
+    }
+
+    private static MenuStore noOpMenuStore() {
+        return new MenuStore() {
+            @Override public List<Menu> list() { return List.of(); }
+            @Override public Menu findById(Long id) { return null; }
+            @Override public Menu findByCode(String code) { return null; }
+            @Override public Menu create(Long parentId, String code, String name, String type, String routeName,
+                                         String path, String icon, int sortOrder, boolean visible) { return null; }
+            @Override public Menu update(Long id, Long parentId, String name, String type, String routeName,
+                                         String path, String icon, int sortOrder, boolean visible) { return null; }
+            @Override public void delete(Long id) { }
+            @Override public long countChildren(Long id) { return 0; }
+            @Override public List<Long> listMenuIdsByRole(String roleKey) { return List.of(); }
+            @Override public void replaceRoleMenus(String roleKey, List<Long> menuIds) { }
+            @Override public List<Menu> listByRoleKeys(List<String> roleKeys) { return List.of(); }
+        };
     }
 
     private static UserAccountStore accountStore(UserAccount account) {
@@ -92,7 +184,7 @@ class V5aiLoginServiceTest {
 
             @Override
             public UserAccount findById(Long id) {
-                return null;
+                return id != null && id.equals(account.id()) ? account : null;
             }
 
             @Override

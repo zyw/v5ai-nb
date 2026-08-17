@@ -4,29 +4,38 @@ import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.auth.UserCredentialStore;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.Menu;
+import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.service.PermissionService;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
-public class V5aiLoginService {
+public class V5aiLoginService implements PermissionService {
     private final UserCredentialStore credentialStore;
     private final UserAccountStore userAccountStore;
     private final PasswordVerifier passwordVerifier;
     private final LoginTokenIssuer tokenIssuer;
     private final AuditRecorder auditRecorder;
+    private final MenuStore menuStore;
 
     public V5aiLoginService(UserCredentialStore credentialStore,
                             UserAccountStore userAccountStore,
                             PasswordVerifier passwordVerifier,
                             LoginTokenIssuer tokenIssuer,
-                            AuditRecorder auditRecorder) {
+                            AuditRecorder auditRecorder,
+                            MenuStore menuStore) {
         this.credentialStore = credentialStore;
         this.userAccountStore = userAccountStore;
         this.passwordVerifier = passwordVerifier;
         this.tokenIssuer = tokenIssuer;
         this.auditRecorder = auditRecorder;
+        this.menuStore = menuStore;
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -61,5 +70,26 @@ public class V5aiLoginService {
         if (username != null) {
             auditRecorder.record(null, username, "LOGOUT", "auth", username, "logout", null);
         }
+    }
+
+    @Override
+    public Set<String> getRolePermission(Long userId) {
+        var account = userAccountStore.findById(userId);
+        if (account == null || account.roles() == null) {
+            return Set.of();
+        }
+        return new HashSet<>(account.roles());
+    }
+
+    @Override
+    public Set<String> getMenuPermission(Long userId) {
+        var account = userAccountStore.findById(userId);
+        if (account == null || account.roles() == null || account.roles().isEmpty()) {
+            return Set.of();
+        }
+        return menuStore.listByRoleKeys(account.roles()).stream()
+                .map(Menu::code)
+                .filter(code -> code != null && !code.isBlank())
+                .collect(Collectors.toSet());
     }
 }
