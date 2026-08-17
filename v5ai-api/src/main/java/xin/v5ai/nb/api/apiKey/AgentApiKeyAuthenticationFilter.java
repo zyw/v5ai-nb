@@ -6,7 +6,7 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.common.apiKey.AgentApiKeyVerifier;
+import xin.v5ai.nb.common.core.apiKey.AgentApiKeyVerifier;
 
 public class AgentApiKeyAuthenticationFilter implements WebFilter {
     private static final String RUNTIME_PREFIX = "/api/v1/agents/";

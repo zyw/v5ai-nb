@@ -1,8 +1,8 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.platform.Role;
-import xin.v5ai.nb.common.platform.RoleStore;
+import xin.v5ai.nb.common.core.platform.Role;
+import xin.v5ai.nb.common.core.platform.RoleStore;
 
 import java.time.Instant;
 import java.util.List;

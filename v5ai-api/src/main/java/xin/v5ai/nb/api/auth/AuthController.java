@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.Menu;
-import xin.v5ai.nb.common.platform.MenuStore;
-import xin.v5ai.nb.common.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.platform.Menu;
+import xin.v5ai.nb.common.core.platform.MenuStore;
+import xin.v5ai.nb.common.core.platform.UserAccountStore;
 
 import java.util.List;
 

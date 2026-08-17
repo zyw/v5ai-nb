@@ -2,17 +2,14 @@ package xin.v5ai.nb.infrastructure.platform;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import xin.v5ai.nb.common.platform.RateLimiter;
+import xin.v5ai.nb.common.core.platform.RateLimiter;
 
-import java.time.Instant;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class MyBatisAppQuotaServiceTest {
 

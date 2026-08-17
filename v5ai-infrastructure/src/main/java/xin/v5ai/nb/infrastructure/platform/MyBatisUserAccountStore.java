@@ -1,8 +1,8 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.platform.UserAccount;
-import xin.v5ai.nb.common.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.platform.UserAccount;
+import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.infrastructure.auth.UserEntity;
 
 import java.util.List;

@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(RedissonProperties.class)
 public class RedissonConfiguration {
+
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean
     RedissonClient redissonClient(RedissonProperties properties) {

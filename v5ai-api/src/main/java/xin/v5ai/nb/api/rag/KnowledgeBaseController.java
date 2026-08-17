@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.rag.KnowledgeManagementService;
 
 import java.util.List;

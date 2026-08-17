@@ -4,14 +4,11 @@ import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import xin.v5ai.nb.common.platform.AppQuotaService;
-import xin.v5ai.nb.common.platform.AppQuota;
+import xin.v5ai.nb.common.core.platform.AppQuota;
+import xin.v5ai.nb.common.core.platform.AppQuotaService;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class AgentApiKeyServletFilterTest {
 

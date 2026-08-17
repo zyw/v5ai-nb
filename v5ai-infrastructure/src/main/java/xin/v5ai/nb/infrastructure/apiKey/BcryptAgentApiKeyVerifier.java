@@ -2,7 +2,7 @@ package xin.v5ai.nb.infrastructure.apiKey;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.apiKey.AgentApiKeyVerifier;
+import xin.v5ai.nb.common.core.apiKey.AgentApiKeyVerifier;
 
 @Component
 public class BcryptAgentApiKeyVerifier implements AgentApiKeyVerifier {

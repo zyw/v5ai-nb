@@ -4,8 +4,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.AuditLog;
-import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLog;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
 
 import java.util.List;
 

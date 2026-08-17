@@ -9,21 +9,10 @@ import org.springframework.context.annotation.Configuration;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.agent.Agent;
 import xin.v5ai.nb.agent.PublishedAgentResolver;
+import xin.v5ai.nb.common.core.platform.AppQuotaService;
+import xin.v5ai.nb.common.core.platform.UsageRecorder;
 import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
-import xin.v5ai.nb.runtime.AgentModelResolver;
-import xin.v5ai.nb.runtime.AgentRuntime;
-import xin.v5ai.nb.runtime.AgentScopeHarnessExecutor;
-import xin.v5ai.nb.runtime.AgentScopeRuntime;
-import xin.v5ai.nb.runtime.AgentStateRepository;
-import xin.v5ai.nb.runtime.AgentTextEvent;
-import xin.v5ai.nb.runtime.AgentTextExecutor;
-import xin.v5ai.nb.runtime.ConversationRepository;
-import xin.v5ai.nb.runtime.McpToolResolver;
-import xin.v5ai.nb.runtime.MessageRepository;
-import xin.v5ai.nb.runtime.PersistingAgentRuntime;
-import xin.v5ai.nb.runtime.RagContextProvider;
-import xin.v5ai.nb.runtime.RunEventRepository;
-import xin.v5ai.nb.runtime.RunRecordRepository;
+import xin.v5ai.nb.runtime.*;
 import xin.v5ai.nb.skill.SkillWorkspaceResolver;
 
 import java.nio.file.Path;
@@ -73,8 +62,8 @@ public class RuntimeConfiguration {
             RunEventRepository runEventRepository,
             ObjectProvider<AgentStateRepository> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
-            ObjectProvider<xin.v5ai.nb.common.platform.UsageRecorder> usageRecorderProvider,
-            ObjectProvider<xin.v5ai.nb.common.platform.AppQuotaService> quotaServiceProvider
+            ObjectProvider<UsageRecorder> usageRecorderProvider,
+            ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
         var runtime = new AgentScopeRuntime(resolver, executor, ragContextProviderProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,
@@ -96,8 +85,8 @@ public class RuntimeConfiguration {
             RunEventRepository runEventRepository,
             ObjectProvider<AgentStateRepository> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
-            ObjectProvider<xin.v5ai.nb.common.platform.UsageRecorder> usageRecorderProvider,
-            ObjectProvider<xin.v5ai.nb.common.platform.AppQuotaService> quotaServiceProvider
+            ObjectProvider<UsageRecorder> usageRecorderProvider,
+            ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,

@@ -15,7 +15,7 @@ import xin.v5ai.nb.agent.AgentManagementService;
 import xin.v5ai.nb.agent.CreateAgentCommand;
 import xin.v5ai.nb.agent.PublishAgentCommand;
 import xin.v5ai.nb.agent.UpdateAgentCommand;
-import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
 
 import java.util.List;
 

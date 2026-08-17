@@ -4,7 +4,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.UsageRecord;
+import xin.v5ai.nb.common.core.platform.UsageRecord;
 import xin.v5ai.nb.infrastructure.platform.ModelUsageEntity;
 import xin.v5ai.nb.infrastructure.platform.ModelUsageMapper;
 

@@ -3,7 +3,8 @@ package xin.v5ai.nb.api.apiKey;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import xin.v5ai.nb.common.apiKey.AgentApiKeyVerifier;
+import xin.v5ai.nb.common.core.apiKey.AgentApiKeyVerifier;
+import xin.v5ai.nb.common.core.platform.AppQuotaService;
 
 @Configuration
 public class AgentApiKeyConfiguration {
@@ -24,7 +25,7 @@ public class AgentApiKeyConfiguration {
     @Bean
     FilterRegistrationBean<AgentApiKeyServletFilter> applicationApiKeyServletFilter(
             AgentApiKeyVerifier verifier,
-            xin.v5ai.nb.common.platform.AppQuotaService quotaService) {
+            AppQuotaService quotaService) {
         var registration = new FilterRegistrationBean<>(
                 new AgentApiKeyServletFilter(verifier, quotaService));
         registration.addUrlPatterns("/api/v1/agents/*");

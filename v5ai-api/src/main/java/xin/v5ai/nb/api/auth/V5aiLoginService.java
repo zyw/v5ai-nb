@@ -2,9 +2,9 @@ package xin.v5ai.nb.api.auth;
 
 import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.common.auth.UserCredentialStore;
-import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.auth.UserCredentialStore;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
 
 import java.util.List;

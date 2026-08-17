@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.infrastructure.apiKey.AgentApiKeyStore;
 
 import java.util.List;

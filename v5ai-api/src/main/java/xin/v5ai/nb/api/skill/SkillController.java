@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.skill.SkillManagementService;
 
 import java.io.IOException;

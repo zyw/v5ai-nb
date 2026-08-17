@@ -1,10 +1,10 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.common.platform.AppQuota;
-import xin.v5ai.nb.common.platform.AppQuotaService;
-import xin.v5ai.nb.common.platform.AppUsage;
-import xin.v5ai.nb.common.platform.RateLimiter;
+import xin.v5ai.nb.common.core.platform.AppQuota;
+import xin.v5ai.nb.common.core.platform.AppQuotaService;
+import xin.v5ai.nb.common.core.platform.AppUsage;
+import xin.v5ai.nb.common.core.platform.RateLimiter;
 
 import java.time.Instant;
 import java.time.LocalDate;

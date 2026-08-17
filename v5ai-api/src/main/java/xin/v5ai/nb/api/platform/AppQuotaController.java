@@ -1,16 +1,15 @@
 package xin.v5ai.nb.api.platform;
 
-import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.AppQuota;
-import xin.v5ai.nb.common.platform.AppQuotaService;
-import xin.v5ai.nb.common.platform.AppUsage;
-import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AppQuota;
+import xin.v5ai.nb.common.core.platform.AppQuotaService;
+import xin.v5ai.nb.common.core.platform.AppUsage;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
 
 /**
  * 应用配额与当日用量 API（限流/配额/用量管理）。

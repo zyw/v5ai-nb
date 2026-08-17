@@ -3,14 +3,7 @@ package xin.v5ai.nb.api.platform;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import xin.v5ai.nb.agent.AgentRepository;
-import xin.v5ai.nb.common.platform.AppQuota;
-import xin.v5ai.nb.common.platform.AppQuotaService;
-import xin.v5ai.nb.common.platform.AuditLog;
-import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.Tenant;
-import xin.v5ai.nb.common.platform.TenantStore;
-import xin.v5ai.nb.common.platform.UserAccount;
-import xin.v5ai.nb.common.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.platform.*;
 import xin.v5ai.nb.model.ModelRepository;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
 import xin.v5ai.nb.skill.SkillRepository;
@@ -20,9 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

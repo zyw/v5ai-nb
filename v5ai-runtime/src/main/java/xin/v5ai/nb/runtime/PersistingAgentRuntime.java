@@ -5,6 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import xin.v5ai.nb.common.core.platform.AppQuotaService;
+import xin.v5ai.nb.common.core.platform.UsageRecord;
+import xin.v5ai.nb.common.core.platform.UsageRecorder;
 
 /**
  * 带持久化能力的运行时装饰器：包裹（delegate）另一个 AgentRuntime，
@@ -33,9 +36,9 @@ public class PersistingAgentRuntime implements AgentRuntime {
     /** Agent 状态仓储（可空）：保存会话级 Agent 状态 */
     private final AgentStateRepository agentStateRepository;
     /** 用量记录器（可空）：运行完成/失败时记录模型调用用量 */
-    private final xin.v5ai.nb.common.platform.UsageRecorder usageRecorder;
+    private final UsageRecorder usageRecorder;
     /** 应用配额服务（可空）：运行完成后记账（调用次数 + Token） */
-    private final xin.v5ai.nb.common.platform.AppQuotaService quotaService;
+    private final AppQuotaService quotaService;
 
     public PersistingAgentRuntime(
             AgentRuntime delegate,
@@ -78,8 +81,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
             ConversationRepository conversationRepository,
             RunEventRepository runEventRepository,
             AgentStateRepository agentStateRepository,
-            xin.v5ai.nb.common.platform.UsageRecorder usageRecorder,
-            xin.v5ai.nb.common.platform.AppQuotaService quotaService
+            UsageRecorder usageRecorder,
+           AppQuotaService quotaService
     ) {
         this.delegate = delegate;
         this.messageRepository = messageRepository;
@@ -183,7 +186,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
             long completionTokens = Math.max(1, completionChars / 4);
             long durationMs = startedAt == null ? 0 : java.time.Duration.between(startedAt, java.time.Instant.now()).toMillis();
             if (usageRecorder != null) {
-                usageRecorder.record(new xin.v5ai.nb.common.platform.UsageRecord(
+                usageRecorder.record(new UsageRecord(
                         null, runId, request.agentKey(),
                         modelName == null || modelName.isBlank() ? "unknown" : modelName,
                         promptTokens, completionTokens, Math.max(durationMs, 0),

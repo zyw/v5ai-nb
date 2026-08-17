@@ -1,8 +1,8 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.platform.UsageRecord;
-import xin.v5ai.nb.common.platform.UsageRecorder;
+import xin.v5ai.nb.common.core.platform.UsageRecord;
+import xin.v5ai.nb.common.core.platform.UsageRecorder;
 
 import java.time.Instant;
 

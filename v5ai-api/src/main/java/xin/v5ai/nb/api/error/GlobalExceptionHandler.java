@@ -7,9 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import xin.v5ai.nb.common.api.ApiResponse;
-import xin.v5ai.nb.common.exception.ErrorCode;
-import xin.v5ai.nb.common.exception.V5aiException;
+import xin.v5ai.nb.common.core.api.ApiResponse;
+import xin.v5ai.nb.common.core.exception.ErrorCode;
+import xin.v5ai.nb.common.core.exception.V5aiException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {

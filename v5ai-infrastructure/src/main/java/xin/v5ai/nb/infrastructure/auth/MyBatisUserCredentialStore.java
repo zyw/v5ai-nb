@@ -1,7 +1,7 @@
 package xin.v5ai.nb.infrastructure.auth;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.auth.UserCredentialStore;
+import xin.v5ai.nb.common.core.auth.UserCredentialStore;
 
 @Repository
 public class MyBatisUserCredentialStore implements UserCredentialStore {

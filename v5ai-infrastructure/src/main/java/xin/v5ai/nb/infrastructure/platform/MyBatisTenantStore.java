@@ -1,10 +1,9 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.platform.Tenant;
-import xin.v5ai.nb.common.platform.TenantStore;
+import xin.v5ai.nb.common.core.platform.Tenant;
+import xin.v5ai.nb.common.core.platform.TenantStore;
 
-import java.time.Instant;
 import java.util.List;
 
 @Repository

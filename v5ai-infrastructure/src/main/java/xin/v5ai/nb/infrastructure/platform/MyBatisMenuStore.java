@@ -1,16 +1,11 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.platform.Menu;
-import xin.v5ai.nb.common.platform.MenuStore;
+import xin.v5ai.nb.common.core.platform.Menu;
+import xin.v5ai.nb.common.core.platform.MenuStore;
 
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Repository
 public class MyBatisMenuStore implements MenuStore {

@@ -2,8 +2,8 @@ package xin.v5ai.nb.api.error;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
-import xin.v5ai.nb.common.exception.ErrorCode;
-import xin.v5ai.nb.common.exception.V5aiException;
+import xin.v5ai.nb.common.core.exception.ErrorCode;
+import xin.v5ai.nb.common.core.exception.V5aiException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

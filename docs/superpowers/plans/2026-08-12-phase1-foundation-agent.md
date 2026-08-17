@@ -113,10 +113,10 @@ git commit -m "feat: 创建 v5ai-nb 项目骨架"
 ## Task 2: Add common contracts and database migration baseline
 
 **Files:**
-- Create: `v5ai-common/src/main/java/xin/v5ai/nb/common/api/ApiResponse.java`
-- Create: `v5ai-common/src/main/java/xin/v5ai/nb/common/exception/V5aiException.java`
-- Create: `v5ai-common/src/main/java/xin/v5ai/nb/common/exception/ErrorCode.java`
-- Create: `v5ai-common/src/main/java/xin/v5ai/nb/common/page/PageQuery.java`
+- Create: `../../../v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/api/ApiResponse.java`
+- Create: `../../../v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/exception/V5aiException.java`
+- Create: `../../../v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/exception/ErrorCode.java`
+- Create: `../../../v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/page/PageQuery.java`
 - Create: `v5ai-infrastructure/src/main/resources/db/migration/V1__phase1_schema.sql`
 - Create: `v5ai-infrastructure/src/test/java/xin/v5ai/nb/infrastructure/schema/TablePrefixTest.java`
 

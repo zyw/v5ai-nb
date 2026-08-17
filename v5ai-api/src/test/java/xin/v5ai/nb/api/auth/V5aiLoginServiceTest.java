@@ -1,10 +1,11 @@
 package xin.v5ai.nb.api.auth;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.common.auth.UserCredentialStore;
-import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.UserAccount;
-import xin.v5ai.nb.common.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.auth.UserCredentialStore;
+import xin.v5ai.nb.common.core.platform.AuditLog;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.UserAccount;
+import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.infrastructure.security.PasswordVerifier;
 
 import java.util.List;
@@ -122,7 +123,7 @@ class V5aiLoginServiceTest {
         }
 
         @Override
-        public List<xin.v5ai.nb.common.platform.AuditLog> search(String actor, String action, int limit) {
+        public List<AuditLog> search(String actor, String action, int limit) {
             return List.of();
         }
     }

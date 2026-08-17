@@ -1,8 +1,8 @@
 package xin.v5ai.nb.infrastructure.platform;
 
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.platform.AuditLog;
-import xin.v5ai.nb.common.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLog;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
 
 import java.time.Instant;
 import java.util.List;

@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.Tenant;
-import xin.v5ai.nb.common.platform.TenantStore;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.Tenant;
+import xin.v5ai.nb.common.core.platform.TenantStore;
 
 import java.time.Instant;
 import java.util.List;

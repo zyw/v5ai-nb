@@ -6,8 +6,8 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.platform.RoleKey;
-import xin.v5ai.nb.common.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.platform.RoleKey;
+import xin.v5ai.nb.common.core.platform.UserAccountStore;
 
 /**
  * 启动种子：无任何用户时创建默认管理员 admin/admin（挂到 default 租户、admin 角色）。

@@ -1,11 +1,13 @@
 package xin.v5ai.nb.runtime;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import xin.v5ai.nb.common.core.platform.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -300,26 +302,26 @@ class PersistingAgentRuntimeTest {
         assertThat(usageRecorder.records.get(0).status()).isEqualTo("FAILED");
     }
 
-    private static final class RecordingUsageRecorder implements xin.v5ai.nb.common.platform.UsageRecorder {
-        private final List<xin.v5ai.nb.common.platform.UsageRecord> records = new ArrayList<>();
+    private static final class RecordingUsageRecorder implements UsageRecorder {
+        private final List<UsageRecord> records = new ArrayList<>();
 
         @Override
-        public void record(xin.v5ai.nb.common.platform.UsageRecord usage) {
+        public void record(UsageRecord usage) {
             records.add(usage);
         }
     }
 
-    private static final class RecordingQuotaService implements xin.v5ai.nb.common.platform.AppQuotaService {
+    private static final class RecordingQuotaService implements AppQuotaService {
         private final List<String> recordedAgentKeys = new ArrayList<>();
         private long recordedTokens;
 
         @Override
-        public xin.v5ai.nb.common.platform.AppQuota getQuota(String agentKey) {
-            return new xin.v5ai.nb.common.platform.AppQuota(agentKey, 0, 0, 0, null);
+        public AppQuota getQuota(String agentKey) {
+            return new AppQuota(agentKey, 0, 0, 0, null);
         }
 
         @Override
-        public xin.v5ai.nb.common.platform.AppQuota updateQuota(String agentKey, Integer dailyModelCalls,
+        public AppQuota updateQuota(String agentKey, Integer dailyModelCalls,
                                                                 Long dailyTokens, Integer ratePerMinute) {
             return getQuota(agentKey);
         }
@@ -336,8 +338,8 @@ class PersistingAgentRuntimeTest {
         }
 
         @Override
-        public xin.v5ai.nb.common.platform.AppUsage getDailyUsage(String agentKey) {
-            return new xin.v5ai.nb.common.platform.AppUsage(agentKey, java.time.LocalDate.now(),
+        public AppUsage getDailyUsage(String agentKey) {
+            return new AppUsage(agentKey, java.time.LocalDate.now(),
                     recordedAgentKeys.size(), recordedTokens);
         }
     }

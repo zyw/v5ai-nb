@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.platform.AuditRecorder;
-import xin.v5ai.nb.common.platform.MenuStore;
-import xin.v5ai.nb.common.platform.Role;
-import xin.v5ai.nb.common.platform.RoleStore;
+import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.MenuStore;
+import xin.v5ai.nb.common.core.platform.Role;
+import xin.v5ai.nb.common.core.platform.RoleStore;
 
 import java.util.List;
 
