@@ -49,6 +49,15 @@ public class AgentRuntimeConfiguration {
         }
 
         @Override
+
+        public void delete(String agentKey) {
+
+            agents.remove(agentKey);
+
+        }
+
+
+        @Override
         public void disable(String agentKey) {
             var current = agents.get(agentKey);
             if (current != null) {

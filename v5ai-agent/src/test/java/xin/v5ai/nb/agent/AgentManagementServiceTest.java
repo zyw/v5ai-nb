@@ -170,6 +170,11 @@ class AgentManagementServiceTest {
         @Override public Agent findByAgentKey(String agentKey) { return agents.get(agentKey); }
         @Override public void save(Agent agent) { agents.put(agent.agentKey(), agent); }
         @Override public void update(Agent agent) { agents.put(agent.agentKey(), agent); }
+        @Override
+        public void delete(String agentKey) {
+            agents.remove(agentKey);
+        }
+
         @Override public void disable(String agentKey) {
             var current = agents.get(agentKey);
             if (current != null) {

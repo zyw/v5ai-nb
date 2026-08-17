@@ -1,0 +1,114 @@
+package xin.v5ai.nb.infrastructure.agent;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import xin.v5ai.nb.infrastructure.apiKey.ApiKeyMapper;
+import xin.v5ai.nb.infrastructure.mcp.AgentMcpBindingMapper;
+import xin.v5ai.nb.infrastructure.mcp.McpToolCallAuditMapper;
+import xin.v5ai.nb.infrastructure.platform.AppQuotaMapper;
+import xin.v5ai.nb.infrastructure.platform.AppUsageMapper;
+import xin.v5ai.nb.infrastructure.platform.ModelUsageMapper;
+import xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingMapper;
+import xin.v5ai.nb.infrastructure.runtime.AgentStateMapper;
+import xin.v5ai.nb.infrastructure.runtime.RuntimeConversationMapper;
+import xin.v5ai.nb.infrastructure.runtime.RuntimeMessageMapper;
+import xin.v5ai.nb.infrastructure.runtime.RuntimeRunMapper;
+import xin.v5ai.nb.infrastructure.skill.AgentSkillBindingMapper;
+
+/**
+ * Agent 级联删除：清理 Agent 及其全部关联数据
+ * （版本、模型绑定、知识库/MCP/Skill 绑定、API Key、会话/消息/运行/事件、
+ * 配额/用量、MCP 工具调用审计），最后删除主表记录。
+ *
+ * <p>删除顺序遵循外键依赖：先子表（v5ai_agent_model → agent.id、
+ * run_event/mcp_tool_call → run.id、agent_state → conversation.id），
+ * 再直连表（按 agent_key），最后主表。</p>
+ */
+@Service
+public class AgentDeletionService {
+    private final AgentMapper agentMapper;
+    private final AgentVersionMapper agentVersionMapper;
+    private final AgentKnowledgeBindingMapper knowledgeBindingMapper;
+    private final AgentMcpBindingMapper mcpBindingMapper;
+    private final AgentSkillBindingMapper skillBindingMapper;
+    private final ApiKeyMapper apiKeyMapper;
+    private final AppQuotaMapper appQuotaMapper;
+    private final AppUsageMapper appUsageMapper;
+    private final ModelUsageMapper modelUsageMapper;
+    private final McpToolCallAuditMapper mcpToolCallAuditMapper;
+    private final RuntimeRunMapper runMapper;
+    private final RuntimeMessageMapper messageMapper;
+    private final RuntimeConversationMapper conversationMapper;
+    private final AgentStateMapper agentStateMapper;
+    private final AgentCleanupMapper cleanupMapper;
+
+    public AgentDeletionService(
+            AgentMapper agentMapper,
+            AgentVersionMapper agentVersionMapper,
+            AgentKnowledgeBindingMapper knowledgeBindingMapper,
+            AgentMcpBindingMapper mcpBindingMapper,
+            AgentSkillBindingMapper skillBindingMapper,
+            ApiKeyMapper apiKeyMapper,
+            AppQuotaMapper appQuotaMapper,
+            AppUsageMapper appUsageMapper,
+            ModelUsageMapper modelUsageMapper,
+            McpToolCallAuditMapper mcpToolCallAuditMapper,
+            RuntimeRunMapper runMapper,
+            RuntimeMessageMapper messageMapper,
+            RuntimeConversationMapper conversationMapper,
+            AgentStateMapper agentStateMapper,
+            AgentCleanupMapper cleanupMapper
+    ) {
+        this.agentMapper = agentMapper;
+        this.agentVersionMapper = agentVersionMapper;
+        this.knowledgeBindingMapper = knowledgeBindingMapper;
+        this.mcpBindingMapper = mcpBindingMapper;
+        this.skillBindingMapper = skillBindingMapper;
+        this.apiKeyMapper = apiKeyMapper;
+        this.appQuotaMapper = appQuotaMapper;
+        this.appUsageMapper = appUsageMapper;
+        this.modelUsageMapper = modelUsageMapper;
+        this.mcpToolCallAuditMapper = mcpToolCallAuditMapper;
+        this.runMapper = runMapper;
+        this.messageMapper = messageMapper;
+        this.conversationMapper = conversationMapper;
+        this.agentStateMapper = agentStateMapper;
+        this.cleanupMapper = cleanupMapper;
+    }
+
+    @Transactional
+    public void delete(String agentKey) {
+        // 1) FK 子表（子查询定位）
+        cleanupMapper.deleteAgentModels(agentKey);
+        cleanupMapper.deleteRunEvents(agentKey);
+        cleanupMapper.deleteMcpToolCalls(agentKey);
+        cleanupMapper.deleteAgentStates(agentKey);
+        // 2) 直连 agent_key 表
+        agentVersionMapper.delete(new LambdaQueryWrapper<AgentVersionEntity>()
+                .eq(AgentVersionEntity::getAgentKey, agentKey));
+        knowledgeBindingMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingEntity>()
+                .eq(xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingEntity::getAgentKey, agentKey));
+        mcpBindingMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.mcp.AgentMcpBindingEntity>()
+                .eq(xin.v5ai.nb.infrastructure.mcp.AgentMcpBindingEntity::getAgentKey, agentKey));
+        skillBindingMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.skill.AgentSkillBindingEntity>()
+                .eq(xin.v5ai.nb.infrastructure.skill.AgentSkillBindingEntity::getAgentKey, agentKey));
+        apiKeyMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.apiKey.ApiKeyEntity>()
+                .eq(xin.v5ai.nb.infrastructure.apiKey.ApiKeyEntity::getAgentKey, agentKey));
+        appQuotaMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.platform.AppQuotaEntity>()
+                .eq(xin.v5ai.nb.infrastructure.platform.AppQuotaEntity::getAgentKey, agentKey));
+        appUsageMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.platform.AppUsageEntity>()
+                .eq(xin.v5ai.nb.infrastructure.platform.AppUsageEntity::getAgentKey, agentKey));
+        modelUsageMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.platform.ModelUsageEntity>()
+                .eq(xin.v5ai.nb.infrastructure.platform.ModelUsageEntity::getAgentKey, agentKey));
+        runMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.runtime.RuntimeRunEntity>()
+                .eq(xin.v5ai.nb.infrastructure.runtime.RuntimeRunEntity::getAgentKey, agentKey));
+        messageMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.runtime.RuntimeMessageEntity>()
+                .eq(xin.v5ai.nb.infrastructure.runtime.RuntimeMessageEntity::getAgentKey, agentKey));
+        conversationMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.runtime.RuntimeConversationEntity>()
+                .eq(xin.v5ai.nb.infrastructure.runtime.RuntimeConversationEntity::getAgentKey, agentKey));
+        // 3) 主表
+        agentMapper.delete(new LambdaQueryWrapper<AgentEntity>()
+                .eq(AgentEntity::getAgentKey, agentKey));
+    }
+}

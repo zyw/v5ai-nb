@@ -11,6 +11,9 @@ public interface AgentRepository {
 
     void disable(String agentKey);
 
+    /** 删除 Agent 及其全部关联数据（版本/绑定/API Key/会话/运行/用量等）。 */
+    void delete(String agentKey);
+
     List<Agent> list();
 
     long nextVersion(String agentKey);

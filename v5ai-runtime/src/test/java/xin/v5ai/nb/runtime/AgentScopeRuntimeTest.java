@@ -157,6 +157,11 @@ class AgentScopeRuntimeTest {
         }
 
         @Override
+        public void delete(String agentKey) {
+        }
+
+
+        @Override
         public void disable(String agentKey) {
         }
 

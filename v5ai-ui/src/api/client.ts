@@ -312,6 +312,12 @@ export function updateAgent(adminToken: string, agentKey: string, request: Updat
 }
 
 export function disableAgent(adminToken: string, agentKey: string): Promise<void> {
+  return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/disable`, {
+    method: 'POST'
+  }, adminToken)
+}
+
+export function deleteAgent(adminToken: string, agentKey: string): Promise<void> {
   return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}`, {
     method: 'DELETE'
   }, adminToken)

@@ -1,5 +1,6 @@
 package xin.v5ai.nb.infrastructure.agent;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.agent.Agent;
@@ -14,10 +15,19 @@ import java.util.List;
 public class MyBatisAgentRepository implements AgentRepository {
     private final AgentGateway agentGateway;
     private final AgentVersionGateway versionGateway;
+    private final AgentDeletionService deletionService;
 
-    public MyBatisAgentRepository(AgentGateway agentGateway, AgentVersionGateway versionGateway) {
+    @Autowired
+    public MyBatisAgentRepository(AgentGateway agentGateway, AgentVersionGateway versionGateway,
+                                  AgentDeletionService deletionService) {
         this.agentGateway = agentGateway;
         this.versionGateway = versionGateway;
+        this.deletionService = deletionService;
+    }
+
+    /** 兼容构造器：未配置级联删除服务（测试/内存场景），delete 会抛 UnsupportedOperationException。 */
+    public MyBatisAgentRepository(AgentGateway agentGateway, AgentVersionGateway versionGateway) {
+        this(agentGateway, versionGateway, null);
     }
 
     @Override
@@ -40,6 +50,14 @@ public class MyBatisAgentRepository implements AgentRepository {
     @Override
     public void disable(String agentKey) {
         agentGateway.disable(agentKey);
+    }
+
+    @Override
+    public void delete(String agentKey) {
+        if (deletionService == null) {
+            throw new UnsupportedOperationException("agent deletion is not configured");
+        }
+        deletionService.delete(agentKey);
     }
 
     @Override

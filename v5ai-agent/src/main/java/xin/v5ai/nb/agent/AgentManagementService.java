@@ -72,6 +72,13 @@ public class AgentManagementService {
         repository.disable(agentKey);
     }
 
+    public void delete(String agentKey) {
+        if (repository.findByAgentKey(agentKey) == null) {
+            throw new IllegalArgumentException("agent does not exist: " + agentKey);
+        }
+        repository.delete(agentKey);
+    }
+
     public List<AgentVersion> listVersions(String agentKey) {
         if (repository.findByAgentKey(agentKey) == null) {
             throw new IllegalArgumentException("agent does not exist: " + agentKey);

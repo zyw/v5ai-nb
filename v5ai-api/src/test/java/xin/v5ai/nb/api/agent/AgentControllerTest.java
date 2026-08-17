@@ -79,6 +79,19 @@ class AgentControllerTest {
         assertThat(generated.systemPrompt()).isEqualTo("You are a customer service agent.");
     }
 
+    @Test
+    void deletesAgentAndRelatedData() {
+        var repository = new RecordingAgentRepository();
+        var controller = new AgentController(new AgentManagementService(repository, modelId -> true),
+                (modelId, description) -> new GeneratedAgentConfig("generated", "gen desc", "hi", List.of("q1"), "prompt"));
+        controller.createAgent(new CreateAgentRequest("demo", "Demo", null, 7L, null));
+
+        controller.deleteAgent("demo");
+
+        assertThat(repository.findByAgentKey("demo")).isNull();
+        assertThat(repository.agents).isEmpty();
+    }
+
     private static final class RecordingAgentRepository implements AgentRepository {
         private final List<Agent> agents = new ArrayList<>();
         private final List<AgentVersion> versions = new ArrayList<>();
@@ -98,6 +111,13 @@ class AgentControllerTest {
             agents.removeIf(app -> app.agentKey().equals(application.agentKey()));
             agents.add(application);
         }
+
+        @Override
+
+        public void delete(String agentKey) {
+            agents.removeIf(app -> app.agentKey().equals(agentKey));
+        }
+
 
         @Override
         public void disable(String agentKey) {

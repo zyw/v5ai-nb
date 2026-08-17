@@ -30,6 +30,7 @@ import {
   bindSkills,
   createAgent,
   createApiKey,
+  deleteAgent,
   disableAgent,
   generateAgentConfig,
   getKnowledgeBindings,
@@ -149,7 +150,7 @@ const columns: DataTableColumns<AgentResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 340,
+    width: 420,
     render: (row) =>
       h(
         NSpace,
@@ -160,7 +161,8 @@ const columns: DataTableColumns<AgentResponse> = [
             h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => openBind(row) }, { default: () => '绑定' }),
             h(NButton, { size: 'small', type: 'primary', onClick: () => openPublish(row) }, { default: () => '发布' }),
             h(NButton, { size: 'small', secondary: true, onClick: () => handleCreateKey(row.agentKey) }, { default: () => 'Key' }),
-            h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDisable(row) }, { default: () => '禁用' })
+            h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDisable(row) }, { default: () => '禁用' }),
+            h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDelete(row) }, { default: () => '删除' })
           ]
         }
       )
@@ -529,6 +531,24 @@ async function handleDisable(row: AgentResponse) {
   })
 }
 
+async function handleDelete(row: AgentResponse) {
+  dialog.error({
+    title: '删除确认',
+    content: `确认删除 Agent「${row.agentKey}」？将级联删除其版本、绑定、API Key、会话、运行记录与用量数据，且不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteAgent(adminToken.value, row.agentKey)
+        message.success(`${row.agentKey} 已删除`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除 Agent 失败')
+      }
+    }
+  })
+}
+
 onMounted(reload)
 </script>
 
@@ -607,8 +627,8 @@ onMounted(reload)
         </n-result>
       </div>
 
-      <!-- 步骤三：确认（新建）/ 编辑：左右分栏 -->
-      <div v-else class="editor-grid">
+      <!-- 步骤三：确认（新建，仅表单）/ 编辑（左右分栏：表单 + 预览与调试） -->
+      <div v-else class="editor-grid" :class="{ single: mode === 'create' }">
         <!-- 左栏：基本信息与配置 -->
         <n-card title="基本信息" size="small" :bordered="true" class="editor-left">
           <n-form label-placement="top" size="small">
@@ -672,8 +692,8 @@ onMounted(reload)
           </n-space>
         </n-card>
 
-        <!-- 右栏：预览与调试（一体） -->
-        <div class="editor-right">
+        <!-- 右栏：预览与调试（仅编辑模式显示） -->
+        <div v-if="mode === 'edit'" class="editor-right">
           <n-card size="small" :bordered="true" class="debug-panel">
             <div class="debug-header">
               <div class="preview-name">{{ form.name || '未命名 Agent' }}</div>
@@ -803,6 +823,12 @@ onMounted(reload)
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+.editor-grid.single {
+  grid-template-columns: 1fr;
+}
+.editor-grid.single .editor-left {
+  max-height: none;
 }
 .editor-left {
   max-height: 640px;

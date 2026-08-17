@@ -72,10 +72,16 @@ public class AgentController {
                         request.webSearchEnabled(), request.ragEnabled())));
     }
 
-    @DeleteMapping("/{agentKey}")
+    @PostMapping("/{agentKey}/disable")
     public void disableAgent(@PathVariable("agentKey") String agentKey) {
         agentManagementService.disable(agentKey);
         audit("DISABLE", "agent", agentKey, "disable agent");
+    }
+
+    @DeleteMapping("/{agentKey}")
+    public void deleteAgent(@PathVariable("agentKey") String agentKey) {
+        agentManagementService.delete(agentKey);
+        audit("DELETE", "agent", agentKey, "delete agent with all related data");
     }
 
     @GetMapping("/{agentKey}/versions")

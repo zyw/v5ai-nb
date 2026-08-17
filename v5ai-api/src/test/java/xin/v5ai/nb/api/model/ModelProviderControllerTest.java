@@ -207,6 +207,13 @@ class ModelProviderControllerTest {
         }
 
         @Override
+
+        public void delete(String agentKey) {
+            agents.removeIf(app -> app.agentKey().equals(agentKey));
+        }
+
+
+        @Override
         public void disable(String agentKey) {
         }
 
