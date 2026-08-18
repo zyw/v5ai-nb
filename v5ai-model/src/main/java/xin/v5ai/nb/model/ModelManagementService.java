@@ -2,6 +2,8 @@ package xin.v5ai.nb.model;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
 
 import java.util.List;
 
@@ -73,6 +75,11 @@ public class ModelManagementService {
 
     public List<ModelProvider> listProviders() {
         return providerRepository == null ? List.of() : providerRepository.list();
+    }
+
+    public PageResult<ModelProvider> queryPageList(PageQuery pageQuery) {
+        // TODO implement queryPageList
+        return null;
     }
 
     public ModelConfig createModel(CreateModelCommand command) {
