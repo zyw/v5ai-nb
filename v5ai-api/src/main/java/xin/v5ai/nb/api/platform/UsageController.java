@@ -4,6 +4,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.UsageRecord;
 import xin.v5ai.nb.infrastructure.platform.ModelUsageEntity;
 import xin.v5ai.nb.infrastructure.platform.ModelUsageMapper;
@@ -26,21 +30,23 @@ public class UsageController {
     }
 
     @GetMapping
-    public List<UsageRecord> listUsage(
+    public R<PageResult<UsageRecord>> listUsage(
+            PageQuery pageQuery,
             @RequestParam(value = "agentKey", required = false) String agentKey,
             @RequestParam(value = "from", required = false) String from,
-            @RequestParam(value = "to", required = false) String to,
-            @RequestParam(value = "limit", defaultValue = "100") int limit
+            @RequestParam(value = "to", required = false) String to
     ) {
         var fromInstant = parseDayStart(from);
         var toInstant = parseDayEnd(to);
+        int limit = pageQuery.getPageSize() == null ? 100 : pageQuery.getPageSize();
         List<ModelUsageEntity> entities = (agentKey == null || agentKey.isBlank())
                 ? usageMapper.selectRecent(limit)
                 : usageMapper.selectByAppRange(agentKey, fromInstant, toInstant, limit);
-        return entities.stream().map(entity -> new UsageRecord(
+        var records = entities.stream().map(entity -> new UsageRecord(
                 entity.getId(), entity.getRunId(), entity.getAgentKey(), entity.getModelKey(),
                 entity.getPromptTokens(), entity.getCompletionTokens(), entity.getDurationMs(),
                 entity.getStatus(), entity.getCreatedAt())).toList();
+        return R.ok(PageUtils.page(records, pageQuery));
     }
 
     private static Instant parseDayStart(String date) {

@@ -131,7 +131,7 @@ function fmtTime(value?: string | null): string {
 async function reload() {
   loading.value = true
   try {
-    workflows.value = await listWorkflows(adminToken.value)
+    workflows.value = (await listWorkflows(adminToken.value)).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载工作流失败')
   } finally {
@@ -200,7 +200,7 @@ function handleDisable(row: WorkflowResponse) {
 async function openRuns(row: WorkflowResponse) {
   activeWorkflow.value = row
   try {
-    runs.value = await listWorkflowRuns(adminToken.value, row.workflowKey)
+    runs.value = (await listWorkflowRuns(adminToken.value, row.workflowKey)).rows
   } catch (e) {
     runs.value = []
     message.error(e instanceof Error ? e.message : '加载运行记录失败')

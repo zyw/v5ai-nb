@@ -133,12 +133,20 @@ public class PageQuery implements Serializable {
     }
 
     /**
+     * 分页大小上限，防止恶意/误用超大分页参数。
+     */
+    public static final int MAX_PAGE_SIZE = 1000;
+
+    /**
      * 构造分页查询对象。
      *
      * @param pageSize 分页大小
      * @param pageNum  当前页码
      */
     public PageQuery(Integer pageSize, Integer pageNum) {
+        if (pageSize != null && (pageSize <= 0 || pageSize > MAX_PAGE_SIZE)) {
+            throw new IllegalArgumentException("pageSize must be between 1 and " + MAX_PAGE_SIZE);
+        }
         this.pageSize = pageSize;
         this.pageNum = pageNum;
     }

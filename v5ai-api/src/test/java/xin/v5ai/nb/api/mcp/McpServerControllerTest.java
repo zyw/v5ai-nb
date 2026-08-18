@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.mcp;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.mcp.AgentMcpBindingRepository;
 import xin.v5ai.nb.mcp.CreateMcpServerCommand;
 import xin.v5ai.nb.mcp.McpClientFactory;
@@ -34,8 +35,8 @@ class McpServerControllerTest {
         var controller = new McpServerController(service());
         var created = controller.createServer(new CreateMcpServerRequest(
                 "weather", McpTransportType.STREAMABLE_HTTP, "https://mcp.example.com/mcp",
-                null, null, null, null));
-        var listed = controller.listServers();
+                null, null, null, null)).getData();
+        var listed = controller.listServers(new PageQuery()).getData().getRows();
 
         assertThat(created.id()).isEqualTo(1L);
         assertThat(created.status()).isEqualTo(McpServerStatus.ACTIVE);
@@ -48,11 +49,11 @@ class McpServerControllerTest {
         controller.createServer(new CreateMcpServerRequest(
                 "fs", McpTransportType.STDIO, "node", List.of("fs.js"), null, null, null));
 
-        var test = controller.testConnection(1L);
+        var test = controller.testConnection(1L).getData();
         assertThat(test.ok()).isTrue();
         assertThat(test.toolCount()).isEqualTo(1);
 
-        var tools = controller.discoverTools(1L);
+        var tools = controller.discoverTools(1L).getData();
         assertThat(tools).extracting(McpToolResponse::toolName).containsExactly("read_file");
         assertThat(tools.get(0).permission()).isEqualTo(McpToolPermission.ALLOW);
     }
@@ -64,7 +65,7 @@ class McpServerControllerTest {
                 "fs", McpTransportType.STDIO, "node", List.of("fs.js"), null, null, null));
         controller.discoverTools(1L);
 
-        var updated = controller.updateToolPermission(1L, "read_file", new McpToolPermissionRequest(McpToolPermission.DENY));
+        var updated = controller.updateToolPermission(1L, "read_file", new McpToolPermissionRequest(McpToolPermission.DENY)).getData();
         assertThat(updated.permission()).isEqualTo(McpToolPermission.DENY);
     }
 
@@ -83,7 +84,7 @@ class McpServerControllerTest {
         audits.stored.add(new McpToolCallAudit(null, "run-1", 1L, "s", "t", "{a=1}",
                 McpToolPermission.ALLOW, McpToolCallStatus.SUCCESS, 5L, null, Instant.now()));
 
-        var calls = controller.listToolCallsByServer(1L);
+        var calls = controller.listToolCallsByServer(1L, new PageQuery()).getData().getRows();
         assertThat(calls).extracting(McpToolCallAuditResponse::runId).containsExactly("run-1");
     }
 

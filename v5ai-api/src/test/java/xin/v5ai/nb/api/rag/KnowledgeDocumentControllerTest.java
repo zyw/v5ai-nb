@@ -29,7 +29,7 @@ class KnowledgeDocumentControllerTest {
                 url -> "fetched content");
         var controller = new KnowledgeDocumentController(service);
 
-        var document = controller.importUrl(1L, new ImportUrlRequest("https://example.com/doc", "External doc"));
+        var document = controller.importUrl(1L, new ImportUrlRequest("https://example.com/doc", "External doc")).getData();
 
         assertThat(document.fileType()).isEqualTo(DocumentFileType.URL);
         assertThat(document.source()).isEqualTo("https://example.com/doc");

@@ -167,8 +167,8 @@ async function reload() {
       listProviders(adminToken.value),
       listModels(adminToken.value)
     ])
-    providers.value = providerRows
-    models.value = modelRows
+    providers.value = providerRows.rows
+    models.value = modelRows.rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载模型配置失败')
   } finally {

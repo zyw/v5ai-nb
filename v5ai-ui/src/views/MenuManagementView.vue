@@ -115,7 +115,7 @@ const columns: DataTableColumns<MenuRow> = [
 async function reload() {
   loading.value = true
   try {
-    menus.value = await listMenus(adminToken.value)
+    menus.value = (await listMenus(adminToken.value)).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载菜单失败')
   } finally {

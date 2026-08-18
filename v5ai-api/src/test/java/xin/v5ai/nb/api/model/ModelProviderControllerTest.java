@@ -7,6 +7,7 @@ import xin.v5ai.nb.agent.AgentStatus;
 import xin.v5ai.nb.agent.AgentVersion;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.model.*;
 
 import java.util.ArrayList;
@@ -21,8 +22,8 @@ class ModelProviderControllerTest {
         var service = service();
         var controller = new ModelProviderController(service);
 
-        var created = controller.createProvider(new CreateProviderRequest("openai", "OpenAI", "OPENAI", true));
-        var providers = controller.listProviders();
+        var created = controller.createProvider(new CreateProviderRequest("openai", "OpenAI", "OPENAI", true)).getData();
+        var providers = controller.listProviders(new PageQuery()).getData().getRows();
 
         assertThat(created.providerKey()).isEqualTo("openai");
         assertThat(providers).extracting(ModelProviderResponse::providerKey).containsExactly("openai");
@@ -34,11 +35,11 @@ class ModelProviderControllerTest {
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
         var controller = new ModelProviderController(service);
 
-        var updated = controller.updateProvider("openai", new UpdateProviderRequest("OpenAI v2", "OPENAI", false));
+        var updated = controller.updateProvider("openai", new UpdateProviderRequest("OpenAI v2", "OPENAI", false)).getData();
         controller.deleteProvider("openai");
 
         assertThat(updated.name()).isEqualTo("OpenAI v2");
-        assertThat(controller.listProviders()).isEmpty();
+        assertThat(controller.listProviders(new PageQuery()).getData().getRows()).isEmpty();
     }
 
     @Test
@@ -59,8 +60,8 @@ class ModelProviderControllerTest {
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
         var controller = new ModelController(service, new RecordingAgentRepository());
 
-        var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret"));
-        var models = controller.listModels();
+        var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret")).getData();
+        var models = controller.listModels(new PageQuery()).getData().getRows().stream().toList();
 
         assertThat(created.modelKey()).isEqualTo("gpt-4o");
         assertThat(models).extracting(ModelResponse::modelKey).containsExactly("gpt-4o");
@@ -72,10 +73,10 @@ class ModelProviderControllerTest {
         var service = service();
         service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
         var controller = new ModelController(service, new RecordingAgentRepository());
-        var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret"));
+        var created = controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret")).getData();
 
-        var updated = controller.updateModel(1L, new UpdateModelRequest("gpt-4o-mini", ModelType.CHAT, null, true));
-        var testResult = controller.testConnection(1L);
+        var updated = controller.updateModel(1L, new UpdateModelRequest("gpt-4o-mini", ModelType.CHAT, null, true)).getData();
+        var testResult = controller.testConnection(1L).getData();
         controller.deleteModel(1L);
 
         assertThat(updated.modelKey()).isEqualTo("gpt-4o-mini");

@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.rag;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.rag.DocumentFileType;
 import xin.v5ai.nb.rag.DocumentStatus;
 import xin.v5ai.nb.rag.KnowledgeBase;
@@ -21,8 +22,8 @@ class KnowledgeBaseControllerTest {
         var service = service();
         var controller = new KnowledgeBaseController(service);
 
-        var created = controller.createKnowledgeBase(new CreateKnowledgeBaseRequest("Docs", "product docs"));
-        var listed = controller.listKnowledgeBases();
+        var created = controller.createKnowledgeBase(new CreateKnowledgeBaseRequest("Docs", "product docs")).getData();
+        var listed = controller.listKnowledgeBases(new PageQuery()).getData().getRows();
 
         assertThat(created.id()).isEqualTo(1L);
         assertThat(created.status()).isEqualTo(KnowledgeBaseStatus.ACTIVE);
@@ -35,7 +36,7 @@ class KnowledgeBaseControllerTest {
         service.uploadDocument(1L, "guide.md", DocumentFileType.MARKDOWN, "content".getBytes(), "guide.md");
         var controller = new KnowledgeBaseController(service);
 
-        var tasks = controller.listTasks(1L);
+        var tasks = controller.listTasks(1L, new PageQuery()).getData().getRows();
 
         assertThat(tasks).extracting(TaskResponse::status).containsExactly(TaskStatus.PENDING);
     }

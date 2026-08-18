@@ -3,6 +3,7 @@ package xin.v5ai.nb.api.platform;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import xin.v5ai.nb.agent.AgentRepository;
+import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.platform.*;
 import xin.v5ai.nb.model.ModelRepository;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
@@ -23,9 +24,10 @@ class PlatformControllersTest {
     void tenantControllerCreatesAndLists() {
         var store = new RecordingTenantStore();
         var controller = new TenantController(store, noOpAudit());
-        var created = controller.createTenant(new TenantController.CreateTenantRequest("acme", "Acme Corp"));
+        var created = controller.createTenant(new TenantController.CreateTenantRequest("acme", "Acme Corp")).getData();
         assertThat(created.tenantKey()).isEqualTo("acme");
-        assertThat(controller.listTenants()).extracting(Tenant::tenantKey).containsExactly("acme");
+        assertThat(controller.listTenants(new PageQuery()).getData().getRows())
+                .extracting(Tenant::tenantKey).containsExactly("acme");
     }
 
     @Test
@@ -43,10 +45,11 @@ class PlatformControllersTest {
             }
         }, noOpAudit());
         var created = controller.createUser(new UserController.CreateUserRequest(
-                "bob", "secret123", "Bob", 1L, null));
+                "bob", "secret123", "Bob", 1L, null)).getData();
         assertThat(created.username()).isEqualTo("bob");
         assertThat(created.roles()).containsExactly("USER");
-        assertThat(controller.listUsers()).extracting(UserAccount::username).containsExactly("bob");
+        assertThat(controller.listUsers(new PageQuery()).getData().getRows())
+                .extracting(UserAccount::username).containsExactly("bob");
     }
 
     @Test
@@ -57,8 +60,8 @@ class PlatformControllersTest {
                 .thenReturn(new AppQuota("demo", 10, 1000L, 5, Instant.now()));
         var controller = new AppQuotaController(service, noOpAudit());
 
-        assertThat(controller.getQuota("demo").ratePerMinute()).isZero();
-        var updated = controller.updateQuota("demo", new AppQuotaController.UpdateQuotaRequest(10, 1000L, 5));
+        assertThat(controller.getQuota("demo").getData().ratePerMinute()).isZero();
+        var updated = controller.updateQuota("demo", new AppQuotaController.UpdateQuotaRequest(10, 1000L, 5)).getData();
         assertThat(updated.dailyModelCalls()).isEqualTo(10);
     }
 
@@ -68,7 +71,7 @@ class PlatformControllersTest {
         when(recorder.search("admin", "LOGIN", 100)).thenReturn(List.of(
                 new AuditLog(1L, null, "admin", "LOGIN", "auth", "admin", "login", null, Instant.now())));
         var controller = new AuditController(recorder);
-        assertThat(controller.search("admin", "LOGIN", 100)).hasSize(1);
+        assertThat(controller.search(new PageQuery(), "admin", "LOGIN").getData().getRows()).hasSize(1);
     }
 
     @Test
@@ -86,7 +89,7 @@ class PlatformControllersTest {
         when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(7L);
         when(jdbc.queryForObject(anyString(), eq(Long.class), any())).thenReturn(3L);
 
-        var overview = new StatsController(jdbc, agents, models, knowledge, skills).overview();
+        var overview = new StatsController(jdbc, agents, models, knowledge, skills).overview().getData();
 
         assertThat(overview.agents()).isEqualTo(1);
         assertThat(overview.totalRuns()).isEqualTo(7);

@@ -1,6 +1,10 @@
 package xin.v5ai.nb.api.platform;
 
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.core.platform.Menu;
 import xin.v5ai.nb.common.core.platform.MenuStore;
@@ -37,12 +41,12 @@ public class MenuController {
     }
 
     @GetMapping
-    public List<Menu> list() {
-        return menuStore.list();
+    public R<PageResult<Menu>> list(PageQuery pageQuery) {
+        return R.ok(PageUtils.page(menuStore.list(), pageQuery));
     }
 
     @PostMapping
-    public Menu create(@RequestBody CreateMenuRequest request) {
+    public R<Menu> create(@RequestBody CreateMenuRequest request) {
         var code = normalizeCode(request.code());
         var name = requireText(request.name(), "name is required");
         var type = normalizeType(request.type());
@@ -60,11 +64,11 @@ public class MenuController {
                 request.visible() == null || request.visible());
         auditRecorder.record(null, currentActor(), "CREATE", "menu",
                 String.valueOf(menu.id()), "menu " + code, null);
-        return menu;
+        return R.ok(menu);
     }
 
     @PutMapping("/{id}")
-    public Menu update(@PathVariable("id") Long id, @RequestBody UpdateMenuRequest request) {
+    public R<Menu> update(@PathVariable("id") Long id, @RequestBody UpdateMenuRequest request) {
         var existing = menuStore.findById(id);
         if (existing == null) {
             throw new IllegalArgumentException("menu does not exist: " + id);
@@ -85,11 +89,11 @@ public class MenuController {
                 request.visible() == null || request.visible());
         auditRecorder.record(null, currentActor(), "UPDATE", "menu",
                 String.valueOf(id), "menu " + existing.code(), null);
-        return menu;
+        return R.ok(menu);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable("id") Long id) {
+    public R<Void> delete(@PathVariable("id") Long id) {
         var existing = menuStore.findById(id);
         if (existing == null) {
             throw new IllegalArgumentException("menu does not exist: " + id);
@@ -100,6 +104,7 @@ public class MenuController {
         menuStore.delete(id);
         auditRecorder.record(null, currentActor(), "DELETE", "menu",
                 String.valueOf(id), "menu " + existing.code(), null);
+        return R.ok();
     }
 
     /**

@@ -179,11 +179,11 @@ async function reload() {
       listMcpServers(adminToken.value),
       listSkills(adminToken.value)
     ])
-    agents.value = agentRows
-    models.value = modelRows
-    knowledgeBases.value = kbRows
-    mcpServers.value = mcpRows
-    skills.value = skillRows
+    agents.value = agentRows.rows
+    models.value = modelRows.rows
+    knowledgeBases.value = kbRows.rows
+    mcpServers.value = mcpRows.rows
+    skills.value = skillRows.rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载数据失败')
   } finally {

@@ -84,7 +84,7 @@ const versionColumns: DataTableColumns<SkillVersionResponse> = [
 async function reload() {
   loading.value = true
   try {
-    skills.value = await listSkills(adminToken.value)
+    skills.value = (await listSkills(adminToken.value)).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载 Skill 数据失败')
   } finally {
@@ -119,7 +119,7 @@ async function handleUpload() {
 
 async function handleShowVersions(skill: SkillResponse) {
   selectedSkill.value = skill
-  versions.value = await listSkillVersions(adminToken.value, skill.id)
+  versions.value = (await listSkillVersions(adminToken.value, skill.id)).rows
   showVersionsModal.value = true
 }
 

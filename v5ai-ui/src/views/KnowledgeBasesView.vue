@@ -80,7 +80,7 @@ const taskColumns: DataTableColumns<TaskResponse> = [
 async function reload() {
   loading.value = true
   try {
-    knowledgeBases.value = await listKnowledgeBases(adminToken.value)
+    knowledgeBases.value = (await listKnowledgeBases(adminToken.value)).rows
     if (selectedKb.value == null && knowledgeBases.value.length > 0) {
       selectedKb.value = knowledgeBases.value[0]
     }
@@ -99,8 +99,8 @@ async function reloadDocuments(kbId: number) {
     listDocuments(adminToken.value, kbId),
     listTasks(adminToken.value, kbId)
   ])
-  documents.value = docRows
-  tasks.value = taskRows
+  documents.value = docRows.rows
+  tasks.value = taskRows.rows
 }
 
 async function selectKb(kb: KnowledgeBaseResponse) {

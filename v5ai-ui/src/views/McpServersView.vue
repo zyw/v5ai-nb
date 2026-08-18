@@ -126,7 +126,7 @@ const toolColumns: DataTableColumns<McpToolResponse> = [
 async function reload() {
   loading.value = true
   try {
-    servers.value = await listMcpServers(adminToken.value)
+    servers.value = (await listMcpServers(adminToken.value)).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载 MCP 数据失败')
   } finally {
@@ -195,7 +195,7 @@ async function handleDiscover(row: McpServerResponse) {
 
 async function handleShowTools(row: McpServerResponse) {
   try {
-    tools.value = await listMcpTools(adminToken.value, row.id)
+    tools.value = (await listMcpTools(adminToken.value, row.id)).rows
     activeServer.value = row
     showToolsModal.value = true
   } catch (e) {

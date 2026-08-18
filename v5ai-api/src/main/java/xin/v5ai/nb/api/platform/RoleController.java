@@ -1,6 +1,10 @@
 package xin.v5ai.nb.api.platform;
 
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.Role;
@@ -36,12 +40,12 @@ public class RoleController {
     }
 
     @GetMapping
-    public List<Role> list() {
-        return roleStore.list();
+    public R<PageResult<Role>> list(PageQuery pageQuery) {
+        return R.ok(PageUtils.page(roleStore.list(), pageQuery));
     }
 
     @PostMapping
-    public Role create(@RequestBody CreateRoleRequest request) {
+    public R<Role> create(@RequestBody CreateRoleRequest request) {
         var key = normalizeKey(request.roleKey());
         if (key == null || key.isBlank()) {
             throw new IllegalArgumentException("roleKey is required");
@@ -58,11 +62,11 @@ public class RoleController {
         }
         var role = roleStore.create(key, request.roleName().trim(), request.description(), request.dataScope());
         auditRecorder.record(null, currentActor(), "CREATE", "role", key, "role " + key, null);
-        return role;
+        return R.ok(role);
     }
 
     @PutMapping("/{roleKey}")
-    public Role update(@PathVariable("roleKey") String roleKey, @RequestBody UpdateRoleRequest request) {
+    public R<Role> update(@PathVariable("roleKey") String roleKey, @RequestBody UpdateRoleRequest request) {
         var key = normalizeKey(roleKey);
         if (roleStore.findByKey(key) == null) {
             throw new IllegalArgumentException("role does not exist: " + key);
@@ -73,11 +77,11 @@ public class RoleController {
         validateDataScope(request.dataScope());
         var role = roleStore.update(key, request.roleName().trim(), request.description(), request.dataScope());
         auditRecorder.record(null, currentActor(), "UPDATE", "role", key, "role " + key, null);
-        return role;
+        return R.ok(role);
     }
 
     @DeleteMapping("/{roleKey}")
-    public void delete(@PathVariable("roleKey") String roleKey) {
+    public R<Void> delete(@PathVariable("roleKey") String roleKey) {
         var key = normalizeKey(roleKey);
         var role = roleStore.findByKey(key);
         if (role == null) {
@@ -91,19 +95,20 @@ public class RoleController {
         }
         roleStore.delete(key);
         auditRecorder.record(null, currentActor(), "DELETE", "role", key, "role " + key, null);
+        return R.ok();
     }
 
     @GetMapping("/{roleKey}/menus")
-    public List<Long> listMenus(@PathVariable("roleKey") String roleKey) {
+    public R<List<Long>> listMenus(@PathVariable("roleKey") String roleKey) {
         var key = normalizeKey(roleKey);
         if (roleStore.findByKey(key) == null) {
             throw new IllegalArgumentException("role does not exist: " + key);
         }
-        return menuStore.listMenuIdsByRole(key);
+        return R.ok(menuStore.listMenuIdsByRole(key));
     }
 
     @PutMapping("/{roleKey}/menus")
-    public void updateMenus(@PathVariable("roleKey") String roleKey, @RequestBody UpdateRoleMenusRequest request) {
+    public R<Void> updateMenus(@PathVariable("roleKey") String roleKey, @RequestBody UpdateRoleMenusRequest request) {
         var key = normalizeKey(roleKey);
         if (roleStore.findByKey(key) == null) {
             throw new IllegalArgumentException("role does not exist: " + key);
@@ -111,6 +116,7 @@ public class RoleController {
         var menuIds = request.menuIds() == null ? List.<Long>of() : request.menuIds();
         menuStore.replaceRoleMenus(key, menuIds);
         auditRecorder.record(null, currentActor(), "UPDATE_MENUS", "role", key, "menus=" + menuIds, null);
+        return R.ok();
     }
 
     private static String normalizeKey(String key) {

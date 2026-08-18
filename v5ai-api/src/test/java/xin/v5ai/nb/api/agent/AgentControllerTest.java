@@ -8,6 +8,7 @@ import xin.v5ai.nb.agent.AgentStatus;
 import xin.v5ai.nb.agent.AgentVersion;
 import xin.v5ai.nb.agent.AgentManagementService;
 import xin.v5ai.nb.agent.GeneratedAgentConfig;
+import xin.v5ai.nb.common.core.page.PageQuery;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +23,8 @@ class AgentControllerTest {
                 (modelId, description) -> new GeneratedAgentConfig("generated", "gen desc", "hi", List.of("q1"), "prompt"));
 
         var created = controller.createAgent(new CreateAgentRequest("demo", "Demo", "desc", 7L, "You are a demo agent.",
-                "https://example.com/avatar.png", "你好，我是 Demo", "[\"你是谁？\"]", true, true, false, true, false));
-        var listed = controller.listAgents();
+                "https://example.com/avatar.png", "你好，我是 Demo", "[\"你是谁？\"]", true, true, false, true, false)).getData();
+        var listed = controller.listAgents(new PageQuery()).getData().getRows();
         controller.publishAgent("demo", new PublishAgentRequest("release"));
 
         assertThat(created.agentKey()).isEqualTo("demo");
@@ -50,8 +51,8 @@ class AgentControllerTest {
         controller.createAgent(new CreateAgentRequest("demo", "Demo", null, 7L, null));
 
         var updated = controller.updateAgent("demo", new UpdateAgentRequest("Demo v2", "new", 8L, null,
-                null, "欢迎回来", null, true, null, null, null, null));
-        var versions = controller.listVersions("demo");
+                null, "欢迎回来", null, true, null, null, null, null)).getData();
+        var versions = controller.listVersions("demo", new PageQuery()).getData().getRows();
         controller.disableAgent("demo");
 
         assertThat(updated.name()).isEqualTo("Demo v2");
@@ -70,7 +71,7 @@ class AgentControllerTest {
                 (modelId, description) -> new GeneratedAgentConfig("智能客服", "7x24 客服", "您好，有什么可以帮您？",
                         List.of("怎么退款？", "如何联系人工？"), "You are a customer service agent."));
 
-        var generated = controller.generateAgentConfig(new GenerateAgentConfigRequest(7L, "帮我设计一个智能客服"));
+        var generated = controller.generateAgentConfig(new GenerateAgentConfigRequest(7L, "帮我设计一个智能客服")).getData();
 
         assertThat(generated.name()).isEqualTo("智能客服");
         assertThat(generated.description()).isEqualTo("7x24 客服");

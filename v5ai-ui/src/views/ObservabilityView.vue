@@ -81,9 +81,9 @@ async function reloadOverview() {
       listAgents(adminToken.value)
     ])
     overview.value = overviewData
-    apps.value = appRows
-    if (!quotaForm.agentKey && appRows.length > 0) {
-      quotaForm.agentKey = appRows[0].agentKey
+    apps.value = appRows.rows
+    if (!quotaForm.agentKey && appRows.rows.length > 0) {
+      quotaForm.agentKey = appRows.rows[0].agentKey
       await reloadQuota()
     }
   } catch (e) {
@@ -93,7 +93,7 @@ async function reloadOverview() {
 
 async function reloadUsage() {
   try {
-    usage.value = await listUsage(adminToken.value, { agentKey: filterAppKey.value || undefined, limit: 100 })
+    usage.value = (await listUsage(adminToken.value, { agentKey: filterAppKey.value || undefined, pageSize: 100 })).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载用量失败')
   }
@@ -101,7 +101,7 @@ async function reloadUsage() {
 
 async function reloadAudits() {
   try {
-    audits.value = await listAuditLogs(adminToken.value, { action: filterAction.value || undefined, limit: 100 })
+    audits.value = (await listAuditLogs(adminToken.value, { action: filterAction.value || undefined, pageSize: 100 })).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载审计失败')
   }

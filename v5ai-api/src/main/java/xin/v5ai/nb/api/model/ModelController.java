@@ -9,8 +9,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.agent.AgentRepository;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.model.CreateModelCommand;
 import xin.v5ai.nb.model.ModelManagementService;
 import xin.v5ai.nb.model.UpdateModelCommand;
@@ -29,27 +33,28 @@ public class ModelController {
     }
 
     @PostMapping
-    public ModelResponse createModel(@RequestBody CreateModelRequest request) {
-        return ModelResponse.from(modelManagementService.createModel(new CreateModelCommand(
-                request.providerKey(), request.modelKey(), request.type(), request.credentials())));
+    public R<ModelResponse> createModel(@RequestBody CreateModelRequest request) {
+        return R.ok(ModelResponse.from(modelManagementService.createModel(new CreateModelCommand(
+                request.providerKey(), request.modelKey(), request.type(), request.credentials()))));
     }
 
     @GetMapping
-    public List<ModelResponse> listModels() {
-        return modelManagementService.listModels().stream()
+    public R<PageResult<ModelResponse>> listModels(PageQuery pageQuery) {
+        var list = modelManagementService.listModels().stream()
                 .map(ModelResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @PutMapping("/{id}")
-    public ModelResponse updateModel(@PathVariable("id") Long id, @RequestBody UpdateModelRequest request) {
-        return ModelResponse.from(modelManagementService.updateModel(new UpdateModelCommand(
+    public R<ModelResponse> updateModel(@PathVariable("id") Long id, @RequestBody UpdateModelRequest request) {
+        return R.ok(ModelResponse.from(modelManagementService.updateModel(new UpdateModelCommand(
                 id, request.modelKey(), request.type(), request.credentials(),
-                request.enabled() == null || request.enabled())));
+                request.enabled() == null || request.enabled()))));
     }
 
     @DeleteMapping("/{id}")
-    public void deleteModel(@PathVariable("id") Long id) {
+    public R<Void> deleteModel(@PathVariable("id") Long id) {
         if (modelManagementService.findModel(id) == null) {
             throw new V5aiException(ErrorCode.NOT_FOUND, "model does not exist: " + id);
         }
@@ -60,17 +65,18 @@ public class ModelController {
                     "model is used by an application and cannot be deleted");
         }
         modelManagementService.deleteModel(id);
+        return R.ok();
     }
 
     @PostMapping("/{id}/test")
-    public TestConnectionResponse testConnection(@PathVariable("id") Long id) {
+    public R<TestConnectionResponse> testConnection(@PathVariable("id") Long id) {
         try {
             var result = modelManagementService.testConnection(id);
-            return result.ok()
+            return R.ok(result.ok()
                     ? TestConnectionResponse.ok(id)
-                    : TestConnectionResponse.failed(id, result.message());
+                    : TestConnectionResponse.failed(id, result.message()));
         } catch (Exception exception) {
-            return TestConnectionResponse.failed(id, exception.getMessage());
+            return R.ok(TestConnectionResponse.failed(id, exception.getMessage()));
         }
     }
 }

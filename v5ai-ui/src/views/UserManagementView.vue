@@ -94,9 +94,9 @@ async function reload() {
       listTenants(adminToken.value),
       listRoles(adminToken.value)
     ])
-    users.value = userRows
-    tenants.value = tenantRows
-    roles.value = roleRows
+    users.value = userRows.rows
+    tenants.value = tenantRows.rows
+    roles.value = roleRows.rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载用户失败')
   } finally {

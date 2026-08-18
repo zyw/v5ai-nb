@@ -3,6 +3,10 @@ package xin.v5ai.nb.api.agent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.agent.*;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
@@ -24,14 +28,14 @@ public class AgentController {
 
     /** 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。 */
     @PostMapping("/generate")
-    public GenerateAgentConfigResponse generateAgentConfig(@RequestBody GenerateAgentConfigRequest request) {
+    public R<GenerateAgentConfigResponse> generateAgentConfig(@RequestBody GenerateAgentConfigRequest request) {
         audit("GENERATE", "agent-config", null, "generate agent config");
-        return GenerateAgentConfigResponse.from(
-                agentConfigGenerator.generate(request.modelId(), request.description()));
+        return R.ok(GenerateAgentConfigResponse.from(
+                agentConfigGenerator.generate(request.modelId(), request.description())));
     }
 
     @PostMapping
-    public AgentResponse createAgent(@RequestBody CreateAgentRequest request) {
+    public R<AgentResponse> createAgent(@RequestBody CreateAgentRequest request) {
         var created = AgentResponse.from(agentManagementService.createAgent(
                 new CreateAgentCommand(request.agentKey(), request.name(), request.description(),
                         request.modelId(), request.systemPrompt(),
@@ -39,52 +43,58 @@ public class AgentController {
                         request.memoryEnabled(), request.mcpEnabled(), request.skillEnabled(),
                         request.webSearchEnabled(), request.ragEnabled())));
         audit("CREATE", "agent", request.agentKey(), "create agent");
-        return created;
+        return R.ok(created);
     }
 
     @GetMapping
-    public List<AgentResponse> listAgents() {
-        return agentManagementService.listAgents().stream()
+    public R<PageResult<AgentResponse>> listAgents(PageQuery pageQuery) {
+        var list = agentManagementService.listAgents().stream()
                 .map(AgentResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @PutMapping("/{agentKey}")
-    public AgentResponse updateAgent(@PathVariable("agentKey") String agentKey,
+    public R<AgentResponse> updateAgent(@PathVariable("agentKey") String agentKey,
                                      @RequestBody UpdateAgentRequest request) {
         audit("UPDATE", "agent", agentKey, "update agent");
-        return AgentResponse.from(agentManagementService.updateAgent(
+        return R.ok(AgentResponse.from(agentManagementService.updateAgent(
                 new UpdateAgentCommand(agentKey, request.name(), request.description(),
                         request.modelId(), request.systemPrompt(),
                         request.avatar(), request.greeting(), request.presetQuestions(),
                         request.memoryEnabled(), request.mcpEnabled(), request.skillEnabled(),
-                        request.webSearchEnabled(), request.ragEnabled())));
+                        request.webSearchEnabled(), request.ragEnabled()))));
     }
 
     @PostMapping("/{agentKey}/disable")
-    public void disableAgent(@PathVariable("agentKey") String agentKey) {
+    public R<Void> disableAgent(@PathVariable("agentKey") String agentKey) {
         agentManagementService.disable(agentKey);
         audit("DISABLE", "agent", agentKey, "disable agent");
+        return R.ok();
     }
 
     @DeleteMapping("/{agentKey}")
-    public void deleteAgent(@PathVariable("agentKey") String agentKey) {
+    public R<Void> deleteAgent(@PathVariable("agentKey") String agentKey) {
         agentManagementService.delete(agentKey);
         audit("DELETE", "agent", agentKey, "delete agent with all related data");
+        return R.ok();
     }
 
     @GetMapping("/{agentKey}/versions")
-    public List<AgentVersionResponse> listVersions(@PathVariable("agentKey") String agentKey) {
-        return agentManagementService.listVersions(agentKey).stream()
+    public R<PageResult<AgentVersionResponse>> listVersions(@PathVariable("agentKey") String agentKey,
+                                                            PageQuery pageQuery) {
+        var list = agentManagementService.listVersions(agentKey).stream()
                 .map(AgentVersionResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @PostMapping("/{agentKey}/publish")
-    public void publishAgent(@PathVariable("agentKey") String agentKey,
-                             @RequestBody PublishAgentRequest request) {
+    public R<Void> publishAgent(@PathVariable("agentKey") String agentKey,
+                                @RequestBody PublishAgentRequest request) {
         agentManagementService.publish(new PublishAgentCommand(agentKey, request.description()));
         audit("PUBLISH", "agent", agentKey, "publish agent");
+        return R.ok();
     }
 
     private void audit(String action, String targetType, String targetId, String detail) {

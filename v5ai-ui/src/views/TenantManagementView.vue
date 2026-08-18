@@ -50,7 +50,7 @@ const columns: DataTableColumns<Tenant> = [
 async function reload() {
   loading.value = true
   try {
-    tenants.value = await listTenants(adminToken.value)
+    tenants.value = (await listTenants(adminToken.value)).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载租户失败')
   } finally {

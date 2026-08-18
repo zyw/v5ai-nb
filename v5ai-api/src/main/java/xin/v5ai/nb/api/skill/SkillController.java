@@ -3,6 +3,10 @@ package xin.v5ai.nb.api.skill;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.skill.SkillManagementService;
@@ -27,54 +31,57 @@ public class SkillController {
     }
 
     @PostMapping(consumes = "multipart/form-data")
-    public SkillResponse uploadSkill(
+    public R<SkillResponse> uploadSkill(
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "description", required = false) String description
     ) {
         try {
             var created = SkillResponse.from(skillManagementService.uploadSkill(file.getBytes(), description));
             audit("CREATE", "skill", String.valueOf(created.id()), "upload skill " + created.name());
-            return created;
+            return R.ok(created);
         } catch (IOException exception) {
             throw new UncheckedIOException("failed to read uploaded skill package", exception);
         }
     }
 
     @GetMapping
-    public List<SkillResponse> listSkills() {
-        return skillManagementService.listSkills().stream()
+    public R<PageResult<SkillResponse>> listSkills(PageQuery pageQuery) {
+        var list = skillManagementService.listSkills().stream()
                 .map(SkillResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @DeleteMapping("/{id}")
-    public void disableSkill(@PathVariable("id") Long id) {
+    public R<Void> disableSkill(@PathVariable("id") Long id) {
         skillManagementService.disableSkill(id);
         audit("DISABLE", "skill", String.valueOf(id), "disable skill");
+        return R.ok();
     }
 
     @GetMapping("/{id}/versions")
-    public List<SkillVersionResponse> listVersions(@PathVariable("id") Long id) {
-        return skillManagementService.listVersions(id).stream()
+    public R<PageResult<SkillVersionResponse>> listVersions(@PathVariable("id") Long id, PageQuery pageQuery) {
+        var list = skillManagementService.listVersions(id).stream()
                 .map(SkillVersionResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @PostMapping("/{id}/versions/{versionId}/publish")
-    public SkillResponse publishVersion(@PathVariable("id") Long id,
+    public R<SkillResponse> publishVersion(@PathVariable("id") Long id,
                                         @PathVariable("versionId") Long versionId) {
         audit("PUBLISH", "skill", String.valueOf(id), "publish skill version " + versionId);
-        return SkillResponse.from(skillManagementService.publishVersion(id, versionId));
+        return R.ok(SkillResponse.from(skillManagementService.publishVersion(id, versionId)));
     }
 
     @PostMapping("/{id}/rollback")
-    public SkillResponse rollback(@PathVariable("id") Long id,
+    public R<SkillResponse> rollback(@PathVariable("id") Long id,
                                   @RequestBody RollbackRequest request) {
         if (request.versionId() == null) {
             throw new IllegalArgumentException("versionId is required");
         }
         audit("ROLLBACK", "skill", String.valueOf(id), "rollback skill to version " + request.versionId());
-        return SkillResponse.from(skillManagementService.rollback(id, request.versionId()));
+        return R.ok(SkillResponse.from(skillManagementService.rollback(id, request.versionId())));
     }
 
     private void audit(String action, String targetType, String targetId, String detail) {

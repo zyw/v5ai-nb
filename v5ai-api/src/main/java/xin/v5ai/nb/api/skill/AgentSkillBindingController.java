@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.skill.SkillManagementService;
 
 import java.util.List;
@@ -23,13 +24,14 @@ public class AgentSkillBindingController {
     }
 
     @PostMapping
-    public void bindSkills(@PathVariable("agentKey") String agentKey,
+    public R<Void> bindSkills(@PathVariable("agentKey") String agentKey,
                            @RequestBody SkillBindRequest request) {
         skillManagementService.bindSkills(agentKey, request.skillIds());
+        return R.ok();
     }
 
     @GetMapping
-    public List<Long> getBindings(@PathVariable("agentKey") String agentKey) {
-        return skillManagementService.getSkillBindings(agentKey);
+    public R<List<Long>> getBindings(@PathVariable("agentKey") String agentKey) {
+        return R.ok(skillManagementService.getSkillBindings(agentKey));
     }
 }

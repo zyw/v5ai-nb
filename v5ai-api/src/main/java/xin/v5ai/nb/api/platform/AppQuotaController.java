@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.platform;
 
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.platform.AppQuota;
 import xin.v5ai.nb.common.core.platform.AppQuotaService;
 import xin.v5ai.nb.common.core.platform.AppUsage;
@@ -25,22 +26,22 @@ public class AppQuotaController {
     }
 
     @GetMapping("/quota")
-    public AppQuota getQuota(@PathVariable("agentKey") String agentKey) {
-        return quotaService.getQuota(agentKey);
+    public R<AppQuota> getQuota(@PathVariable("agentKey") String agentKey) {
+        return R.ok(quotaService.getQuota(agentKey));
     }
 
     @PutMapping("/quota")
-    public AppQuota updateQuota(@PathVariable("agentKey") String agentKey, @RequestBody UpdateQuotaRequest request) {
+    public R<AppQuota> updateQuota(@PathVariable("agentKey") String agentKey, @RequestBody UpdateQuotaRequest request) {
         var quota = quotaService.updateQuota(agentKey, request.dailyModelCalls(), request.dailyTokens(),
                 request.ratePerMinute());
         auditRecorder.record(null, currentActor(), "UPDATE_QUOTA", "agent",
                 agentKey, "quota=" + quota, null);
-        return quota;
+        return R.ok(quota);
     }
 
     @GetMapping("/usage/daily")
-    public AppUsage getDailyUsage(@PathVariable("agentKey") String agentKey) {
-        return quotaService.getDailyUsage(agentKey);
+    public R<AppUsage> getDailyUsage(@PathVariable("agentKey") String agentKey) {
+        return R.ok(quotaService.getDailyUsage(agentKey));
     }
 
     private static String currentActor() {

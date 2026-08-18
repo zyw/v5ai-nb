@@ -4,6 +4,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditLog;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 
@@ -22,11 +26,12 @@ public class AuditController {
     }
 
     @GetMapping
-    public List<AuditLog> search(
+    public R<PageResult<AuditLog>> search(
+            PageQuery pageQuery,
             @RequestParam(value = "actor", required = false) String actor,
-            @RequestParam(value = "action", required = false) String action,
-            @RequestParam(value = "limit", defaultValue = "100") int limit
+            @RequestParam(value = "action", required = false) String action
     ) {
-        return auditRecorder.search(actor, action, limit);
+        int limit = pageQuery.getPageSize() == null ? 100 : pageQuery.getPageSize();
+        return R.ok(PageUtils.page(auditRecorder.search(actor, action, limit), pageQuery));
     }
 }

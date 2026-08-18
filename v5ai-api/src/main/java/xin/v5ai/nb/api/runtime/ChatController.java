@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.runtime.AgentRunRequest;
 import xin.v5ai.nb.runtime.AgentRunResult;
 import xin.v5ai.nb.runtime.AgentRuntime;
@@ -45,13 +49,15 @@ public class ChatController {
     }
 
     @GetMapping("/conversations/{conversationId}")
-    public List<ConversationMessageResponse> conversationMessages(
+    public R<PageResult<ConversationMessageResponse>> conversationMessages(
             @PathVariable("agentKey") String agentKey,
-            @PathVariable("conversationId") String conversationId
+            @PathVariable("conversationId") String conversationId,
+            PageQuery pageQuery
     ) {
-        return messageRepository.findByConversationId(conversationId).stream()
+        var list = messageRepository.findByConversationId(conversationId).stream()
                 .map(ConversationMessageResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @PostMapping("/conversations/{conversationId}/resume")

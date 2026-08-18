@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.rag.DocumentFileType;
 import xin.v5ai.nb.rag.KnowledgeManagementService;
 
@@ -28,7 +32,7 @@ public class KnowledgeDocumentController {
     }
 
     @PostMapping(value = "/knowledge-bases/{kbId}/documents", consumes = "multipart/form-data")
-    public DocumentResponse uploadDocument(
+    public R<DocumentResponse> uploadDocument(
             @PathVariable("kbId") Long kbId,
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "title", required = false) String title
@@ -37,36 +41,39 @@ public class KnowledgeDocumentController {
         var resolvedTitle = title == null || title.isBlank() ? filename : title;
         var fileType = detectFileType(filename);
         try {
-            return DocumentResponse.from(knowledgeManagementService.uploadDocument(
-                    kbId, resolvedTitle, fileType, file.getBytes(), filename));
+            return R.ok(DocumentResponse.from(knowledgeManagementService.uploadDocument(
+                    kbId, resolvedTitle, fileType, file.getBytes(), filename)));
         } catch (IOException exception) {
             throw new UncheckedIOException("failed to read uploaded file", exception);
         }
     }
 
     @PostMapping("/knowledge-bases/{kbId}/documents/url")
-    public DocumentResponse importUrl(@PathVariable("kbId") Long kbId, @RequestBody ImportUrlRequest request) {
-        return DocumentResponse.from(knowledgeManagementService.importUrl(kbId, request.title(), request.url()));
+    public R<DocumentResponse> importUrl(@PathVariable("kbId") Long kbId, @RequestBody ImportUrlRequest request) {
+        return R.ok(DocumentResponse.from(knowledgeManagementService.importUrl(kbId, request.title(), request.url())));
     }
 
     @GetMapping("/knowledge-bases/{kbId}/documents")
-    public List<DocumentResponse> listDocuments(@PathVariable("kbId") Long kbId) {
-        return knowledgeManagementService.listDocuments(kbId).stream()
+    public R<PageResult<DocumentResponse>> listDocuments(@PathVariable("kbId") Long kbId, PageQuery pageQuery) {
+        var list = knowledgeManagementService.listDocuments(kbId).stream()
                 .map(DocumentResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @DeleteMapping("/documents/{id}")
-    public void deleteDocument(@PathVariable("id") Long id) {
+    public R<Void> deleteDocument(@PathVariable("id") Long id) {
         knowledgeManagementService.deleteDocument(id);
+        return R.ok();
     }
 
     @PostMapping("/documents/{id}/retry")
-    public void retryDocument(@PathVariable("id") Long id) {
+    public R<Void> retryDocument(@PathVariable("id") Long id) {
         var tasks = knowledgeManagementService.listTasksByDocument(id);
         for (var task : tasks) {
             knowledgeManagementService.retryTask(task.id());
         }
+        return R.ok();
     }
 
     private DocumentFileType detectFileType(String filename) {

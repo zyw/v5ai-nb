@@ -4,6 +4,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.mcp.McpManagementService;
 
 import java.util.List;
@@ -21,20 +25,23 @@ public class McpToolCallController {
     }
 
     @GetMapping
-    public List<McpToolCallAuditResponse> listToolCalls(
+    public R<PageResult<McpToolCallAuditResponse>> listToolCalls(
+            PageQuery pageQuery,
             @RequestParam(value = "runId", required = false) String runId,
             @RequestParam(value = "serverId", required = false) Long serverId
     ) {
         if (runId != null && !runId.isBlank()) {
-            return mcpManagementService.listToolCallsByRun(runId).stream()
+            var list = mcpManagementService.listToolCallsByRun(runId).stream()
                     .map(McpToolCallAuditResponse::from)
                     .toList();
+            return R.ok(PageUtils.page(list, pageQuery));
         }
         if (serverId != null) {
-            return mcpManagementService.listToolCallsByServer(serverId).stream()
+            var list = mcpManagementService.listToolCallsByServer(serverId).stream()
                     .map(McpToolCallAuditResponse::from)
                     .toList();
+            return R.ok(PageUtils.page(list, pageQuery));
         }
-        return List.of();
+        return R.ok(PageUtils.page(List.of(), pageQuery));
     }
 }

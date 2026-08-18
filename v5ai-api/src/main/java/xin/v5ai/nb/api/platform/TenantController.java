@@ -1,6 +1,10 @@
 package xin.v5ai.nb.api.platform;
 
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.core.platform.Tenant;
 import xin.v5ai.nb.common.core.platform.TenantStore;
@@ -27,7 +31,7 @@ public class TenantController {
     }
 
     @PostMapping
-    public Tenant createTenant(@RequestBody CreateTenantRequest request) {
+    public R<Tenant> createTenant(@RequestBody CreateTenantRequest request) {
         if (request.tenantKey() == null || request.tenantKey().isBlank()
                 || request.name() == null || request.name().isBlank()) {
             throw new IllegalArgumentException("tenant key and name are required");
@@ -39,19 +43,20 @@ public class TenantController {
                 "ACTIVE", Instant.now(), Instant.now()));
         auditRecorder.record(tenant.id(), currentActor(), "CREATE", "tenant",
                 String.valueOf(tenant.id()), "tenant " + tenant.tenantKey(), null);
-        return tenant;
+        return R.ok(tenant);
     }
 
     @GetMapping
-    public List<Tenant> listTenants() {
-        return tenantStore.list();
+    public R<PageResult<Tenant>> listTenants(PageQuery pageQuery) {
+        return R.ok(PageUtils.page(tenantStore.list(), pageQuery));
     }
 
     @DeleteMapping("/{id}")
-    public void disableTenant(@PathVariable("id") Long id) {
+    public R<Void> disableTenant(@PathVariable("id") Long id) {
         tenantStore.disable(id);
         auditRecorder.record(id, currentActor(), "DISABLE", "tenant",
                 String.valueOf(id), "disable tenant", null);
+        return R.ok();
     }
 
     private static String currentActor() {

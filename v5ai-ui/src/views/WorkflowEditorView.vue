@@ -206,7 +206,7 @@ async function load() {
       sourceHandle: e.sourceHandle ?? 'out',
       targetHandle: 'in'
     }))
-    agents.value = await listAgents(adminToken.value)
+    agents.value = (await listAgents(adminToken.value)).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载工作流失败')
   } finally {

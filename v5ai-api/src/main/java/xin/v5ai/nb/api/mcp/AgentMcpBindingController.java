@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.mcp.McpManagementService;
 
 import java.util.List;
@@ -23,13 +24,14 @@ public class AgentMcpBindingController {
     }
 
     @PostMapping
-    public void bindServers(@PathVariable("agentKey") String agentKey,
+    public R<Void> bindServers(@PathVariable("agentKey") String agentKey,
                             @RequestBody McpBindRequest request) {
         mcpManagementService.bindServers(agentKey, request.mcpServerIds());
+        return R.ok();
     }
 
     @GetMapping
-    public List<Long> getBindings(@PathVariable("agentKey") String agentKey) {
-        return mcpManagementService.getServerBindings(agentKey);
+    public R<List<Long>> getBindings(@PathVariable("agentKey") String agentKey) {
+        return R.ok(mcpManagementService.getServerBindings(agentKey));
     }
 }

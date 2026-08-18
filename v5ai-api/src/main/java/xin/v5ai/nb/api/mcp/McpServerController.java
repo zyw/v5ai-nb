@@ -2,6 +2,10 @@ package xin.v5ai.nb.api.mcp;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.mcp.CreateMcpServerCommand;
@@ -26,71 +30,77 @@ public class McpServerController {
     }
 
     @PostMapping
-    public McpServerResponse createServer(@RequestBody CreateMcpServerRequest request) {
+    public R<McpServerResponse> createServer(@RequestBody CreateMcpServerRequest request) {
         var created = McpServerResponse.from(mcpManagementService.createServer(new CreateMcpServerCommand(
                 request.name(), request.transportType(), request.endpoint(), request.args(),
                 request.headers(), request.envVars(), request.timeoutSeconds())));
         audit("CREATE", "mcp-server", String.valueOf(created.id()), "create mcp server " + created.name());
-        return created;
+        return R.ok(created);
     }
 
     @GetMapping
-    public List<McpServerResponse> listServers() {
-        return mcpManagementService.listServers().stream()
+    public R<PageResult<McpServerResponse>> listServers(PageQuery pageQuery) {
+        var list = mcpManagementService.listServers().stream()
                 .map(McpServerResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @PutMapping("/{id}")
-    public McpServerResponse updateServer(@PathVariable("id") Long id,
+    public R<McpServerResponse> updateServer(@PathVariable("id") Long id,
                                           @RequestBody UpdateMcpServerRequest request) {
-        return McpServerResponse.from(mcpManagementService.updateServer(new UpdateMcpServerCommand(
+        return R.ok(McpServerResponse.from(mcpManagementService.updateServer(new UpdateMcpServerCommand(
                 id, request.name(), request.transportType(), request.endpoint(), request.args(),
-                request.headers(), request.envVars(), request.timeoutSeconds())));
+                request.headers(), request.envVars(), request.timeoutSeconds()))));
     }
 
     @DeleteMapping("/{id}")
-    public void disableServer(@PathVariable("id") Long id) {
+    public R<Void> disableServer(@PathVariable("id") Long id) {
         mcpManagementService.disableServer(id);
         audit("DISABLE", "mcp-server", String.valueOf(id), "disable mcp server");
+        return R.ok();
     }
 
     @PostMapping("/{id}/test-connection")
-    public McpConnectionTestResponse testConnection(@PathVariable("id") Long id) {
-        return McpConnectionTestResponse.from(id, mcpManagementService.testConnection(id));
+    public R<McpConnectionTestResponse> testConnection(@PathVariable("id") Long id) {
+        return R.ok(McpConnectionTestResponse.from(id, mcpManagementService.testConnection(id)));
     }
 
     @PostMapping("/{id}/discover-tools")
-    public List<McpToolResponse> discoverTools(@PathVariable("id") Long id) {
-        return mcpManagementService.discoverTools(id).stream()
+    public R<List<McpToolResponse>> discoverTools(@PathVariable("id") Long id) {
+        var list = mcpManagementService.discoverTools(id).stream()
                 .map(McpToolResponse::from)
                 .toList();
+        return R.ok(list);
     }
 
     @GetMapping("/{id}/tools")
-    public List<McpToolResponse> listTools(@PathVariable("id") Long id) {
-        return mcpManagementService.listTools(id).stream()
+    public R<PageResult<McpToolResponse>> listTools(@PathVariable("id") Long id, PageQuery pageQuery) {
+        var list = mcpManagementService.listTools(id).stream()
                 .map(McpToolResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     @PutMapping("/{id}/tools/{toolName}/permission")
-    public McpToolResponse updateToolPermission(@PathVariable("id") Long id,
+    public R<McpToolResponse> updateToolPermission(@PathVariable("id") Long id,
                                                 @PathVariable("toolName") String toolName,
                                                 @RequestBody McpToolPermissionRequest request) {
         mcpManagementService.updateToolPermission(id, toolName, request.permission());
-        return mcpManagementService.listTools(id).stream()
+        return R.ok(mcpManagementService.listTools(id).stream()
                 .filter(tool -> tool.toolName().equals(toolName))
                 .findFirst()
                 .map(McpToolResponse::from)
-                .orElseThrow(() -> new IllegalArgumentException("MCP tool does not exist: " + toolName));
+                .orElseThrow(() -> new IllegalArgumentException("MCP tool does not exist: " + toolName)));
     }
 
     @GetMapping("/{id}/tool-calls")
-    public List<McpToolCallAuditResponse> listToolCallsByServer(@PathVariable("id") Long id) {
-        return mcpManagementService.listToolCallsByServer(id).stream()
+    public R<PageResult<McpToolCallAuditResponse>> listToolCallsByServer(@PathVariable("id") Long id,
+                                                                         PageQuery pageQuery) {
+        var list = mcpManagementService.listToolCallsByServer(id).stream()
                 .map(McpToolCallAuditResponse::from)
                 .toList();
+        return R.ok(PageUtils.page(list, pageQuery));
     }
 
     private void audit(String action, String targetType, String targetId, String detail) {

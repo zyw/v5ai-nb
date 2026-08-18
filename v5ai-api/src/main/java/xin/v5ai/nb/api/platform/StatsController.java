@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.agent.AgentRepository;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.model.ModelRepository;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
 import xin.v5ai.nb.skill.SkillRepository;
@@ -48,10 +49,10 @@ public class StatsController {
     }
 
     @GetMapping("/overview")
-    public OverviewResponse overview() {
+    public R<OverviewResponse> overview() {
         // 直接传 LocalDate 对象：JDBC 映射为 date 类型，避免 "date = character varying" 报错
         var today = LocalDate.now();
-        return new OverviewResponse(
+        return R.ok(new OverviewResponse(
                 agentRepository.list().size(),
                 modelRepository.list().size(),
                 knowledgeBaseRepository.list().size(),
@@ -59,7 +60,7 @@ public class StatsController {
                 count("SELECT count(*) FROM v5ai_run"),
                 count("SELECT count(*) FROM v5ai_run WHERE started_at::date = ?", today),
                 count("SELECT count(*) FROM v5ai_model_usage WHERE created_at::date = ?", today),
-                count("SELECT COALESCE(SUM(total_tokens),0) FROM v5ai_model_usage WHERE created_at::date = ?", today));
+                count("SELECT COALESCE(SUM(total_tokens),0) FROM v5ai_model_usage WHERE created_at::date = ?", today)));
     }
 
     private long count(String sql, Object... args) {

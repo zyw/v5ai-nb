@@ -110,7 +110,7 @@ const columns: DataTableColumns<Role> = [
 async function reload() {
   loading.value = true
   try {
-    roles.value = await listRoles(adminToken.value)
+    roles.value = (await listRoles(adminToken.value)).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载角色失败')
   } finally {
@@ -191,7 +191,7 @@ async function openMenus(row: Role) {
       listMenus(adminToken.value),
       listRoleMenus(adminToken.value, row.roleKey)
     ])
-    menus.value = allMenus
+    menus.value = allMenus.rows
     checkedMenuKeys.value = roleMenus
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载菜单失败')

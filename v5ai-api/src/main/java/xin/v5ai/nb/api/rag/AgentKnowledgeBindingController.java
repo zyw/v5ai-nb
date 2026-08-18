@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.rag.KnowledgeManagementService;
 
 import java.util.List;
@@ -20,13 +21,14 @@ public class AgentKnowledgeBindingController {
     }
 
     @PostMapping
-    public void bindKnowledgeBases(@PathVariable("agentKey") String agentKey,
+    public R<Void> bindKnowledgeBases(@PathVariable("agentKey") String agentKey,
                                    @RequestBody KnowledgeBindRequest request) {
         knowledgeManagementService.bindKnowledgeBases(agentKey, request.knowledgeBaseIds());
+        return R.ok();
     }
 
     @GetMapping
-    public List<Long> getKnowledgeBindings(@PathVariable("agentKey") String agentKey) {
-        return knowledgeManagementService.getKnowledgeBindings(agentKey);
+    public R<List<Long>> getKnowledgeBindings(@PathVariable("agentKey") String agentKey) {
+        return R.ok(knowledgeManagementService.getKnowledgeBindings(agentKey));
     }
 }

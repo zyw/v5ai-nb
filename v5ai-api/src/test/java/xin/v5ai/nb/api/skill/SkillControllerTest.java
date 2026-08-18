@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.skill;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.skill.AgentSkillBindingRepository;
 import xin.v5ai.nb.skill.Skill;
 import xin.v5ai.nb.skill.SkillFileRepository;
@@ -34,16 +35,17 @@ class SkillControllerTest {
 
         var uploaded = controller.uploadSkill(new org.springframework.mock.web.MockMultipartFile(
                 "file", "weather.zip", "application/zip",
-                packageBytes("weather", "content")), "v1");
+                packageBytes("weather", "content")), "v1").getData();
         assertThat(uploaded.name()).isEqualTo("weather");
 
-        var versions = controller.listVersions(uploaded.id());
+        var versions = controller.listVersions(uploaded.id(), new PageQuery()).getData().getRows().stream().toList();
         assertThat(versions).extracting(SkillVersionResponse::status).containsExactly(SkillVersionStatus.DRAFT);
 
-        var published = controller.publishVersion(uploaded.id(), versions.get(0).id());
+        var published = controller.publishVersion(uploaded.id(), versions.get(0).id()).getData();
         assertThat(published.currentVersion()).isEqualTo(1L);
 
-        assertThat(controller.listSkills()).extracting(SkillResponse::name).containsExactly("weather");
+        assertThat(controller.listSkills(new PageQuery()).getData().getRows())
+                .extracting(SkillResponse::name).containsExactly("weather");
     }
 
     @Test
@@ -58,17 +60,17 @@ class SkillControllerTest {
 
         var skill = controller.uploadSkill(new org.springframework.mock.web.MockMultipartFile(
                 "file", "weather.zip", "application/zip",
-                packageBytes("weather", "v1")), "v1");
-        var v1 = controller.listVersions(skill.id()).get(0);
+                packageBytes("weather", "v1")), "v1").getData();
+        var v1 = controller.listVersions(skill.id(), new PageQuery()).getData().getRows().stream().toList().get(0);
         controller.publishVersion(skill.id(), v1.id());
 
         controller.uploadSkill(new org.springframework.mock.web.MockMultipartFile(
                 "file", "weather.zip", "application/zip",
                 packageBytes("weather", "v2")), "v2");
-        var v2 = controller.listVersions(skill.id()).get(0);
+        var v2 = controller.listVersions(skill.id(), new PageQuery()).getData().getRows().stream().toList().get(0);
         controller.publishVersion(skill.id(), v2.id());
 
-        var rolledBack = controller.rollback(skill.id(), new RollbackRequest(v1.id()));
+        var rolledBack = controller.rollback(skill.id(), new RollbackRequest(v1.id())).getData();
         assertThat(rolledBack.currentVersion()).isEqualTo(1L);
     }
 

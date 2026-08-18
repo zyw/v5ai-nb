@@ -3,6 +3,7 @@ package xin.v5ai.nb.api.auth;
 import cn.dev33.satoken.stp.StpUtil;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.platform.Menu;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
@@ -24,41 +25,42 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        return loginService.login(request);
+    public R<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        return R.ok(loginService.login(request));
     }
 
     @PostMapping("/logout")
-    public void logout() {
+    public R<Void> logout() {
         loginService.logout();
+        return R.ok();
     }
 
     /**
      * 当前登录用户信息（需已登录）。
      */
     @GetMapping("/me")
-    public LoginResponse me() {
+    public R<LoginResponse> me() {
         var username = LoginHelper.getUsername();
         var account = userAccountStore.findByUsername(username);
         if (account == null) {
             throw new IllegalArgumentException("current account does not exist");
         }
         var roles = account.roles() == null ? java.util.List.<String>of() : account.roles();
-        return new LoginResponse("Bearer", StpUtil.getTokenValue(), account.id(), account.username(),
-                account.displayName(), account.tenantId(), roles);
+        return R.ok(new LoginResponse("Bearer", StpUtil.getTokenValue(), account.id(), account.username(),
+                account.displayName(), account.tenantId(), roles));
     }
 
     /**
      * 当前登录用户可见菜单（用户 → 角色 → 菜单 并集 + 祖先补齐）。
      */
     @GetMapping("/menus")
-    public List<Menu> menus() {
+    public R<List<Menu>> menus() {
         var username = LoginHelper.getUsername();
         var account = userAccountStore.findByUsername(username);
         if (account == null) {
             throw new IllegalArgumentException("current account does not exist");
         }
         var roles = account.roles() == null ? List.<String>of() : account.roles();
-        return menuStore.listByRoleKeys(roles);
+        return R.ok(menuStore.listByRoleKeys(roles));
     }
 }
