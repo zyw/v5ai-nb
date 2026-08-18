@@ -262,10 +262,21 @@ export async function login(username: string, password: string): Promise<LoginRe
   })
 }
 
+function pageQueryString(query?: PageQuery): string {
+  if (!query) return ''
+  const params = new URLSearchParams()
+  if (query.pageNum !== undefined) params.set('pageNum', String(query.pageNum))
+  if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize))
+  if (query.orderByColumn) params.set('orderByColumn', query.orderByColumn)
+  if (query.isAsc) params.set('isAsc', query.isAsc)
+  const s = params.toString()
+  return s ? `?${s}` : ''
+}
+
 // ---- Provider ----
 
-export function listProviders(adminToken: string): Promise<PageResult<ProviderResponse>> {
-  return requestJson<PageResult<ProviderResponse>>('/api/admin/providers', {}, adminToken)
+export function listProviders(adminToken: string, query?: PageQuery): Promise<PageResult<ProviderResponse>> {
+  return requestJson<PageResult<ProviderResponse>>(`/api/admin/providers${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createProvider(adminToken: string, request: CreateProviderRequest): Promise<ProviderResponse> {
@@ -290,8 +301,8 @@ export function deleteProvider(adminToken: string, providerKey: string): Promise
 
 // ---- Model ----
 
-export function listModels(adminToken: string): Promise<PageResult<ModelResponse>> {
-  return requestJson<PageResult<ModelResponse>>('/api/admin/models', {}, adminToken)
+export function listModels(adminToken: string, query?: PageQuery): Promise<PageResult<ModelResponse>> {
+  return requestJson<PageResult<ModelResponse>>(`/api/admin/models${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createModel(adminToken: string, request: CreateModelRequest): Promise<ModelResponse> {

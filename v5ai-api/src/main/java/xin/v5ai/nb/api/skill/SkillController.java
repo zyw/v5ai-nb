@@ -1,5 +1,6 @@
 package xin.v5ai.nb.api.skill;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,22 +14,19 @@ import xin.v5ai.nb.skill.SkillManagementService;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.List;
 
 /**
  * Skill 管理 API：上传（zip 包）、版本发布、回滚、禁用与版本列表。
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/skills")
 public class SkillController {
+
     private final SkillManagementService skillManagementService;
 
     @Autowired(required = false)
     private AuditRecorder auditRecorder;
-
-    public SkillController(SkillManagementService skillManagementService) {
-        this.skillManagementService = skillManagementService;
-    }
 
     @PostMapping(consumes = "multipart/form-data")
     public R<SkillResponse> uploadSkill(

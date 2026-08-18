@@ -10,6 +10,7 @@ import {
   NInput,
   NInputNumber,
   NModal,
+  NPagination,
   NSelect,
   NSpace,
   NSwitch,
@@ -39,7 +40,11 @@ const dialog = useDialog()
 const loading = ref(false)
 const providers = ref<ProviderResponse[]>([])
 const models = ref<ModelResponse[]>([])
+const allProviders = ref<ProviderResponse[]>([])
 const testingModelId = ref<number | null>(null)
+
+const providerPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+const modelPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 
 const showProviderModal = ref(false)
 const showModelModal = ref(false)
@@ -76,7 +81,7 @@ const modelTypeOptions = [
 ]
 
 const providerOptions = () =>
-  providers.value.map((item) => ({ label: `${item.name} (${item.providerKey})`, value: item.providerKey }))
+  allProviders.value.map((item) => ({ label: `${item.name} (${item.providerKey})`, value: item.providerKey }))
 
 function modelCredentials(): string {
   return JSON.stringify({
@@ -164,16 +169,40 @@ async function reload() {
   loading.value = true
   try {
     const [providerRows, modelRows] = await Promise.all([
-      listProviders(adminToken.value),
-      listModels(adminToken.value)
+      listProviders(adminToken.value, { pageNum: providerPagination.page, pageSize: providerPagination.pageSize }),
+      listModels(adminToken.value, { pageNum: modelPagination.page, pageSize: modelPagination.pageSize })
     ])
     providers.value = providerRows.rows
+    providerPagination.itemCount = providerRows.total
     models.value = modelRows.rows
+    modelPagination.itemCount = modelRows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载模型配置失败')
   } finally {
     loading.value = false
   }
+}
+
+function handleProviderPageChange(page: number) {
+  providerPagination.page = page
+  void reload()
+}
+
+function handleProviderPageSizeChange(pageSize: number) {
+  providerPagination.pageSize = pageSize
+  providerPagination.page = 1
+  void reload()
+}
+
+function handleModelPageChange(page: number) {
+  modelPagination.page = page
+  void reload()
+}
+
+function handleModelPageSizeChange(pageSize: number) {
+  modelPagination.pageSize = pageSize
+  modelPagination.page = 1
+  void reload()
 }
 
 function openProviderModal() {
@@ -184,8 +213,13 @@ function openProviderModal() {
   showProviderModal.value = true
 }
 
-function openModelModal() {
-  modelForm.providerKey = providers.value[0]?.providerKey ?? ''
+async function openModelModal() {
+  try {
+    allProviders.value = (await listProviders(adminToken.value, { pageNum: 1, pageSize: 1000 })).rows
+  } catch {
+    allProviders.value = []
+  }
+  modelForm.providerKey = allProviders.value[0]?.providerKey ?? ''
   modelForm.modelKey = ''
   modelForm.type = 'CHAT'
   modelForm.apiKey = ''
@@ -300,10 +334,30 @@ onMounted(reload)
 
     <n-card title="Provider 列表" :bordered="true">
       <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" />
+      <n-pagination
+        :page="providerPagination.page"
+        :page-size="providerPagination.pageSize"
+        :item-count="providerPagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handleProviderPageChange"
+        @update:page-size="handleProviderPageSizeChange"
+      />
     </n-card>
 
     <n-card title="Model 列表" :bordered="true">
       <n-data-table :loading="loading" :columns="modelColumns" :data="models" :bordered="false" />
+      <n-pagination
+        :page="modelPagination.page"
+        :page-size="modelPagination.pageSize"
+        :item-count="modelPagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handleModelPageChange"
+        @update:page-size="handleModelPageSizeChange"
+      />
     </n-card>
 
     <n-modal

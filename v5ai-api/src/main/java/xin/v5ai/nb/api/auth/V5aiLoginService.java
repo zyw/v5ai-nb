@@ -29,7 +29,6 @@ public class V5aiLoginService {
     private final UserCredentialStore credentialStore;
     private final UserAccountStore userAccountStore;
     private final PasswordVerifier passwordVerifier;
-    private final LoginTokenIssuer tokenIssuer;
     private final AuditRecorder auditRecorder;
     private final PermissionService permissionService;
     private final RoleStore roleService;
