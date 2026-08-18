@@ -2,6 +2,7 @@ package xin.v5ai.nb.infrastructure.rag;
 
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.rag.KnowledgeBase;
+import xin.v5ai.nb.rag.KnowledgeBaseOption;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
 import xin.v5ai.nb.rag.KnowledgeBaseStatus;
 
@@ -35,6 +36,13 @@ public class MyBatisKnowledgeBaseRepository implements KnowledgeBaseRepository {
     public List<KnowledgeBase> list() {
         return gateway.selectAll().stream()
                 .map(MyBatisKnowledgeBaseRepository::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<KnowledgeBaseOption> listOptions() {
+        return gateway.selectOptions().stream()
+                .map(entity -> new KnowledgeBaseOption(entity.getId(), entity.getName()))
                 .toList();
     }
 

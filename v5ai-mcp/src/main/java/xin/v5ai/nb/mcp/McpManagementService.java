@@ -94,6 +94,10 @@ public class McpManagementService {
         return serverRepository.list();
     }
 
+    public List<McpServerOption> listServerOptions() {
+        return serverRepository.listOptions();
+    }
+
     // ---------- Agent 绑定 ----------
 
     public void bindServers(String agentKey, List<Long> mcpServerIds) {

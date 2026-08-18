@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.agent.AgentRepository;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
@@ -44,6 +45,14 @@ public class ModelController {
                 .map(ModelResponse::from)
                 .toList();
         return R.ok(PageUtils.page(list, pageQuery));
+    }
+
+    @GetMapping("/options")
+    public R<List<OptionResponse>> listModelOptions() {
+        return R.ok(modelManagementService.listModelOptions().stream()
+                .map(model -> new OptionResponse(model.id(),
+                        model.providerKey() + "/" + model.modelKey() + " (" + model.type() + ")"))
+                .toList());
     }
 
     @PutMapping("/{id}")

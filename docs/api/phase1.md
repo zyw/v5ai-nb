@@ -88,9 +88,12 @@ POST /api/admin/providers
 GET /api/admin/providers
 POST /api/admin/models
 GET /api/admin/models
+GET /api/admin/models/options
 ```
 
 Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5ai_model`; credentials are encrypted before persistence.
+
+`GET /api/admin/models/options` 返回模型下拉选项（`[{ "value": <modelId>, "label": "<providerKey>/<modelKey> (<type>)" }]`），仅查 id/provider/model/type 列、不加载凭据密文，供 Agent 编辑/绑定弹窗按需加载。
 
 Supported Agent Runtime provider types:
 

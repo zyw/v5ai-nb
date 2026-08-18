@@ -10,8 +10,11 @@ Authorization: Bearer <admin-token>
 { "name": "产品文档", "description": "可选" }
 
 GET /api/admin/knowledge-bases
+GET /api/admin/knowledge-bases/options      # 下拉选项 [{ value, label: "name (#id)" }]
 DELETE /api/admin/knowledge-bases/{id}        # 禁用
 ```
+
+`/options` 仅查 id/name 列（不加载描述），供 Agent 编辑/绑定弹窗按需加载。
 
 ## 文档管理
 

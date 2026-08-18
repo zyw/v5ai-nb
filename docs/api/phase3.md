@@ -18,9 +18,12 @@ Authorization: Bearer <admin-token>
 }
 
 GET  /api/admin/mcp-servers
+GET  /api/admin/mcp-servers/options           # 下拉选项 [{ value, label: "name (#id)" }]
 PUT  /api/admin/mcp-servers/{id}
 DELETE /api/admin/mcp-servers/{id}       # 禁用（逻辑删除）
 ```
+
+`/options` 仅查 id/name 列（不解密加载请求头/环境变量密文），供 Agent 编辑/绑定弹窗按需加载。
 
 Stdio 命令受白名单限制（`v5ai.mcp.stdio-command-whitelist`，逗号分隔）；
 命令必须是纯可执行文件名（禁止路径分隔符与 `..`）。

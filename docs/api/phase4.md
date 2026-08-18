@@ -30,9 +30,12 @@ Authorization: Bearer <admin-token>
 # → 生成 Skill（若新）+ DRAFT 版本（版本号自动 +1）
 
 GET    /api/admin/skills
+GET    /api/admin/skills/options              # 可绑定 Skill 下拉选项（仅 ACTIVE 且有已发布版本）
 DELETE /api/admin/skills/{id}              # 禁用（禁止新上传/新绑定，运行时跳过）
 GET    /api/admin/skills/{id}/versions     # 版本列表（按版本号降序）
 ```
+
+`/options` 返回 `[{ value, label: "name (v<currentVersion>)" }]`，仅查 id/name/status/current_version 列，供 Agent 编辑/绑定弹窗按需加载。
 
 ## 版本发布与回滚
 

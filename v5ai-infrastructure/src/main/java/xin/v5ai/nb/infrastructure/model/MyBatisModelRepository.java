@@ -2,6 +2,7 @@ package xin.v5ai.nb.infrastructure.model;
 
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.model.ModelConfig;
+import xin.v5ai.nb.model.ModelOption;
 import xin.v5ai.nb.model.ModelRepository;
 import xin.v5ai.nb.model.ModelType;
 
@@ -58,6 +59,14 @@ public class MyBatisModelRepository implements ModelRepository {
                         ModelType.valueOf(row.getModelType()),
                         row.getCredentialsCiphertext(),
                         Boolean.TRUE.equals(row.getEnabled())))
+                .toList();
+    }
+
+    @Override
+    public List<ModelOption> listOptions() {
+        return gateway.selectModelOptions().stream()
+                .map(row -> new ModelOption(row.getId(), row.getProviderKey(), row.getModelKey(),
+                        ModelType.valueOf(row.getModelType())))
                 .toList();
     }
 

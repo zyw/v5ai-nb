@@ -9,5 +9,8 @@ public interface KnowledgeBaseGateway {
 
     List<KnowledgeBaseEntity> selectAll();
 
+    /** 下拉选项投影：仅 id/name。 */
+    List<KnowledgeBaseEntity> selectOptions();
+
     void disable(Long id);
 }

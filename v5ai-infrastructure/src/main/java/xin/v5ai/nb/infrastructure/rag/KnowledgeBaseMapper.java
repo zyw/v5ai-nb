@@ -1,5 +1,6 @@
 package xin.v5ai.nb.infrastructure.rag;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
@@ -21,6 +22,12 @@ public interface KnowledgeBaseMapper extends BaseMapper<KnowledgeBaseEntity>, Kn
     @Override
     default List<KnowledgeBaseEntity> selectAll() {
         return selectList(null);
+    }
+
+    @Override
+    default List<KnowledgeBaseEntity> selectOptions() {
+        return selectList(new LambdaQueryWrapper<KnowledgeBaseEntity>()
+                .select(KnowledgeBaseEntity::getId, KnowledgeBaseEntity::getName));
     }
 
     @Override

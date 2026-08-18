@@ -39,6 +39,23 @@ public interface ModelConfigMapper extends BaseMapper<ModelConfigEntity>, ModelC
         return selectModelRowList();
     }
 
+    @Override
+    default List<ModelConfigRow> selectModelOptions() {
+        return selectModelOptionRows();
+    }
+
+    @Select("""
+            SELECT
+                m.id AS id,
+                p.provider_key AS provider_key,
+                m.model_key AS model_key,
+                m.model_type AS model_type
+            FROM v5ai_model m
+            JOIN v5ai_model_provider p ON p.id = m.provider_id
+            ORDER BY m.id
+            """)
+    List<ModelConfigRow> selectModelOptionRows();
+
     @Select("""
             SELECT
                 m.id AS id,

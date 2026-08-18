@@ -37,17 +37,14 @@ import {
   getMcpServerBindings,
   getSkillBindings,
   listAgents,
-  listKnowledgeBases,
-  listMcpServers,
-  listModels,
-  listSkills,
+  listKnowledgeBaseOptions,
+  listMcpServerOptions,
+  listModelOptions,
+  listSkillOptions,
   publishAgent,
   updateAgent,
   type AgentResponse,
-  type KnowledgeBaseResponse,
-  type McpServerResponse,
-  type ModelResponse,
-  type SkillResponse
+  type OptionResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
 
@@ -55,10 +52,10 @@ const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
 const agents = ref<AgentResponse[]>([])
-const models = ref<ModelResponse[]>([])
-const knowledgeBases = ref<KnowledgeBaseResponse[]>([])
-const mcpServers = ref<McpServerResponse[]>([])
-const skills = ref<SkillResponse[]>([])
+const modelOptions = ref<OptionResponse[]>([])
+const knowledgeBaseOptions = ref<OptionResponse[]>([])
+const mcpServerOptions = ref<OptionResponse[]>([])
+const skillOptions = ref<OptionResponse[]>([])
 
 const showModal = ref(false)
 const showPublishModal = ref(false)
@@ -122,15 +119,6 @@ const debug = reactive({
 })
 const chatMessages = ref<ChatMessage[]>([])
 
-const modelOptions = () =>
-  models.value.map((m) => ({ label: `${m.providerKey}/${m.modelKey} (${m.type})`, value: m.id }))
-const kbOptions = () => knowledgeBases.value.map((k) => ({ label: `${k.name} (#${k.id})`, value: k.id }))
-const mcpOptions = () => mcpServers.value.map((m) => ({ label: `${m.name} (#${m.id})`, value: m.id }))
-const skillOptions = () =>
-  skills.value
-    .filter((s) => s.status === 'ACTIVE' && s.currentVersionId !== null)
-    .map((s) => ({ label: `${s.name} (v${s.currentVersion})`, value: s.id }))
-
 const columns: DataTableColumns<AgentResponse> = [
   { title: 'App Key', key: 'agentKey' },
   { title: '名称', key: 'name' },
@@ -172,23 +160,34 @@ const columns: DataTableColumns<AgentResponse> = [
 async function reload() {
   loading.value = true
   try {
-    const [agentRows, modelRows, kbRows, mcpRows, skillRows] = await Promise.all([
-      listAgents(adminToken.value),
-      listModels(adminToken.value),
-      listKnowledgeBases(adminToken.value),
-      listMcpServers(adminToken.value),
-      listSkills(adminToken.value)
-    ])
+    const agentRows = await listAgents(adminToken.value)
     agents.value = agentRows.rows
-    models.value = modelRows.rows
-    knowledgeBases.value = kbRows.rows
-    mcpServers.value = mcpRows.rows
-    skills.value = skillRows.rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载数据失败')
   } finally {
     loading.value = false
   }
+}
+
+// ---- 下拉选项按需加载（打开创建/编辑/绑定弹窗时才拉取，Promise 缓存去重） ----
+let optionsPromise: Promise<void> | null = null
+
+async function ensureOptions() {
+  if (!optionsPromise) {
+    optionsPromise = Promise.all([
+      listModelOptions(adminToken.value).then((rows) => (modelOptions.value = rows)),
+      listKnowledgeBaseOptions(adminToken.value).then((rows) => (knowledgeBaseOptions.value = rows)),
+      listMcpServerOptions(adminToken.value).then((rows) => (mcpServerOptions.value = rows)),
+      listSkillOptions(adminToken.value).then((rows) => (skillOptions.value = rows))
+    ]).then(
+      () => undefined,
+      (e) => {
+        optionsPromise = null // 加载失败后允许下次重试
+        throw e
+      }
+    )
+  }
+  await optionsPromise
 }
 
 // ---- 表单初始化 ----
@@ -205,7 +204,7 @@ function resetForm() {
   form.skillEnabled = false
   form.webSearchEnabled = false
   form.ragEnabled = false
-  form.modelId = models.value[0]?.id ?? null
+  form.modelId = modelOptions.value[0]?.value ?? null
   form.skillIds = []
   form.mcpServerIds = []
   form.knowledgeBaseIds = []
@@ -221,14 +220,22 @@ function resetDebug() {
 }
 
 // ---- 新建向导 ----
-function openCreate() {
+async function openCreate() {
   mode.value = 'create'
-  resetForm()
-  prepareForm.modelId = models.value[0]?.id ?? null
-  prepareForm.description = ''
   generatingError.value = ''
   wizardStep.value = 'prepare'
   resetDebug()
+  try {
+    await ensureOptions()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '加载下拉选项失败')
+  }
+  resetForm()
+  prepareForm.modelId = modelOptions.value[0]?.value ?? null
+  prepareForm.description = ''
+  if (modelOptions.value.length === 0) {
+    message.warning('尚未配置模型，请先在「模型管理」中配置模型')
+  }
   showModal.value = true
 }
 
@@ -268,6 +275,11 @@ async function handleGenerate() {
 // ---- 编辑 ----
 async function openEdit(row: AgentResponse) {
   mode.value = 'edit'
+  try {
+    await ensureOptions()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '加载下拉选项失败')
+  }
   resetForm()
   form.agentKey = row.agentKey
   form.name = row.name
@@ -456,6 +468,11 @@ async function openPublish(row: AgentResponse) {
 async function openBind(row: AgentResponse) {
   bindForm.agentKey = row.agentKey
   try {
+    await ensureOptions()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '加载下拉选项失败')
+  }
+  try {
     const [kb, mcp, skill] = await Promise.all([
       getKnowledgeBindings(adminToken.value, row.agentKey),
       getMcpServerBindings(adminToken.value, row.agentKey),
@@ -591,7 +608,7 @@ onMounted(reload)
       <div v-if="mode === 'create' && wizardStep === 'prepare'" class="wizard-panel">
         <n-form label-placement="top">
           <n-form-item label="选择模型">
-            <n-select v-model:value="prepareForm.modelId" filterable :options="modelOptions()" placeholder="选择用于生成的模型" />
+            <n-select v-model:value="prepareForm.modelId" filterable :options="modelOptions" placeholder="选择用于生成的模型" />
           </n-form-item>
           <n-form-item label="描述你想要的智能体">
             <n-input
@@ -645,16 +662,16 @@ onMounted(reload)
               <n-input v-model:value="form.avatar" placeholder="可选：Agent 头像图片地址" />
             </n-form-item>
             <n-form-item label="模型">
-              <n-select v-model:value="form.modelId" filterable :options="modelOptions()" placeholder="选择已配置的模型" />
+              <n-select v-model:value="form.modelId" filterable :options="modelOptions" placeholder="选择已配置的模型" />
             </n-form-item>
             <n-form-item label="Skill">
-              <n-select v-model:value="form.skillIds" multiple clearable :options="skillOptions()" placeholder="选择已发布的 Skill" />
+              <n-select v-model:value="form.skillIds" multiple clearable :options="skillOptions" placeholder="选择已发布的 Skill" />
             </n-form-item>
             <n-form-item label="MCP Server">
-              <n-select v-model:value="form.mcpServerIds" multiple clearable :options="mcpOptions()" placeholder="选择已发现的 MCP Server" />
+              <n-select v-model:value="form.mcpServerIds" multiple clearable :options="mcpServerOptions" placeholder="选择已发现的 MCP Server" />
             </n-form-item>
             <n-form-item label="知识库">
-              <n-select v-model:value="form.knowledgeBaseIds" multiple clearable :options="kbOptions()" placeholder="选择知识库（RAG）" />
+              <n-select v-model:value="form.knowledgeBaseIds" multiple clearable :options="knowledgeBaseOptions" placeholder="选择知识库（RAG）" />
             </n-form-item>
             <n-form-item label="系统提示词">
               <n-input v-model:value="form.systemPrompt" type="textarea" :autosize="{ minRows: 3, maxRows: 8 }" placeholder="定义 Agent 的角色与行为" />
@@ -775,13 +792,13 @@ onMounted(reload)
       </n-alert>
       <n-form label-placement="top">
         <n-form-item label="知识库">
-          <n-select v-model:value="bindForm.knowledgeBaseIds" multiple clearable :options="kbOptions()" />
+          <n-select v-model:value="bindForm.knowledgeBaseIds" multiple clearable :options="knowledgeBaseOptions" />
         </n-form-item>
         <n-form-item label="MCP Server">
-          <n-select v-model:value="bindForm.mcpServerIds" multiple clearable :options="mcpOptions()" />
+          <n-select v-model:value="bindForm.mcpServerIds" multiple clearable :options="mcpServerOptions" />
         </n-form-item>
         <n-form-item label="Skill">
-          <n-select v-model:value="bindForm.skillIds" multiple clearable :options="skillOptions()" />
+          <n-select v-model:value="bindForm.skillIds" multiple clearable :options="skillOptions" />
         </n-form-item>
       </n-form>
       <template #footer>

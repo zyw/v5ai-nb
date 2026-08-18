@@ -5,6 +5,7 @@ import xin.v5ai.nb.agent.Agent;
 import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.agent.AgentStatus;
 import xin.v5ai.nb.agent.AgentVersion;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.core.page.PageQuery;
@@ -81,6 +82,19 @@ class ModelProviderControllerTest {
 
         assertThat(updated.modelKey()).isEqualTo("gpt-4o-mini");
         assertThat(testResult.ok()).isFalse();
+    }
+
+    @Test
+    void listsModelOptions() {
+        var service = service();
+        service.createProvider(new CreateProviderCommand("openai", "OpenAI", "OPENAI", true));
+        var controller = new ModelController(service, new RecordingAgentRepository());
+        controller.createModel(new CreateModelRequest("openai", "gpt-4o", ModelType.CHAT, "secret"));
+
+        var options = controller.listModelOptions().getData();
+
+        assertThat(options).extracting(OptionResponse::label).containsExactly("openai/gpt-4o (CHAT)");
+        assertThat(options.getFirst().value()).isNull(); // RecordingModelRepository 不生成 id
     }
 
     @Test

@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.skill;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.skill.AgentSkillBindingRepository;
 import xin.v5ai.nb.skill.Skill;
@@ -46,6 +47,31 @@ class SkillControllerTest {
 
         assertThat(controller.listSkills(new PageQuery()).getData().getRows())
                 .extracting(SkillResponse::name).containsExactly("weather");
+    }
+
+    @Test
+    void listsOnlyBindableSkillOptions() {
+        var service = new SkillManagementService(
+                new RecordingSkillRepository(),
+                new RecordingVersionRepository(),
+                new RecordingFileRepository(),
+                new RecordingBindingRepository(),
+                new SkillPackageParser());
+        var controller = new SkillController(service);
+
+        // 上传后仅有 DRAFT 版本（无当前生效版本），不进入可选项
+        var uploaded = controller.uploadSkill(new org.springframework.mock.web.MockMultipartFile(
+                "file", "weather.zip", "application/zip",
+                packageBytes("weather", "content")), "v1").getData();
+        assertThat(controller.listSkillOptions().getData()).isEmpty();
+
+        // 发布后进入可选项
+        var v1 = controller.listVersions(uploaded.id(), new PageQuery()).getData().getRows().stream().toList().get(0);
+        controller.publishVersion(uploaded.id(), v1.id());
+
+        var options = controller.listSkillOptions().getData();
+        assertThat(options).extracting(OptionResponse::value).containsExactly(uploaded.id());
+        assertThat(options).extracting(OptionResponse::label).containsExactly("weather (v1)");
     }
 
     @Test

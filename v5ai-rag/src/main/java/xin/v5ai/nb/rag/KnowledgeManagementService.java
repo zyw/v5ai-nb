@@ -46,6 +46,10 @@ public class KnowledgeManagementService {
         return knowledgeBaseRepository.list();
     }
 
+    public List<KnowledgeBaseOption> listKnowledgeBaseOptions() {
+        return knowledgeBaseRepository.listOptions();
+    }
+
     public void disableKnowledgeBase(Long id) {
         requireKnowledgeBase(id);
         knowledgeBaseRepository.disable(id);

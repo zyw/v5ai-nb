@@ -121,6 +121,10 @@ public class ModelManagementService {
         return repository.list();
     }
 
+    public List<ModelOption> listModelOptions() {
+        return repository.listOptions();
+    }
+
     public ConnectionTestResult testConnection(Long modelId) {
         if (connectionTester == null) {
             return ConnectionTestResult.failure("model connection testing is not configured");

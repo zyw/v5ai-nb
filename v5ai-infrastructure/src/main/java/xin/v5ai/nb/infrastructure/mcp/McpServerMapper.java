@@ -1,5 +1,6 @@
 package xin.v5ai.nb.infrastructure.mcp;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
@@ -26,6 +27,12 @@ public interface McpServerMapper extends BaseMapper<McpServerEntity>, McpServerG
     @Override
     default List<McpServerEntity> selectAll() {
         return selectList(null);
+    }
+
+    @Override
+    default List<McpServerEntity> selectServerOptions() {
+        return selectList(new LambdaQueryWrapper<McpServerEntity>()
+                .select(McpServerEntity::getId, McpServerEntity::getName));
     }
 
     @Override

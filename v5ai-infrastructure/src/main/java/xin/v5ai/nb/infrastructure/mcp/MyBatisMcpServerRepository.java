@@ -2,6 +2,7 @@ package xin.v5ai.nb.infrastructure.mcp;
 
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.mcp.McpServer;
+import xin.v5ai.nb.mcp.McpServerOption;
 import xin.v5ai.nb.mcp.McpServerRepository;
 import xin.v5ai.nb.mcp.McpServerStatus;
 import xin.v5ai.nb.mcp.McpTransportType;
@@ -67,6 +68,13 @@ public class MyBatisMcpServerRepository implements McpServerRepository {
     @Override
     public List<McpServer> list() {
         return gateway.selectAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<McpServerOption> listOptions() {
+        return gateway.selectServerOptions().stream()
+                .map(entity -> new McpServerOption(entity.getId(), entity.getName()))
+                .toList();
     }
 
     @Override

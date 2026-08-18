@@ -14,4 +14,7 @@ public interface ModelConfigGateway {
     List<ModelConfigEntity> selectModels();
 
     List<ModelConfigRow> selectModelRows();
+
+    /** 下拉选项投影：仅 id/provider_key/model_key/model_type，不加载凭据密文。 */
+    List<ModelConfigRow> selectModelOptions();
 }

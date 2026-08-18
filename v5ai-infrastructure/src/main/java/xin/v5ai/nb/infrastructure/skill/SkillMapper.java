@@ -43,6 +43,20 @@ public interface SkillMapper extends BaseMapper<SkillEntity>, SkillGateway {
     }
 
     @Override
+    default List<SkillRow> selectSkillOptions() {
+        return selectSkillOptionRows();
+    }
+
+    @Select("""
+            SELECT s.id, s.name, s.status, s.current_version_id,
+                   v.version AS current_version
+            FROM v5ai_skill s
+            LEFT JOIN v5ai_skill_version v ON v.id = s.current_version_id
+            ORDER BY s.id
+            """)
+    List<SkillRow> selectSkillOptionRows();
+
+    @Override
     default SkillRow selectWithCurrentVersion(Long id) {
         return selectSkillRow(id);
     }

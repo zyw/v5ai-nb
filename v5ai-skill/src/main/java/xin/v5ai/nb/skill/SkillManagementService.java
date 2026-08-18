@@ -59,6 +59,15 @@ public class SkillManagementService {
         return skillRepository.list();
     }
 
+    /**
+     * 可绑定的 Skill 下拉选项：仅返回启用且已有已发布版本的 Skill（与绑定校验规则一致）。
+     */
+    public List<SkillOption> listSkillOptions() {
+        return skillRepository.listOptions().stream()
+                .filter(SkillOption::isBindable)
+                .toList();
+    }
+
     public Skill getSkill(Long id) {
         return requireSkill(id);
     }

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
@@ -14,6 +15,7 @@ import xin.v5ai.nb.skill.SkillManagementService;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.List;
 
 /**
  * Skill 管理 API：上传（zip 包）、版本发布、回滚、禁用与版本列表。
@@ -48,6 +50,13 @@ public class SkillController {
                 .map(SkillResponse::from)
                 .toList();
         return R.ok(PageUtils.page(list, pageQuery));
+    }
+
+    @GetMapping("/options")
+    public R<List<OptionResponse>> listSkillOptions() {
+        return R.ok(skillManagementService.listSkillOptions().stream()
+                .map(skill -> new OptionResponse(skill.id(), skill.name() + " (v" + skill.currentVersion() + ")"))
+                .toList());
     }
 
     @DeleteMapping("/{id}")

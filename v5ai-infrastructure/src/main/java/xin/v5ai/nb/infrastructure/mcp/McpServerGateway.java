@@ -11,5 +11,8 @@ public interface McpServerGateway {
 
     List<McpServerEntity> selectAll();
 
+    /** 下拉选项投影：仅 id/name，不解密加载请求头/环境变量密文。 */
+    List<McpServerEntity> selectServerOptions();
+
     void disableServer(Long id);
 }

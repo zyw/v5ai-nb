@@ -2,6 +2,7 @@ package xin.v5ai.nb.infrastructure.skill;
 
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.skill.Skill;
+import xin.v5ai.nb.skill.SkillOption;
 import xin.v5ai.nb.skill.SkillRepository;
 import xin.v5ai.nb.skill.SkillStatus;
 
@@ -62,6 +63,14 @@ public class MyBatisSkillRepository implements SkillRepository {
     public List<Skill> list() {
         return gateway.selectAllWithCurrentVersion().stream()
                 .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SkillOption> listOptions() {
+        return gateway.selectSkillOptions().stream()
+                .map(row -> new SkillOption(row.getId(), row.getName(),
+                        SkillStatus.valueOf(row.getStatus()), row.getCurrentVersionId(), row.getCurrentVersion()))
                 .toList();
     }
 

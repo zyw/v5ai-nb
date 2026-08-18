@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.rag;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.rag.DocumentFileType;
 import xin.v5ai.nb.rag.DocumentStatus;
@@ -28,6 +29,18 @@ class KnowledgeBaseControllerTest {
         assertThat(created.id()).isEqualTo(1L);
         assertThat(created.status()).isEqualTo(KnowledgeBaseStatus.ACTIVE);
         assertThat(listed).extracting(KnowledgeBaseResponse::name).containsExactly("Docs");
+    }
+
+    @Test
+    void listsKnowledgeBaseOptions() {
+        var service = service();
+        var controller = new KnowledgeBaseController(service);
+        controller.createKnowledgeBase(new CreateKnowledgeBaseRequest("Docs", "product docs"));
+
+        var options = controller.listKnowledgeBaseOptions().getData();
+
+        assertThat(options).extracting(OptionResponse::value).containsExactly(1L);
+        assertThat(options).extracting(OptionResponse::label).containsExactly("Docs (#1)");
     }
 
     @Test

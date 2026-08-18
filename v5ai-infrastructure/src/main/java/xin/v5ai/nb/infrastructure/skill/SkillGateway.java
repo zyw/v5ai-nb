@@ -13,6 +13,9 @@ public interface SkillGateway {
 
     List<SkillRow> selectAllWithCurrentVersion();
 
+    /** 下拉选项投影：仅 id/name/status/current_version_id/current_version，不加载描述。 */
+    List<SkillRow> selectSkillOptions();
+
     SkillRow selectWithCurrentVersion(Long id);
 
     void disableSkill(Long id);

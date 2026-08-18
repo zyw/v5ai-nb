@@ -2,6 +2,7 @@ package xin.v5ai.nb.api.rag;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
@@ -38,6 +39,13 @@ public class KnowledgeBaseController {
                 .map(KnowledgeBaseResponse::from)
                 .toList();
         return R.ok(PageUtils.page(list, pageQuery));
+    }
+
+    @GetMapping("/options")
+    public R<List<OptionResponse>> listKnowledgeBaseOptions() {
+        return R.ok(knowledgeManagementService.listKnowledgeBaseOptions().stream()
+                .map(base -> new OptionResponse(base.id(), base.name() + " (#" + base.id() + ")"))
+                .toList());
     }
 
     @DeleteMapping("/{id}")

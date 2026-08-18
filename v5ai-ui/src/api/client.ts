@@ -790,6 +790,29 @@ export function getSkillBindings(adminToken: string, agentKey: string): Promise<
   return requestJson<number[]>(`/api/admin/agents/${encodeURIComponent(agentKey)}/skill-bindings`, {}, adminToken)
 }
 
+// ---- 下拉选项（轻量 options，供 Agent 编辑/绑定弹窗按需加载） ----
+
+export interface OptionResponse {
+  value: number
+  label: string
+}
+
+export function listModelOptions(adminToken: string): Promise<OptionResponse[]> {
+  return requestJson<OptionResponse[]>('/api/admin/models/options', {}, adminToken)
+}
+
+export function listKnowledgeBaseOptions(adminToken: string): Promise<OptionResponse[]> {
+  return requestJson<OptionResponse[]>('/api/admin/knowledge-bases/options', {}, adminToken)
+}
+
+export function listMcpServerOptions(adminToken: string): Promise<OptionResponse[]> {
+  return requestJson<OptionResponse[]>('/api/admin/mcp-servers/options', {}, adminToken)
+}
+
+export function listSkillOptions(adminToken: string): Promise<OptionResponse[]> {
+  return requestJson<OptionResponse[]>('/api/admin/skills/options', {}, adminToken)
+}
+
 // ---- Platform (Phase 5) ----
 
 export interface Tenant {

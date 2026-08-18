@@ -2,6 +2,7 @@ package xin.v5ai.nb.api.mcp;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
@@ -44,6 +45,13 @@ public class McpServerController {
                 .map(McpServerResponse::from)
                 .toList();
         return R.ok(PageUtils.page(list, pageQuery));
+    }
+
+    @GetMapping("/options")
+    public R<List<OptionResponse>> listServerOptions() {
+        return R.ok(mcpManagementService.listServerOptions().stream()
+                .map(server -> new OptionResponse(server.id(), server.name() + " (#" + server.id() + ")"))
+                .toList());
     }
 
     @PutMapping("/{id}")

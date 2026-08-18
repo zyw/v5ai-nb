@@ -1,6 +1,7 @@
 package xin.v5ai.nb.api.mcp;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.api.common.OptionResponse;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.mcp.AgentMcpBindingRepository;
 import xin.v5ai.nb.mcp.CreateMcpServerCommand;
@@ -41,6 +42,19 @@ class McpServerControllerTest {
         assertThat(created.id()).isEqualTo(1L);
         assertThat(created.status()).isEqualTo(McpServerStatus.ACTIVE);
         assertThat(listed).extracting(McpServerResponse::name).containsExactly("weather");
+    }
+
+    @Test
+    void listsServerOptions() {
+        var controller = new McpServerController(service());
+        controller.createServer(new CreateMcpServerRequest(
+                "weather", McpTransportType.STREAMABLE_HTTP, "https://mcp.example.com/mcp",
+                null, null, null, null));
+
+        var options = controller.listServerOptions().getData();
+
+        assertThat(options).extracting(OptionResponse::value).containsExactly(1L);
+        assertThat(options).extracting(OptionResponse::label).containsExactly("weather (#1)");
     }
 
     @Test
