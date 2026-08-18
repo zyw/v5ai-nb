@@ -2,8 +2,8 @@ package xin.v5ai.nb.common.mybatis.aspect;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
-import org.dromara.common.mybatis.annotation.DataPermission;
-import org.dromara.common.mybatis.helper.DataPermissionHelper;
+import xin.v5ai.nb.common.mybatis.annotation.DataPermission;
+import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;

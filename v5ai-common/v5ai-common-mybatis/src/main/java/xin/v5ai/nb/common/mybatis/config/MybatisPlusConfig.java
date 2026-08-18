@@ -8,10 +8,6 @@ import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
-import org.dromara.common.mybatis.handler.InjectionMetaObjectHandler;
-import org.dromara.common.mybatis.handler.MybatisExceptionHandler;
-import org.dromara.common.mybatis.handler.PlusPostInitTableInfoHandler;
-import org.dromara.common.mybatis.interceptor.PlusDataPermissionInterceptor;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,6 +19,10 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import xin.v5ai.nb.common.core.factory.YmlPropertySourceFactory;
 import xin.v5ai.nb.common.mybatis.aspect.DataPermissionPointcutAdvisor;
 import xin.v5ai.nb.common.mybatis.config.properties.SqlLogProperties;
+import xin.v5ai.nb.common.mybatis.handler.InjectionMetaObjectHandler;
+import xin.v5ai.nb.common.mybatis.handler.MybatisExceptionHandler;
+import xin.v5ai.nb.common.mybatis.handler.PlusPostInitTableInfoHandler;
+import xin.v5ai.nb.common.mybatis.interceptor.PlusDataPermissionInterceptor;
 import xin.v5ai.nb.common.mybatis.interceptor.SqlLogInterceptor;
 
 /**

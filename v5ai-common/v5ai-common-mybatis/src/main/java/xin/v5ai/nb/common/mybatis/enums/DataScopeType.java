@@ -2,9 +2,9 @@ package xin.v5ai.nb.common.mybatis.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.dromara.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.core.domain.LoginUser;
 import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 
 /**
  * 数据权限类型枚举

@@ -13,7 +13,6 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import org.dromara.common.mybatis.helper.DataPermissionHelper;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.expression.*;
 import org.springframework.expression.common.TemplateParserContext;
@@ -33,6 +32,7 @@ import xin.v5ai.nb.common.mybatis.annotation.DataColumn;
 import xin.v5ai.nb.common.mybatis.annotation.DataPermission;
 import xin.v5ai.nb.common.mybatis.core.domain.DataPermissionAccess;
 import xin.v5ai.nb.common.mybatis.enums.DataScopeType;
+import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.lang.annotation.Annotation;
@@ -222,15 +222,15 @@ public class PlusDataPermissionHandler {
         if (!access.constrained()) {
             return roles;
         }
-        Map<Long, RoleDTO> allRoleMap = new LinkedHashMap<>();
+        Map<String, RoleDTO> allRoleMap = new LinkedHashMap<>();
         if (CollUtil.isNotEmpty(roles)) {
             roles.forEach(role -> allRoleMap.put(role.getRoleKey(), role));
         }
-        Map<Long, RoleDTO> roleMap = new LinkedHashMap<>();
-        Map<String, List<Long>> dataScopeRoleMap = user.getDataScopeRoleMap();
+        Map<String, RoleDTO> roleMap = new LinkedHashMap<>();
+        Map<String, List<String>> dataScopeRoleMap = user.getDataScopeRoleMap();
         if (CollUtil.isNotEmpty(dataScopeRoleMap)) {
             access.perms().forEach(perm -> {
-                List<Long> roleIds = dataScopeRoleMap.get(perm);
+                List<String> roleIds = dataScopeRoleMap.get(perm);
                 if (CollUtil.isNotEmpty(roleIds)) {
                     roleIds.forEach(roleId -> {
                         RoleDTO role = allRoleMap.get(roleId);

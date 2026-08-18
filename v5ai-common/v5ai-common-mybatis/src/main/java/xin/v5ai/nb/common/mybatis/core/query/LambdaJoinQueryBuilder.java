@@ -9,7 +9,6 @@ import com.github.yulichang.wrapper.MPJLambdaWrapper;
 import com.github.yulichang.wrapper.enums.DefaultFuncEnum;
 import com.github.yulichang.wrapper.segments.SelectCache;
 import com.github.yulichang.wrapper.segments.SelectNormal;
-import org.dromara.common.mybatis.helper.DataBaseHelper;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 
 import java.util.Collection;
@@ -859,9 +858,9 @@ public final class LambdaJoinQueryBuilder<T> {
      * @param column    字段名
      * @return 当前联表查询构造辅助对象
      */
-    public LambdaJoinQueryBuilder<T> findInSet(boolean condition, Object value, String column) {
-        return apply(condition, DataBaseHelper.findInSet(value, column));
-    }
+//    public LambdaJoinQueryBuilder<T> findInSet(boolean condition, Object value, String column) {
+//        return apply(condition, DataBaseHelper.findInSet(value, column));
+//    }
 
     /**
      * 使用函数式方式追加 MPJ 原生能力。
