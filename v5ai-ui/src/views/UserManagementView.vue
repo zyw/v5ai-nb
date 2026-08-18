@@ -24,7 +24,7 @@ import {
   listRoles,
   listTenants,
   listUsers,
-  updateUserEnabled,
+  updateUserStatus,
   updateUserRoles,
   type Role,
   type Tenant,
@@ -54,7 +54,7 @@ const form = reactive({
 const editingUser = ref<UserAccount | null>(null)
 const roleForm = reactive({ roles: [] as string[] })
 
-const roleOptions = () => roles.value.map((r) => ({ label: `${r.name} (${r.roleKey})`, value: r.roleKey }))
+const roleOptions = () => roles.value.map((r) => ({ label: `${r.roleName} (${r.roleKey})`, value: r.roleKey }))
 const tenantOptions = () => tenants.value.map((t) => ({ label: `${t.name} (${t.tenantKey})`, value: t.id }))
 
 const columns: DataTableColumns<UserAccount> = [
@@ -70,9 +70,9 @@ const columns: DataTableColumns<UserAccount> = [
   },
   {
     title: '状态',
-    key: 'enabled',
+    key: 'status',
     width: 100,
-    render: (row) => h(StatusTag, { status: row.enabled ? 'ACTIVE' : 'DISABLED' })
+    render: (row) => h(StatusTag, { status: row.status === '1' ? 'DISABLED' : 'ACTIVE' })
   },
   {
     title: '操作',
@@ -81,7 +81,7 @@ const columns: DataTableColumns<UserAccount> = [
     render: (row) =>
       h(NSpace, { size: 6 }, { default: () => [
         h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => openRoles(row) }, { default: () => '分配角色' }),
-        h(NButton, { size: 'small', secondary: true, type: row.enabled ? 'warning' : 'primary', onClick: () => handleToggleEnabled(row) }, { default: () => (row.enabled ? '禁用' : '启用') })
+        h(NButton, { size: 'small', secondary: true, type: row.status === '1' ? 'primary' : 'warning', onClick: () => handleToggleStatus(row) }, { default: () => (row.status === '1' ? '启用' : '禁用') })
       ] })
   }
 ]
@@ -154,10 +154,11 @@ async function handleSaveRoles() {
   }
 }
 
-async function handleToggleEnabled(row: UserAccount) {
+async function handleToggleStatus(row: UserAccount) {
   try {
-    await updateUserEnabled(adminToken.value, row.id, !row.enabled)
-    message.success(`${row.username} 已${row.enabled ? '禁用' : '启用'}`)
+    const next = row.status === '1' ? '0' : '1'
+    await updateUserStatus(adminToken.value, row.id, next)
+    message.success(`${row.username} 已${next === '1' ? '禁用' : '启用'}`)
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '操作失败')

@@ -161,7 +161,7 @@ class PlatformControllersTest {
         @Override
         public UserAccount create(String username, String passwordHash, String displayName,
                                   Long tenantId, List<String> roles) {
-            var account = new UserAccount(nextId++, username, displayName, tenantId, roles, true);
+            var account = new UserAccount(nextId++, username, displayName, tenantId, roles, "0");
             stored.add(account);
             return account;
         }
@@ -171,7 +171,11 @@ class PlatformControllersTest {
         }
 
         @Override
-        public void setEnabled(Long userId, boolean enabled) {
+        public void setStatus(Long userId, String status) {
+        }
+
+        @Override
+        public void updateLoginInfo(Long userId, String loginIp, java.time.Instant loginDate) {
         }
     }
 }

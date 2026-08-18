@@ -1,21 +1,10 @@
 package xin.v5ai.nb.api.agent;
 
-import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.agent.AgentConfigGenerator;
-import xin.v5ai.nb.agent.AgentManagementService;
-import xin.v5ai.nb.agent.CreateAgentCommand;
-import xin.v5ai.nb.agent.PublishAgentCommand;
-import xin.v5ai.nb.agent.UpdateAgentCommand;
+import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.agent.*;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.util.List;
 
@@ -104,7 +93,7 @@ public class AgentController {
         }
         String actor;
         try {
-            actor = StpUtil.getLoginIdAsString();
+            actor = LoginHelper.getUsername();
         } catch (Exception exception) {
             actor = null;
         }

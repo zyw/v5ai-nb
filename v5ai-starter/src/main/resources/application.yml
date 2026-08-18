@@ -20,7 +20,6 @@ sa-token:
   token-prefix: Bearer
   is-concurrent: false
   jwt-secret-key: ${V5AI_JWT_SECRET:PFIcuElmiVI4tHg1H7TbQjvWQm4zkz57}
-  token-style: uuid
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

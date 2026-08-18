@@ -14,7 +14,8 @@ public class MyBatisUserCredentialStore implements UserCredentialStore {
     @Override
     public String findPasswordHash(String username) {
         UserEntity user = userMapper.findByUsername(username);
-        if (user == null || !Boolean.TRUE.equals(user.getEnabled())) {
+        // 账号状态：'0' 正常、'1' 停用（status 为空视为停用，安全兜底）
+        if (user == null || !"0".equals(user.getStatus())) {
             return null;
         }
         return user.getPasswordHash();

@@ -28,11 +28,12 @@ public class MyBatisRoleStore implements RoleStore {
     }
 
     @Override
-    public Role create(String roleKey, String name, String description) {
+    public Role create(String roleKey, String roleName, String description, String dataScope) {
         var entity = new RoleEntity();
         entity.setRoleKey(roleKey);
-        entity.setName(name);
+        entity.setRoleName(roleName);
         entity.setDescription(description);
+        entity.setDataScope(dataScope == null || dataScope.isBlank() ? "1" : dataScope);
         entity.setBuiltin(false);
         entity.setCreatedAt(Instant.now());
         entity.setUpdatedAt(Instant.now());
@@ -41,8 +42,8 @@ public class MyBatisRoleStore implements RoleStore {
     }
 
     @Override
-    public Role update(String roleKey, String name, String description) {
-        roleMapper.updateMeta(roleKey, name, description);
+    public Role update(String roleKey, String roleName, String description, String dataScope) {
+        roleMapper.updateMeta(roleKey, roleName, description, dataScope == null || dataScope.isBlank() ? "1" : dataScope);
         return findByKey(roleKey);
     }
 
@@ -56,11 +57,21 @@ public class MyBatisRoleStore implements RoleStore {
         return userRoleMapper.countByRole(roleKey);
     }
 
+    @Override
+    public List<Role> selectRolesByUserId(Long userId) {
+        return userRoleMapper.selectRolesByUser(userId).stream()
+                .map(roleMapper::selectById)
+                .filter(java.util.Objects::nonNull)
+                .map(this::toDomain)
+                .toList();
+    }
+
     private Role toDomain(RoleEntity entity) {
         if (entity == null) {
             return null;
         }
-        return new Role(entity.getRoleKey(), entity.getName(), entity.getDescription(),
+        return new Role(entity.getRoleKey(), entity.getRoleName(), entity.getDescription(),
+                entity.getDataScope() == null ? "1" : entity.getDataScope(),
                 Boolean.TRUE.equals(entity.getBuiltin()), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

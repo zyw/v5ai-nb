@@ -53,9 +53,6 @@ public class LoginHelper {
         StpUtil.login(loginUser.getLoginId(),
             model.setExtra(USER_KEY, loginUser.getUserId())
                 .setExtra(USER_NAME_KEY, loginUser.getUsername())
-                .setExtra(DEPT_KEY, loginUser.getDeptId())
-                .setExtra(DEPT_NAME_KEY, loginUser.getDeptName())
-                .setExtra(DEPT_CATEGORY_KEY, loginUser.getDeptCategory())
         );
         StpUtil.getTokenSession().set(LOGIN_USER_KEY, loginUser);
     }
@@ -75,18 +72,13 @@ public class LoginHelper {
         if (StrUtil.isBlank(loginUser.getIpaddr())) {
             loginUser.setIpaddr(ip);
         }
-        if (StrUtil.isBlank(loginUser.getLoginLocation()) && StrUtil.isNotBlank(ip)) {
-            loginUser.setLoginLocation(ip);
-        }
+
         UserAgent userAgent = UserAgentUtil.parse(request.getHeader("User-Agent"));
         if (StrUtil.isBlank(loginUser.getBrowser())) {
             loginUser.setBrowser(userAgent.getBrowser().getName());
         }
         if (StrUtil.isBlank(loginUser.getOs())) {
             loginUser.setOs(userAgent.getOs().getName());
-        }
-        if (StrUtil.isBlank(loginUser.getDeviceType()) && StrUtil.isNotBlank(model.getDeviceType())) {
-            loginUser.setDeviceType(model.getDeviceType());
         }
     }
 

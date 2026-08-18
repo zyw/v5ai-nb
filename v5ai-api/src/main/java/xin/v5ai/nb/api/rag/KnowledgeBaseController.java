@@ -1,15 +1,9 @@
 package xin.v5ai.nb.api.rag;
 
-import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.rag.KnowledgeManagementService;
 
 import java.util.List;
@@ -60,7 +54,7 @@ public class KnowledgeBaseController {
         }
         String actor;
         try {
-            actor = StpUtil.getLoginIdAsString();
+            actor = LoginHelper.getUsername();
         } catch (Exception exception) {
             actor = null;
         }

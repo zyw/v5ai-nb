@@ -13,11 +13,12 @@ public interface RoleMapper extends BaseMapper<RoleEntity> {
         return selectList(null);
     }
 
-    default int updateMeta(String roleKey, String name, String description) {
+    default int updateMeta(String roleKey, String roleName, String description, String dataScope) {
         return update(null, new LambdaUpdateWrapper<RoleEntity>()
                 .eq(RoleEntity::getRoleKey, roleKey)
-                .set(RoleEntity::getName, name)
+                .set(RoleEntity::getRoleName, roleName)
                 .set(RoleEntity::getDescription, description)
+                .set(RoleEntity::getDataScope, dataScope)
                 .set(RoleEntity::getUpdatedAt, Instant.now()));
     }
 }

@@ -1,14 +1,12 @@
 package xin.v5ai.nb.api.auth;
 
 import cn.dev33.satoken.stp.StpUtil;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.platform.Menu;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
+import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.util.List;
 
@@ -26,7 +24,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request) {
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return loginService.login(request);
     }
 
@@ -40,7 +38,7 @@ public class AuthController {
      */
     @GetMapping("/me")
     public LoginResponse me() {
-        var username = StpUtil.getLoginIdAsString();
+        var username = LoginHelper.getUsername();
         var account = userAccountStore.findByUsername(username);
         if (account == null) {
             throw new IllegalArgumentException("current account does not exist");
@@ -55,7 +53,7 @@ public class AuthController {
      */
     @GetMapping("/menus")
     public List<Menu> menus() {
-        var username = StpUtil.getLoginIdAsString();
+        var username = LoginHelper.getUsername();
         var account = userAccountStore.findByUsername(username);
         if (account == null) {
             throw new IllegalArgumentException("current account does not exist");

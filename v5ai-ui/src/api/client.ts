@@ -762,8 +762,9 @@ export interface Tenant {
 
 export interface Role {
   roleKey: string
-  name: string
+  roleName: string
   description?: string | null
+  dataScope?: string | null
   builtin: boolean
   createdAt?: string | null
   updatedAt?: string | null
@@ -775,7 +776,7 @@ export interface UserAccount {
   displayName?: string | null
   tenantId?: number | null
   roles: string[]
-  enabled: boolean
+  status?: string | null
 }
 
 export interface AppQuota {
@@ -872,10 +873,10 @@ export function updateUserRoles(adminToken: string, id: number, roles: string[])
   }, adminToken)
 }
 
-export function updateUserEnabled(adminToken: string, id: number, enabled: boolean): Promise<UserAccount> {
-  return requestJson<UserAccount>(`/api/admin/users/${id}/enabled`, {
+export function updateUserStatus(adminToken: string, id: number, status: string): Promise<UserAccount> {
+  return requestJson<UserAccount>(`/api/admin/users/${id}/status`, {
     method: 'PUT',
-    body: JSON.stringify({ enabled })
+    body: JSON.stringify({ status })
   }, adminToken)
 }
 
@@ -885,14 +886,14 @@ export function listRoles(adminToken: string): Promise<Role[]> {
   return requestJson<Role[]>('/api/admin/roles', {}, adminToken)
 }
 
-export function createRole(adminToken: string, request: { roleKey: string; name: string; description?: string }): Promise<Role> {
+export function createRole(adminToken: string, request: { roleKey: string; roleName: string; description?: string; dataScope?: string }): Promise<Role> {
   return requestJson<Role>('/api/admin/roles', {
     method: 'POST',
     body: JSON.stringify(request)
   }, adminToken)
 }
 
-export function updateRole(adminToken: string, roleKey: string, request: { name: string; description?: string }): Promise<Role> {
+export function updateRole(adminToken: string, roleKey: string, request: { roleName: string; description?: string; dataScope?: string }): Promise<Role> {
   return requestJson<Role>(`/api/admin/roles/${encodeURIComponent(roleKey)}`, {
     method: 'PUT',
     body: JSON.stringify(request)

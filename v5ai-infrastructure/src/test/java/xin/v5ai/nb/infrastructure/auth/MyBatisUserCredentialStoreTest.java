@@ -11,7 +11,7 @@ class MyBatisUserCredentialStoreTest {
         mapper.user = new UserEntity();
         mapper.user.setUsername("alice");
         mapper.user.setPasswordHash("hash");
-        mapper.user.setEnabled(true);
+        mapper.user.setStatus("0");
         var store = new MyBatisUserCredentialStore(mapper);
 
         String passwordHash = store.findPasswordHash("alice");
@@ -25,7 +25,7 @@ class MyBatisUserCredentialStoreTest {
         mapper.user = new UserEntity();
         mapper.user.setUsername("alice");
         mapper.user.setPasswordHash("hash");
-        mapper.user.setEnabled(false);
+        mapper.user.setStatus("1");
         var store = new MyBatisUserCredentialStore(mapper);
 
         String passwordHash = store.findPasswordHash("alice");

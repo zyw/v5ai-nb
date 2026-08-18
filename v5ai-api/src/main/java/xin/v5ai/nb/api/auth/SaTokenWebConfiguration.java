@@ -1,5 +1,6 @@
 package xin.v5ai.nb.api.auth;
 
+import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.exception.NotRoleException;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.stp.StpUtil;
@@ -37,7 +38,7 @@ public class SaTokenWebConfiguration implements WebMvcConfigurer {
     HandlerInterceptor adminAuthInterceptor() {
         return new SaInterceptor(invocation -> {
             StpUtil.checkLogin();
-            var request = cn.dev33.satoken.context.SaHolder.getRequest();
+            var request = SaHolder.getRequest();
             if (isWriteMethod(request.getMethod()) && !hasRole("ADMIN")) {
                 throw new NotRoleException("admin");
             }
@@ -57,7 +58,6 @@ public class SaTokenWebConfiguration implements WebMvcConfigurer {
         return !"GET".equalsIgnoreCase(method) && !"OPTIONS".equalsIgnoreCase(method);
     }
 
-    @SuppressWarnings("unchecked")
     static boolean hasRole(String role) {
         var session = StpUtil.getSession(false);
         if (session == null) {

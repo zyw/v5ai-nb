@@ -1,6 +1,5 @@
 package xin.v5ai.nb.common.core.domain;
 
-import cn.hutool.core.util.StrUtil;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -28,29 +27,9 @@ public class LoginUser implements Serializable {
     private Long userId;
 
     /**
-     * 部门ID
-     */
-    private Long deptId;
-
-    /**
-     * 部门类别编码
-     */
-    private String deptCategory;
-
-    /**
-     * 部门名
-     */
-    private String deptName;
-
-    /**
      * 用户唯一标识
      */
     private String token;
-
-    /**
-     * 用户类型
-     */
-    private String userType;
 
     /**
      * 登录时间
@@ -66,11 +45,6 @@ public class LoginUser implements Serializable {
      * 登录IP地址
      */
     private String ipaddr;
-
-    /**
-     * 登录地点
-     */
-    private String loginLocation;
 
     /**
      * 浏览器类型
@@ -108,14 +82,9 @@ public class LoginUser implements Serializable {
     private List<RoleDTO> roles;
 
     /**
-     * 数据权限角色映射 key 为权限码 value 为可参与数据权限计算的角色ID列表
+     * 数据权限角色映射 key 为 dataScope 码 value 为可参与数据权限计算的角色 roleKey 列表
      */
-    private Map<String, List<Long>> dataScopeRoleMap;
-
-    /**
-     * 岗位对象
-     */
-    private List<PostDTO> posts;
+    private Map<String, List<String>> dataScopeRoleMap;
 
     /**
      * 数据权限 当前角色ID
@@ -123,28 +92,12 @@ public class LoginUser implements Serializable {
     private Long roleId;
 
     /**
-     * 客户端
-     */
-    private String clientKey;
-
-    /**
-     * 设备类型
-     */
-    private String deviceType;
-
-    /**
      * 获取 Sa-Token 使用的登录标识。
      *
      * @return 登录标识
      */
     public String getLoginId() {
-        if (userType == null) {
-            throw new IllegalArgumentException("用户类型不能为空");
-        }
-        if (userId == null) {
-            throw new IllegalArgumentException("用户ID不能为空");
-        }
-        return userType + StrUtil.COLON + userId;
+        return "v5ai-user:" + userId;
     }
 
 }

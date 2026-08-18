@@ -10,7 +10,7 @@ import java.util.List;
  * @param displayName 显示名（可为 null）
  * @param tenantId    归属租户（可为 null，null 表示默认租户）
  * @param roles       角色集合
- * @param enabled     是否启用
+ * @param status      账号状态（'0'正常 '1'停用）
  */
 public record UserAccount(
         Long id,
@@ -18,8 +18,13 @@ public record UserAccount(
         String displayName,
         Long tenantId,
         List<String> roles,
-        boolean enabled
+        String status
 ) {
+    /** 账号是否正常（status 为 null 或 '0' 视为正常）。 */
+    public boolean isEnabled() {
+        return status == null || "0".equals(status);
+    }
+
     public boolean hasRole(RoleKey role) {
         return roles != null && roles.contains(role.name());
     }

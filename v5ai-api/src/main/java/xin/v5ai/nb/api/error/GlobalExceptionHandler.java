@@ -1,16 +1,22 @@
 package xin.v5ai.nb.api.error;
 
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotRoleException;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import xin.v5ai.nb.common.core.api.ApiResponse;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -29,15 +35,16 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, exception.getMessage()));
     }
 
-    @ExceptionHandler(cn.dev33.satoken.exception.NotLoginException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNotLogin(cn.dev33.satoken.exception.NotLoginException exception) {
+    @ExceptionHandler(NotLoginException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotLogin(NotLoginException exception) {
+        log.error("登录失败，消息：{}", exception.getMessage(), exception);
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, "not logged in"));
     }
 
-    @ExceptionHandler(cn.dev33.satoken.exception.NotRoleException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNotRole(cn.dev33.satoken.exception.NotRoleException exception) {
+    @ExceptionHandler(NotRoleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotRole(NotRoleException exception) {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, "insufficient role: admin role required"));
@@ -52,14 +59,26 @@ public class GlobalExceptionHandler {
                         "record is referenced by other data and cannot be deleted"));
     }
 
-    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(
-            org.springframework.web.multipart.MaxUploadSizeExceededException exception) {
+            MaxUploadSizeExceededException exception) {
         LOG.warn("Uploaded file exceeds the configured size limit", exception);
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT,
                         "uploaded file exceeds the configured size limit (max-file-size/request-size)"));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException exception) {
+        var message = exception.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .orElse("invalid request body");
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, message));
     }
 
     @ExceptionHandler(Exception.class)

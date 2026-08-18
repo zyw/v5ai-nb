@@ -47,7 +47,16 @@ const menus = ref<Menu[]>([])
 const checkedMenuKeys = ref<number[]>([])
 const savingMenus = ref(false)
 
-const form = reactive({ roleKey: '', name: '', description: '' })
+const form = reactive({ roleKey: '', name: '', description: '', dataScope: '1' })
+
+const dataScopeOptions = [
+  { label: '全部数据权限', value: '1' },
+  { label: '自定数据权限', value: '2' },
+  { label: '本部门数据权限', value: '3' },
+  { label: '本部门及以下数据权限', value: '4' },
+  { label: '仅本人数据权限', value: '5' },
+  { label: '部门及以下或本人数据权限', value: '6' }
+]
 
 type TreeOption = { key: number; label: string; children?: TreeOption[] }
 
@@ -76,7 +85,7 @@ const menuTreeOptions = computed(() => buildMenuTree(menus.value))
 
 const columns: DataTableColumns<Role> = [
   { title: 'Role Key', key: 'roleKey' },
-  { title: '名称', key: 'name' },
+  { title: '名称', key: 'roleName' },
   { title: '描述', key: 'description', ellipsis: { tooltip: true } },
   {
     title: '内置',
@@ -114,14 +123,16 @@ function openCreate() {
   form.roleKey = ''
   form.name = ''
   form.description = ''
+  form.dataScope = '1'
   showModal.value = true
 }
 
 function openEdit(row: Role) {
   editingKey.value = row.roleKey
   form.roleKey = row.roleKey
-  form.name = row.name
+  form.name = row.roleName
   form.description = row.description ?? ''
+  form.dataScope = row.dataScope ?? '1'
   showModal.value = true
 }
 
@@ -130,15 +141,17 @@ async function handleSave() {
   try {
     if (editingKey.value) {
       await updateRole(adminToken.value, editingKey.value, {
-        name: form.name,
-        description: form.description || undefined
+        roleName: form.name,
+        description: form.description || undefined,
+        dataScope: form.dataScope
       })
       message.success('角色已更新')
     } else {
       await createRole(adminToken.value, {
         roleKey: form.roleKey,
-        name: form.name,
-        description: form.description || undefined
+        roleName: form.name,
+        description: form.description || undefined,
+        dataScope: form.dataScope
       })
       message.success('角色已创建')
     }
@@ -154,7 +167,7 @@ async function handleSave() {
 async function handleDelete(row: Role) {
   dialog.warning({
     title: '删除确认',
-    content: `确认删除角色「${row.name}」？若该角色仍被用户占用，删除将被拒绝。`,
+    content: `确认删除角色「${row.roleName}」？若该角色仍被用户占用，删除将被拒绝。`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
@@ -190,7 +203,7 @@ async function handleSaveMenus() {
   savingMenus.value = true
   try {
     await updateRoleMenus(adminToken.value, editingMenuRole.value.roleKey, checkedMenuKeys.value)
-    message.success(`${editingMenuRole.value.name} 菜单已更新`)
+    message.success(`${editingMenuRole.value.roleName} 菜单已更新`)
     showMenusModal.value = false
   } catch (e) {
     message.error(e instanceof Error ? e.message : '更新菜单失败')
@@ -245,6 +258,9 @@ onMounted(reload)
         <n-form-item label="描述">
           <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" />
         </n-form-item>
+        <n-form-item label="数据范围">
+          <n-select v-model:value="form.dataScope" :options="dataScopeOptions" />
+        </n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="end">
@@ -257,7 +273,7 @@ onMounted(reload)
     <n-modal
       v-model:show="showMenusModal"
       preset="card"
-      :title="`分配菜单（${editingMenuRole?.name ?? ''}）`"
+      :title="`分配菜单（${editingMenuRole?.roleName ?? ''}）`"
       style="width: 440px"
       :bordered="false"
     >

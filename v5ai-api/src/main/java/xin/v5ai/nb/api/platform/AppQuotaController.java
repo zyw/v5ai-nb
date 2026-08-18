@@ -1,15 +1,11 @@
 package xin.v5ai.nb.api.platform;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.platform.AppQuota;
 import xin.v5ai.nb.common.core.platform.AppQuotaService;
 import xin.v5ai.nb.common.core.platform.AppUsage;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 /**
  * 应用配额与当日用量 API（限流/配额/用量管理）。
@@ -49,7 +45,7 @@ public class AppQuotaController {
 
     private static String currentActor() {
         try {
-            return cn.dev33.satoken.stp.StpUtil.getLoginIdAsString();
+            return LoginHelper.getUsername();
         } catch (Exception exception) {
             return null;
         }

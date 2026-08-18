@@ -1,18 +1,11 @@
 package xin.v5ai.nb.api.platform;
 
-import cn.dev33.satoken.stp.StpUtil;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.Role;
 import xin.v5ai.nb.common.core.platform.RoleStore;
+import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.util.List;
 
@@ -33,10 +26,10 @@ public class RoleController {
         this.auditRecorder = auditRecorder;
     }
 
-    public record CreateRoleRequest(String roleKey, String name, String description) {
+    public record CreateRoleRequest(String roleKey, String roleName, String description, String dataScope) {
     }
 
-    public record UpdateRoleRequest(String name, String description) {
+    public record UpdateRoleRequest(String roleName, String description, String dataScope) {
     }
 
     public record UpdateRoleMenusRequest(List<Long> menuIds) {
@@ -56,13 +49,14 @@ public class RoleController {
         if (!key.matches("[A-Z][A-Z0-9_]*")) {
             throw new IllegalArgumentException("roleKey must be uppercase letters, digits or underscore");
         }
-        if (request.name() == null || request.name().isBlank()) {
-            throw new IllegalArgumentException("name is required");
+        if (request.roleName() == null || request.roleName().isBlank()) {
+            throw new IllegalArgumentException("roleName is required");
         }
+        validateDataScope(request.dataScope());
         if (roleStore.findByKey(key) != null) {
             throw new IllegalArgumentException("role already exists: " + key);
         }
-        var role = roleStore.create(key, request.name().trim(), request.description());
+        var role = roleStore.create(key, request.roleName().trim(), request.description(), request.dataScope());
         auditRecorder.record(null, currentActor(), "CREATE", "role", key, "role " + key, null);
         return role;
     }
@@ -73,10 +67,11 @@ public class RoleController {
         if (roleStore.findByKey(key) == null) {
             throw new IllegalArgumentException("role does not exist: " + key);
         }
-        if (request.name() == null || request.name().isBlank()) {
-            throw new IllegalArgumentException("name is required");
+        if (request.roleName() == null || request.roleName().isBlank()) {
+            throw new IllegalArgumentException("roleName is required");
         }
-        var role = roleStore.update(key, request.name().trim(), request.description());
+        validateDataScope(request.dataScope());
+        var role = roleStore.update(key, request.roleName().trim(), request.description(), request.dataScope());
         auditRecorder.record(null, currentActor(), "UPDATE", "role", key, "role " + key, null);
         return role;
     }
@@ -122,9 +117,18 @@ public class RoleController {
         return key == null ? null : key.trim().toUpperCase();
     }
 
+    private static void validateDataScope(String dataScope) {
+        if (dataScope == null || dataScope.isBlank()) {
+            throw new IllegalArgumentException("dataScope is required");
+        }
+        if (!dataScope.matches("[1-6]")) {
+            throw new IllegalArgumentException("dataScope must be 1-6 (1全部 2自定 3本部门 4本部门及以下 5仅本人 6部门及以下或本人)");
+        }
+    }
+
     private static String currentActor() {
         try {
-            return StpUtil.getLoginIdAsString();
+            return LoginHelper.getUsername();
         } catch (Exception exception) {
             return null;
         }

@@ -17,5 +17,9 @@ public interface UserAccountStore {
 
     void updateRoles(Long userId, List<String> roles);
 
-    void setEnabled(Long userId, boolean enabled);
+    /** 更新账号状态（'0'正常 '1'停用）。 */
+    void setStatus(Long userId, String status);
+
+    /** 登录成功后回写最后登录 IP 与时间。 */
+    void updateLoginInfo(Long userId, String loginIp, java.time.Instant loginDate);
 }

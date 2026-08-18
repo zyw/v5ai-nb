@@ -1,5 +1,7 @@
 package xin.v5ai.nb.infrastructure.platform;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.common.core.platform.UserAccount;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
@@ -19,7 +21,7 @@ public class MyBatisUserAccountStore implements UserAccountStore {
 
     @Override
     public UserAccount findByUsername(String username) {
-        var entity = userMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserEntity>()
+        var entity = userMapper.selectOne(new LambdaQueryWrapper<UserEntity>()
                 .eq(UserEntity::getUsername, username));
         return toDomain(entity);
     }
@@ -40,7 +42,7 @@ public class MyBatisUserAccountStore implements UserAccountStore {
         var entity = new UserEntity();
         entity.setUsername(username);
         entity.setPasswordHash(passwordHash);
-        entity.setEnabled(true);
+        entity.setStatus("0");
         entity.setTenantId(tenantId);
         entity.setDisplayName(displayName);
         userMapper.insert(entity);
@@ -59,11 +61,19 @@ public class MyBatisUserAccountStore implements UserAccountStore {
     }
 
     @Override
-    public void setEnabled(Long userId, boolean enabled) {
+    public void setStatus(Long userId, String status) {
         var entity = new UserEntity();
-        entity.setEnabled(enabled);
-        userMapper.update(entity, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<UserEntity>()
+        entity.setStatus(status);
+        userMapper.update(entity, new LambdaUpdateWrapper<UserEntity>()
                 .eq(UserEntity::getId, userId));
+    }
+
+    @Override
+    public void updateLoginInfo(Long userId, String loginIp, java.time.Instant loginDate) {
+        userMapper.update(null, new LambdaUpdateWrapper<UserEntity>()
+                .eq(UserEntity::getId, userId)
+                .set(UserEntity::getLoginIp, loginIp == null ? "" : loginIp)
+                .set(UserEntity::getLoginDate, loginDate));
     }
 
     private UserAccount toDomain(UserEntity entity) {
@@ -72,6 +82,6 @@ public class MyBatisUserAccountStore implements UserAccountStore {
         }
         List<String> roles = roleMapper.selectRolesByUser(entity.getId());
         return new UserAccount(entity.getId(), entity.getUsername(), entity.getDisplayName(),
-                entity.getTenantId(), roles, Boolean.TRUE.equals(entity.getEnabled()));
+                entity.getTenantId(), roles, entity.getStatus());
     }
 }
