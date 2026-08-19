@@ -20,6 +20,7 @@
         <spring-boot.version>4.1.0</spring-boot.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <mybatis-plus-join.version>1.5.9</mybatis-plus-join.version>
+        <dynamic-ds.version>4.5.0</dynamic-ds.version>
         <sa-token.version>1.45.0</sa-token.version>
         <jackson2.version>2.19.2</jackson2.version>
         <redisson.version>4.6.1</redisson.version>
@@ -87,6 +88,12 @@
                 <groupId>com.github.yulichang</groupId>
                 <artifactId>mybatis-plus-join-boot-starter</artifactId>
                 <version>${mybatis-plus-join.version}</version>
+            </dependency>
+            <!-- dynamic-datasource 多数据源-->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>dynamic-datasource-spring-boot4-starter</artifactId>
+                <version>${dynamic-ds.version}</version>
             </dependency>
             <!-- sa-token 的依赖配置-->
             <dependency>

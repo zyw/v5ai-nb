@@ -2,6 +2,7 @@ package xin.v5ai.nb.common.mybatis.core.query;
 
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.common.mybatis.helper.DataBaseHelper;
 
 import java.util.Collection;
 import java.util.Map;
@@ -424,9 +425,9 @@ public interface LambdaQueryCondition<T, Children> {
      * @param column    字段名
      * @return 链式返回对象
      */
-//    default Children findInSet(boolean condition, Object value, String column) {
-//        return apply(condition, DataBaseHelper.findInSet(value, column));
-//    }
+    default Children findInSet(boolean condition, Object value, String column) {
+        return apply(condition, DataBaseHelper.findInSet(value, column));
+    }
 
     /**
      * 值不为空时添加 FIND_IN_SET 条件。

@@ -2,7 +2,7 @@ package xin.v5ai.nb.infrastructure.model;
 
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.model.ModelProvider;
-import xin.v5ai.nb.model.ModelProviderRepository;
+import xin.v5ai.nb.model.mapper.ModelProviderRepository;
 
 import java.util.List;
 

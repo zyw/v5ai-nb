@@ -1,5 +1,6 @@
 package xin.v5ai.nb.api.model;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,31 +18,27 @@ import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.model.CreateModelCommand;
-import xin.v5ai.nb.model.ModelManagementService;
+import xin.v5ai.nb.model.service.IModelService;
 import xin.v5ai.nb.model.UpdateModelCommand;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/models")
 public class ModelController {
-    private final ModelManagementService modelManagementService;
+    private final IModelService service;
     private final AgentRepository agentRepository;
-
-    public ModelController(ModelManagementService modelManagementService, AgentRepository agentRepository) {
-        this.modelManagementService = modelManagementService;
-        this.agentRepository = agentRepository;
-    }
 
     @PostMapping
     public R<ModelResponse> createModel(@RequestBody CreateModelRequest request) {
-        return R.ok(ModelResponse.from(modelManagementService.createModel(new CreateModelCommand(
+        return R.ok(ModelResponse.from(service.createModel(new CreateModelCommand(
                 request.providerKey(), request.modelKey(), request.type(), request.credentials()))));
     }
 
     @GetMapping
     public R<PageResult<ModelResponse>> listModels(PageQuery pageQuery) {
-        var list = modelManagementService.listModels().stream()
+        var list = service.listModels().stream()
                 .map(ModelResponse::from)
                 .toList();
         return R.ok(PageUtils.page(list, pageQuery));
@@ -49,7 +46,7 @@ public class ModelController {
 
     @GetMapping("/options")
     public R<List<OptionResponse>> listModelOptions() {
-        return R.ok(modelManagementService.listModelOptions().stream()
+        return R.ok(service.listModelOptions().stream()
                 .map(model -> new OptionResponse(model.id(),
                         model.providerKey() + "/" + model.modelKey() + " (" + model.type() + ")"))
                 .toList());
@@ -57,14 +54,14 @@ public class ModelController {
 
     @PutMapping("/{id}")
     public R<ModelResponse> updateModel(@PathVariable("id") Long id, @RequestBody UpdateModelRequest request) {
-        return R.ok(ModelResponse.from(modelManagementService.updateModel(new UpdateModelCommand(
+        return R.ok(ModelResponse.from(service.updateModel(new UpdateModelCommand(
                 id, request.modelKey(), request.type(), request.credentials(),
                 request.enabled() == null || request.enabled()))));
     }
 
     @DeleteMapping("/{id}")
     public R<Void> deleteModel(@PathVariable("id") Long id) {
-        if (modelManagementService.findModel(id) == null) {
+        if (service.findModel(id) == null) {
             throw new V5aiException(ErrorCode.NOT_FOUND, "model does not exist: " + id);
         }
         boolean referenced = agentRepository.list().stream()
@@ -73,14 +70,14 @@ public class ModelController {
             throw new V5aiException(ErrorCode.CONFLICT,
                     "model is used by an application and cannot be deleted");
         }
-        modelManagementService.deleteModel(id);
+        service.deleteModel(id);
         return R.ok();
     }
 
     @PostMapping("/{id}/test")
     public R<TestConnectionResponse> testConnection(@PathVariable("id") Long id) {
         try {
-            var result = modelManagementService.testConnection(id);
+            var result = service.testConnection(id);
             return R.ok(result.ok()
                     ? TestConnectionResponse.ok(id)
                     : TestConnectionResponse.failed(id, result.message()));

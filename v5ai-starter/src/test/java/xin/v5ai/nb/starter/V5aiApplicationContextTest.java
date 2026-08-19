@@ -14,7 +14,6 @@ import xin.v5ai.nb.api.model.ModelController;
 import xin.v5ai.nb.api.model.ModelProviderController;
 import xin.v5ai.nb.api.runtime.ChatController;
 import xin.v5ai.nb.agent.AgentManagementService;
-import xin.v5ai.nb.model.ModelManagementService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,7 +66,6 @@ class V5aiApplicationContextTest {
         assertThat(applicationContext.getBean(ModelProviderController.class)).isNotNull();
         assertThat(applicationContext.getBean(AgentController.class)).isNotNull();
         assertThat(applicationContext.getBean(ChatController.class)).isNotNull();
-        assertThat(applicationContext.getBean(ModelManagementService.class)).isNotNull();
         assertThat(applicationContext.getBean(AgentManagementService.class)).isNotNull();
     }
 }

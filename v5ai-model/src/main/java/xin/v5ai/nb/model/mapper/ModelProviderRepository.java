@@ -1,10 +1,10 @@
-package xin.v5ai.nb.model;
+package xin.v5ai.nb.model.mapper;
 
-import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
+import xin.v5ai.nb.model.ModelProvider;
 
 import java.util.List;
 
-public interface ModelProviderRepository extends BaseMapperPlus<ModelProvider, ModelProvider> {
+public interface ModelProviderRepository {
     void save(ModelProvider provider);
 
     ModelProvider findById(Long id);
