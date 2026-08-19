@@ -23,6 +23,7 @@ sa-token:
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
+  mapperPackage: xin.v5ai.nb.**.mapper
   global-config:
     banner: false
 
