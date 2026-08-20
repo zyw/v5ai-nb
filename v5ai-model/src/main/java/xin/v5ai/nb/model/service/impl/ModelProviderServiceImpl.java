@@ -6,9 +6,9 @@ import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.model.CreateProviderCommand;
 import xin.v5ai.nb.model.ModelProvider;
-import xin.v5ai.nb.model.ModelRepository;
+import xin.v5ai.nb.model.mapper.ModelMapper;
 import xin.v5ai.nb.model.UpdateProviderCommand;
-import xin.v5ai.nb.model.mapper.ModelProviderRepository;
+import xin.v5ai.nb.model.mapper.ModelProviderMapper;
 import xin.v5ai.nb.model.service.IModelProviderService;
 
 import java.util.List;
@@ -17,8 +17,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ModelProviderServiceImpl implements IModelProviderService {
 
-    private final ModelRepository repository;
-    private final ModelProviderRepository providerRepository;
+    private final ModelMapper repository;
+    private final ModelProviderMapper providerRepository;
 
     @Override
     public ModelProvider createProvider(CreateProviderCommand command) {

@@ -5,29 +5,29 @@
 //import xin.v5ai.nb.common.core.page.PageQuery;
 //import xin.v5ai.nb.common.core.page.PageResult;
 //import xin.v5ai.nb.model.*;
-//import xin.v5ai.nb.model.mapper.ModelProviderRepository;
+//import xin.v5ai.nb.model.mapper.ModelProviderMapper;
 //
 //import java.util.List;
 //
 //@Service
 //public class ModelManagementService {
-//    private final ModelRepository repository;
-//    private final ModelProviderRepository providerRepository;
+//    private final ModelMapper repository;
+//    private final ModelProviderMapper providerRepository;
 //    private final CredentialCipher cipher;
 //    private final ModelConnectionTester connectionTester;
 //
-//    public ModelManagementService(ModelRepository repository, CredentialCipher cipher) {
+//    public ModelManagementService(ModelMapper repository, CredentialCipher cipher) {
 //        this(repository, null, cipher, null);
 //    }
 //
-//    public ModelManagementService(ModelRepository repository, ModelProviderRepository providerRepository, CredentialCipher cipher) {
+//    public ModelManagementService(ModelMapper repository, ModelProviderMapper providerRepository, CredentialCipher cipher) {
 //        this(repository, providerRepository, cipher, null);
 //    }
 //
 //    @Autowired
 //    public ModelManagementService(
-//            ModelRepository repository,
-//            ModelProviderRepository providerRepository,
+//            ModelMapper repository,
+//            ModelProviderMapper providerRepository,
 //            CredentialCipher cipher,
 //            ModelConnectionTester connectionTester
 //    ) {

@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.model.ModelRepository;
+import xin.v5ai.nb.model.mapper.ModelMapper;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
 import xin.v5ai.nb.skill.SkillRepository;
 
@@ -20,13 +20,13 @@ import java.time.LocalDate;
 public class StatsController {
     private final JdbcTemplate jdbcTemplate;
     private final AgentRepository agentRepository;
-    private final ModelRepository modelRepository;
+    private final ModelMapper modelRepository;
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final SkillRepository skillRepository;
 
     public StatsController(JdbcTemplate jdbcTemplate,
                            AgentRepository agentRepository,
-                           ModelRepository modelRepository,
+                           ModelMapper modelRepository,
                            KnowledgeBaseRepository knowledgeBaseRepository,
                            SkillRepository skillRepository) {
         this.jdbcTemplate = jdbcTemplate;

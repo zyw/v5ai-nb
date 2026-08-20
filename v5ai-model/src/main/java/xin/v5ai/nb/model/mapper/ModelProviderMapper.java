@@ -4,7 +4,7 @@ import xin.v5ai.nb.model.ModelProvider;
 
 import java.util.List;
 
-public interface ModelProviderRepository {
+public interface ModelProviderMapper {
     void save(ModelProvider provider);
 
     ModelProvider findById(Long id);

@@ -1,8 +1,11 @@
-package xin.v5ai.nb.model;
+package xin.v5ai.nb.model.mapper;
+
+import xin.v5ai.nb.model.ModelConfig;
+import xin.v5ai.nb.model.ModelOption;
 
 import java.util.List;
 
-public interface ModelRepository {
+public interface ModelMapper {
     void save(ModelConfig model);
 
     ModelConfig findById(Long id);

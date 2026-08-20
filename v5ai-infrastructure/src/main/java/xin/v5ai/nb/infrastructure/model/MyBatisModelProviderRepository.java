@@ -2,12 +2,12 @@ package xin.v5ai.nb.infrastructure.model;
 
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.model.ModelProvider;
-import xin.v5ai.nb.model.mapper.ModelProviderRepository;
+import xin.v5ai.nb.model.mapper.ModelProviderMapper;
 
 import java.util.List;
 
 @Repository
-public class MyBatisModelProviderRepository implements ModelProviderRepository {
+public class MyBatisModelProviderRepository implements ModelProviderMapper {
     private final ModelProviderGateway gateway;
 
     public MyBatisModelProviderRepository(ModelProviderGateway gateway) {

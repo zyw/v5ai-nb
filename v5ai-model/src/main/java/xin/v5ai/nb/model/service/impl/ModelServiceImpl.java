@@ -3,7 +3,8 @@ package xin.v5ai.nb.model.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.model.*;
-import xin.v5ai.nb.model.mapper.ModelProviderRepository;
+import xin.v5ai.nb.model.mapper.ModelMapper;
+import xin.v5ai.nb.model.mapper.ModelProviderMapper;
 import xin.v5ai.nb.model.service.IModelService;
 
 import java.util.List;
@@ -12,8 +13,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ModelServiceImpl implements IModelService {
 
-    private final ModelRepository repository;
-    private final ModelProviderRepository providerRepository;
+    private final ModelMapper repository;
+    private final ModelProviderMapper providerRepository;
     private final CredentialCipher cipher;
     private final ModelConnectionTester connectionTester;
 

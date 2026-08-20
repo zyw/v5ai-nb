@@ -3,13 +3,13 @@ package xin.v5ai.nb.infrastructure.model;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.model.ModelConfig;
 import xin.v5ai.nb.model.ModelOption;
-import xin.v5ai.nb.model.ModelRepository;
+import xin.v5ai.nb.model.mapper.ModelMapper;
 import xin.v5ai.nb.model.ModelType;
 
 import java.util.List;
 
 @Component
-public class MyBatisModelRepository implements ModelRepository {
+public class MyBatisModelRepository implements ModelMapper {
     private final ModelConfigGateway gateway;
     private final ProviderIdResolver providerIdResolver;
 

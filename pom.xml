@@ -45,6 +45,7 @@
         <module>v5ai-api</module>
         <module>v5ai-starter</module>
         <module>v5ai-common/v5ai-common-mybatis</module>
+        <module>v5ai-modules</module>
     </modules>
 
     <dependencyManagement>

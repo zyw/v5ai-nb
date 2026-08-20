@@ -5,7 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.platform.*;
-import xin.v5ai.nb.model.ModelRepository;
+import xin.v5ai.nb.model.mapper.ModelMapper;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
 import xin.v5ai.nb.skill.SkillRepository;
 
@@ -77,7 +77,7 @@ class PlatformControllersTest {
     @Test
     void statsControllerCountsResources() {
         var agents = mock(AgentRepository.class);
-        var models = mock(ModelRepository.class);
+        var models = mock(ModelMapper.class);
         var knowledge = mock(KnowledgeBaseRepository.class);
         var skills = mock(SkillRepository.class);
         when(agents.list()).thenReturn(List.of(new xin.v5ai.nb.agent.Agent(

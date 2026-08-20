@@ -61,8 +61,8 @@
 - Test: `v5ai-infrastructure/src/test/java/xin/v5ai/nb/infrastructure/model/MyBatisModelProviderRepositoryTest.java`
 
 **Interfaces:**
-- Consumes: `ModelProviderRepository`
-- Consumes: `ModelRepository`
+- Consumes: `ModelProviderMapper`
+- Consumes: `ModelMapper`
 - Produces: MyBatis-backed provider/model repositories targeting `v5ai_model_provider` and `v5ai_model`
 
 - [ ] Write failing tests for provider save/list/findByKey and provider-key-to-id resolution.
