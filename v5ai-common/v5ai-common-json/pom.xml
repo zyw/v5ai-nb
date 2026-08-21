@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>xin.v5ai.nb</groupId>
+        <artifactId>v5ai-common</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>v5ai-common-json</artifactId>
+
+    <description>
+        v5ai-common-json 序列化模块
+    </description>
+
+    <dependencies>
+        <!-- 核心模块 -->
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-core</artifactId>
+        </dependency>
+
+        <!-- Jackson 序列化 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jackson</artifactId>
+        </dependency>
+
+    </dependencies>
+
+</project>

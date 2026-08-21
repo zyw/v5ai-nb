@@ -14,5 +14,8 @@
         <module>v5ai-common-redis</module>
         <module>v5ai-common-satoken</module>
         <module>v5ai-common-bom</module>
+        <module>v5ai-common-security</module>
+        <module>v5ai-common-web</module>
+        <module>v5ai-common-json</module>
     </modules>
 </project>
