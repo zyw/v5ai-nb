@@ -21,7 +21,8 @@
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <mybatis-plus-join.version>1.5.9</mybatis-plus-join.version>
         <dynamic-ds.version>4.5.0</dynamic-ds.version>
-        <sa-token.version>1.45.0</sa-token.version>
+        <!-- 安全认证与加密相关依赖版本 -->
+        <satoken.version>1.45.0</satoken.version>
         <jackson2.version>2.19.2</jackson2.version>
         <redisson.version>4.6.1</redisson.version>
         <minio.version>8.5.17</minio.version>
@@ -29,6 +30,16 @@
         <pdfbox.version>3.0.7</pdfbox.version>
         <hutool.version>5.8.47</hutool.version>
         <mapstruct-plus.version>1.5.1</mapstruct-plus.version>
+        <lombok.version>1.18.46</lombok.version>
+        <therapi-javadoc.version>0.15.0</therapi-javadoc.version>
+        <mapstruct-plus.lombok.version>0.2.0</mapstruct-plus.lombok.version>
+
+        <!-- Maven 构建插件版本 -->
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <!-- 统一版本号管理：Maven3.X需要，Maven4.0之后已原生支持 -->
+        <flatten-maven-plugin.version>1.7.3</flatten-maven-plugin.version>
+        <!-- 打包默认跳过测试 -->
+        <maven.test.skip>true</maven.test.skip>
     </properties>
 
     <modules>
@@ -44,7 +55,6 @@
         <module>v5ai-worker</module>
         <module>v5ai-api</module>
         <module>v5ai-starter</module>
-        <module>v5ai-common/v5ai-common-mybatis</module>
         <module>v5ai-modules</module>
     </modules>
 
@@ -63,6 +73,22 @@
                 <groupId>cn.hutool</groupId>
                 <artifactId>hutool-bom</artifactId>
                 <version>${hutool.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- sa-token-bom 依赖 -->
+            <!-- Sa-Token 权限认证, 在线文档：http://sa-token.dev33.cn/ -->
+            <dependency>
+                <groupId>cn.dev33</groupId>
+                <artifactId>sa-token-bom</artifactId>
+                <version>${satoken.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-common-bom</artifactId>
+                <version>${revision}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -95,17 +121,6 @@
                 <groupId>com.baomidou</groupId>
                 <artifactId>dynamic-datasource-spring-boot4-starter</artifactId>
                 <version>${dynamic-ds.version}</version>
-            </dependency>
-            <!-- sa-token 的依赖配置-->
-            <dependency>
-                <groupId>cn.dev33</groupId>
-                <artifactId>sa-token-spring-boot4-starter</artifactId>
-                <version>${sa-token.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>cn.dev33</groupId>
-                <artifactId>sa-token-jwt</artifactId>
-                <version>${sa-token.version}</version>
             </dependency>
             <!--redisson-->
             <dependency>
@@ -162,7 +177,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
-                <version>2.21</version>
+                <version>${jackson2.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -170,7 +185,14 @@
                 <version>${jackson2.version}</version>
             </dependency>
 
-            <!-- 项目依赖配置 -->
+            <!-- JavaDoc 运行时读取 -->
+            <dependency>
+                <groupId>com.github.therapi</groupId>
+                <artifactId>therapi-runtime-javadoc</artifactId>
+                <version>${therapi-javadoc.version}</version>
+            </dependency>
+
+            <!-- 项目依赖配置（本仓库模块的版本由根 POM 直接管理；v5ai-common-bom 仅供外部消费方使用）
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-common-core</artifactId>
@@ -191,6 +213,7 @@
                 <artifactId>v5ai-common-mybatis</artifactId>
                 <version>${revision}</version>
             </dependency>
+             -->
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-api</artifactId>
@@ -250,7 +273,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.14.0</version>
+                    <version>${maven-compiler-plugin.version}</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
                         <parameters>true</parameters>
@@ -271,5 +294,71 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${java.version}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.github.therapi</groupId>
+                            <artifactId>therapi-runtime-javadoc-scribe</artifactId>
+                            <version>${therapi-javadoc.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                            <version>${spring-boot.version}</version>
+                        </path>
+                        <path>
+                            <groupId>io.github.linpeilie</groupId>
+                            <artifactId>mapstruct-plus-processor</artifactId>
+                            <version>${mapstruct-plus.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>${mapstruct-plus.lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <!-- 统一版本号管理 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>${flatten-maven-plugin.version}</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>

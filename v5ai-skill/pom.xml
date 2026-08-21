@@ -4,7 +4,7 @@
     <parent>
         <groupId>xin.v5ai.nb</groupId>
         <artifactId>v5ai-nb</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
     <artifactId>v5ai-skill</artifactId>
     <dependencies>
