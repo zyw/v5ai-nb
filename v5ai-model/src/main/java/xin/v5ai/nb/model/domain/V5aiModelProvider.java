@@ -3,10 +3,13 @@ package xin.v5ai.nb.model.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -21,9 +24,11 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @ToString
+@EqualsAndHashCode(callSuper = true)
 @TableName("v5ai_model_provider")
-public class V5aiModelProvider implements Serializable {
+public class V5aiModelProvider extends BaseEntity implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -34,10 +39,6 @@ public class V5aiModelProvider implements Serializable {
     private String name;
 
     private Boolean enabled;
-
-    private LocalDateTime createdAt;
-
-    private LocalDateTime updatedAt;
 
     private String providerType;
 }

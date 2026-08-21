@@ -1,7 +1,8 @@
 package xin.v5ai.nb.model.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
 import xin.v5ai.nb.model.domain.V5aiModel;
+import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 
 /**
  * <p>
@@ -11,6 +12,6 @@ import xin.v5ai.nb.model.domain.V5aiModel;
  * @author ZYW
  * @since 2026-08-20
  */
-public interface V5aiModelMapper extends BaseMapper<V5aiModel> {
+public interface V5aiModelMapper extends BaseMapperPlus<V5aiModel, V5aiModelVo> {
 
 }

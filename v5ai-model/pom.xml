@@ -13,14 +13,15 @@
             <artifactId>v5ai-common-mybatis</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-web</artifactId>
         </dependency>
-        <!-- MyBatis Plus 启动器 -->
+
+        <!-- MyBatis Plus 启动器
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
-        </dependency>
+        </dependency> -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
