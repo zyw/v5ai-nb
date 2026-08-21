@@ -23,6 +23,8 @@
         <dynamic-ds.version>4.5.0</dynamic-ds.version>
         <!-- 安全认证与加密相关依赖版本 -->
         <satoken.version>1.45.0</satoken.version>
+        <bouncycastle.version>1.85</bouncycastle.version>
+
         <jackson2.version>2.19.2</jackson2.version>
         <redisson.version>4.6.1</redisson.version>
         <minio.version>8.5.17</minio.version>
@@ -190,6 +192,13 @@
                 <groupId>com.github.therapi</groupId>
                 <artifactId>therapi-runtime-javadoc</artifactId>
                 <version>${therapi-javadoc.version}</version>
+            </dependency>
+
+            <!-- 加密包引入 -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
 
             <!-- 项目依赖配置（本仓库模块的版本由根 POM 直接管理；v5ai-common-bom 仅供外部消费方使用）

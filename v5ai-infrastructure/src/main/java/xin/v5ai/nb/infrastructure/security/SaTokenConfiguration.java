@@ -4,7 +4,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import xin.v5ai.nb.model.CredentialCipher;
 
 @Configuration
 public class SaTokenConfiguration {
@@ -18,8 +17,8 @@ public class SaTokenConfiguration {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    CredentialCipher credentialCipher() {
-        return new AesCredentialCipher();
-    }
+//    @Bean
+//    CredentialCipher credentialCipher() {
+//        return new AesCredentialCipher();
+//    }
 }

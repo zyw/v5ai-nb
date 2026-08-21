@@ -62,12 +62,18 @@ public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
 
     @Override
     public Boolean updateByBo(ModelProviderBo bo) {
-        return null;
+        var existing = mapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
+                .eq(V5aiModelProvider::getProviderKey, bo.getProviderKey()));
+        if (existing == null) {
+            throw new IllegalArgumentException("provider does not exist: " + bo.getProviderKey());
+        }
+        V5aiModelProvider update = MapstructUtils.convert(bo, V5aiModelProvider.class);
+        return mapper.updateById(update) > 0;
     }
 
     @Override
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
-        return null;
+        return mapper.deleteByIds(ids) > 0;
     }
 
 

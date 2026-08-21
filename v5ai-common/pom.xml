@@ -17,5 +17,6 @@
         <module>v5ai-common-security</module>
         <module>v5ai-common-web</module>
         <module>v5ai-common-json</module>
+        <module>v5ai-common-encrypt</module>
     </modules>
 </project>
