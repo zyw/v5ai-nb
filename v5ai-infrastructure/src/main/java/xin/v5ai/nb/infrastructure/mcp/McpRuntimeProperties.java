@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * v5ai.mcp 配置项。
  *
- * @param stdioCommandWhitelist Stdio 命令白名单；为空表示开发模式不限制（生产环境必须配置）
+ * @param StdioCommandWhitelist Stdio 命令白名单；为空表示开发模式不限制（生产环境必须配置）
  */
 @ConfigurationProperties(prefix = "v5ai.mcp")
 public class McpRuntimeProperties {

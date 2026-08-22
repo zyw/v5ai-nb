@@ -1,6 +1,6 @@
 package xin.v5ai.nb.agent.controller;
 
-import xin.v5ai.nb.agent.GeneratedAgentConfig;
+import xin.v5ai.nb.common.agentscope.core.domain.GeneratedAgentConfig;
 
 import java.util.List;
 

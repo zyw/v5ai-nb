@@ -1,9 +1,5 @@
 package xin.v5ai.nb.agent.controller;
 
-import xin.v5ai.nb.agent.GeneratedAgentConfig;
-
-import java.util.List;
-
 /**
  * 新建智能体向导的配置生成请求体。
  *

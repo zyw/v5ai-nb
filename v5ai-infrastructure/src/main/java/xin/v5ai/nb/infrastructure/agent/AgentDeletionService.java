@@ -3,19 +3,18 @@ package xin.v5ai.nb.infrastructure.agent;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xin.v5ai.nb.agent.AgentDeletionPort;
 import xin.v5ai.nb.agent.domain.Agent;
 import xin.v5ai.nb.agent.domain.AgentVersion;
 import xin.v5ai.nb.agent.mapper.AgentMapper;
 import xin.v5ai.nb.agent.mapper.AgentVersionMapper;
+import xin.v5ai.nb.common.agentscope.core.AgentDeletionPort;
+import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.infrastructure.runtime.AgentStateMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeConversationMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeMessageMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeRunMapper;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
-import xin.v5ai.nb.mcp.domain.McpToolCallAudit;
 import xin.v5ai.nb.mcp.mapper.AgentMcpBindingMapper;
-import xin.v5ai.nb.mcp.mapper.McpToolCallAuditMapper;
 import xin.v5ai.nb.platform.domain.ApiKey;
 import xin.v5ai.nb.platform.domain.AppQuota;
 import xin.v5ai.nb.platform.domain.AppUsage;
@@ -49,7 +48,7 @@ public class AgentDeletionService implements AgentDeletionPort {
     private final AppQuotaMapper appQuotaMapper;
     private final AppUsageMapper appUsageMapper;
     private final ModelUsageMapper modelUsageMapper;
-    private final McpToolCallAuditMapper mcpToolCallAuditMapper;
+    private final McpToolCallAuditService mcpToolCallAuditService;
     private final RuntimeRunMapper runMapper;
     private final RuntimeMessageMapper messageMapper;
     private final RuntimeConversationMapper conversationMapper;
@@ -66,7 +65,7 @@ public class AgentDeletionService implements AgentDeletionPort {
             AppQuotaMapper appQuotaMapper,
             AppUsageMapper appUsageMapper,
             ModelUsageMapper modelUsageMapper,
-            McpToolCallAuditMapper mcpToolCallAuditMapper,
+            McpToolCallAuditService mcpToolCallAuditService,
             RuntimeRunMapper runMapper,
             RuntimeMessageMapper messageMapper,
             RuntimeConversationMapper conversationMapper,
@@ -82,7 +81,7 @@ public class AgentDeletionService implements AgentDeletionPort {
         this.appQuotaMapper = appQuotaMapper;
         this.appUsageMapper = appUsageMapper;
         this.modelUsageMapper = modelUsageMapper;
-        this.mcpToolCallAuditMapper = mcpToolCallAuditMapper;
+        this.mcpToolCallAuditService = mcpToolCallAuditService;
         this.runMapper = runMapper;
         this.messageMapper = messageMapper;
         this.conversationMapper = conversationMapper;

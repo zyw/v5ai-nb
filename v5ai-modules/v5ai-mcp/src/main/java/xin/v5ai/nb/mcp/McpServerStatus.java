@@ -1,6 +1,6 @@
-package xin.v5ai.nb.mcp;
-
-public enum McpServerStatus {
-    ACTIVE,
-    DISABLED
-}
+//package xin.v5ai.nb.mcp;
+//
+//public enum McpServerStatus {
+//    ACTIVE,
+//    DISABLED
+//}

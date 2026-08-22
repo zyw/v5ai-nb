@@ -3,7 +3,7 @@ package xin.v5ai.nb.infrastructure.mcp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.mcp.StdioCommandPolicy;
+import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
 
 import java.util.List;
 

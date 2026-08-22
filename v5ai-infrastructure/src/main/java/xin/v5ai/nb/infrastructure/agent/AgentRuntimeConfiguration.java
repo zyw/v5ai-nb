@@ -7,16 +7,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import xin.v5ai.nb.agent.Agent;
-import xin.v5ai.nb.agent.AgentRepository;
-import xin.v5ai.nb.agent.AgentStatus;
-import xin.v5ai.nb.agent.AgentVersion;
-import xin.v5ai.nb.agent.PublishedAgentResolver;
+import xin.v5ai.nb.common.agentscope.core.PublishedAgentResolver;
+import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentVersion;
+import xin.v5ai.nb.common.agentscope.core.service.AgentService;
+import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
 
 @Configuration
 public class AgentRuntimeConfiguration {
     @Bean
-    AgentRepository agentRepository(
+    AgentService agentService(
             @Value("${v5ai.runtime.dev-app-key:demo}") String agentKey
     ) {
         var repository = new InMemoryAgentRepository();
@@ -25,11 +25,11 @@ public class AgentRuntimeConfiguration {
     }
 
     @Bean
-    PublishedAgentResolver publishedAgentResolver(AgentRepository agentRepository) {
+    PublishedAgentResolver publishedAgentResolver(AgentService agentRepository) {
         return new PublishedAgentResolver(agentRepository);
     }
 
-    private static final class InMemoryAgentRepository implements AgentRepository {
+    private static final class InMemoryAgentRepository implements AgentService {
         private final Map<String, Agent> agents = new ConcurrentHashMap<>();
         private final List<AgentVersion> versions = new ArrayList<>();
 

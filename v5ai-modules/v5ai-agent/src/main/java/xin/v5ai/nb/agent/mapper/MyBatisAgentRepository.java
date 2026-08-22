@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.agent.AgentDeletionPort;
+import xin.v5ai.nb.common.agentscope.core.AgentDeletionPort;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentVersion;
 import xin.v5ai.nb.common.agentscope.core.service.AgentService;

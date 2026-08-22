@@ -5,9 +5,9 @@ import io.agentscope.core.tool.mcp.McpTool;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import xin.v5ai.nb.mcp.McpConnection;
-import xin.v5ai.nb.mcp.McpToolCallResult;
-import xin.v5ai.nb.mcp.McpToolInfo;
+import xin.v5ai.nb.common.agentscope.core.McpConnection;
+import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallResult;
+import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
 
 import java.util.Collections;
 import java.util.List;

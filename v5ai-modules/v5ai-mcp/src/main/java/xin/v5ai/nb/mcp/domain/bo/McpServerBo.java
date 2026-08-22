@@ -4,8 +4,8 @@ import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
 import xin.v5ai.nb.common.core.validate.EditGroup;
-import xin.v5ai.nb.mcp.McpTransportType;
 import xin.v5ai.nb.mcp.domain.McpServer;
 
 import java.util.List;

@@ -2,14 +2,19 @@ package xin.v5ai.nb.infrastructure.mcp;
 
 import io.agentscope.core.tool.mcp.McpClientBuilder;
 import io.agentscope.core.tool.mcp.McpClientWrapper;
-import io.modelcontextprotocol.server.McpServer;
 import org.springframework.stereotype.Component;
+import xin.v5ai.nb.common.agentscope.core.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
+import xin.v5ai.nb.common.agentscope.core.McpJsonCodec;
 import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
+import xin.v5ai.nb.common.agentscope.core.domain.McpServerDTO;
+import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 
 import java.time.Duration;
 import java.util.Map;
+
+import static xin.v5ai.nb.common.agentscope.enums.McpTransportType.STREAMABLE_HTTP;
 
 /**
  * 基于 AgentScope {@link McpClientBuilder} 的连接工厂：
@@ -27,7 +32,7 @@ public class AgentScopeMcpClientFactory implements McpClientFactory {
     }
 
     @Override
-    public McpConnection connect(McpServer server) {
+    public McpConnection connect(McpServerDTO server) {
         var builder = McpClientBuilder.create(server.getName());
         var timeout = Duration.ofSeconds(server.getTimeoutSeconds() == null ? 30 : server.getTimeoutSeconds());
         switch (McpTransportType.valueOf(server.getTransportType())) {
