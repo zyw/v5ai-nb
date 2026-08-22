@@ -5,21 +5,30 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import xin.v5ai.nb.infrastructure.apiKey.ApiKeyEntity;
-import xin.v5ai.nb.infrastructure.agent.AgentEntity;
-import xin.v5ai.nb.infrastructure.agent.AgentVersionEntity;
-import xin.v5ai.nb.infrastructure.auth.UserEntity;
-import xin.v5ai.nb.model.domain.V5aiModel;
-import xin.v5ai.nb.model.domain.V5aiModelProvider;
-import xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingEntity;
-import xin.v5ai.nb.infrastructure.rag.KnowledgeBaseEntity;
-import xin.v5ai.nb.infrastructure.rag.KnowledgeDocumentEntity;
-import xin.v5ai.nb.infrastructure.rag.KnowledgeTaskEntity;
+import xin.v5ai.nb.agent.domain.Agent;
+import xin.v5ai.nb.agent.domain.AgentVersion;
 import xin.v5ai.nb.infrastructure.runtime.AgentStateEntity;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeConversationEntity;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeMessageEntity;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeRunEntity;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeRunEventEntity;
+import xin.v5ai.nb.model.domain.V5aiModel;
+import xin.v5ai.nb.model.domain.V5aiModelProvider;
+import xin.v5ai.nb.platform.domain.ApiKey;
+import xin.v5ai.nb.platform.domain.AppQuota;
+import xin.v5ai.nb.platform.domain.AppUsage;
+import xin.v5ai.nb.platform.domain.AuditLog;
+import xin.v5ai.nb.platform.domain.Menu;
+import xin.v5ai.nb.platform.domain.ModelUsage;
+import xin.v5ai.nb.platform.domain.Role;
+import xin.v5ai.nb.platform.domain.RoleMenu;
+import xin.v5ai.nb.platform.domain.Tenant;
+import xin.v5ai.nb.platform.domain.User;
+import xin.v5ai.nb.platform.domain.UserRole;
+import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
+import xin.v5ai.nb.rag.domain.KnowledgeBase;
+import xin.v5ai.nb.rag.domain.KnowledgeDocument;
+import xin.v5ai.nb.rag.domain.KnowledgeTask;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -152,21 +161,30 @@ class SchemaConsistencyTest {
 
     private List<Class<?>> entityTypes() {
         return List.of(
-                UserEntity.class,
-                ApiKeyEntity.class,
+                User.class,
+                ApiKey.class,
+                Tenant.class,
+                Role.class,
+                Menu.class,
+                AppQuota.class,
+                AppUsage.class,
+                ModelUsage.class,
+                AuditLog.class,
+                UserRole.class,
+                RoleMenu.class,
                 V5aiModelProvider.class,
                 V5aiModel.class,
-                AgentEntity.class,
-                AgentVersionEntity.class,
+                Agent.class,
+                AgentVersion.class,
                 RuntimeConversationEntity.class,
                 RuntimeMessageEntity.class,
                 RuntimeRunEntity.class,
                 RuntimeRunEventEntity.class,
                 AgentStateEntity.class,
-                KnowledgeBaseEntity.class,
-                KnowledgeDocumentEntity.class,
-                KnowledgeTaskEntity.class,
-                AgentKnowledgeBindingEntity.class,
+                KnowledgeBase.class,
+                KnowledgeDocument.class,
+                KnowledgeTask.class,
+                AgentKnowledgeBinding.class,
                 xin.v5ai.nb.skill.domain.Skill.class,
                 xin.v5ai.nb.skill.domain.SkillVersion.class,
                 xin.v5ai.nb.skill.domain.SkillFile.class,
@@ -174,7 +192,10 @@ class SchemaConsistencyTest {
                 xin.v5ai.nb.mcp.domain.McpServer.class,
                 xin.v5ai.nb.mcp.domain.McpTool.class,
                 xin.v5ai.nb.mcp.domain.McpToolCallAudit.class,
-                xin.v5ai.nb.mcp.domain.AgentMcpBinding.class
+                xin.v5ai.nb.mcp.domain.AgentMcpBinding.class,
+                xin.v5ai.nb.workflow.domain.Workflow.class,
+                xin.v5ai.nb.workflow.domain.WorkflowRun.class,
+                xin.v5ai.nb.workflow.domain.WorkflowNodeRun.class
         );
     }
 

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
-import xin.v5ai.nb.rag.KnowledgeBaseRepository;
+import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
 import xin.v5ai.nb.skill.mapper.SkillMapper;
 
 import java.time.LocalDate;
@@ -21,18 +21,18 @@ public class StatsController {
     private final JdbcTemplate jdbcTemplate;
     private final AgentRepository agentRepository;
     private final V5aiModelMapper modelMapper;
-    private final KnowledgeBaseRepository knowledgeBaseRepository;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final SkillMapper skillMapper;
 
     public StatsController(JdbcTemplate jdbcTemplate,
                            AgentRepository agentRepository,
                            V5aiModelMapper modelMapper,
-                           KnowledgeBaseRepository knowledgeBaseRepository,
+                           KnowledgeBaseMapper knowledgeBaseMapper,
                            SkillMapper skillMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.agentRepository = agentRepository;
         this.modelMapper = modelMapper;
-        this.knowledgeBaseRepository = knowledgeBaseRepository;
+        this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.skillMapper = skillMapper;
     }
 
@@ -55,7 +55,7 @@ public class StatsController {
         return R.ok(new OverviewResponse(
                 agentRepository.list().size(),
                 modelMapper.selectCount(null),
-                knowledgeBaseRepository.list().size(),
+                knowledgeBaseMapper.selectCount(null),
                 skillMapper.selectCount(null),
                 count("SELECT count(*) FROM v5ai_run"),
                 count("SELECT count(*) FROM v5ai_run WHERE started_at::date = ?", today),

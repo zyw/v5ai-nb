@@ -1,0 +1,99 @@
+package xin.v5ai.nb.agent.domain.bo;
+
+import io.github.linpeilie.annotations.AutoMapper;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import xin.v5ai.nb.agent.domain.Agent;
+import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.core.validate.EditGroup;
+
+/**
+ * Agent 请求体（创建/更新/查询）。
+ *
+ * @author ZYW
+ * @since 2026-08-22
+ */
+@Data
+@AutoMapper(target = Agent.class, reverseConvertGenerate = false)
+public class AgentBo {
+
+    /**
+     * 主键，编辑时必填
+     */
+    @NotNull(message = "主键不能为空", groups = {EditGroup.class})
+    private Long id;
+
+    /**
+     * 对外运行标识（创建时必填）
+     */
+    @NotBlank(message = "agent key is required", groups = {AddGroup.class})
+    private String agentKey;
+
+    /**
+     * 名称
+     */
+    @NotBlank(message = "agent name is required")
+    private String name;
+
+    /**
+     * 描述
+     */
+    private String description;
+
+    /**
+     * 绑定的模型 ID
+     */
+    @NotNull(message = "model is required")
+    private Long modelId;
+
+    /**
+     * 系统提示词
+     */
+    private String systemPrompt;
+
+    /**
+     * 头像 URL
+     */
+    private String avatar;
+
+    /**
+     * 欢迎语
+     */
+    private String greeting;
+
+    /**
+     * 预设问题列表（JSON 数组字符串）
+     */
+    private String presetQuestions;
+
+    /**
+     * 是否启用记忆库
+     */
+    private Boolean memoryEnabled;
+
+    /**
+     * 是否启用 MCP
+     */
+    private Boolean mcpEnabled;
+
+    /**
+     * 是否启用 Skill
+     */
+    private Boolean skillEnabled;
+
+    /**
+     * 是否启用联网搜索
+     */
+    private Boolean webSearchEnabled;
+
+    /**
+     * 是否启用 RAG
+     */
+    private Boolean ragEnabled;
+
+    /**
+     * 启用状态（查询条件：DRAFT / PUBLISHED / DISABLED）
+     */
+    private String status;
+}

@@ -1,0 +1,104 @@
+package xin.v5ai.nb.agent.domain;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
+
+/**
+ * <p>
+ * Agent 实体（v5ai_agent）：agentKey 全局唯一，status 为 DRAFT/PUBLISHED/DISABLED。
+ * </p>
+ *
+ * @author ZYW
+ * @since 2026-08-22
+ */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode(callSuper = true)
+@TableName("v5ai_agent")
+public class Agent extends BaseEntity {
+
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
+    /**
+     * 对外运行标识（全局唯一，运行时通过 agentKey 解析 Agent）
+     */
+    private String agentKey;
+
+    /**
+     * 名称
+     */
+    private String name;
+
+    /**
+     * 描述
+     */
+    private String description;
+
+    /**
+     * 状态（DRAFT / PUBLISHED / DISABLED）
+     */
+    private String status;
+
+    /**
+     * 绑定的模型 ID
+     */
+    private Long modelId;
+
+    /**
+     * 当前生效的已发布版本号（未发布为 null）
+     */
+    private Long publishedVersion;
+
+    /**
+     * 系统提示词（随发布版本固化）
+     */
+    private String systemPrompt;
+
+    /**
+     * 头像 URL
+     */
+    private String avatar;
+
+    /**
+     * 欢迎语
+     */
+    private String greeting;
+
+    /**
+     * 预设问题列表（JSON 数组字符串）
+     */
+    private String presetQuestions;
+
+    /**
+     * 是否启用记忆库
+     */
+    private Boolean memoryEnabled;
+
+    /**
+     * 是否启用 MCP
+     */
+    private Boolean mcpEnabled;
+
+    /**
+     * 是否启用 Skill
+     */
+    private Boolean skillEnabled;
+
+    /**
+     * 是否启用联网搜索
+     */
+    private Boolean webSearchEnabled;
+
+    /**
+     * 是否启用 RAG
+     */
+    private Boolean ragEnabled;
+}

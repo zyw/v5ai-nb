@@ -6,7 +6,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.api.apiKey.AgentApiKeyAuthenticationFilter;
+import xin.v5ai.nb.platform.apiKey.AgentApiKeyAuthenticationFilter;
 import xin.v5ai.nb.runtime.AgentRunRequest;
 import xin.v5ai.nb.runtime.AgentRunResult;
 import xin.v5ai.nb.runtime.AgentRuntime;

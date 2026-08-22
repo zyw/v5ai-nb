@@ -8,12 +8,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import xin.v5ai.nb.agent.AgentManagementService;
-import xin.v5ai.nb.api.agent.AgentController;
-import xin.v5ai.nb.api.auth.AuthController;
+import xin.v5ai.nb.agent.controller.AgentController;
+import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.api.runtime.ChatController;
 import xin.v5ai.nb.model.controller.V5aiModelController;
 import xin.v5ai.nb.model.controller.V5aiModelProviderController;
+import xin.v5ai.nb.platform.auth.AuthController;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,6 +66,6 @@ class V5aiApplicationContextTest {
         assertThat(applicationContext.getBean(V5aiModelProviderController.class)).isNotNull();
         assertThat(applicationContext.getBean(AgentController.class)).isNotNull();
         assertThat(applicationContext.getBean(ChatController.class)).isNotNull();
-        assertThat(applicationContext.getBean(AgentManagementService.class)).isNotNull();
+        assertThat(applicationContext.getBean(IAgentService.class)).isNotNull();
     }
 }
