@@ -1,5 +1,8 @@
 package xin.v5ai.nb.mcp;
 
+import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
+import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
+
 /**
  * Tool 权限策略：发现 Tool 时决定默认权限。
  * 只读 Tool 默认 ALLOW，可写 Tool 默认 APPROVE（需人工审批，运行时先发事件再放行）。

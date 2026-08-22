@@ -1,4 +1,4 @@
-package xin.v5ai.nb.infrastructure.storage;
+package xin.v5ai.nb.common.storage.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

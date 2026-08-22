@@ -38,7 +38,7 @@ Repository、Configuration）从未被注册：应用能启动但没有任何 AP
    支持 RAG 上下文注入）；保留 HarnessAgent 占位路径。
 7. **会话历史与恢复**：`MessageRepository.findByConversationId`、`GET /api/v1/agents/{agentKey}/conversations/{id}`；
    `POST /api/v1/agents/{agentKey}/conversations/{id}/resume`（带历史上下文重跑并持久化）。
-8. **AgentState 持久化**：`AgentStateRepository`（save/load）+ MyBatis 适配（`v5ai_agent_state`）+ 测试。
+8. **AgentState 持久化**：`AgentStateService`（save/load）+ MyBatis 适配（`v5ai_agent_state`）+ 测试。
 9. **API Key 存储升级**：`MyBatisApplicationApiKeyStore`（读 `v5ai_api_key` 表）替换开发期配置存储；
    `POST /api/admin/agents/{agentKey}/api-keys`（生成并 BCrypt 存哈希）、`GET/DELETE`。
 

@@ -1,6 +1,6 @@
 package xin.v5ai.nb.mcp.controller;
 
-import xin.v5ai.nb.mcp.McpToolPermission;
+import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 
 /**
  * MCP Tool 权限调整请求体。

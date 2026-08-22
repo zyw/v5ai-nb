@@ -6,20 +6,22 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xin.v5ai.nb.common.agentscope.core.McpClientFactory;
+import xin.v5ai.nb.common.agentscope.core.McpConnection;
+import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
+import xin.v5ai.nb.common.agentscope.core.domain.McpServerDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
+import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
-import xin.v5ai.nb.mcp.McpClientFactory;
-import xin.v5ai.nb.mcp.McpConnection;
 import xin.v5ai.nb.mcp.McpConnectionTestResult;
 import xin.v5ai.nb.mcp.McpJsonCodec;
-import xin.v5ai.nb.mcp.McpToolInfo;
-import xin.v5ai.nb.mcp.McpToolPermission;
 import xin.v5ai.nb.mcp.McpToolPermissionPolicy;
 import xin.v5ai.nb.mcp.McpTransportType;
-import xin.v5ai.nb.mcp.StdioCommandPolicy;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 import xin.v5ai.nb.mcp.domain.McpServer;
 import xin.v5ai.nb.mcp.domain.McpTool;
@@ -156,7 +158,7 @@ public class McpServerServiceImpl implements IMcpServerService {
     @Override
     public McpConnectionTestResult testConnection(Long serverId) {
         var server = requireServer(serverId);
-        try (McpConnection connection = clientFactory.connect(server)) {
+        try (McpConnection connection = clientFactory.connect(MapstructUtils.convert(server, McpServerDTO.class))) {
             var tools = connection.listTools();
             recordLastTest(serverId, "ok", "connection ok, discovered " + tools.size() + " tools");
             return McpConnectionTestResult.success(tools.size());
@@ -171,7 +173,7 @@ public class McpServerServiceImpl implements IMcpServerService {
     @Transactional(rollbackFor = Exception.class)
     public List<McpToolVo> discoverTools(Long serverId) {
         var server = requireServer(serverId);
-        try (McpConnection connection = clientFactory.connect(server)) {
+        try (McpConnection connection = clientFactory.connect(MapstructUtils.convert(server, McpServerDTO.class))) {
             var infos = connection.listTools();
             for (McpToolInfo info : infos) {
                 upsertTool(serverId, info);

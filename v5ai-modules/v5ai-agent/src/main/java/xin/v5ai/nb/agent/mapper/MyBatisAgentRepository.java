@@ -5,16 +5,16 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.agent.Agent;
 import xin.v5ai.nb.agent.AgentDeletionPort;
-import xin.v5ai.nb.agent.AgentRepository;
-import xin.v5ai.nb.agent.AgentStatus;
-import xin.v5ai.nb.agent.AgentVersion;
+import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentVersion;
+import xin.v5ai.nb.common.agentscope.core.service.AgentService;
+import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
 
 import java.util.List;
 
 /**
- * {@link AgentRepository} 的 MyBatis-Plus 实现（运行时 Agent 解析与管理读写）。
+ * {@link AgentService} 的 MyBatis-Plus 实现（运行时 Agent 解析与管理读写）。
  * 通过 {@link AgentDeletionPort} 委托跨模块级联删除（由 v5ai-infrastructure 实现）。
  *
  * @author ZYW
@@ -22,7 +22,7 @@ import java.util.List;
  */
 @Primary
 @Repository
-public class MyBatisAgentRepository implements AgentRepository {
+public class MyBatisAgentRepository implements AgentService {
 
     private final AgentMapper agentMapper;
     private final AgentVersionMapper versionMapper;

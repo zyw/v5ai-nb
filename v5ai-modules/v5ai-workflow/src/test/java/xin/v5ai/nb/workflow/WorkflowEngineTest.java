@@ -3,9 +3,10 @@ package xin.v5ai.nb.workflow;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.AgentRunResult;
-import xin.v5ai.nb.runtime.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
+import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -211,7 +212,7 @@ class WorkflowEngineTest {
         final List<AgentRunRequest> requests = new ArrayList<>();
 
         @Override
-        public Flux<xin.v5ai.nb.runtime.RuntimeEvent> stream(AgentRunRequest request) {
+        public Flux<RuntimeEvent> stream(AgentRunRequest request) {
             return Flux.empty();
         }
 

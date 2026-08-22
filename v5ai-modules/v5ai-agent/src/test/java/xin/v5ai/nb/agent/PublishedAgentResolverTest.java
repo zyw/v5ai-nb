@@ -1,6 +1,12 @@
 package xin.v5ai.nb.agent;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.agentscope.core.PublishedAgentResolver;
+import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentVersion;
+import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
+import xin.v5ai.nb.common.agentscope.core.service.AgentService;
+import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +49,7 @@ class PublishedAgentResolverTest {
                 .hasMessageContaining("does not exist");
     }
 
-    private static final class InMemoryAgentRepository implements AgentRepository {
+    private static final class InMemoryAgentRepository implements AgentService {
         private final List<Agent> agents = new ArrayList<>();
 
         @Override

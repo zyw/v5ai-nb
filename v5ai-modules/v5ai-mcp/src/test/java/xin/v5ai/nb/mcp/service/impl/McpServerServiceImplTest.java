@@ -3,14 +3,15 @@ package xin.v5ai.nb.mcp.service.impl;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.agentscope.core.McpClientFactory;
+import xin.v5ai.nb.common.agentscope.core.McpConnection;
+import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
+import xin.v5ai.nb.common.agentscope.core.domain.McpServerDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallResult;
+import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
+import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
-import xin.v5ai.nb.mcp.McpClientFactory;
-import xin.v5ai.nb.mcp.McpConnection;
-import xin.v5ai.nb.mcp.McpToolCallResult;
-import xin.v5ai.nb.mcp.McpToolInfo;
-import xin.v5ai.nb.mcp.McpToolPermission;
 import xin.v5ai.nb.mcp.McpTransportType;
-import xin.v5ai.nb.mcp.StdioCommandPolicy;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 import xin.v5ai.nb.mcp.domain.McpServer;
 import xin.v5ai.nb.mcp.domain.McpTool;
@@ -30,9 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class McpServerServiceImplTest {
 
@@ -243,7 +242,7 @@ class McpServerServiceImplTest {
 
     private static final class FakeClientFactory implements McpClientFactory {
         @Override
-        public McpConnection connect(McpServer server) {
+        public McpConnection connect(McpServerDTO server) {
             return new FakeConnection();
         }
     }

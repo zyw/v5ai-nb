@@ -2,22 +2,22 @@ package xin.v5ai.nb.mcp.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.mcp.McpToolCallAudit;
-import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
-import xin.v5ai.nb.mcp.McpToolCallStatus;
-import xin.v5ai.nb.mcp.McpToolPermission;
+import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallAudit;
+import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
+import xin.v5ai.nb.common.agentscope.enums.McpToolCallStatus;
+import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 
 import java.time.Instant;
 import java.util.List;
 
 /**
- * {@link McpToolCallAuditRepository} 的 MyBatis-Plus 实现（运行时审计写入与查询）。
+ * {@link McpToolCallAuditService} 的 MyBatis-Plus 实现（运行时审计写入与查询）。
  *
  * @author ZYW
  * @since 2026-08-22
  */
 @Repository
-public class MyBatisMcpToolCallAuditRepository implements McpToolCallAuditRepository {
+public class MyBatisMcpToolCallAuditRepository implements McpToolCallAuditService {
 
     private final McpToolCallAuditMapper auditMapper;
 

@@ -46,7 +46,7 @@
     <modules>
         <module>v5ai-common</module>
         <module>v5ai-infrastructure</module>
-        <module>v5ai-runtime</module>
+<!--        <module>v5ai-runtime</module>-->
         <module>v5ai-api</module>
         <module>v5ai-starter</module>
         <module>v5ai-modules</module>
@@ -215,11 +215,11 @@
                 <artifactId>v5ai-model</artifactId>
                 <version>${revision}</version>
             </dependency>
-            <dependency>
-                <groupId>xin.v5ai.nb</groupId>
-                <artifactId>v5ai-runtime</artifactId>
-                <version>${revision}</version>
-            </dependency>
+<!--            <dependency>-->
+<!--                <groupId>xin.v5ai.nb</groupId>-->
+<!--                <artifactId>v5ai-runtime</artifactId>-->
+<!--                <version>${revision}</version>-->
+<!--            </dependency>-->
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-rag</artifactId>

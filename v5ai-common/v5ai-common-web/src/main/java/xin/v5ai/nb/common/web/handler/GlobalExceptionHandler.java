@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.json.JsonParseException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.expression.ExpressionException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
@@ -234,6 +236,25 @@ public class GlobalExceptionHandler {
     public R<Void> handleSpelException(ExpressionException e, HttpServletRequest request) {
         log.error("请求地址'{}'，SpEL解析异常: {}", request.getRequestURI(), e.getMessage());
         return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, "SpEL解析失败：" + e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public R<Void> handleIllegalArgument(IllegalArgumentException exception, HttpServletRequest request) {
+        return R.fail(ErrorCode.INVALID_ARGUMENT.getCode(), exception.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public R<Void> handleDataIntegrityViolation(DataIntegrityViolationException exception, HttpServletRequest request) {
+        log.warn("数据完整性冲突（外键/唯一约束）: {}", exception.getMessage());
+        return R.fail(ErrorCode.CONFLICT.getCode(),
+                        "record is referenced by other data and cannot be deleted");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public R<Void> handleMaxUploadSize(MaxUploadSizeExceededException exception, HttpServletRequest request) {
+        log.warn("上传文件超出大小限制: {}", exception.getMessage());
+        return R.fail(ErrorCode.INVALID_ARGUMENT.getCode(),
+                        "uploaded file exceeds the configured size limit (max-file-size/request-size)");
     }
 
 }

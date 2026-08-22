@@ -1,8 +1,8 @@
 package xin.v5ai.nb.workflow;
 
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 
 import java.time.Instant;
 import java.util.ArrayList;

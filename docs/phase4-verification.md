@@ -38,7 +38,7 @@ cd v5ai-ui && npx vue-tsc --noEmit
 
 - `ModelStreamTextExecutor` 扩展：无 MCP/Skill 走轻量路径；有任一扩展走 HarnessAgent 路径；
 - Workspace 注入：把当前发布版本文件写入 `<workspace>/skills/<name>/`；
-- `ResolvedSkillAgentSkillRepository`：平台已发布 Skill 到 AgentScope `AgentSkillRepository`
+- `ResolvedSkillAgentSkillService`：平台已发布 Skill 到 AgentScope `AgentSkillRepository`
   的只读适配（经 `SkillUtil.createFrom` 构建），作为唯一技能来源注册进 HarnessAgent，
   `HarnessSkillMiddleware` 注入 `<available_skills>` 到系统提示；无 Skill 时保持原有
   disableDynamicSkills/disableDefaultWorkspaceSkills 行为。

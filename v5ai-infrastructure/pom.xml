@@ -22,12 +22,16 @@
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-model</artifactId>
+            <artifactId>v5ai-common-agentscope</artifactId>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-runtime</artifactId>
+            <artifactId>v5ai-model</artifactId>
         </dependency>
+        <!--<dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-runtime</artifactId>
+        </dependency>-->
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-rag</artifactId>

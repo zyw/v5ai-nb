@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.agent.AgentPublishException;
 import xin.v5ai.nb.agent.domain.Agent;
 import xin.v5ai.nb.agent.domain.AgentVersion;
 import xin.v5ai.nb.agent.domain.bo.AgentBo;
@@ -12,6 +11,7 @@ import xin.v5ai.nb.agent.domain.vo.AgentVersionVo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.mapper.AgentMapper;
 import xin.v5ai.nb.agent.mapper.AgentVersionMapper;
+import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
 import xin.v5ai.nb.common.core.page.PageQuery;
 
 import java.util.ArrayList;

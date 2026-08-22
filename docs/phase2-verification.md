@@ -33,7 +33,7 @@ cd v5ai-ui && npm run build
   失败时发 `RUN_FAILED` 并落 `v5ai_run` FAILED 状态，完成时发 `MESSAGE_COMPLETED` 并保存 AgentState。
 - **会话历史与恢复**：`MessageRepository.findByConversationId`（v5ai_message 增加 agent_key 列）、
   `GET /api/v1/agents/{agentKey}/chat/conversations/{id}`、`POST .../resume`（历史上下文重跑）。
-- **AgentState 持久化**：`AgentStateRepository` + MyBatis 适配（`v5ai_agent_state` upsert/load）。
+- **AgentState 持久化**：`AgentStateService` + MyBatis 适配（`v5ai_agent_state` upsert/load）。
 - **API Key 存储升级**：`MyBatisApplicationApiKeyStore`（读 `v5ai_api_key` 表）替换开发期配置存储，
   新增 `POST /api/admin/agents/{agentKey}/api-keys`（生成并 BCrypt 存储）、`GET/DELETE`。
 

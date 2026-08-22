@@ -2,14 +2,11 @@ package xin.v5ai.nb.infrastructure.mcp;
 
 import io.agentscope.core.tool.mcp.McpClientBuilder;
 import io.agentscope.core.tool.mcp.McpClientWrapper;
+import io.modelcontextprotocol.server.McpServer;
 import org.springframework.stereotype.Component;
+import xin.v5ai.nb.common.agentscope.core.McpConnection;
+import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
-import xin.v5ai.nb.mcp.McpClientFactory;
-import xin.v5ai.nb.mcp.McpConnection;
-import xin.v5ai.nb.mcp.McpJsonCodec;
-import xin.v5ai.nb.mcp.McpTransportType;
-import xin.v5ai.nb.mcp.StdioCommandPolicy;
-import xin.v5ai.nb.mcp.domain.McpServer;
 
 import java.time.Duration;
 import java.util.Map;
