@@ -9,6 +9,8 @@ export interface ProviderResponse {
   name: string
   providerType: string
   enabled: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface CreateProviderRequest {
@@ -19,6 +21,7 @@ export interface CreateProviderRequest {
 }
 
 export interface UpdateProviderRequest {
+  id: number
   name: string
   providerType: string
   enabled: boolean
@@ -26,25 +29,33 @@ export interface UpdateProviderRequest {
 
 export interface ModelResponse {
   id: number
-  providerKey: string
+  providerId: number
   modelKey: string
-  type: string
-  credentialsCiphertext: string
+  modelType: string
+  endpoint?: string | null
+  credentialsCiphertext?: string
   enabled: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface CreateModelRequest {
   providerKey: string
   modelKey: string
   type: string
+  endpoint?: string
+  enabled?: boolean
   credentials: string
 }
 
 export interface UpdateModelRequest {
+  id: number
+  providerKey?: string
   modelKey: string
   type: string
+  endpoint?: string
+  enabled?: boolean
   credentials?: string
-  enabled: boolean
 }
 
 export interface TestConnectionResponse {
@@ -286,15 +297,15 @@ export function createProvider(adminToken: string, request: CreateProviderReques
   }, adminToken)
 }
 
-export function updateProvider(adminToken: string, providerKey: string, request: UpdateProviderRequest): Promise<ProviderResponse> {
-  return requestJson<ProviderResponse>(`/api/admin/providers/${encodeURIComponent(providerKey)}`, {
+export function updateProvider(adminToken: string, request: UpdateProviderRequest): Promise<ProviderResponse> {
+  return requestJson<ProviderResponse>('/api/admin/providers', {
     method: 'PUT',
     body: JSON.stringify(request)
   }, adminToken)
 }
 
-export function deleteProvider(adminToken: string, providerKey: string): Promise<void> {
-  return requestJson<void>(`/api/admin/providers/${encodeURIComponent(providerKey)}`, {
+export function deleteProvider(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/providers/${ids.join(',')}`, {
     method: 'DELETE'
   }, adminToken)
 }
@@ -312,8 +323,8 @@ export function createModel(adminToken: string, request: CreateModelRequest): Pr
   }, adminToken)
 }
 
-export function updateModel(adminToken: string, id: number, request: UpdateModelRequest): Promise<ModelResponse> {
-  return requestJson<ModelResponse>(`/api/admin/models/${id}`, {
+export function updateModel(adminToken: string, request: UpdateModelRequest): Promise<ModelResponse> {
+  return requestJson<ModelResponse>('/api/admin/models', {
     method: 'PUT',
     body: JSON.stringify(request)
   }, adminToken)

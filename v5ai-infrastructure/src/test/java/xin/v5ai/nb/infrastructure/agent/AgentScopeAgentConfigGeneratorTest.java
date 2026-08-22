@@ -8,10 +8,10 @@ import io.agentscope.core.model.Model;
 import io.agentscope.core.model.ToolSchema;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfig;
-import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.infrastructure.runtime.AgentScopeModelFactory;
-import xin.v5ai.nb.model.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.model.runtime.AgentScopeModelFactory;
+import xin.v5ai.nb.model.runtime.config.ModelRuntimeConfig;
 
 import java.time.Duration;
 import java.util.List;

@@ -3,11 +3,13 @@ package xin.v5ai.nb.infrastructure.mcp;
 import io.agentscope.core.tool.mcp.McpClientBuilder;
 import io.agentscope.core.tool.mcp.McpClientWrapper;
 import org.springframework.stereotype.Component;
+import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.mcp.McpClientFactory;
 import xin.v5ai.nb.mcp.McpConnection;
-import xin.v5ai.nb.mcp.McpServer;
+import xin.v5ai.nb.mcp.McpJsonCodec;
 import xin.v5ai.nb.mcp.McpTransportType;
 import xin.v5ai.nb.mcp.StdioCommandPolicy;
+import xin.v5ai.nb.mcp.domain.McpServer;
 
 import java.time.Duration;
 import java.util.Map;
@@ -15,39 +17,51 @@ import java.util.Map;
 /**
  * 基于 AgentScope {@link McpClientBuilder} 的连接工厂：
  * 支持 Streamable HTTP / SSE / Stdio 三种传输，Stdio 命令受 {@link StdioCommandPolicy} 约束。
+ * headers/env 以密文落库，连接前在此解密还原。
  */
 @Component
 public class AgentScopeMcpClientFactory implements McpClientFactory {
     private final StdioCommandPolicy stdioCommandPolicy;
+    private final CredentialCipher cipher;
 
-    public AgentScopeMcpClientFactory(StdioCommandPolicy stdioCommandPolicy) {
+    public AgentScopeMcpClientFactory(StdioCommandPolicy stdioCommandPolicy, CredentialCipher cipher) {
         this.stdioCommandPolicy = stdioCommandPolicy;
+        this.cipher = cipher;
     }
 
     @Override
     public McpConnection connect(McpServer server) {
-        var builder = McpClientBuilder.create(server.name());
-        var timeout = Duration.ofSeconds(server.timeoutSeconds() == null ? 30 : server.timeoutSeconds());
-        switch (server.transportType()) {
+        var builder = McpClientBuilder.create(server.getName());
+        var timeout = Duration.ofSeconds(server.getTimeoutSeconds() == null ? 30 : server.getTimeoutSeconds());
+        switch (McpTransportType.valueOf(server.getTransportType())) {
             case STREAMABLE_HTTP -> {
-                builder.streamableHttpTransport(server.endpoint());
-                applyHeaders(builder, server.headers());
+                builder.streamableHttpTransport(server.getEndpoint());
+                applyHeaders(builder, decryptMap(server.getHeadersCiphertext()));
             }
             case SSE -> {
-                builder.sseTransport(server.endpoint());
-                applyHeaders(builder, server.headers());
+                builder.sseTransport(server.getEndpoint());
+                applyHeaders(builder, decryptMap(server.getHeadersCiphertext()));
             }
             case STDIO -> {
-                stdioCommandPolicy.validate(server.endpoint());
-                builder.stdioTransport(server.endpoint(), server.args(), server.envVars());
+                stdioCommandPolicy.validate(server.getEndpoint());
+                builder.stdioTransport(server.getEndpoint(),
+                        McpJsonCodec.toStringList(server.getArgsJson()),
+                        decryptMap(server.getEnvCiphertext()));
             }
-            default -> throw new IllegalArgumentException("unsupported MCP transport: " + server.transportType());
+            default -> throw new IllegalArgumentException("unsupported MCP transport: " + server.getTransportType());
         }
         builder.timeout(timeout)
                 .initializationTimeout(Duration.ofSeconds(Math.max(5, Math.min(timeout.getSeconds(), 30))));
         McpClientWrapper wrapper = builder.buildAsync().blockOptional().orElseThrow(
-                () -> new IllegalStateException("MCP client build returned empty for server: " + server.name()));
+                () -> new IllegalStateException("MCP client build returned empty for server: " + server.getName()));
         return new AgentScopeMcpConnection(wrapper);
+    }
+
+    private Map<String, String> decryptMap(String ciphertext) {
+        if (ciphertext == null || ciphertext.isBlank()) {
+            return Map.of();
+        }
+        return McpJsonCodec.toStringMap(cipher.decrypt(ciphertext));
     }
 
     private static void applyHeaders(McpClientBuilder builder, Map<String, String> headers) {

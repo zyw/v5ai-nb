@@ -3,6 +3,7 @@ package xin.v5ai.nb.infrastructure.security;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.encrypt.core.AesCredentialCipher;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

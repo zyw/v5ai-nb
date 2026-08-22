@@ -9,8 +9,8 @@ import xin.v5ai.nb.infrastructure.apiKey.ApiKeyEntity;
 import xin.v5ai.nb.infrastructure.agent.AgentEntity;
 import xin.v5ai.nb.infrastructure.agent.AgentVersionEntity;
 import xin.v5ai.nb.infrastructure.auth.UserEntity;
-import xin.v5ai.nb.infrastructure.model.ModelConfigEntity;
-import xin.v5ai.nb.infrastructure.model.ModelProviderEntity;
+import xin.v5ai.nb.model.domain.V5aiModel;
+import xin.v5ai.nb.model.domain.V5aiModelProvider;
 import xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingEntity;
 import xin.v5ai.nb.infrastructure.rag.KnowledgeBaseEntity;
 import xin.v5ai.nb.infrastructure.rag.KnowledgeDocumentEntity;
@@ -46,7 +46,9 @@ class SchemaConsistencyTest {
     private static final java.util.Map<String, String> RENAMED_FROM = java.util.Map.of(
             "v5ai_agent", "v5ai_application",
             "v5ai_agent_version", "v5ai_application_version",
-            "v5ai_agent_knowledge", "v5ai_application_knowledge");
+            "v5ai_agent_knowledge", "v5ai_application_knowledge",
+            "v5ai_agent_mcp", "v5ai_application_mcp",
+            "v5ai_agent_skill", "v5ai_application_skill");
 
     @Test
     void everyEntityColumnExistsInItsOwnTableBlock() throws Exception {
@@ -152,8 +154,8 @@ class SchemaConsistencyTest {
         return List.of(
                 UserEntity.class,
                 ApiKeyEntity.class,
-                ModelProviderEntity.class,
-                ModelConfigEntity.class,
+                V5aiModelProvider.class,
+                V5aiModel.class,
                 AgentEntity.class,
                 AgentVersionEntity.class,
                 RuntimeConversationEntity.class,
@@ -164,7 +166,15 @@ class SchemaConsistencyTest {
                 KnowledgeBaseEntity.class,
                 KnowledgeDocumentEntity.class,
                 KnowledgeTaskEntity.class,
-                AgentKnowledgeBindingEntity.class
+                AgentKnowledgeBindingEntity.class,
+                xin.v5ai.nb.skill.domain.Skill.class,
+                xin.v5ai.nb.skill.domain.SkillVersion.class,
+                xin.v5ai.nb.skill.domain.SkillFile.class,
+                xin.v5ai.nb.skill.domain.AgentSkillBinding.class,
+                xin.v5ai.nb.mcp.domain.McpServer.class,
+                xin.v5ai.nb.mcp.domain.McpTool.class,
+                xin.v5ai.nb.mcp.domain.McpToolCallAudit.class,
+                xin.v5ai.nb.mcp.domain.AgentMcpBinding.class
         );
     }
 

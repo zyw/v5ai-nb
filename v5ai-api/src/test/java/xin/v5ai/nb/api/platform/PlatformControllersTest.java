@@ -5,9 +5,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.platform.*;
-import xin.v5ai.nb.model.mapper.ModelMapper;
+import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
-import xin.v5ai.nb.skill.SkillRepository;
+import xin.v5ai.nb.skill.mapper.SkillMapper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -77,14 +77,14 @@ class PlatformControllersTest {
     @Test
     void statsControllerCountsResources() {
         var agents = mock(AgentRepository.class);
-        var models = mock(ModelMapper.class);
+        var models = mock(V5aiModelMapper.class);
         var knowledge = mock(KnowledgeBaseRepository.class);
-        var skills = mock(SkillRepository.class);
+        var skills = mock(SkillMapper.class);
         when(agents.list()).thenReturn(List.of(new xin.v5ai.nb.agent.Agent(
                 "a", "A", null, xin.v5ai.nb.agent.AgentStatus.PUBLISHED, 1L, null)));
-        when(models.list()).thenReturn(List.of(new xin.v5ai.nb.model.ModelConfig("p", "m", xin.v5ai.nb.model.ModelType.CHAT, "c")));
+        when(models.selectCount(any())).thenReturn(2L);
         when(knowledge.list()).thenReturn(List.of(new xin.v5ai.nb.rag.KnowledgeBase(1L, "kb", null, xin.v5ai.nb.rag.KnowledgeBaseStatus.ACTIVE)));
-        when(skills.list()).thenReturn(List.of(new xin.v5ai.nb.skill.Skill(1L, "skill", "d", xin.v5ai.nb.skill.SkillStatus.ACTIVE, null, null, null, null)));
+        when(skills.selectCount(any())).thenReturn(3L);
         var jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(7L);
         when(jdbc.queryForObject(anyString(), eq(Long.class), any())).thenReturn(3L);
@@ -92,6 +92,8 @@ class PlatformControllersTest {
         var overview = new StatsController(jdbc, agents, models, knowledge, skills).overview().getData();
 
         assertThat(overview.agents()).isEqualTo(1);
+        assertThat(overview.models()).isEqualTo(2);
+        assertThat(overview.skills()).isEqualTo(3);
         assertThat(overview.totalRuns()).isEqualTo(7);
         assertThat(overview.todayModelCalls()).isEqualTo(3);
     }

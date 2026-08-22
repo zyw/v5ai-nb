@@ -4,9 +4,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import xin.v5ai.nb.api.error.GlobalExceptionHandler;
+import xin.v5ai.nb.api.error.ApiGlobalExceptionHandler;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
+import xin.v5ai.nb.common.web.handler.GlobalExceptionHandler;
 
 import java.util.List;
 
@@ -24,7 +25,7 @@ class AuthControllerTest {
     private MockMvc mvc() {
         return MockMvcBuilders.standaloneSetup(
                         new AuthController(loginService, mock(UserAccountStore.class), mock(MenuStore.class)))
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(), new ApiGlobalExceptionHandler())
                 .build();
     }
 
@@ -33,8 +34,8 @@ class AuthControllerTest {
         mvc().perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"\",\"password\":\"secret\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("用户名")));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.containsString("用户名")));
     }
 
     @Test
@@ -42,8 +43,8 @@ class AuthControllerTest {
         mvc().perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"alice\",\"password\":\"\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("密码")));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.containsString("密码")));
     }
 
     @Test

@@ -1,19 +1,19 @@
 package xin.v5ai.nb.model.controller;
 
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.exception.ErrorCode;
-import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.core.validate.EditGroup;
 import xin.v5ai.nb.common.web.core.BaseController;
-import xin.v5ai.nb.model.CreateModelCommand;
-import xin.v5ai.nb.model.UpdateModelCommand;
 import xin.v5ai.nb.model.domain.bo.ModelBo;
+import xin.v5ai.nb.model.domain.vo.TestModelConnectionVo;
+import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 import xin.v5ai.nb.model.service.IV5aiModelService;
 
 import java.util.List;
@@ -40,52 +40,32 @@ public class V5aiModelController extends BaseController {
     }
 
     @GetMapping
-    public R<PageResult<ModelResponse>> listModels(PageQuery pageQuery) {
-        var list = service.listModels().stream()
-                .map(ModelResponse::from)
-                .toList();
-        return R.ok(PageUtils.page(list, pageQuery));
+    public R<PageResult<V5aiModelVo>> listModels(ModelBo bo, PageQuery pageQuery) {
+        return R.ok(service.queryPageList(bo, pageQuery));
     }
 
     @GetMapping("/options")
-    public R<List<OptionResponse>> listModelOptions() {
-        return R.ok(service.listModelOptions().stream()
-                .map(model -> new OptionResponse(model.id(),
-                        model.providerKey() + "/" + model.modelKey() + " (" + model.type() + ")"))
-                .toList());
+    public R<List<OptionDTO>> listModelOptions(ModelBo bo) {
+        return R.ok(service.queryOptionList(bo));
     }
 
-    @PutMapping("/{id}")
-    public R<ModelResponse> updateModel(@PathVariable("id") Long id, @RequestBody UpdateModelRequest request) {
-        return R.ok(ModelResponse.from(service.updateModel(new UpdateModelCommand(
-                id, request.modelKey(), request.type(), request.credentials(),
-                request.enabled() == null || request.enabled()))));
+    @PutMapping
+    public R<Void> updateModel(@Validated(EditGroup.class) @RequestBody ModelBo bo) {
+        return toAjax(service.updateByBo(bo));
     }
 
     @DeleteMapping("/{id}")
-    public R<Void> deleteModel(@PathVariable("id") Long id) {
-        if (service.findModel(id) == null) {
-            throw new V5aiException(ErrorCode.NOT_FOUND, "model does not exist: " + id);
-        }
-        boolean referenced = agentRepository.list().stream()
-                .anyMatch(application -> application.modelId() != null && application.modelId().equals(id));
-        if (referenced) {
-            throw new V5aiException(ErrorCode.CONFLICT,
-                    "model is used by an application and cannot be deleted");
-        }
-        service.deleteModel(id);
-        return R.ok();
+    public R<Void> deleteModel(@NotEmpty(message = "主键不能为空")
+                               @PathVariable("id") Long id) {
+        return toAjax(service.deleteWithValidById(id, true));
     }
 
     @PostMapping("/{id}/test")
-    public R<TestConnectionResponse> testConnection(@PathVariable("id") Long id) {
-        try {
-            var result = service.testConnection(id);
-            return R.ok(result.ok()
-                    ? TestConnectionResponse.ok(id)
-                    : TestConnectionResponse.failed(id, result.message()));
+    public R<TestModelConnectionVo> testConnection(@PathVariable("id") Long id) {
+        try {;
+            return R.ok(service.testConnection(id));
         } catch (Exception exception) {
-            return R.ok(TestConnectionResponse.failed(id, exception.getMessage()));
+            return R.ok(TestModelConnectionVo.failed(id, exception.getMessage()));
         }
     }
 }

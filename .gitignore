@@ -9,3 +9,5 @@ dist/
 !.env.example
 .agentscope/
 .flattened-pom.xml
+.npm-cache/
+.tmp-ponytail/

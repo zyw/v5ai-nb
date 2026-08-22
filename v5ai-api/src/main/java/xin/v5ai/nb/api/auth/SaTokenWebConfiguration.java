@@ -18,7 +18,7 @@ import java.util.List;
  * 管理 API 认证与 RBAC：
  * - /api/admin/** 必须登录（/api/auth/login 除外）；
  * - 非 GET 写操作要求 ADMIN 角色（角色在登录时写入 Sa-Token session）；
- * - 未登录 / 无权限异常由 {@link xin.v5ai.nb.api.error.GlobalExceptionHandler} 统一映射为 JSON。
+ * - 未登录 / 无权限异常由 {@link xin.v5ai.nb.api.error.ApiGlobalExceptionHandler} 统一映射为 JSON。
  *
  * <p>异步分发说明：SSE 流式端点（如 Agent 调试）返回响应式流时，Servlet 容器会发起
  * ASYNC 分发并再次执行拦截器链；此时异步线程中 Sa-Token 的 ThreadLocal 上下文尚未初始化，

@@ -1,8 +1,8 @@
 package xin.v5ai.nb.workflow;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -23,7 +23,7 @@ public final class WorkflowJson {
         }
         try {
             return MAPPER.writeValueAsString(value);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("failed to serialize workflow json", exception);
         }
     }
@@ -34,7 +34,7 @@ public final class WorkflowJson {
         }
         try {
             return MAPPER.readValue(json, WorkflowDefinition.class);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("failed to parse workflow definition", exception);
         }
     }
@@ -46,7 +46,7 @@ public final class WorkflowJson {
         try {
             return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
             });
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("failed to parse workflow json map", exception);
         }
     }

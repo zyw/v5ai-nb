@@ -1,8 +1,8 @@
 package xin.v5ai.nb.infrastructure.agent;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.TextBlock;
@@ -15,9 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.agent.AgentConfigGenerator;
 import xin.v5ai.nb.agent.GeneratedAgentConfig;
-import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.infrastructure.runtime.AgentScopeModelFactory;
-import xin.v5ai.nb.model.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.model.runtime.AgentScopeModelFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -131,7 +131,7 @@ public class AgentScopeAgentConfigGenerator implements AgentConfigGenerator {
                 throw new IllegalArgumentException("模型未返回 agent 名称（name）");
             }
             return new GeneratedAgentConfig(name, description, greeting, presetQuestions, systemPrompt);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("模型输出无法解析为 JSON: " + truncate(raw));
         }
     }

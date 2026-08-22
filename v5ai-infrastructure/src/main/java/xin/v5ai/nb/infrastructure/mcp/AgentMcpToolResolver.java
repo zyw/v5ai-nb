@@ -1,16 +1,20 @@
 package xin.v5ai.nb.infrastructure.mcp;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.agent.Agent;
-import xin.v5ai.nb.mcp.AgentMcpBindingRepository;
 import xin.v5ai.nb.mcp.McpClientFactory;
 import xin.v5ai.nb.mcp.McpConnection;
-import xin.v5ai.nb.mcp.McpServerRepository;
-import xin.v5ai.nb.mcp.McpToolDefinition;
+import xin.v5ai.nb.mcp.McpJsonCodec;
 import xin.v5ai.nb.mcp.McpToolPermission;
-import xin.v5ai.nb.mcp.McpToolRepository;
+import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
+import xin.v5ai.nb.mcp.domain.McpServer;
+import xin.v5ai.nb.mcp.domain.McpTool;
+import xin.v5ai.nb.mcp.mapper.AgentMcpBindingMapper;
+import xin.v5ai.nb.mcp.mapper.McpServerMapper;
+import xin.v5ai.nb.mcp.mapper.McpToolMapper;
 import xin.v5ai.nb.runtime.McpToolResolver;
 import xin.v5ai.nb.runtime.ResolvedMcpTool;
 
@@ -26,47 +30,50 @@ import java.util.List;
 public class AgentMcpToolResolver implements McpToolResolver {
     private static final Logger log = LoggerFactory.getLogger(AgentMcpToolResolver.class);
 
-    private final AgentMcpBindingRepository bindingRepository;
-    private final McpServerRepository serverRepository;
-    private final McpToolRepository toolRepository;
+    private final AgentMcpBindingMapper bindingMapper;
+    private final McpServerMapper serverMapper;
+    private final McpToolMapper toolMapper;
     private final McpClientFactory clientFactory;
 
     public AgentMcpToolResolver(
-            AgentMcpBindingRepository bindingRepository,
-            McpServerRepository serverRepository,
-            McpToolRepository toolRepository,
+            AgentMcpBindingMapper bindingMapper,
+            McpServerMapper serverMapper,
+            McpToolMapper toolMapper,
             McpClientFactory clientFactory
     ) {
-        this.bindingRepository = bindingRepository;
-        this.serverRepository = serverRepository;
-        this.toolRepository = toolRepository;
+        this.bindingMapper = bindingMapper;
+        this.serverMapper = serverMapper;
+        this.toolMapper = toolMapper;
         this.clientFactory = clientFactory;
     }
 
     @Override
     public List<ResolvedMcpTool> resolveTools(Agent application) {
-        var serverIds = bindingRepository.findByAgentKey(application.agentKey());
-        if (serverIds.isEmpty()) {
+        var bindings = bindingMapper.selectList(new LambdaQueryWrapper<AgentMcpBinding>()
+                .eq(AgentMcpBinding::getAgentKey, application.agentKey()));
+        if (bindings.isEmpty()) {
             return List.of();
         }
         var resolved = new ArrayList<ResolvedMcpTool>();
-        for (Long serverId : serverIds) {
-            resolveServer(application, serverId, resolved);
+        for (var binding : bindings) {
+            resolveServer(application, binding.getMcpServerId(), resolved);
         }
         return resolved;
     }
 
     private void resolveServer(Agent application, Long serverId, List<ResolvedMcpTool> resolved) {
-        var server = serverRepository.findById(serverId);
-        if (server == null || !server.isActive()) {
+        var server = serverMapper.selectById(serverId);
+        if (server == null || !"ACTIVE".equals(server.getStatus())) {
             log.debug("MCP server {} is missing or disabled, skipped for app {}", serverId, application.agentKey());
             return;
         }
-        List<McpToolDefinition> tools = toolRepository.findByServerId(serverId).stream()
-                .filter(tool -> tool.permission() != McpToolPermission.DENY)
+        List<McpTool> tools = toolMapper.selectList(new LambdaQueryWrapper<McpTool>()
+                        .eq(McpTool::getServerId, serverId))
+                .stream()
+                .filter(tool -> !McpToolPermission.DENY.name().equals(tool.getPermission()))
                 .toList();
         if (tools.isEmpty()) {
-            log.info("MCP server '{}' has no usable tools (discover tools first, or all denied)", server.name());
+            log.info("MCP server '{}' has no usable tools (discover tools first, or all denied)", server.getName());
             return;
         }
         McpConnection connection;
@@ -74,17 +81,17 @@ public class AgentMcpToolResolver implements McpToolResolver {
             connection = clientFactory.connect(server);
         } catch (Exception exception) {
             log.warn("MCP server '{}' unavailable at runtime, skipped: {}",
-                    server.name(), exception.getMessage());
+                    server.getName(), exception.getMessage());
             return;
         }
-        for (McpToolDefinition tool : tools) {
+        for (McpTool tool : tools) {
             resolved.add(new ResolvedMcpTool(
-                    server.id(),
-                    server.name(),
-                    tool.toolName(),
-                    tool.description(),
-                    tool.inputSchema(),
-                    tool.permission(),
+                    server.getId(),
+                    server.getName(),
+                    tool.getToolName(),
+                    tool.getDescription(),
+                    McpJsonCodec.toObjectMap(tool.getInputSchemaJson()),
+                    McpToolPermission.valueOf(tool.getPermission()),
                     connection));
         }
     }

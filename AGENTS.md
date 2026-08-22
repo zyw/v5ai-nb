@@ -9,7 +9,7 @@
 **明确的架构决策**：
 - 不使用 Server-Agent / gRPC 架构（中心化单体 + 异步 Worker）。
 - 不依赖、不复用 `snail-ai` 的源码/数据库表/API 契约（本项目为全新独立实现）。
-- 模块化单体：领域模块只定义领域模型与端口（接口），实现全部集中在 `v5ai-infrastructure`。
+- 模块化单体（RuoYi-Vue-Plus 风格）：业务模块自包含 MyBatis-Plus 实体/BO/VO/Mapper/Service/Controller；`v5ai-common-*` 提供公共能力（`R`、`PageQuery`、`PageResult`、`QueryBuilder`、`BaseMapperPlus`、`MapstructUtils`、`CredentialCipher` 等）；`v5ai-infrastructure` 只保留跨模块的运行时/平台实现与 Flyway 迁移。
 
 **当前阶段**：Phase 1（模型与 Agent 闭环）、Phase 2（RAG）、Phase 3（MCP）、Phase 4（Skill）、Phase 5（平台增强：多租户/RBAC/配额/限流/用量/审计/菜单）均已完成；**Workflow（工作流）为当前进行中的下一阶段**（模块与基础 API 已落地，可视化编辑器与运行时闭环待完善）。
 
@@ -37,24 +37,24 @@ common ← model ← mcp
 common ← agent ← skill
 common ← rag ← worker
 common + agent + mcp + skill ← runtime ← workflow
-common + model + runtime + rag + mcp + skill + workflow + agent ← infrastructure（实现层）
-全部 ← api（Web 层，依赖 infrastructure 做装配）
+common + model + runtime + rag + mcp + skill + workflow + agent ← infrastructure（跨模块运行时/平台实现）
+全部 ← api（管理/运行 API 与剩余 Web 装配）
 api + infrastructure + worker ← starter（Spring Boot 启动入口）
 ```
 
 | 模块 | 职责 |
 |---|---|
-| `v5ai-common` | 公共响应（`ApiResponse`）、异常（`V5aiException`/`ErrorCode`）、分页（`PageQuery`）、API Key 校验端口（`AgentApiKeyVerifier`）、平台领域（租户/用户/角色/菜单/配额/用量/审计/限流端口与模型） |
-| `v5ai-model` | Provider/Model 配置、凭据加密端口（`CredentialCipher`）、连通性测试端口（`ModelConnectionTester`）、管理服务 |
+| `v5ai-common` | 公共能力：统一响应（`R`）、异常（`V5aiException`/`ErrorCode`）、分页（`PageQuery`/`PageResult`）、MyBatis-Plus 扩展（`BaseMapperPlus`/`QueryBuilder`）、加解密（`CredentialCipher`）、API Key 校验端口（`AgentApiKeyVerifier`）、平台领域（租户/用户/角色/菜单/配额/用量/审计/限流端口与模型） |
+| `v5ai-model` | **自包含模块（新风格的样板）**：`domain` 实体（`V5aiModel`/`V5aiModelProvider`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus` + `ModelRuntimeConfigGateway` 端口）、`service`/`service.impl`、`controller`（`/api/admin/models`、`/api/admin/providers`），以及运行时模型链（`runtime/AgentScopeModelFactory`、`runtime/AgentScopeModelConnectionTester`、`runtime/config/*`）。凭据 AES-GCM 加密，支持连通性测试 |
 | `v5ai-agent` | Agent 领域（草稿/发布/禁用/版本解析）、`AgentRepository`、`PublishedAgentResolver`。**注意：原 Application 概念已在 V8 迁移中统一重命名为 Agent** |
 | `v5ai-runtime` | Agent 运行时边界：`AgentRuntime`（stream/call）、事件模型（`RuntimeEvent`/`RuntimeEventType`）、会话/消息/run/run_event/AgentState 持久化端口、用量埋点、RAG 上下文端口（`RagContextProvider`）、MCP Tool 解析端口（`McpToolResolver`） |
 | `v5ai-rag` | 知识库/文档/任务领域模型，解析/切片/Embedding/向量存储端口，检索上下文构建 |
-| `v5ai-mcp` | MCP Server/工具/调用审计领域模型，管理服务（连接测试、Tool 发现、Agent 绑定、权限三态），Stdio 命令策略端口（`StdioCommandPolicy`） |
-| `v5ai-skill` | Skill 包解析校验（SKILL.md frontmatter）、版本发布/回滚、Agent 绑定、运行时 Workspace 注入端口 |
+| `v5ai-mcp` | **自包含模块**：`domain` 实体（`McpServer`/`McpTool`/`McpToolCallAudit`/`AgentMcpBinding`，headers/env 密文列）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus`）、`service`（`IMcpServerService`：连接测试、Tool 发现、权限三态、绑定、审计）、`controller`（`/api/admin/mcp-servers`、`/api/admin/mcp-tool-calls`、`agents/{agentKey}/mcp-bindings`）；保留运行时端口（`McpClientFactory`/`McpConnection`/`McpToolInfo`/`StdioCommandPolicy`/`McpToolPermissionPolicy`/`McpToolCallAuditRepository`），实现仍在 `v5ai-infrastructure`（AgentScope 适配） |
+| `v5ai-skill` | **自包含模块**：`domain` 实体（`Skill`/`SkillVersion`/`SkillFile`/`AgentSkillBinding`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus`）、`service`（`ISkillService`：上传解析、版本发布/回滚、绑定）、`controller`（`/api/admin/skills`、`agents/{agentKey}/skill-bindings`）；保留纯逻辑与运行时端口（`SkillPackageParser`/`SkillFrontmatterParser`/`SkillWorkspaceResolver`/`ResolvedSkill`），`SkillWorkspaceResolver` 实现在 `v5ai-infrastructure` |
 | `v5ai-workflow` | **进行中**：工作流定义/节点/边/运行领域模型、`WorkflowEngine`、`TemplateResolver`、`ConditionEvaluator`、校验器与仓储端口 |
 | `v5ai-worker` | 文档索引 Worker（异步任务状态机 + `@Scheduled` + 重试） |
-| `v5ai-infrastructure` | **所有端口的实现**：MyBatis-Plus 装配与 Mapper、Sa-Token、BCrypt/AES-GCM、pgvector、Redis/MinIO 配置、AgentScope MCP/Skill/运行时实现、平台实现（租户/用户/配额/用量/审计/限流）、Flyway 迁移脚本 |
-| `v5ai-api` | 管理 API + 运行 API（SSE）、API Key 过滤器、Sa-Token 管理拦截（RBAC）、请求/响应记录类型 |
+| `v5ai-infrastructure` | 跨模块实现：MyBatis-Plus 装配与 Mapper（model/mcp/skill 已自包含，其余业务模块持久化在此）、Sa-Token、BCrypt/AES-GCM、pgvector、Redis/MinIO 配置、AgentScope 运行时适配（含 MCP 连接工厂/Skill Workspace 解析）、平台实现（租户/用户/配额/用量/审计/限流）、Flyway 迁移脚本 |
+| `v5ai-api` | 管理 API + 运行 API（SSE）、API Key 过滤器、Sa-Token 管理拦截（RBAC）、请求/响应记录类型（model/mcp/skill 的控制器已移入各自模块） |
 | `v5ai-starter` | 启动模块：`V5aiApplication`（`scanBasePackages="xin.v5ai.nb"` + `@MapperScan` + `@EnableScheduling`）、`application.yml` |
 | `v5ai-ui` | Vue 3 管理前端（非 Maven 模块） |
 
@@ -126,13 +126,14 @@ cd v5ai-ui && npm install && npm run build
 
 ## 11. 代码风格与约定
 
-- 包结构：`xin.v5ai.nb.<module>`，领域模块内部按 `domain/port/service` 语义组织；基础设施按 `infrastructure/<能力>` 组织（mybatis、security、auth、redis、storage、platform、runtime、agent、mcp、rag、skill、model、apiKey、workflow、reactor）。
-- 领域模块只定义接口（端口）与不可变模型（record 常用于请求/响应 DTO）；实现必须放 `v5ai-infrastructure`，通过 Spring 依赖注入装配。
+- 包结构：`xin.v5ai.nb.<module>`，业务模块内部按 `domain`（实体）/`domain.bo`/`domain.vo`/`mapper`/`service`/`service.impl`/`controller` 组织（参考 `v5ai-model`，代码生成器在 `v5ai-modules/v5ai-code-generator`）；基础设施按 `infrastructure/<能力>` 组织（mybatis、security、auth、redis、storage、platform、runtime、agent、mcp、rag、skill、apiKey、workflow、reactor）。
+- 业务模块的 CRUD 采用 MyBatis-Plus 风格：实体继承 `common.mybatis.core.domain.BaseEntity`（`@TableName`/`@TableId`），BO 用 `@AutoMapper(target = Entity.class, reverseConvertGenerate = false)`，VO 用 `@AutoMapper(target = Entity.class)`，Mapper 继承 `BaseMapperPlus<Entity, Vo>`，查询用 `QueryBuilder.lambda(...)` + `selectVoPage/selectVoList`，分页统一 `PageQuery`/`PageResult`，转换用 `MapstructUtils.convert`，控制器继承 `common.web.core.BaseController` 并返回 `R<T>`。
+- 跨模块的运行时/平台实现仍放 `v5ai-infrastructure`，通过 Spring 依赖注入装配。
 - API 层的请求/响应体使用不可变 record（见 git log `feat(api): 添加不可变请求和响应体记录类型`）。
-- 响应统一包装 `ApiResponse`；错误统一走 `V5aiException` + `ErrorCode`。
+- 响应统一包装 `R`（`common.core.domain.R`）；错误统一走 `V5aiException` + `ErrorCode`。
 - 运行时相关代码保持响应式（`Flux`/`Mono`）；Web 层为 Servlet MVC（上传用 `MultipartFile`，SSE 用 `ServerSentEvent`）。
 - 提交信息使用 conventional commits（feat/fix/refactor/chore 等，中文描述）。
-- 数据库迁移只增不改；新增能力要配套：领域端口 + infrastructure 实现 + API + UI + 迁移脚本 + 测试 + docs/api 文档。
+- 数据库迁移只增不改；新增能力要配套：业务模块（entity/BO/VO/mapper/service/controller）或基础设施实现 + UI + 迁移脚本 + 测试 + docs/api 文档。
 
 ## 12. 文档索引
 
@@ -160,7 +161,8 @@ cd v5ai-ui && npm install && npm run build
 
 ## 14. 常见任务入口（给 Agent 的提示）
 
-- **加一个新管理实体**（如某种资源）：common 定义领域模型+端口 → infrastructure 实现 Mapper/服务 → api 加 Controller + record DTO → 新增 Flyway 迁移 → ui 加 view/路由 → 写测试与 docs/api。
+- **加一个新管理实体**（如某种资源）：按 `v5ai-model` 样板，在业务模块内补 `domain` 实体 + `domain/bo` + `domain/vo` + `mapper`（`BaseMapperPlus`）+ `service`/`service.impl` + `controller`（`@RequestMapping("/api/admin/...")`）→ 新增 Flyway 迁移 → ui 加 view/路由 → 写测试与 docs/api。
+- **改模型/Provider 管理**：入口在 `v5ai-model`（`V5aiModelMapper`/`V5aiModelProviderMapper`/`IV5aiModelService`/`V5aiModelController`）；运行时模型链（`AgentScopeModelFactory`/`AgentScopeModelConnectionTester`/`ModelRuntimeConfigGateway`）也在 `v5ai-model/runtime`。
 - **改运行时行为**：入口在 `v5ai-runtime`（`AgentRuntime` 接口与各 Executor），持久化在 `PersistingAgentRuntime`，事件模型在 `RuntimeEvent`。
 - **MCP/Skill 运行时集成**：接口在 `v5ai-runtime`（`McpToolResolver`、`ResolvedSkillAgentSkillRepository`），实现与 AgentScope 适配在 `v5ai-infrastructure/runtime`、`infrastructure/mcp`、`infrastructure/skill`。
 - **继续 Workflow 阶段**：先读 `v5ai-workflow` 模块与 `docs/api/phase5.md`/迁移 V12，当前只有领域与基础 API，可视化编辑器与完整执行闭环待完成。

@@ -1,15 +1,18 @@
 package xin.v5ai.nb.infrastructure.skill;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.agent.Agent;
-import xin.v5ai.nb.skill.AgentSkillBindingRepository;
 import xin.v5ai.nb.skill.ResolvedSkill;
-import xin.v5ai.nb.skill.SkillFile;
-import xin.v5ai.nb.skill.SkillFileRepository;
-import xin.v5ai.nb.skill.SkillRepository;
 import xin.v5ai.nb.skill.SkillWorkspaceResolver;
+import xin.v5ai.nb.skill.domain.AgentSkillBinding;
+import xin.v5ai.nb.skill.domain.Skill;
+import xin.v5ai.nb.skill.domain.SkillFile;
+import xin.v5ai.nb.skill.mapper.AgentSkillBindingMapper;
+import xin.v5ai.nb.skill.mapper.SkillFileMapper;
+import xin.v5ai.nb.skill.mapper.SkillMapper;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,51 +26,54 @@ import java.util.List;
 public class AgentSkillWorkspaceResolver implements SkillWorkspaceResolver {
     private static final Logger log = LoggerFactory.getLogger(AgentSkillWorkspaceResolver.class);
 
-    private final AgentSkillBindingRepository bindingRepository;
-    private final SkillRepository skillRepository;
-    private final SkillFileRepository fileRepository;
+    private final AgentSkillBindingMapper bindingMapper;
+    private final SkillMapper skillMapper;
+    private final SkillFileMapper fileMapper;
 
     public AgentSkillWorkspaceResolver(
-            AgentSkillBindingRepository bindingRepository,
-            SkillRepository skillRepository,
-            SkillFileRepository fileRepository
+            AgentSkillBindingMapper bindingMapper,
+            SkillMapper skillMapper,
+            SkillFileMapper fileMapper
     ) {
-        this.bindingRepository = bindingRepository;
-        this.skillRepository = skillRepository;
-        this.fileRepository = fileRepository;
+        this.bindingMapper = bindingMapper;
+        this.skillMapper = skillMapper;
+        this.fileMapper = fileMapper;
     }
 
     @Override
     public List<ResolvedSkill> resolveSkills(Agent application) {
-        var skillIds = bindingRepository.findByAgentKey(application.agentKey());
-        if (skillIds.isEmpty()) {
+        var bindings = bindingMapper.selectList(new LambdaQueryWrapper<AgentSkillBinding>()
+                .eq(AgentSkillBinding::getAgentKey, application.agentKey()));
+        if (bindings.isEmpty()) {
             return List.of();
         }
         var resolved = new ArrayList<ResolvedSkill>();
-        for (Long skillId : skillIds) {
-            resolveOne(application, skillId, resolved);
+        for (var binding : bindings) {
+            resolveOne(application, binding.getSkillId(), resolved);
         }
         return resolved;
     }
 
     private void resolveOne(Agent application, Long skillId, List<ResolvedSkill> resolved) {
-        var skill = skillRepository.findById(skillId);
-        if (skill == null || !skill.isActive() || skill.currentVersionId() == null) {
+        var skill = skillMapper.selectById(skillId);
+        if (skill == null || !"ACTIVE".equals(skill.getStatus()) || skill.getCurrentVersionId() == null) {
             log.debug("skill {} missing/disabled/unpublished, skipped for app {}", skillId, application.agentKey());
             return;
         }
         try {
             var files = new LinkedHashMap<String, String>();
-            for (SkillFile file : fileRepository.findByVersionId(skill.currentVersionId())) {
-                files.put(file.path(), file.content());
+            var rows = fileMapper.selectList(new LambdaQueryWrapper<SkillFile>()
+                    .eq(SkillFile::getVersionId, skill.getCurrentVersionId()));
+            for (var file : rows) {
+                files.put(file.getFilePath(), file.getContent());
             }
             if (files.isEmpty()) {
-                log.warn("skill '{}' has no files in current version, skipped", skill.name());
+                log.warn("skill '{}' has no files in current version, skipped", skill.getName());
                 return;
             }
-            resolved.add(new ResolvedSkill(skill.name(), skill.description(), files, skill.currentVersionId()));
+            resolved.add(new ResolvedSkill(skill.getName(), skill.getDescription(), files, skill.getCurrentVersionId()));
         } catch (Exception exception) {
-            log.warn("failed to resolve skill '{}': {}", skill.name(), exception.getMessage());
+            log.warn("failed to resolve skill '{}': {}", skill.getName(), exception.getMessage());
         }
     }
 }

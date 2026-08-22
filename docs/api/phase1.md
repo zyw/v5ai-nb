@@ -83,17 +83,30 @@ The response body is:
 
 ## Admin Model APIs
 
+控制器位于 `v5ai-model`（`V5aiModelProviderController` / `V5aiModelController`），统一返回 `R<T>` 包装：
+
 ```http
-POST /api/admin/providers
-GET /api/admin/providers
-POST /api/admin/models
-GET /api/admin/models
-GET /api/admin/models/options
+POST   /api/admin/providers
+GET    /api/admin/providers?pageNum=&pageSize=
+PUT    /api/admin/providers
+DELETE /api/admin/providers/{ids}
+POST   /api/admin/models
+GET    /api/admin/models?pageNum=&pageSize=
+PUT    /api/admin/models
+DELETE /api/admin/models/{id}
+GET    /api/admin/models/options
+POST   /api/admin/models/{id}/test
 ```
 
 Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5ai_model`; credentials are encrypted before persistence.
 
-`GET /api/admin/models/options` 返回模型下拉选项（`[{ "value": <modelId>, "label": "<providerKey>/<modelKey> (<type>)" }]`），仅查 id/provider/model/type 列、不加载凭据密文，供 Agent 编辑/绑定弹窗按需加载。
+`GET /api/admin/models/options` 返回模型下拉选项（`[{ "value": <modelId>, "label": "<providerId>/<modelKey> (<modelType>)" }]`），仅返回启用模型，不加载凭据密文，供 Agent 编辑/绑定弹窗按需加载。
+
+创建 Provider 请求体：`{ "providerKey": "openai", "name": "OpenAI", "providerType": "OPENAI", "enabled": true }`；更新通过 `PUT /api/admin/providers`（body 带 `id`），删除通过 `DELETE /api/admin/providers/{ids}`（逗号分隔的 id 列表）。
+
+创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "endpoint": "...(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\"}" }`；更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials` 为空时保留原密文），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 引用时返回 409）。
+
+连通性测试 `POST /api/admin/models/{id}/test` 返回 `{ "modelId": <id>, "ok": true|false, "message": "..." }`。
 
 Supported Agent Runtime provider types:
 

@@ -38,12 +38,12 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
         try {
             if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof BaseEntity baseEntity) {
                 // 获取当前时间作为创建时间和更新时间，如果创建时间不为空，则使用创建时间，否则使用当前时间
-                LocalDateTime current = ObjectUtils.notNull(baseEntity.getCreateTime(), LocalDateTime.now());
-                baseEntity.setCreateTime(current);
-                baseEntity.setUpdateTime(current);
+                LocalDateTime current = ObjectUtils.notNull(baseEntity.getCreatedAt(), LocalDateTime.now());
+                baseEntity.setCreatedAt(current);
+                baseEntity.setUpdatedAt(current);
 
                 // 如果创建人为空，则填充当前登录用户的信息
-                if (ObjectUtil.isNull(baseEntity.getCreateBy())) {
+                /*if (ObjectUtil.isNull(baseEntity.getCreateBy())) {
                     LoginUser loginUser = getLoginUser();
                     if (ObjectUtil.isNotNull(loginUser)) {
                         Long userId = loginUser.getUserId();
@@ -56,7 +56,7 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
                         baseEntity.setUpdateBy(DEFAULT_USER_ID);
                         baseEntity.setCreateDept(ObjectUtils.notNull(baseEntity.getCreateDept(), DEFAULT_USER_ID));
                     }
-                }
+                }*/
             } else {
                 LocalDateTime date = LocalDateTime.now();
                 this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, date);
@@ -81,12 +81,12 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
             if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof BaseEntity baseEntity) {
                 // 获取当前时间作为更新时间，无论原始对象中的更新时间是否为空都填充
                 LocalDateTime current = LocalDateTime.now();
-                baseEntity.setUpdateTime(current);
+                baseEntity.setUpdatedAt(current);
 
                 // 获取当前登录用户的ID，并填充更新人信息
                 LoginUser loginUser = getLoginUser();
                 Long userId = ObjectUtil.isNotNull(loginUser) ? loginUser.getUserId() : DEFAULT_USER_ID;
-                baseEntity.setUpdateBy(userId);
+//                baseEntity.setUpdateBy(userId);
             } else {
                 this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
                 this.strictUpdateFill(metaObject, "updateTime", Date.class, new Date());

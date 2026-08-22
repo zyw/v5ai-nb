@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.agent.AgentRepository;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.model.mapper.ModelMapper;
+import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.rag.KnowledgeBaseRepository;
-import xin.v5ai.nb.skill.SkillRepository;
+import xin.v5ai.nb.skill.mapper.SkillMapper;
 
 import java.time.LocalDate;
 
@@ -20,20 +20,20 @@ import java.time.LocalDate;
 public class StatsController {
     private final JdbcTemplate jdbcTemplate;
     private final AgentRepository agentRepository;
-    private final ModelMapper modelRepository;
+    private final V5aiModelMapper modelMapper;
     private final KnowledgeBaseRepository knowledgeBaseRepository;
-    private final SkillRepository skillRepository;
+    private final SkillMapper skillMapper;
 
     public StatsController(JdbcTemplate jdbcTemplate,
                            AgentRepository agentRepository,
-                           ModelMapper modelRepository,
+                           V5aiModelMapper modelMapper,
                            KnowledgeBaseRepository knowledgeBaseRepository,
-                           SkillRepository skillRepository) {
+                           SkillMapper skillMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.agentRepository = agentRepository;
-        this.modelRepository = modelRepository;
+        this.modelMapper = modelMapper;
         this.knowledgeBaseRepository = knowledgeBaseRepository;
-        this.skillRepository = skillRepository;
+        this.skillMapper = skillMapper;
     }
 
     public record OverviewResponse(
@@ -54,9 +54,9 @@ public class StatsController {
         var today = LocalDate.now();
         return R.ok(new OverviewResponse(
                 agentRepository.list().size(),
-                modelRepository.list().size(),
+                modelMapper.selectCount(null),
                 knowledgeBaseRepository.list().size(),
-                skillRepository.list().size(),
+                skillMapper.selectCount(null),
                 count("SELECT count(*) FROM v5ai_run"),
                 count("SELECT count(*) FROM v5ai_run WHERE started_at::date = ?", today),
                 count("SELECT count(*) FROM v5ai_model_usage WHERE created_at::date = ?", today),

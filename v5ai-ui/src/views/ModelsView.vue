@@ -114,21 +114,30 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
           size: 'small',
           type: 'error',
           secondary: true,
-          onClick: () => handleDeleteProvider(row.providerKey)
+          onClick: () => handleDeleteProvider(row.id)
         },
         { default: () => '删除' }
       )
   }
 ]
 
+function providerLabel(providerId: number): string {
+  const provider = allProviders.value.find((item) => item.id === providerId)
+  return provider ? `${provider.name} (${provider.providerKey})` : `#${providerId}`
+}
+
 const modelColumns: DataTableColumns<ModelResponse> = [
   { title: 'ID', key: 'id', width: 64 },
-  { title: 'Provider', key: 'providerKey' },
+  {
+    title: 'Provider',
+    key: 'providerId',
+    render: (row) => providerLabel(row.providerId)
+  },
   { title: 'Model Key', key: 'modelKey' },
   {
     title: '类型',
-    key: 'type',
-    render: (row) => h(NTag, { size: 'small', type: row.type === 'CHAT' ? 'info' : 'default', bordered: false }, { default: () => row.type })
+    key: 'modelType',
+    render: (row) => h(NTag, { size: 'small', type: row.modelType === 'CHAT' ? 'info' : 'default', bordered: false }, { default: () => row.modelType })
   },
   {
     title: '状态',
@@ -176,6 +185,7 @@ async function reload() {
     providerPagination.itemCount = providerRows.total
     models.value = modelRows.rows
     modelPagination.itemCount = modelRows.total
+    allProviders.value = (await listProviders(adminToken.value, { pageNum: 1, pageSize: 1000 })).rows
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载模型配置失败')
   } finally {
@@ -262,15 +272,15 @@ async function handleCreateModel() {
   }
 }
 
-async function handleDeleteProvider(providerKey: string) {
+async function handleDeleteProvider(id: number) {
   dialog.warning({
     title: '删除确认',
-    content: `确认删除 Provider「${providerKey}」？`,
+    content: `确认删除 Provider #${id}？`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        await deleteProvider(adminToken.value, providerKey)
+        await deleteProvider(adminToken.value, [id])
         message.success('Provider 已删除')
         await reload()
       } catch (e) {

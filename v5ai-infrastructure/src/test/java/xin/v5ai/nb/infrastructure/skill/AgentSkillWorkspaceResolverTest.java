@@ -1,41 +1,42 @@
 package xin.v5ai.nb.infrastructure.skill;
 
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.agent.Agent;
 import xin.v5ai.nb.agent.AgentStatus;
-import xin.v5ai.nb.skill.AgentSkillBindingRepository;
-import xin.v5ai.nb.skill.Skill;
-import xin.v5ai.nb.skill.SkillFile;
-import xin.v5ai.nb.skill.SkillFileRepository;
-import xin.v5ai.nb.skill.SkillRepository;
-import xin.v5ai.nb.skill.SkillStatus;
+import xin.v5ai.nb.skill.domain.AgentSkillBinding;
+import xin.v5ai.nb.skill.domain.Skill;
+import xin.v5ai.nb.skill.domain.SkillFile;
+import xin.v5ai.nb.skill.mapper.AgentSkillBindingMapper;
+import xin.v5ai.nb.skill.mapper.SkillFileMapper;
+import xin.v5ai.nb.skill.mapper.SkillMapper;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AgentSkillWorkspaceResolverTest {
 
     @Test
     void resolvesNothingWhenNoBindings() {
-        var resolver = new AgentSkillWorkspaceResolver(
-                new RecordingBindingRepository(List.of()),
-                new RecordingSkillRepository(),
-                new RecordingSkillFileRepository());
+        AgentSkillBindingMapper bindingMapper = mock(AgentSkillBindingMapper.class);
+        when(bindingMapper.selectList(any(Wrapper.class))).thenReturn(List.of());
+
+        var resolver = new AgentSkillWorkspaceResolver(bindingMapper, mock(SkillMapper.class), mock(SkillFileMapper.class));
         assertThat(resolver.resolveSkills(app())).isEmpty();
     }
 
     @Test
     void resolvesPublishedSkillFiles() {
         var resolver = new AgentSkillWorkspaceResolver(
-                new RecordingBindingRepository(List.of(1L)),
-                new RecordingSkillRepository(skill(1L, "weather", SkillStatus.ACTIVE, 10L)),
-                new RecordingSkillFileRepository(Map.of(
-                        10L, List.of(
-                                file("SKILL.md", "# weather\n---"),
-                                file("resources/data.txt", "data")))));
+                bindingMapper(binding("demo", 1L)),
+                skillMapper(skill(1L, "weather", "ACTIVE", 10L)),
+                fileMapper(file(1L, 10L, "SKILL.md", "# weather\n---"),
+                        file(2L, 10L, "resources/data.txt", "data")));
 
         var resolved = resolver.resolveSkills(app());
 
@@ -48,13 +49,11 @@ class AgentSkillWorkspaceResolverTest {
     @Test
     void skipsDisabledAndUnpublishedSkills() {
         var resolver = new AgentSkillWorkspaceResolver(
-                new RecordingBindingRepository(List.of(1L, 2L, 3L)),
-                new RecordingSkillRepository(List.of(
-                        skill(1L, "disabled", SkillStatus.DISABLED, 10L),
-                        skill(2L, "unpublished", SkillStatus.ACTIVE, null),
-                        skill(3L, "ok", SkillStatus.ACTIVE, 30L))),
-                new RecordingSkillFileRepository(Map.of(
-                        30L, List.of(file("SKILL.md", "# ok\n---")))));
+                bindingMapper(binding("demo", 1L), binding("demo", 2L), binding("demo", 3L)),
+                skillMapper(skill(1L, "disabled", "DISABLED", 10L),
+                        skill(2L, "unpublished", "ACTIVE", null),
+                        skill(3L, "ok", "ACTIVE", 30L)),
+                fileMapper(file(1L, 30L, "SKILL.md", "# ok\n---")));
 
         var resolved = resolver.resolveSkills(app());
 
@@ -65,98 +64,50 @@ class AgentSkillWorkspaceResolverTest {
         return new Agent("demo", "Demo", null, AgentStatus.PUBLISHED, 1L, 1L);
     }
 
-    private static Skill skill(Long id, String name, SkillStatus status, Long currentVersionId) {
-        return new Skill(id, name, "desc", status, currentVersionId, 1L, Instant.now(), Instant.now());
+    private static AgentSkillBindingMapper bindingMapper(AgentSkillBinding... bindings) {
+        AgentSkillBindingMapper mapper = mock(AgentSkillBindingMapper.class);
+        when(mapper.selectList(any(Wrapper.class))).thenReturn(List.of(bindings));
+        return mapper;
     }
 
-    private static SkillFile file(String path, String content) {
-        return new SkillFile(null, 1L, null, path, content);
+    private static SkillMapper skillMapper(Skill... skills) {
+        SkillMapper mapper = mock(SkillMapper.class);
+        when(mapper.selectById(anyLong())).thenAnswer(inv -> {
+            Long id = inv.getArgument(0);
+            return List.of(skills).stream().filter(s -> s.getId().equals(id)).findFirst().orElse(null);
+        });
+        return mapper;
     }
 
-    private static final class RecordingBindingRepository implements AgentSkillBindingRepository {
-        private final List<Long> skillIds;
-
-        private RecordingBindingRepository(List<Long> skillIds) {
-            this.skillIds = skillIds;
-        }
-
-        @Override
-        public void save(String agentKey, List<Long> skillIds) {
-        }
-
-        @Override
-        public List<Long> findByAgentKey(String agentKey) {
-            return skillIds;
-        }
-
-        @Override
-        public void delete(String agentKey) {
-        }
+    private static SkillFileMapper fileMapper(SkillFile... files) {
+        SkillFileMapper mapper = mock(SkillFileMapper.class);
+        when(mapper.selectList(any(Wrapper.class))).thenReturn(List.of(files));
+        return mapper;
     }
 
-    private static final class RecordingSkillRepository implements SkillRepository {
-        private final List<Skill> skills;
-
-        private RecordingSkillRepository(Skill... skills) {
-            this.skills = List.of(skills);
-        }
-
-        private RecordingSkillRepository(List<Skill> skills) {
-            this.skills = skills;
-        }
-
-        @Override
-        public Skill save(Skill skill) {
-            return skill;
-        }
-
-        @Override
-        public Skill update(Skill skill) {
-            return skill;
-        }
-
-        @Override
-        public Skill findById(Long id) {
-            return skills.stream().filter(s -> s.id().equals(id)).findFirst().orElse(null);
-        }
-
-        @Override
-        public Skill findByName(String name) {
-            return null;
-        }
-
-        @Override
-        public List<Skill> list() {
-            return skills;
-        }
-
-        @Override
-        public void disable(Long id) {
-        }
+    private static AgentSkillBinding binding(String agentKey, Long skillId) {
+        var binding = new AgentSkillBinding();
+        binding.setAgentKey(agentKey);
+        binding.setSkillId(skillId);
+        return binding;
     }
 
-    private static final class RecordingSkillFileRepository implements SkillFileRepository {
-        private final Map<Long, List<SkillFile>> byVersion;
+    private static Skill skill(Long id, String name, String status, Long currentVersionId) {
+        var skill = new Skill();
+        skill.setId(id);
+        skill.setName(name);
+        skill.setDescription("desc");
+        skill.setStatus(status);
+        skill.setCurrentVersionId(currentVersionId);
+        return skill;
+    }
 
-        private RecordingSkillFileRepository(Map<Long, List<SkillFile>> byVersion) {
-            this.byVersion = byVersion;
-        }
-
-        private RecordingSkillFileRepository() {
-            this(Map.of());
-        }
-
-        @Override
-        public void saveFiles(Long skillId, Long versionId, Map<String, String> files) {
-        }
-
-        @Override
-        public List<SkillFile> findByVersionId(Long versionId) {
-            return byVersion.getOrDefault(versionId, List.of());
-        }
-
-        @Override
-        public void deleteByVersionId(Long versionId) {
-        }
+    private static SkillFile file(Long id, Long versionId, String path, String content) {
+        var file = new SkillFile();
+        file.setId(id);
+        file.setVersionId(versionId);
+        file.setFilePath(path);
+        file.setContent(content);
+        return file;
     }
 }

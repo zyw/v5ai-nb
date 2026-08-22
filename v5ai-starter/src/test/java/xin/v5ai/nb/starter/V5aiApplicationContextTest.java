@@ -1,5 +1,6 @@
 package xin.v5ai.nb.starter;
 
+import io.minio.MinioClient;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,13 +8,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import io.minio.MinioClient;
+import xin.v5ai.nb.agent.AgentManagementService;
 import xin.v5ai.nb.api.agent.AgentController;
 import xin.v5ai.nb.api.auth.AuthController;
-import xin.v5ai.nb.api.model.ModelController;
-import xin.v5ai.nb.api.model.ModelProviderController;
 import xin.v5ai.nb.api.runtime.ChatController;
-import xin.v5ai.nb.agent.AgentManagementService;
+import xin.v5ai.nb.model.controller.V5aiModelController;
+import xin.v5ai.nb.model.controller.V5aiModelProviderController;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -62,8 +62,8 @@ class V5aiApplicationContextTest {
     @Test
     void phase1BeansAreRegisteredByComponentScan() {
         assertThat(applicationContext.getBean(AuthController.class)).isNotNull();
-        assertThat(applicationContext.getBean(ModelController.class)).isNotNull();
-        assertThat(applicationContext.getBean(ModelProviderController.class)).isNotNull();
+        assertThat(applicationContext.getBean(V5aiModelController.class)).isNotNull();
+        assertThat(applicationContext.getBean(V5aiModelProviderController.class)).isNotNull();
         assertThat(applicationContext.getBean(AgentController.class)).isNotNull();
         assertThat(applicationContext.getBean(ChatController.class)).isNotNull();
         assertThat(applicationContext.getBean(AgentManagementService.class)).isNotNull();

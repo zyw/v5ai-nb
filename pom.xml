@@ -25,7 +25,6 @@
         <satoken.version>1.45.0</satoken.version>
         <bouncycastle.version>1.85</bouncycastle.version>
 
-        <jackson2.version>2.19.2</jackson2.version>
         <redisson.version>4.6.1</redisson.version>
         <minio.version>8.5.17</minio.version>
         <agentscope.version>2.0.0</agentscope.version>
@@ -165,26 +164,6 @@
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
                 <version>${pdfbox.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson2.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>${jackson2.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-annotations</artifactId>
-                <version>${jackson2.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-jsr310</artifactId>
-                <version>${jackson2.version}</version>
             </dependency>
 
             <!-- JavaDoc 运行时读取 -->

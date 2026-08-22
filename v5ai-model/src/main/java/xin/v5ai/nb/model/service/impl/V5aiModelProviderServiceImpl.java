@@ -1,17 +1,22 @@
 package xin.v5ai.nb.model.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import xin.v5ai.nb.common.core.exception.ErrorCode;
+import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
 import xin.v5ai.nb.model.domain.bo.ModelProviderBo;
 import xin.v5ai.nb.model.domain.vo.V5aiModelProviderVo;
+import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
 import xin.v5ai.nb.model.service.IV5aiModelProviderService;
 
@@ -20,7 +25,7 @@ import java.util.List;
 
 /**
  * <p>
- *  服务实现类
+ * 模型供应商服务实现类
  * </p>
  *
  * @author ZYW
@@ -32,6 +37,7 @@ import java.util.List;
 public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
 
     private final V5aiModelProviderMapper mapper;
+    private final V5aiModelMapper modelMapper;
 
     @Override
     public PageResult<V5aiModelProviderVo> queryPageList(ModelProviderBo bo, PageQuery pageQuery) {
@@ -42,17 +48,21 @@ public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
 
     @Override
     public List<V5aiModelProviderVo> queryList(ModelProviderBo bo) {
-        return List.of();
+        LambdaQueryWrapper<V5aiModelProvider> lqw = buildQueryWrapper(bo);
+        return mapper.selectVoList(lqw);
     }
 
     @Override
     public Boolean insertByBo(ModelProviderBo bo) {
-        V5aiModelProvider modelProvider = mapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
+        var existing = mapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
                 .eq(V5aiModelProvider::getProviderKey, bo.getProviderKey()));
-        if (modelProvider != null) {
-            throw new IllegalArgumentException("provider key already exists");
+        if (existing != null) {
+            throw new IllegalArgumentException("provider key already exists: " + bo.getProviderKey());
         }
         V5aiModelProvider add = MapstructUtils.convert(bo, V5aiModelProvider.class);
+        assert add != null;
+        add.setId(null);
+        add.setEnabled(Boolean.TRUE.equals(bo.getEnabled()));
         boolean flag = mapper.insert(add) > 0;
         if (flag) {
             bo.setId(add.getId());
@@ -62,34 +72,44 @@ public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
 
     @Override
     public Boolean updateByBo(ModelProviderBo bo) {
-        var existing = mapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
-                .eq(V5aiModelProvider::getProviderKey, bo.getProviderKey()));
+        var existing = mapper.selectById(bo.getId());
         if (existing == null) {
-            throw new IllegalArgumentException("provider does not exist: " + bo.getProviderKey());
+            throw new IllegalArgumentException("provider does not exist: " + bo.getId());
         }
         V5aiModelProvider update = MapstructUtils.convert(bo, V5aiModelProvider.class);
+        assert update != null;
+        update.setId(bo.getId());
+        // 供应商标识作为业务主键，创建后不可修改
+        update.setProviderKey(existing.getProviderKey());
         return mapper.updateById(update) > 0;
     }
 
     @Override
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
+        if (ids == null || ids.isEmpty()) {
+            return false;
+        }
+        long referenced = modelMapper.selectCount(new LambdaQueryWrapper<V5aiModel>()
+                .in(V5aiModel::getProviderId, ids));
+        if (referenced > 0) {
+            throw new V5aiException(ErrorCode.CONFLICT, "provider has models and cannot be deleted");
+        }
         return mapper.deleteByIds(ids) > 0;
     }
 
-
     /**
-     * 构造客户端列表查询条件。
+     * 构造供应商列表查询条件。
      *
-     * @param bo 客户端筛选条件
-     * @return 包含 clientId、clientKey、状态等条件的查询包装器
+     * @param bo 供应商筛选条件
+     * @return 包含 providerKey、name、providerType、enabled 等条件的查询包装器
      */
     private LambdaQueryWrapper<V5aiModelProvider> buildQueryWrapper(ModelProviderBo bo) {
         return QueryBuilder.lambda(V5aiModelProvider.class)
-//                .eqIfText(SysClient::getClientId, bo.getClientId())
-//                .eqIfText(SysClient::getClientKey, bo.getClientKey())
-//                .eqIfText(SysClient::getClientSecret, bo.getClientSecret())
-//                .eqIfText(SysClient::getStatus, bo.getStatus())
-//                .orderByAsc(SysClient::getId)
+                .likeIfText(V5aiModelProvider::getProviderKey, bo.getProviderKey())
+                .likeIfText(V5aiModelProvider::getName, bo.getName())
+                .eqIfText(V5aiModelProvider::getProviderType, bo.getProviderType())
+                .eq(bo.getEnabled() != null, V5aiModelProvider::getEnabled, bo.getEnabled())
+                .orderByAsc(V5aiModelProvider::getId)
                 .build();
     }
 }

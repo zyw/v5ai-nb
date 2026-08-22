@@ -10,7 +10,7 @@ public enum ErrorCode {
     CONFLICT(409),
     INTERNAL_ERROR(500);
 
-    private Integer code;
+    private final Integer code;
 
     ErrorCode(Integer code) {
         this.code = code;

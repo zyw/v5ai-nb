@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>xin.v5ai.nb</groupId>
+        <artifactId>v5ai-modules</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>v5ai-platform</artifactId>
+
+    <description>
+        v5ai-platform 平台模块，包括用户管理，角色管理，菜单管理、权限管理、日志管理、系统管理、数据管理、Auth管理、APIKey
+    </description>
+
+</project>

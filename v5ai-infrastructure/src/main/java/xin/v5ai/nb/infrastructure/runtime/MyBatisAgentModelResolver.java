@@ -2,8 +2,9 @@ package xin.v5ai.nb.infrastructure.runtime;
 
 import io.agentscope.core.model.Model;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.model.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.model.runtime.AgentScopeModelFactory;
 import xin.v5ai.nb.runtime.AgentModelResolver;
 
 @Component

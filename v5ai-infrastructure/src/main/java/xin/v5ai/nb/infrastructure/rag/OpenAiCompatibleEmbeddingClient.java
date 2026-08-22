@@ -1,10 +1,10 @@
 package xin.v5ai.nb.infrastructure.rag;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.infrastructure.model.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.infrastructure.runtime.AgentModelCredentialConfig;
-import xin.v5ai.nb.model.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.model.runtime.config.AgentModelCredentialConfig;
 import xin.v5ai.nb.rag.EmbeddingClient;
 
 import java.net.URI;
@@ -75,7 +75,7 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
         }
     }
 
-    private xin.v5ai.nb.infrastructure.model.ModelRuntimeConfig findEmbeddingModel() {
+    private xin.v5ai.nb.model.runtime.config.ModelRuntimeConfig findEmbeddingModel() {
         return runtimeConfigGateway.findFirstEmbeddingModel();
     }
 

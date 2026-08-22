@@ -1,5 +1,7 @@
 package xin.v5ai.nb.mcp;
 
+import xin.v5ai.nb.mcp.domain.McpServer;
+
 /**
  * 根据 MCP Server 配置创建 {@link McpConnection} 的工厂。
  * 实现方负责传输层细节（Streamable HTTP / SSE / Stdio）与超时控制。

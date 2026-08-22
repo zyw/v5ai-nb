@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>v5ai-code-generator</module>
+        <module>v5ai-platform</module>
     </modules>
 
 </project>

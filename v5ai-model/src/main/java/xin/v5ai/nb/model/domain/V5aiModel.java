@@ -9,9 +9,6 @@ import lombok.Setter;
 import lombok.ToString;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * <p>
  * 
@@ -25,10 +22,7 @@ import java.io.Serializable;
 @ToString
 @EqualsAndHashCode(callSuper = true)
 @TableName("v5ai_model")
-public class V5aiModel extends BaseEntity implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class V5aiModel extends BaseEntity {
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;

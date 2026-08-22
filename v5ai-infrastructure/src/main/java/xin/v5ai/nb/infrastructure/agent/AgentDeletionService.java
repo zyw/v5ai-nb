@@ -4,8 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.infrastructure.apiKey.ApiKeyMapper;
-import xin.v5ai.nb.infrastructure.mcp.AgentMcpBindingMapper;
-import xin.v5ai.nb.infrastructure.mcp.McpToolCallAuditMapper;
 import xin.v5ai.nb.infrastructure.platform.AppQuotaMapper;
 import xin.v5ai.nb.infrastructure.platform.AppUsageMapper;
 import xin.v5ai.nb.infrastructure.platform.ModelUsageMapper;
@@ -14,7 +12,12 @@ import xin.v5ai.nb.infrastructure.runtime.AgentStateMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeConversationMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeMessageMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeRunMapper;
-import xin.v5ai.nb.infrastructure.skill.AgentSkillBindingMapper;
+import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
+import xin.v5ai.nb.mcp.domain.McpToolCallAudit;
+import xin.v5ai.nb.mcp.mapper.AgentMcpBindingMapper;
+import xin.v5ai.nb.mcp.mapper.McpToolCallAuditMapper;
+import xin.v5ai.nb.skill.domain.AgentSkillBinding;
+import xin.v5ai.nb.skill.mapper.AgentSkillBindingMapper;
 
 /**
  * Agent 级联删除：清理 Agent 及其全部关联数据
@@ -89,10 +92,10 @@ public class AgentDeletionService {
                 .eq(AgentVersionEntity::getAgentKey, agentKey));
         knowledgeBindingMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingEntity>()
                 .eq(xin.v5ai.nb.infrastructure.rag.AgentKnowledgeBindingEntity::getAgentKey, agentKey));
-        mcpBindingMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.mcp.AgentMcpBindingEntity>()
-                .eq(xin.v5ai.nb.infrastructure.mcp.AgentMcpBindingEntity::getAgentKey, agentKey));
-        skillBindingMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.skill.AgentSkillBindingEntity>()
-                .eq(xin.v5ai.nb.infrastructure.skill.AgentSkillBindingEntity::getAgentKey, agentKey));
+        mcpBindingMapper.delete(new LambdaQueryWrapper<AgentMcpBinding>()
+                .eq(AgentMcpBinding::getAgentKey, agentKey));
+        skillBindingMapper.delete(new LambdaQueryWrapper<AgentSkillBinding>()
+                .eq(AgentSkillBinding::getAgentKey, agentKey));
         apiKeyMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.apiKey.ApiKeyEntity>()
                 .eq(xin.v5ai.nb.infrastructure.apiKey.ApiKeyEntity::getAgentKey, agentKey));
         appQuotaMapper.delete(new LambdaQueryWrapper<xin.v5ai.nb.infrastructure.platform.AppQuotaEntity>()
