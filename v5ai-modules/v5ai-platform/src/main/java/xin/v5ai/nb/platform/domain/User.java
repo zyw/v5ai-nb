@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 import java.io.Serial;
@@ -18,6 +19,7 @@ import java.time.Instant;
  * TIMESTAMPTZ，会导致 selectList 报错），因此不继承 BaseEntity。</p>
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("v5ai_user")
 public class User extends BaseEntity {
 
