@@ -8,6 +8,7 @@ import xin.v5ai.nb.workflow.domain.Workflow;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -51,7 +52,7 @@ public class WorkflowVo implements Serializable {
 
     private LocalDateTime publishedAt;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

@@ -8,10 +8,6 @@
     </parent>
     <artifactId>v5ai-starter</artifactId>
     <dependencies>
-<!--        <dependency>-->
-<!--            <groupId>xin.v5ai.nb</groupId>-->
-<!--            <artifactId>v5ai-api</artifactId>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-platform</artifactId>
@@ -31,6 +27,14 @@
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-skill</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-mcp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-workflow</artifactId>
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
