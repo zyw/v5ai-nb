@@ -2,10 +2,10 @@ package xin.v5ai.nb.infrastructure.runtime;
 
 import io.agentscope.core.model.Model;
 import org.springframework.stereotype.Component;
+import xin.v5ai.nb.common.agentscope.core.AgentModelResolver;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
 import xin.v5ai.nb.model.runtime.AgentScopeModelFactory;
-import xin.v5ai.nb.runtime.AgentModelResolver;
 
 @Component
 public class MyBatisAgentModelResolver implements AgentModelResolver {

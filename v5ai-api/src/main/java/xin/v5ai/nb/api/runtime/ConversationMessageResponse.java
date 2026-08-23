@@ -1,7 +1,7 @@
 package xin.v5ai.nb.api.runtime;
 
-import xin.v5ai.nb.runtime.Message;
-import xin.v5ai.nb.runtime.MessageRole;
+import xin.v5ai.nb.common.agentscope.core.domain.Message;
+import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 
 /**
  * 会话消息的 API 响应体（不可变 record）。

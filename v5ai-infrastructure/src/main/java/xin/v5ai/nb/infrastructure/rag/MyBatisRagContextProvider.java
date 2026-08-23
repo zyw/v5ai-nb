@@ -2,10 +2,10 @@ package xin.v5ai.nb.infrastructure.rag;
 
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.agent.Agent;
+import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
+import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.rag.RetrievalContextBuilder;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.RagContextProvider;
 
 @Component
 public class MyBatisRagContextProvider implements RagContextProvider {

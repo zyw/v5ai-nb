@@ -2,15 +2,10 @@ package xin.v5ai.nb.infrastructure.runtime;
 
 import io.agentscope.core.model.Model;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.agent.Agent;
-import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
-import xin.v5ai.nb.runtime.AgentModelResolver;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.AgentTextEvent;
-import xin.v5ai.nb.runtime.AgentTextExecutor;
-import xin.v5ai.nb.runtime.McpToolResolver;
-import xin.v5ai.nb.runtime.ModelStreamTextExecutor;
-import xin.v5ai.nb.skill.SkillWorkspaceResolver;
+import xin.v5ai.nb.common.agentscope.core.*;
+import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 
 import java.nio.file.Path;
 
@@ -29,7 +24,7 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
     public PublishedModelAgentTextExecutor(
             AgentModelResolver modelResolver,
             McpToolResolver mcpToolResolver,
-            McpToolCallAuditRepository auditRepository,
+            McpToolCallAuditService auditRepository,
             SkillWorkspaceResolver skillWorkspaceResolver,
             Path workspace
     ) {

@@ -8,13 +8,12 @@ import xin.v5ai.nb.agent.domain.AgentVersion;
 import xin.v5ai.nb.agent.mapper.AgentMapper;
 import xin.v5ai.nb.agent.mapper.AgentVersionMapper;
 import xin.v5ai.nb.common.agentscope.core.AgentDeletionPort;
+import xin.v5ai.nb.common.agentscope.core.service.AgentMcpBindingService;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.infrastructure.runtime.AgentStateMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeConversationMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeMessageMapper;
 import xin.v5ai.nb.infrastructure.runtime.RuntimeRunMapper;
-import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
-import xin.v5ai.nb.mcp.mapper.AgentMcpBindingMapper;
 import xin.v5ai.nb.platform.domain.ApiKey;
 import xin.v5ai.nb.platform.domain.AppQuota;
 import xin.v5ai.nb.platform.domain.AppUsage;
@@ -42,7 +41,7 @@ public class AgentDeletionService implements AgentDeletionPort {
     private final AgentMapper agentMapper;
     private final AgentVersionMapper agentVersionMapper;
     private final AgentKnowledgeBindingMapper knowledgeBindingMapper;
-    private final AgentMcpBindingMapper mcpBindingMapper;
+    private final AgentMcpBindingService mcpBindingService;
     private final AgentSkillBindingMapper skillBindingMapper;
     private final ApiKeyMapper apiKeyMapper;
     private final AppQuotaMapper appQuotaMapper;
@@ -59,7 +58,7 @@ public class AgentDeletionService implements AgentDeletionPort {
             AgentMapper agentMapper,
             AgentVersionMapper agentVersionMapper,
             AgentKnowledgeBindingMapper knowledgeBindingMapper,
-            AgentMcpBindingMapper mcpBindingMapper,
+            AgentMcpBindingService mcpBindingService,
             AgentSkillBindingMapper skillBindingMapper,
             ApiKeyMapper apiKeyMapper,
             AppQuotaMapper appQuotaMapper,
@@ -75,7 +74,7 @@ public class AgentDeletionService implements AgentDeletionPort {
         this.agentMapper = agentMapper;
         this.agentVersionMapper = agentVersionMapper;
         this.knowledgeBindingMapper = knowledgeBindingMapper;
-        this.mcpBindingMapper = mcpBindingMapper;
+        this.mcpBindingService = mcpBindingService;
         this.skillBindingMapper = skillBindingMapper;
         this.apiKeyMapper = apiKeyMapper;
         this.appQuotaMapper = appQuotaMapper;
@@ -102,8 +101,9 @@ public class AgentDeletionService implements AgentDeletionPort {
                 .eq(AgentVersion::getAgentKey, agentKey));
         knowledgeBindingMapper.delete(new LambdaQueryWrapper<AgentKnowledgeBinding>()
                 .eq(AgentKnowledgeBinding::getAgentKey, agentKey));
-        mcpBindingMapper.delete(new LambdaQueryWrapper<AgentMcpBinding>()
-                .eq(AgentMcpBinding::getAgentKey, agentKey));
+//        mcpBindingMapper.delete(new LambdaQueryWrapper<AgentMcpBinding>()
+//                .eq(AgentMcpBinding::getAgentKey, agentKey));
+        mcpBindingService.delete(agentKey);
         skillBindingMapper.delete(new LambdaQueryWrapper<AgentSkillBinding>()
                 .eq(AgentSkillBinding::getAgentKey, agentKey));
         apiKeyMapper.delete(new LambdaQueryWrapper<ApiKey>()

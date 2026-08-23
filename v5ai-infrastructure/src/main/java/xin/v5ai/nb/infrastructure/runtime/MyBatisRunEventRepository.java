@@ -1,11 +1,11 @@
 package xin.v5ai.nb.infrastructure.runtime;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.runtime.RunEventRepository;
-import xin.v5ai.nb.runtime.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.service.RunEventService;
 
 @Repository
-public class MyBatisRunEventRepository implements RunEventRepository {
+public class MyBatisRunEventRepository implements RunEventService {
     private final RuntimeRunEventGateway gateway;
 
     public MyBatisRunEventRepository(RuntimeRunEventGateway gateway) {

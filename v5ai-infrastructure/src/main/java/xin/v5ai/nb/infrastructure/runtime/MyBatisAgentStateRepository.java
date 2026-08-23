@@ -1,10 +1,10 @@
 package xin.v5ai.nb.infrastructure.runtime;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.runtime.AgentStateRepository;
+import xin.v5ai.nb.common.agentscope.core.service.AgentStateService;
 
 @Repository
-public class MyBatisAgentStateRepository implements AgentStateRepository {
+public class MyBatisAgentStateRepository implements AgentStateService {
     private final AgentStateGateway gateway;
 
     public MyBatisAgentStateRepository(AgentStateGateway gateway) {

@@ -1,14 +1,14 @@
 package xin.v5ai.nb.infrastructure.runtime;
 
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.runtime.Message;
-import xin.v5ai.nb.runtime.MessageRepository;
-import xin.v5ai.nb.runtime.MessageRole;
+import xin.v5ai.nb.common.agentscope.core.domain.Message;
+import xin.v5ai.nb.common.agentscope.core.service.MessageService;
+import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 
 import java.util.List;
 
 @Component
-public class MyBatisMessageRepository implements MessageRepository {
+public class MyBatisMessageRepository implements MessageService {
     private final RuntimeMessageGateway gateway;
 
     public MyBatisMessageRepository(RuntimeMessageGateway gateway) {

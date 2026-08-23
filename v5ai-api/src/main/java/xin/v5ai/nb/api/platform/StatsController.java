@@ -4,7 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.agent.AgentRepository;
+import xin.v5ai.nb.common.agentscope.core.service.AgentService;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
@@ -19,18 +19,18 @@ import java.time.LocalDate;
 @RequestMapping("/api/admin/stats")
 public class StatsController {
     private final JdbcTemplate jdbcTemplate;
-    private final AgentRepository agentRepository;
+    private final AgentService agentService;
     private final V5aiModelMapper modelMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final SkillMapper skillMapper;
 
     public StatsController(JdbcTemplate jdbcTemplate,
-                           AgentRepository agentRepository,
+                           AgentService agentService,
                            V5aiModelMapper modelMapper,
                            KnowledgeBaseMapper knowledgeBaseMapper,
                            SkillMapper skillMapper) {
         this.jdbcTemplate = jdbcTemplate;
-        this.agentRepository = agentRepository;
+        this.agentService = agentService;
         this.modelMapper = modelMapper;
         this.knowledgeBaseMapper = knowledgeBaseMapper;
         this.skillMapper = skillMapper;
@@ -53,7 +53,7 @@ public class StatsController {
         // 直接传 LocalDate 对象：JDBC 映射为 date 类型，避免 "date = character varying" 报错
         var today = LocalDate.now();
         return R.ok(new OverviewResponse(
-                agentRepository.list().size(),
+                agentService.list().size(),
                 modelMapper.selectCount(null),
                 knowledgeBaseMapper.selectCount(null),
                 skillMapper.selectCount(null),

@@ -1,11 +1,11 @@
 package xin.v5ai.nb.infrastructure.runtime;
 
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.runtime.Conversation;
-import xin.v5ai.nb.runtime.ConversationRepository;
+import xin.v5ai.nb.common.agentscope.core.domain.Conversation;
+import xin.v5ai.nb.common.agentscope.core.service.ConversationService;
 
 @Repository
-public class MyBatisConversationRepository implements ConversationRepository {
+public class MyBatisConversationRepository implements ConversationService {
     private final RuntimeConversationGateway gateway;
 
     public MyBatisConversationRepository(RuntimeConversationGateway gateway) {

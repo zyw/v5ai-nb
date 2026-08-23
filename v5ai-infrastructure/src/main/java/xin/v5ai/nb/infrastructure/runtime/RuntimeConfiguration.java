@@ -7,13 +7,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.agent.Agent;
-import xin.v5ai.nb.agent.PublishedAgentResolver;
+import xin.v5ai.nb.common.agentscope.core.*;
+import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.service.*;
 import xin.v5ai.nb.common.core.platform.AppQuotaService;
 import xin.v5ai.nb.common.core.platform.UsageRecorder;
-import xin.v5ai.nb.mcp.McpToolCallAuditRepository;
-import xin.v5ai.nb.runtime.*;
-import xin.v5ai.nb.skill.SkillWorkspaceResolver;
 
 import java.nio.file.Path;
 
@@ -26,11 +25,11 @@ public class RuntimeConfiguration {
             ObjectProvider<Model> modelProvider,
             AgentScopeRuntimeProperties properties,
             ObjectProvider<McpToolResolver> mcpToolResolverProvider,
-            ObjectProvider<McpToolCallAuditRepository> auditRepositoryProvider,
+            ObjectProvider<McpToolCallAuditService> auditRepositoryProvider,
             ObjectProvider<SkillWorkspaceResolver> skillWorkspaceResolverProvider
     ) {
         McpToolResolver mcpToolResolver = mcpToolResolverProvider.getIfAvailable();
-        McpToolCallAuditRepository auditRepository = auditRepositoryProvider.getIfAvailable();
+        McpToolCallAuditService auditRepository = auditRepositoryProvider.getIfAvailable();
         SkillWorkspaceResolver skillWorkspaceResolver = skillWorkspaceResolverProvider.getIfAvailable();
         AgentModelResolver modelResolver = modelResolverProvider.getIfAvailable();
         if (modelResolver != null) {
@@ -48,7 +47,7 @@ public class RuntimeConfiguration {
                     new JsonFileAgentStateStore(Path.of(properties.getStateDirectory())),
                     Path.of(properties.getWorkspace()));
         }
-        return (Agent application, xin.v5ai.nb.runtime.AgentRunRequest request) ->
+        return (Agent application, AgentRunRequest request) ->
                 Flux.just(new AgentTextEvent.Text("Phase 1 runtime placeholder response for: " + request.query()));
     }
 
@@ -56,18 +55,18 @@ public class RuntimeConfiguration {
     AgentRuntime agentRuntime(
             PublishedAgentResolver resolver,
             AgentTextExecutor executor,
-            MessageRepository messageRepository,
-            RunRecordRepository runRecordRepository,
-            ConversationRepository conversationRepository,
-            RunEventRepository runEventRepository,
-            ObjectProvider<AgentStateRepository> agentStateRepositoryProvider,
+            MessageService messageService,
+            RunRecordService runRecordService,
+            ConversationService conversationService,
+            RunEventService runEventService,
+            ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
             ObjectProvider<UsageRecorder> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
         var runtime = new AgentScopeRuntime(resolver, executor, ragContextProviderProvider.getIfAvailable());
-        return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,
-                conversationRepository, runEventRepository, agentStateRepositoryProvider.getIfAvailable(),
+        return new PersistingAgentRuntime(runtime, messageService, runRecordService,
+                conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
     }
 
@@ -79,18 +78,18 @@ public class RuntimeConfiguration {
     AgentRuntime agentDebugRuntime(
             PublishedAgentResolver resolver,
             AgentTextExecutor executor,
-            MessageRepository messageRepository,
-            RunRecordRepository runRecordRepository,
-            ConversationRepository conversationRepository,
-            RunEventRepository runEventRepository,
-            ObjectProvider<AgentStateRepository> agentStateRepositoryProvider,
+            MessageService messageService,
+            RunRecordService runRecordService,
+            ConversationService conversationService,
+            RunEventService runEventService,
+            ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
             ObjectProvider<UsageRecorder> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable());
-        return new PersistingAgentRuntime(runtime, messageRepository, runRecordRepository,
-                conversationRepository, runEventRepository, agentStateRepositoryProvider.getIfAvailable(),
+        return new PersistingAgentRuntime(runtime, messageService, runRecordService,
+                conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
     }
 }

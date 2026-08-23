@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.AgentRuntime;
-import xin.v5ai.nb.runtime.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 
 /**
  * 管理端 Agent 调试接口：使用管理端 Sa-Token 鉴权（/api/admin/** 拦截），

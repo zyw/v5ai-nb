@@ -8,10 +8,10 @@ import io.agentscope.core.model.ToolSchema;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-import xin.v5ai.nb.agent.Agent;
-import xin.v5ai.nb.agent.AgentStatus;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.AgentTextEvent;
+import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
+import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
 
 import java.util.List;
 import java.util.Map;

@@ -1,35 +1,28 @@
 package xin.v5ai.nb.api.runtime;
 
 import org.springframework.http.codec.ServerSentEvent;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
+import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.AgentRunResult;
-import xin.v5ai.nb.runtime.AgentRuntime;
-import xin.v5ai.nb.runtime.MessageRepository;
-import xin.v5ai.nb.runtime.RuntimeEvent;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/agents/{agentKey}/chat")
 public class ChatController {
     private final AgentRuntime agentRuntime;
-    private final MessageRepository messageRepository;
+    private final MessageService messageService;
 
-    public ChatController(AgentRuntime agentRuntime, MessageRepository messageRepository) {
+    public ChatController(AgentRuntime agentRuntime, MessageService messageService) {
         this.agentRuntime = agentRuntime;
-        this.messageRepository = messageRepository;
+        this.messageService = messageService;
     }
 
     @PostMapping("/stream")
@@ -54,7 +47,7 @@ public class ChatController {
             @PathVariable("conversationId") String conversationId,
             PageQuery pageQuery
     ) {
-        var list = messageRepository.findByConversationId(conversationId).stream()
+        var list = messageService.findByConversationId(conversationId).stream()
                 .map(ConversationMessageResponse::from)
                 .toList();
         return R.ok(PageUtils.page(list, pageQuery));
@@ -66,7 +59,7 @@ public class ChatController {
             @PathVariable("conversationId") String conversationId,
             @RequestBody ChatRequest request
     ) {
-        var history = messageRepository.findByConversationId(conversationId);
+        var history = messageService.findByConversationId(conversationId);
         var resumeRequest = new AgentRunRequest(agentKey, conversationId, request.query()).withHistory(history);
         return toSse(agentRuntime.stream(resumeRequest));
     }

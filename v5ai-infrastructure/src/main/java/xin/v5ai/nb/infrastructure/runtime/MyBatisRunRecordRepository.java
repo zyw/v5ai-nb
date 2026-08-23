@@ -1,11 +1,11 @@
 package xin.v5ai.nb.infrastructure.runtime;
 
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.runtime.AgentRunRequest;
-import xin.v5ai.nb.runtime.RunRecordRepository;
+import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.service.RunRecordService;
 
 @Component
-public class MyBatisRunRecordRepository implements RunRecordRepository {
+public class MyBatisRunRecordRepository implements RunRecordService {
     private final RuntimeRunGateway gateway;
 
     public MyBatisRunRecordRepository(RuntimeRunGateway gateway) {
