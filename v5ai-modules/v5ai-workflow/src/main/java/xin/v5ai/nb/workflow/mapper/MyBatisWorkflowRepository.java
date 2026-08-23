@@ -32,7 +32,7 @@ public class MyBatisWorkflowRepository implements WorkflowRepository {
         return new Workflow(entity.getId(), workflow.workflowKey(), workflow.name(), workflow.description(),
                 workflow.status(), workflow.draftDefinition(), workflow.publishedDefinition(),
                 workflow.publishedVersion(), workflow.publishedAt(),
-                toInstant(entity.getCreatedAt()), toInstant(entity.getUpdatedAt()));
+                entity.getCreatedAt(), entity.getUpdatedAt());
     }
 
     @Override
@@ -80,7 +80,7 @@ public class MyBatisWorkflowRepository implements WorkflowRepository {
         entity.setDraftDefinitionJson(WorkflowJson.toJson(workflow.draftDefinition()));
         entity.setPublishedDefinitionJson(WorkflowJson.toJson(workflow.publishedDefinition()));
         entity.setPublishedVersion(workflow.publishedVersion());
-        entity.setPublishedAt(toLocalDateTime(workflow.publishedAt()));
+        entity.setPublishedAt(workflow.publishedAt());
         return entity;
     }
 
@@ -93,16 +93,16 @@ public class MyBatisWorkflowRepository implements WorkflowRepository {
                 WorkflowJson.parseDefinition(entity.getDraftDefinitionJson()),
                 WorkflowJson.parseDefinition(entity.getPublishedDefinitionJson()),
                 entity.getPublishedVersion(),
-                toInstant(entity.getPublishedAt()),
-                toInstant(entity.getCreatedAt()),
-                toInstant(entity.getUpdatedAt()));
+                entity.getPublishedAt(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt());
     }
 
-    private static Instant toInstant(LocalDateTime value) {
-        return value == null ? null : value.atZone(ZoneId.systemDefault()).toInstant();
-    }
-
-    private static LocalDateTime toLocalDateTime(Instant value) {
-        return value == null ? null : LocalDateTime.ofInstant(value, ZoneId.systemDefault());
-    }
+//    private static Instant toInstant(LocalDateTime value) {
+//        return value == null ? null : value.atZone(ZoneId.systemDefault()).toInstant();
+//    }
+//
+//    private static LocalDateTime toLocalDateTime(Instant value) {
+//        return value == null ? null : LocalDateTime.ofInstant(value, ZoneId.systemDefault());
+//    }
 }

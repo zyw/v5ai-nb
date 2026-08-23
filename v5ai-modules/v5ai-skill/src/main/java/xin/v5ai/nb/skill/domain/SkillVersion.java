@@ -10,6 +10,7 @@ import lombok.ToString;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -52,5 +53,5 @@ public class SkillVersion extends BaseEntity {
     /**
      * 发布时间（未发布为 null）
      */
-    private LocalDateTime publishedAt;
+    private OffsetDateTime publishedAt;
 }

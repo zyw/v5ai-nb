@@ -7,6 +7,7 @@ import xin.v5ai.nb.rag.domain.KnowledgeTask;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -48,7 +49,7 @@ public class KnowledgeTaskVo implements Serializable {
      */
     private String errorMessage;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

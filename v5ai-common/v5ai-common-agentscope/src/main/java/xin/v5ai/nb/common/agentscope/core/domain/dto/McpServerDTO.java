@@ -6,6 +6,7 @@ import lombok.ToString;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -75,5 +76,5 @@ public class McpServerDTO implements Serializable {
     /**
      * 最近一次连接测试时间（可为 null）
      */
-    private LocalDateTime lastTestedAt;
+    private OffsetDateTime lastTestedAt;
 }

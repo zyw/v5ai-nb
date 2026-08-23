@@ -3,6 +3,7 @@ package xin.v5ai.nb.workflow.core;
 import xin.v5ai.nb.workflow.core.enums.WorkflowStatus;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 public record Workflow(
         Long id,
@@ -13,9 +14,9 @@ public record Workflow(
         WorkflowDefinition draftDefinition,
         WorkflowDefinition publishedDefinition,
         Long publishedVersion,
-        Instant publishedAt,
-        Instant createdAt,
-        Instant updatedAt
+        OffsetDateTime publishedAt,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
 ) {
     public boolean isActive() {
         return status != WorkflowStatus.DISABLED;
@@ -30,7 +31,7 @@ public record Workflow(
                 publishedDefinition, publishedVersion, publishedAt, createdAt, updatedAt);
     }
 
-    public Workflow withPublished(WorkflowDefinition published, Long version, Instant at) {
+    public Workflow withPublished(WorkflowDefinition published, Long version, OffsetDateTime at) {
         return new Workflow(id, workflowKey, name, description, WorkflowStatus.PUBLISHED,
                 draftDefinition, published, version, at, createdAt, updatedAt);
     }

@@ -7,6 +7,7 @@ import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -34,7 +35,7 @@ public class KnowledgeBaseVo implements Serializable {
      */
     private String status;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

@@ -6,12 +6,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xin.v5ai.nb.common.agentscope.core.factory.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
 import xin.v5ai.nb.common.agentscope.core.McpJsonCodec;
 import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
-import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
+import xin.v5ai.nb.common.agentscope.core.factory.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
@@ -19,8 +19,8 @@ import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
-import xin.v5ai.nb.mcp.core.domain.McpConnectionTestResult;
 import xin.v5ai.nb.mcp.core.McpToolPermissionPolicy;
+import xin.v5ai.nb.mcp.core.domain.McpConnectionTestResult;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 import xin.v5ai.nb.mcp.domain.McpServer;
 import xin.v5ai.nb.mcp.domain.McpTool;
@@ -36,6 +36,7 @@ import xin.v5ai.nb.mcp.mapper.McpToolMapper;
 import xin.v5ai.nb.mcp.service.IMcpServerService;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -314,7 +315,7 @@ public class McpServerServiceImpl implements IMcpServerService {
         update.setId(serverId);
         update.setLastTestStatus(status);
         update.setLastTestMessage(message);
-        update.setLastTestedAt(LocalDateTime.now());
+        update.setLastTestedAt(OffsetDateTime.now());
         serverMapper.updateById(update);
     }
 

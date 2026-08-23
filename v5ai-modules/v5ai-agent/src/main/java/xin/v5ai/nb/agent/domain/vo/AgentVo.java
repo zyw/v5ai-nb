@@ -7,6 +7,7 @@ import xin.v5ai.nb.agent.domain.Agent;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -85,7 +86,7 @@ public class AgentVo implements Serializable {
      */
     private Boolean ragEnabled;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

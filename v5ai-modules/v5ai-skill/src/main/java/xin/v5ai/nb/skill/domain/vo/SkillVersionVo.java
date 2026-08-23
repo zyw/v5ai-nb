@@ -7,6 +7,7 @@ import xin.v5ai.nb.skill.domain.SkillVersion;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -42,9 +43,9 @@ public class SkillVersionVo implements Serializable {
     /**
      * 发布时间（未发布为 null）
      */
-    private LocalDateTime publishedAt;
+    private OffsetDateTime publishedAt;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

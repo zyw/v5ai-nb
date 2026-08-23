@@ -24,7 +24,7 @@ import xin.v5ai.nb.skill.mapper.SkillMapper;
 import xin.v5ai.nb.skill.mapper.SkillVersionMapper;
 import xin.v5ai.nb.skill.service.ISkillService;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -155,7 +155,7 @@ public class SkillServiceImpl implements ISkillService {
         var versionUpdate = new SkillVersion();
         versionUpdate.setId(version.getId());
         versionUpdate.setStatus(VERSION_PUBLISHED);
-        versionUpdate.setPublishedAt(LocalDateTime.now());
+        versionUpdate.setPublishedAt(OffsetDateTime.now());
         versionMapper.updateById(versionUpdate);
 
         var skillUpdate = new Skill();

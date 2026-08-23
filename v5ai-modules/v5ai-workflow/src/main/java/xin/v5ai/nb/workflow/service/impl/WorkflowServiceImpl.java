@@ -10,7 +10,6 @@ import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.workflow.core.*;
-import xin.v5ai.nb.workflow.core.WorkflowRun;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
 import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
@@ -21,7 +20,7 @@ import xin.v5ai.nb.workflow.mapper.WorkflowNodeRunMapper;
 import xin.v5ai.nb.workflow.mapper.WorkflowRunMapper;
 import xin.v5ai.nb.workflow.service.IWorkflowService;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -128,7 +127,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         update.setStatus(STATUS_PUBLISHED);
         update.setPublishedDefinitionJson(existing.getDraftDefinitionJson());
         update.setPublishedVersion(version);
-        update.setPublishedAt(LocalDateTime.now());
+        update.setPublishedAt(OffsetDateTime.now());
         workflowMapper.updateById(update);
         existing.setStatus(STATUS_PUBLISHED);
         existing.setPublishedDefinitionJson(existing.getDraftDefinitionJson());

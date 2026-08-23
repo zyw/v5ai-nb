@@ -50,7 +50,7 @@ public class WorkflowVo implements Serializable {
 
     private Long publishedVersion;
 
-    private LocalDateTime publishedAt;
+    private OffsetDateTime publishedAt;
 
     private OffsetDateTime createdAt;
 

@@ -11,6 +11,7 @@ import lombok.ToString;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -64,5 +65,5 @@ public class Workflow extends BaseEntity {
     /**
      * 发布时间
      */
-    private LocalDateTime publishedAt;
+    private OffsetDateTime publishedAt;
 }

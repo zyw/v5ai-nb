@@ -7,6 +7,7 @@ import xin.v5ai.nb.model.domain.V5aiModel;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -37,10 +38,10 @@ public class V5aiModelVo implements Serializable {
 
     private Boolean enabled;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /**
      * 更新时间
      */
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

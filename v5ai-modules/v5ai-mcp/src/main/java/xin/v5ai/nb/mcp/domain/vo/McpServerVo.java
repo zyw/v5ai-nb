@@ -7,6 +7,7 @@ import xin.v5ai.nb.mcp.domain.McpServer;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -62,9 +63,9 @@ public class McpServerVo implements Serializable {
 
     private String lastTestMessage;
 
-    private LocalDateTime lastTestedAt;
+    private OffsetDateTime lastTestedAt;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 }

@@ -10,6 +10,7 @@ import lombok.ToString;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -82,5 +83,5 @@ public class McpServer extends BaseEntity {
     /**
      * 最近一次连接测试时间（可为 null）
      */
-    private LocalDateTime lastTestedAt;
+    private OffsetDateTime lastTestedAt;
 }
