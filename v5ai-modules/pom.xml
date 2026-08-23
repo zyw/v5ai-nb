@@ -21,6 +21,7 @@
         <module>v5ai-skill</module>
         <module>v5ai-workflow</module>
         <module>v5ai-worker</module>
+        <module>v5ai-runtime</module>
     </modules>
 
 </project>

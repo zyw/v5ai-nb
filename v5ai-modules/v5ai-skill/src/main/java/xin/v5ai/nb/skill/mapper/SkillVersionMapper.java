@@ -2,7 +2,6 @@ package xin.v5ai.nb.skill.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
 import xin.v5ai.nb.skill.domain.SkillVersion;
 import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
@@ -24,6 +23,5 @@ public interface SkillVersionMapper extends BaseMapperPlus<SkillVersion, SkillVe
      * @param skillId Skill ID
      * @return 下一个版本号（1 起）
      */
-    @Select("SELECT COALESCE(MAX(version), 0) + 1 FROM v5ai_skill_version WHERE skill_id = #{skillId}")
     Long nextVersion(@Param("skillId") Long skillId);
 }

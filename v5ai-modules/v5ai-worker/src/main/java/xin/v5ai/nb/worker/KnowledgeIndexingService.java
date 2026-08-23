@@ -1,18 +1,18 @@
 package xin.v5ai.nb.worker;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.rag.DocumentFileType;
-import xin.v5ai.nb.rag.DocumentParser;
-import xin.v5ai.nb.rag.DocumentChunker;
-import xin.v5ai.nb.rag.EmbeddingClient;
-import xin.v5ai.nb.rag.KnowledgeDocumentContentStore;
-import xin.v5ai.nb.rag.KnowledgeDocumentRepository;
-import xin.v5ai.nb.rag.KnowledgeTaskRepository;
-import xin.v5ai.nb.rag.VectorStore;
+import xin.v5ai.nb.rag.core.DocumentChunker;
+import xin.v5ai.nb.rag.core.EmbeddingClient;
+import xin.v5ai.nb.rag.core.KnowledgeDocumentContentStore;
+import xin.v5ai.nb.rag.core.enums.DocumentFileType;
+import xin.v5ai.nb.rag.core.parser.DocumentParser;
+import xin.v5ai.nb.rag.core.repository.KnowledgeDocumentRepository;
+import xin.v5ai.nb.rag.core.repository.KnowledgeTaskRepository;
+import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Executes the document indexing pipeline for one task:
@@ -20,6 +20,7 @@ import java.util.List;
  * state transitions and retry accounting.
  */
 @Service
+@RequiredArgsConstructor
 public class KnowledgeIndexingService {
     private static final String STATUS_PROCESSING = "PROCESSING";
     private static final String STATUS_COMPLETED = "COMPLETED";
@@ -32,24 +33,6 @@ public class KnowledgeIndexingService {
     private final DocumentChunker documentChunker;
     private final EmbeddingClient embeddingClient;
     private final VectorStore vectorStore;
-
-    public KnowledgeIndexingService(
-            KnowledgeTaskRepository taskRepository,
-            KnowledgeDocumentRepository documentRepository,
-            KnowledgeDocumentContentStore contentStore,
-            DocumentParser documentParser,
-            DocumentChunker documentChunker,
-            EmbeddingClient embeddingClient,
-            VectorStore vectorStore
-    ) {
-        this.taskRepository = taskRepository;
-        this.documentRepository = documentRepository;
-        this.contentStore = contentStore;
-        this.documentParser = documentParser;
-        this.documentChunker = documentChunker;
-        this.embeddingClient = embeddingClient;
-        this.vectorStore = vectorStore;
-    }
 
     public void processTask(Long taskId) {
         var task = taskRepository.findById(taskId);

@@ -2,7 +2,7 @@ package xin.v5ai.nb.workflow.domain.vo;
 
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
-import xin.v5ai.nb.workflow.WorkflowDefinition;
+import xin.v5ai.nb.workflow.core.WorkflowDefinition;
 import xin.v5ai.nb.workflow.domain.Workflow;
 
 import java.io.Serial;

@@ -6,6 +6,8 @@ import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
+import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 

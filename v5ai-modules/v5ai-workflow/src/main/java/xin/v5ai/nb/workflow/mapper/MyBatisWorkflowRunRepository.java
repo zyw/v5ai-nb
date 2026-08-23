@@ -1,14 +1,15 @@
 package xin.v5ai.nb.workflow.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.workflow.WorkflowJson;
-import xin.v5ai.nb.workflow.WorkflowNodeRun;
-import xin.v5ai.nb.workflow.WorkflowNodeRunStatus;
-import xin.v5ai.nb.workflow.WorkflowNodeType;
-import xin.v5ai.nb.workflow.WorkflowRun;
-import xin.v5ai.nb.workflow.WorkflowRunRepository;
-import xin.v5ai.nb.workflow.WorkflowRunStatus;
+import xin.v5ai.nb.workflow.core.WorkflowJson;
+import xin.v5ai.nb.workflow.core.WorkflowNodeRun;
+import xin.v5ai.nb.workflow.core.WorkflowRun;
+import xin.v5ai.nb.workflow.core.WorkflowRunRepository;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
+import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,15 +21,11 @@ import java.util.List;
  * @since 2026-08-22
  */
 @Repository
+@RequiredArgsConstructor
 public class MyBatisWorkflowRunRepository implements WorkflowRunRepository {
 
     private final WorkflowRunMapper runMapper;
     private final WorkflowNodeRunMapper nodeRunMapper;
-
-    public MyBatisWorkflowRunRepository(WorkflowRunMapper runMapper, WorkflowNodeRunMapper nodeRunMapper) {
-        this.runMapper = runMapper;
-        this.nodeRunMapper = nodeRunMapper;
-    }
 
     @Override
     public void start(WorkflowRun run) {

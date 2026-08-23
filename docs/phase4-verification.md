@@ -16,8 +16,8 @@ cd v5ai-ui && npx vue-tsc --noEmit
 
 ### 新模块 v5ai-skill（领域层）
 
-- 领域模型：`Skill`（name 唯一、status、当前发布版本指针）、`SkillVersion`（DRAFT/PUBLISHED、
-  版本号自增）、`SkillFile`（发布版本文件）、`ResolvedSkill`（运行时注入载体）。
+- 领域模型：`SkillDTO`（name 唯一、status、当前发布版本指针）、`SkillVersion`（DRAFT/PUBLISHED、
+  版本号自增）、`SkillFileDTO`（发布版本文件）、`ResolvedSkill`（运行时注入载体）。
 - 端口：`SkillRepository`、`SkillVersionRepository`、`SkillFileRepository`、
   `ApplicationSkillBindingRepository`、`SkillWorkspaceResolver`。
 - `SkillPackageParser`：zip 包解析与校验（大小/数量/路径穿越/绝对路径/UTF-8 文本/SKILL.md

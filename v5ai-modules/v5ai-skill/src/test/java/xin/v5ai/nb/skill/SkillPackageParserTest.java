@@ -1,6 +1,7 @@
 package xin.v5ai.nb.skill;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.skill.core.SkillPackageParser;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

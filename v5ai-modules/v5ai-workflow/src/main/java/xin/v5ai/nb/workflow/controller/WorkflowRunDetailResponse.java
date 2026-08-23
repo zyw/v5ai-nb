@@ -1,7 +1,7 @@
 package xin.v5ai.nb.workflow.controller;
 
-import xin.v5ai.nb.workflow.WorkflowNodeRun;
-import xin.v5ai.nb.workflow.WorkflowRun;
+import xin.v5ai.nb.workflow.core.WorkflowNodeRun;
+import xin.v5ai.nb.workflow.core.WorkflowRun;
 
 import java.util.List;
 

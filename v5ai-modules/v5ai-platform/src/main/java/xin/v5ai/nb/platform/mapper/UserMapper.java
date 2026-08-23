@@ -3,7 +3,6 @@ package xin.v5ai.nb.platform.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import xin.v5ai.nb.platform.domain.User;
 
 /**
@@ -12,10 +11,6 @@ import xin.v5ai.nb.platform.domain.User;
  */
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
-    @Select("""
-            SELECT id, username, password_hash, status, tenant_id, display_name
-            FROM v5ai_user
-            WHERE username = #{username}
-            """)
+
     User findByUsername(@Param("username") String username);
 }

@@ -1,6 +1,7 @@
 package xin.v5ai.nb.common.agentscope.core;
 
 
+import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 
 /**

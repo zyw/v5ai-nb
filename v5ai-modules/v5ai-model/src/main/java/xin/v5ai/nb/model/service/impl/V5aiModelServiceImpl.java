@@ -21,7 +21,7 @@ import xin.v5ai.nb.model.domain.vo.TestModelConnectionVo;
 import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
-import xin.v5ai.nb.model.runtime.ModelConnectionTester;
+import xin.v5ai.nb.model.core.ModelConnectionTester;
 import xin.v5ai.nb.model.service.IV5aiModelService;
 
 import java.util.List;

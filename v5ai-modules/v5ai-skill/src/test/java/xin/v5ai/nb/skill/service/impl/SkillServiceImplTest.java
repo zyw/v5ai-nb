@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.skill.SkillPackageParser;
+import xin.v5ai.nb.skill.core.SkillPackageParser;
 import xin.v5ai.nb.skill.domain.AgentSkillBinding;
 import xin.v5ai.nb.skill.domain.Skill;
 import xin.v5ai.nb.skill.domain.SkillFile;

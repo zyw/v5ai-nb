@@ -2,7 +2,6 @@ package xin.v5ai.nb.rag.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeTaskVo;
@@ -23,12 +22,5 @@ public interface KnowledgeTaskMapper extends BaseMapperPlus<KnowledgeTask, Knowl
     /**
      * 查询待处理任务：PENDING 任务，以及仍有余量尝试次数的 FAILED 任务（按 id 升序，限量）。
      */
-    @Select("""
-            SELECT * FROM v5ai_knowledge_task
-            WHERE status = 'PENDING'
-               OR (status = 'FAILED' AND attempt_count < max_attempts)
-            ORDER BY id
-            LIMIT #{limit}
-            """)
     List<KnowledgeTask> selectProcessable(@Param("limit") int limit);
 }

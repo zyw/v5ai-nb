@@ -1,7 +1,11 @@
 package xin.v5ai.nb.worker;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.rag.VectorStore;
+import xin.v5ai.nb.rag.core.store.VectorStore;
+import xin.v5ai.nb.rag.core.EmbeddingClient;
+import xin.v5ai.nb.rag.core.KnowledgeDocumentContentStore;
+import xin.v5ai.nb.rag.core.repository.KnowledgeDocumentRepository;
+import xin.v5ai.nb.rag.core.repository.KnowledgeTaskRepository;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
 
@@ -93,7 +97,7 @@ class KnowledgeIndexingServiceTest {
         return document;
     }
 
-    private static final class FixedEmbeddingClient implements xin.v5ai.nb.rag.EmbeddingClient {
+    private static final class FixedEmbeddingClient implements EmbeddingClient {
         private final List<Float> vector;
 
         private FixedEmbeddingClient(List<Float> vector) {
@@ -111,7 +115,7 @@ class KnowledgeIndexingServiceTest {
         }
     }
 
-    private static final class FixedContentStore implements xin.v5ai.nb.rag.KnowledgeDocumentContentStore {
+    private static final class FixedContentStore implements KnowledgeDocumentContentStore {
         private final byte[] content;
 
         private FixedContentStore(byte[] content) {
@@ -128,7 +132,7 @@ class KnowledgeIndexingServiceTest {
         }
     }
 
-    private static final class RecordingTaskRepository implements xin.v5ai.nb.rag.KnowledgeTaskRepository {
+    private static final class RecordingTaskRepository implements KnowledgeTaskRepository {
         private final List<KnowledgeTask> saved = new ArrayList<>();
         private KnowledgeTask stored;
 
@@ -164,7 +168,7 @@ class KnowledgeIndexingServiceTest {
         }
     }
 
-    private static final class RecordingDocumentRepository implements xin.v5ai.nb.rag.KnowledgeDocumentRepository {
+    private static final class RecordingDocumentRepository implements KnowledgeDocumentRepository {
         private final List<KnowledgeDocument> saved = new ArrayList<>();
         private KnowledgeDocument stored;
 

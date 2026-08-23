@@ -17,7 +17,7 @@ import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
 import xin.v5ai.nb.common.agentscope.core.domain.GeneratedAgentConfig;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.model.runtime.AgentScopeModelFactory;
+import xin.v5ai.nb.model.core.AgentScopeModelFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;

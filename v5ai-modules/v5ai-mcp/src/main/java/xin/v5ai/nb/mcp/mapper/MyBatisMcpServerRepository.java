@@ -1,7 +1,8 @@
 package xin.v5ai.nb.mcp.mapper;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.agentscope.core.domain.McpServerDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
 import xin.v5ai.nb.common.agentscope.core.service.McpServerService;
 import xin.v5ai.nb.mcp.domain.McpServer;
 
@@ -12,13 +13,10 @@ import xin.v5ai.nb.mcp.domain.McpServer;
  * @since 2026-08-22
  */
 @Repository
+@RequiredArgsConstructor
 public class MyBatisMcpServerRepository implements McpServerService {
 
     private final McpServerMapper serverMapper;
-
-    public MyBatisMcpServerRepository(McpServerMapper serverMapper) {
-        this.serverMapper = serverMapper;
-    }
 
     @Override
     public McpServerDTO selectById(Long id) {

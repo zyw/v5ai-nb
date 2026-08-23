@@ -1,6 +1,7 @@
 package xin.v5ai.nb.mcp.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallAudit;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
@@ -17,13 +18,10 @@ import java.util.List;
  * @since 2026-08-22
  */
 @Repository
+@RequiredArgsConstructor
 public class MyBatisMcpToolCallAuditRepository implements McpToolCallAuditService {
 
     private final McpToolCallAuditMapper auditMapper;
-
-    public MyBatisMcpToolCallAuditRepository(McpToolCallAuditMapper auditMapper) {
-        this.auditMapper = auditMapper;
-    }
 
     @Override
     public McpToolCallAudit save(McpToolCallAudit audit) {

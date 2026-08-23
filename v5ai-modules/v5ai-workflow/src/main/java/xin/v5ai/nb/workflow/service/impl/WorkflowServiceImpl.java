@@ -9,11 +9,11 @@ import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
-import xin.v5ai.nb.workflow.WorkflowDefinition;
-import xin.v5ai.nb.workflow.WorkflowDefinitionValidator;
-import xin.v5ai.nb.workflow.WorkflowJson;
-import xin.v5ai.nb.workflow.WorkflowNodeRun;
-import xin.v5ai.nb.workflow.WorkflowRun;
+import xin.v5ai.nb.workflow.core.*;
+import xin.v5ai.nb.workflow.core.WorkflowRun;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
+import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
 import xin.v5ai.nb.workflow.mapper.WorkflowMapper;
@@ -216,7 +216,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
             return null;
         }
         return new WorkflowRun(entity.getRunId(), entity.getWorkflowKey(), entity.getWorkflowVersion(),
-                entity.getStatus() == null ? null : xin.v5ai.nb.workflow.WorkflowRunStatus.valueOf(entity.getStatus()),
+                entity.getStatus() == null ? null : WorkflowRunStatus.valueOf(entity.getStatus()),
                 WorkflowJson.parseMap(entity.getInputsJson()),
                 WorkflowJson.parseMap(entity.getOutputsJson()),
                 entity.getError(), entity.getStartedAt(), entity.getFinishedAt(), entity.getCreatedAt());
@@ -224,8 +224,8 @@ public class WorkflowServiceImpl implements IWorkflowService {
 
     private WorkflowNodeRun toNodeRunDomain(xin.v5ai.nb.workflow.domain.WorkflowNodeRun entity) {
         return new WorkflowNodeRun(entity.getId(), entity.getRunId(), entity.getNodeId(),
-                entity.getNodeType() == null ? null : xin.v5ai.nb.workflow.WorkflowNodeType.valueOf(entity.getNodeType()),
-                entity.getStatus() == null ? null : xin.v5ai.nb.workflow.WorkflowNodeRunStatus.valueOf(entity.getStatus()),
+                entity.getNodeType() == null ? null : WorkflowNodeType.valueOf(entity.getNodeType()),
+                entity.getStatus() == null ? null : WorkflowNodeRunStatus.valueOf(entity.getStatus()),
                 WorkflowJson.parseMap(entity.getInputsJson()),
                 WorkflowJson.parseMap(entity.getOutputsJson()),
                 entity.getError(), entity.getStartedAt(), entity.getFinishedAt());

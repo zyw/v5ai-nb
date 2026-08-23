@@ -45,8 +45,6 @@
 
     <modules>
         <module>v5ai-common</module>
-        <module>v5ai-infrastructure</module>
-        <module>v5ai-api</module>
         <module>v5ai-starter</module>
         <module>v5ai-modules</module>
     </modules>
@@ -194,11 +192,11 @@
                 <version>${revision}</version>
             </dependency>
              -->
-            <dependency>
+            <!--<dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-api</artifactId>
                 <version>${revision}</version>
-            </dependency>
+            </dependency>-->
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-platform</artifactId>
@@ -206,7 +204,7 @@
             </dependency>
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
-                <artifactId>v5ai-infrastructure</artifactId>
+                <artifactId>v5ai-runtime</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>

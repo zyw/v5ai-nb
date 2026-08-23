@@ -12,8 +12,8 @@ import xin.v5ai.nb.agent.domain.vo.AgentVersionVo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.mapper.AgentMapper;
 import xin.v5ai.nb.agent.mapper.AgentVersionMapper;
+import xin.v5ai.nb.agent.service.IAgentDeletionPortService;
 import xin.v5ai.nb.agent.service.IAgentService;
-import xin.v5ai.nb.common.agentscope.core.AgentDeletionPort;
 import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
@@ -39,7 +39,7 @@ public class AgentServiceImpl implements IAgentService {
     private final AgentMapper agentMapper;
     private final AgentVersionMapper versionMapper;
     private final Predicate<Long> modelEnabled;
-    private final AgentDeletionPort deletionPort;
+    private final IAgentDeletionPortService deletionPort;
 
     @Override
     public PageResult<AgentVo> queryPageList(AgentBo bo, PageQuery pageQuery) {

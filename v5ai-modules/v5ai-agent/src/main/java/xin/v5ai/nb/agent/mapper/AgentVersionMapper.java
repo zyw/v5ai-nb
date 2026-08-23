@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import xin.v5ai.nb.agent.domain.AgentVersion;
 
 import java.util.List;
@@ -26,7 +25,6 @@ public interface AgentVersionMapper extends BaseMapper<AgentVersion> {
      * @param agentKey Agent 的 agentKey
      * @return 下一个版本号（1 起）
      */
-    @Select("SELECT COALESCE(MAX(version), 0) + 1 FROM v5ai_agent_version WHERE agent_key = #{agentKey}")
     Long nextVersion(@Param("agentKey") String agentKey);
 
     /**

@@ -10,7 +10,7 @@ import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
-import xin.v5ai.nb.skill.SkillPackageParser;
+import xin.v5ai.nb.skill.core.SkillPackageParser;
 import xin.v5ai.nb.skill.domain.AgentSkillBinding;
 import xin.v5ai.nb.skill.domain.Skill;
 import xin.v5ai.nb.skill.domain.SkillFile;

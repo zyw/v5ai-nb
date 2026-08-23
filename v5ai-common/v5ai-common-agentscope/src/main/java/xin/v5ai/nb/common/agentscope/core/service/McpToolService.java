@@ -1,6 +1,6 @@
 package xin.v5ai.nb.common.agentscope.core.service;
 
-import xin.v5ai.nb.common.agentscope.core.domain.McpToolDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.McpToolDTO;
 
 import java.util.List;
 

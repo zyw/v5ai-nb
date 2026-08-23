@@ -1,6 +1,10 @@
 package xin.v5ai.nb.rag;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.rag.core.*;
+import xin.v5ai.nb.rag.core.repository.AgentKnowledgeBindingRepository;
+import xin.v5ai.nb.rag.core.repository.KnowledgeDocumentRepository;
+import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 
 import java.util.List;

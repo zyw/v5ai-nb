@@ -1,7 +1,7 @@
 package xin.v5ai.nb.model.mapper;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.model.runtime.config.ModelRuntimeConfig;
+import xin.v5ai.nb.model.core.config.ModelRuntimeConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -4,7 +4,10 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Instant;
 
 /**
@@ -16,7 +19,11 @@ import java.time.Instant;
  */
 @Data
 @TableName("v5ai_user")
-public class User {
+public class User extends BaseEntity {
+
+    @Serial
+    private final static long serialVersionUID = 1L;
+
     @TableId
     private Long id;
     private String username;
@@ -39,6 +46,4 @@ public class User {
     @TableField("login_date")
     private Instant loginDate;
     private String remark;
-    private Instant createdAt;
-    private Instant updatedAt;
 }

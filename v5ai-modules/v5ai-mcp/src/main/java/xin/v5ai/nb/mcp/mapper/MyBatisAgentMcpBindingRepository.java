@@ -1,8 +1,9 @@
 package xin.v5ai.nb.mcp.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentMcpBindingDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentMcpBindingDTO;
 import xin.v5ai.nb.common.agentscope.core.service.AgentMcpBindingService;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 
@@ -15,13 +16,10 @@ import java.util.List;
  * @since 2026-08-22
  */
 @Repository
+@RequiredArgsConstructor
 public class MyBatisAgentMcpBindingRepository implements AgentMcpBindingService {
 
     private final AgentMcpBindingMapper bindingMapper;
-
-    public MyBatisAgentMcpBindingRepository(AgentMcpBindingMapper bindingMapper) {
-        this.bindingMapper = bindingMapper;
-    }
 
     @Override
     public void delete(String agentKey) {

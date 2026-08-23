@@ -1,6 +1,7 @@
 package xin.v5ai.nb.workflow;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.workflow.core.ConditionEvaluator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

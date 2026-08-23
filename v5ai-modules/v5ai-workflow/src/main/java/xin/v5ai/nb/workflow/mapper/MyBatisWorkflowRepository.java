@@ -1,11 +1,12 @@
 package xin.v5ai.nb.workflow.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.workflow.Workflow;
-import xin.v5ai.nb.workflow.WorkflowJson;
-import xin.v5ai.nb.workflow.WorkflowRepository;
-import xin.v5ai.nb.workflow.WorkflowStatus;
+import xin.v5ai.nb.workflow.core.Workflow;
+import xin.v5ai.nb.workflow.core.WorkflowJson;
+import xin.v5ai.nb.workflow.core.WorkflowRepository;
+import xin.v5ai.nb.workflow.core.enums.WorkflowStatus;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -19,13 +20,10 @@ import java.util.List;
  * @since 2026-08-22
  */
 @Repository
+@RequiredArgsConstructor
 public class MyBatisWorkflowRepository implements WorkflowRepository {
 
     private final WorkflowMapper workflowMapper;
-
-    public MyBatisWorkflowRepository(WorkflowMapper workflowMapper) {
-        this.workflowMapper = workflowMapper;
-    }
 
     @Override
     public Workflow save(Workflow workflow) {

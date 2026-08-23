@@ -7,6 +7,11 @@ import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.workflow.core.*;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
+import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
+import xin.v5ai.nb.workflow.core.enums.WorkflowStatus;
 
 import java.time.Instant;
 import java.util.ArrayList;

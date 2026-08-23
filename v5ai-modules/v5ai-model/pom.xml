@@ -22,16 +22,8 @@
         </dependency>
 
         <dependency>
-            <groupId>io.agentscope</groupId>
-            <artifactId>agentscope-extensions-model-openai</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.agentscope</groupId>
-            <artifactId>agentscope-extensions-model-dashscope</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.agentscope</groupId>
-            <artifactId>agentscope-core</artifactId>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-runtime</artifactId>
         </dependency>
 
         <dependency>

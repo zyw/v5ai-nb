@@ -4,8 +4,8 @@ import io.agentscope.core.model.Model;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.model.runtime.AgentScopeModelFactory;
-import xin.v5ai.nb.model.runtime.config.ModelRuntimeConfig;
+import xin.v5ai.nb.model.core.AgentScopeModelFactory;
+import xin.v5ai.nb.model.core.config.ModelRuntimeConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

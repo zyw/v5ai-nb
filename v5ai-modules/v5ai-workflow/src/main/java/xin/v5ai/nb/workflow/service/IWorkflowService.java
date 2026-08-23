@@ -2,8 +2,9 @@ package xin.v5ai.nb.workflow.service;
 
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.workflow.WorkflowNodeRun;
-import xin.v5ai.nb.workflow.WorkflowRun;
+import xin.v5ai.nb.workflow.core.WorkflowNodeRun;
+import xin.v5ai.nb.workflow.core.WorkflowRun;
+import xin.v5ai.nb.workflow.core.WorkflowEngine;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
 
@@ -11,7 +12,7 @@ import java.util.List;
 
 /**
  * Workflow 管理服务：草稿编辑、发布（DAG 校验 + 版本快照）、禁用与运行记录查询。
- * 执行逻辑见 {@link xin.v5ai.nb.workflow.WorkflowEngine}。
+ * 执行逻辑见 {@link WorkflowEngine}。
  *
  * @author ZYW
  * @since 2026-08-22

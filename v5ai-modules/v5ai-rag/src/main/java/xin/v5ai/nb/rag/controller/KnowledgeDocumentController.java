@@ -15,7 +15,7 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.web.core.BaseController;
-import xin.v5ai.nb.rag.DocumentFileType;
+import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 

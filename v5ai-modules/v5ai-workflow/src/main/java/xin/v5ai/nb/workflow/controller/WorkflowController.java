@@ -18,13 +18,11 @@ import xin.v5ai.nb.common.core.platform.AuditRecorder;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
-import xin.v5ai.nb.workflow.WorkflowEngine;
-import xin.v5ai.nb.workflow.WorkflowRun;
+import xin.v5ai.nb.workflow.core.WorkflowEngine;
+import xin.v5ai.nb.workflow.core.WorkflowRun;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
 import xin.v5ai.nb.workflow.service.IWorkflowService;
-
-import java.util.List;
 
 /**
  * Workflow 管理 API：草稿编辑、发布、测试运行与运行记录查询。

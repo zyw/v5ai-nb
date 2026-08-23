@@ -4,7 +4,7 @@ import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import xin.v5ai.nb.common.core.validate.AddGroup;
-import xin.v5ai.nb.workflow.WorkflowDefinition;
+import xin.v5ai.nb.workflow.core.WorkflowDefinition;
 import xin.v5ai.nb.workflow.domain.Workflow;
 
 /**

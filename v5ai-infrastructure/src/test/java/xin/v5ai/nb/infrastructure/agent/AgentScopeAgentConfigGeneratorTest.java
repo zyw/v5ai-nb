@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.model.mapper.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.model.runtime.AgentScopeModelFactory;
-import xin.v5ai.nb.model.runtime.config.ModelRuntimeConfig;
+import xin.v5ai.nb.model.core.AgentScopeModelFactory;
+import xin.v5ai.nb.model.core.config.ModelRuntimeConfig;
 
 import java.time.Duration;
 import java.util.List;
