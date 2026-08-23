@@ -4,7 +4,7 @@ import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
-import xin.v5ai.nb.model.core.config.ModelRuntimeConfig;
+import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

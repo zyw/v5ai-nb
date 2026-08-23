@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -24,7 +26,10 @@ import java.time.LocalDateTime;
 @ToString
 @EqualsAndHashCode
 @TableName("v5ai_agent_version")
-public class AgentVersion {
+public class AgentVersion implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;

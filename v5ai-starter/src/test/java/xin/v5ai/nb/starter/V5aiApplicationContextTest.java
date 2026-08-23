@@ -10,7 +10,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import xin.v5ai.nb.agent.controller.AgentController;
 import xin.v5ai.nb.agent.service.IAgentService;
-import xin.v5ai.nb.api.runtime.ChatController;
+import xin.v5ai.nb.runtime.controller.ChatController;
 import xin.v5ai.nb.model.controller.V5aiModelController;
 import xin.v5ai.nb.model.controller.V5aiModelProviderController;
 import xin.v5ai.nb.platform.auth.AuthController;
@@ -22,6 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
+        "spring.datasource.dynamic.datasource.master.url=jdbc:h2:mem:v5ai;DB_CLOSE_DELAY=-1",
+        "spring.datasource.dynamic.datasource.master.driver-class-name=org.h2.Driver",
+        "spring.datasource.dynamic.datasource.master.username=sa",
+        "spring.datasource.dynamic.datasource.master.password=",
         "spring.flyway.enabled=false",
         "v5ai.redisson.address=redis://localhost:6379",
         "v5ai.minio.endpoint=http://localhost:9000",

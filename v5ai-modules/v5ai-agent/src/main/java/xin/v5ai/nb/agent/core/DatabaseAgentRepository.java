@@ -2,7 +2,7 @@ package xin.v5ai.nb.agent.core;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 import xin.v5ai.nb.agent.mapper.AgentMapper;
@@ -17,19 +17,29 @@ import java.util.List;
 
 /**
  * {@link AgentRepository} 的 MyBatis-Plus 实现（运行时 Agent 解析与管理读写）。
- * 通过 {@link IAgentDeletionPortService} 委托跨模块级联删除（由 v5ai-infrastructure 实现）。
+ * 通过 {@link IAgentDeletionPortService} 委托跨模块级联删除（由 v5ai-agent 模块实现）。
  *
  * @author ZYW
  * @since 2026-08-22
  */
 @Primary
 @Repository
-@RequiredArgsConstructor
 public class DatabaseAgentRepository implements AgentRepository {
 
     private final AgentMapper agentMapper;
     private final AgentVersionMapper versionMapper;
     private final IAgentDeletionPortService deletionService;
+
+    @Autowired
+    public DatabaseAgentRepository(
+            AgentMapper agentMapper,
+            AgentVersionMapper versionMapper,
+            IAgentDeletionPortService deletionService
+    ) {
+        this.agentMapper = agentMapper;
+        this.versionMapper = versionMapper;
+        this.deletionService = deletionService;
+    }
 
     /** 兼容构造器：未配置级联删除服务（测试/内存场景），delete 会抛 UnsupportedOperationException。 */
     public DatabaseAgentRepository(AgentMapper agentMapper, AgentVersionMapper versionMapper) {

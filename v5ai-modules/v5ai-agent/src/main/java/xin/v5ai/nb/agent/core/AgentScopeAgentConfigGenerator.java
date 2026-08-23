@@ -5,7 +5,6 @@ import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.GenerateOptions;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +31,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class AgentScopeAgentConfigGenerator implements AgentConfigGenerator {
-
-    @Value("${v5ai.model.connection.test.timeout.ms:90000}")
-    private long timeoutMillis;
 
     private static final int MAX_RESPONSE_CHARS = 20000;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -45,6 +40,28 @@ public class AgentScopeAgentConfigGenerator implements AgentConfigGenerator {
     private final CredentialCipher credentialCipher;
     private final AgentScopeModelFactory modelFactory;
     private final Duration timeout;
+
+    @Autowired
+    public AgentScopeAgentConfigGenerator(
+            ModelRuntimeConfigGateway runtimeConfigGateway,
+            CredentialCipher credentialCipher,
+            AgentScopeModelFactory modelFactory,
+            @Value("${v5ai.model.connection.test.timeout.ms:90000}") long timeoutMillis
+    ) {
+        this(runtimeConfigGateway, credentialCipher, modelFactory, Duration.ofMillis(timeoutMillis));
+    }
+
+    AgentScopeAgentConfigGenerator(
+            ModelRuntimeConfigGateway runtimeConfigGateway,
+            CredentialCipher credentialCipher,
+            AgentScopeModelFactory modelFactory,
+            Duration timeout
+    ) {
+        this.runtimeConfigGateway = runtimeConfigGateway;
+        this.credentialCipher = credentialCipher;
+        this.modelFactory = modelFactory;
+        this.timeout = timeout;
+    }
 
     @Override
     public GeneratedAgentConfig generate(Long modelId, String description) {
