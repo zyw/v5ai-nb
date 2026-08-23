@@ -28,10 +28,10 @@
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-model</artifactId>
         </dependency>
-        <!--<dependency>
+        <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-runtime</artifactId>
-        </dependency>-->
+            <artifactId>v5ai-agent</artifactId>
+        </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-rag</artifactId>
@@ -42,7 +42,7 @@
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-workflow</artifactId>
+            <artifactId>v5ai-mcp</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

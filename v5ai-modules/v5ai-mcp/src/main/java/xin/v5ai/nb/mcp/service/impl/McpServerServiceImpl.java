@@ -17,7 +17,6 @@ import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.mcp.McpConnectionTestResult;
@@ -158,7 +157,7 @@ public class McpServerServiceImpl implements IMcpServerService {
     @Override
     public McpConnectionTestResult testConnection(Long serverId) {
         var server = requireServer(serverId);
-        try (McpConnection connection = clientFactory.connect(MapstructUtils.convert(server, McpServerDTO.class))) {
+        try (McpConnection connection = clientFactory.connect(toDto(server))) {
             var tools = connection.listTools();
             recordLastTest(serverId, "ok", "connection ok, discovered " + tools.size() + " tools");
             return McpConnectionTestResult.success(tools.size());
@@ -173,7 +172,7 @@ public class McpServerServiceImpl implements IMcpServerService {
     @Transactional(rollbackFor = Exception.class)
     public List<McpToolVo> discoverTools(Long serverId) {
         var server = requireServer(serverId);
-        try (McpConnection connection = clientFactory.connect(MapstructUtils.convert(server, McpServerDTO.class))) {
+        try (McpConnection connection = clientFactory.connect(toDto(server))) {
             var infos = connection.listTools();
             for (McpToolInfo info : infos) {
                 upsertTool(serverId, info);
@@ -345,6 +344,23 @@ public class McpServerServiceImpl implements IMcpServerService {
 
     private String encrypt(java.util.Map<String, String> plaintext) {
         return plaintext == null ? null : cipher.encrypt(McpJsonCodec.toJson(plaintext));
+    }
+
+    private McpServerDTO toDto(McpServer server) {
+        var dto = new McpServerDTO();
+        dto.setId(server.getId());
+        dto.setName(server.getName());
+        dto.setTransportType(server.getTransportType());
+        dto.setEndpoint(server.getEndpoint());
+        dto.setArgsJson(server.getArgsJson());
+        dto.setHeadersCiphertext(server.getHeadersCiphertext());
+        dto.setEnvCiphertext(server.getEnvCiphertext());
+        dto.setTimeoutSeconds(server.getTimeoutSeconds());
+        dto.setStatus(server.getStatus());
+        dto.setLastTestStatus(server.getLastTestStatus());
+        dto.setLastTestMessage(server.getLastTestMessage());
+        dto.setLastTestedAt(server.getLastTestedAt());
+        return dto;
     }
 
     private McpServerVo toVo(McpServer server) {

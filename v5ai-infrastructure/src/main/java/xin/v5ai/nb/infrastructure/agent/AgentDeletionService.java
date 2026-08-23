@@ -101,8 +101,6 @@ public class AgentDeletionService implements AgentDeletionPort {
                 .eq(AgentVersion::getAgentKey, agentKey));
         knowledgeBindingMapper.delete(new LambdaQueryWrapper<AgentKnowledgeBinding>()
                 .eq(AgentKnowledgeBinding::getAgentKey, agentKey));
-//        mcpBindingMapper.delete(new LambdaQueryWrapper<AgentMcpBinding>()
-//                .eq(AgentMcpBinding::getAgentKey, agentKey));
         mcpBindingService.delete(agentKey);
         skillBindingMapper.delete(new LambdaQueryWrapper<AgentSkillBinding>()
                 .eq(AgentSkillBinding::getAgentKey, agentKey));

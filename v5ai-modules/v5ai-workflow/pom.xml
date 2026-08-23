@@ -8,10 +8,6 @@
     </parent>
     <artifactId>v5ai-workflow</artifactId>
     <dependencies>
-        <!--<dependency>
-            <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-runtime</artifactId>
-        </dependency>-->
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-common-agentscope</artifactId>

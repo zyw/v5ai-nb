@@ -10,10 +10,6 @@
     <dependencies>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-agent</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-common-mybatis</artifactId>
         </dependency>
         <dependency>
