@@ -3,11 +3,11 @@ package xin.v5ai.nb.platform.controller;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.Menu;
 import xin.v5ai.nb.common.core.platform.MenuStore;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 /**
  * 菜单管理 API（菜单树 CRUD）。
@@ -20,11 +20,9 @@ public class MenuController {
     private static final String MENU = "MENU";
 
     private final MenuStore menuStore;
-    private final AuditLogRecorderService auditRecorder;
 
-    public MenuController(MenuStore menuStore, AuditLogRecorderService auditRecorder) {
+    public MenuController(MenuStore menuStore) {
         this.menuStore = menuStore;
-        this.auditRecorder = auditRecorder;
     }
 
     public record CreateMenuRequest(Long parentId, String code, String name, String type,
@@ -44,6 +42,7 @@ public class MenuController {
     }
 
     @PostMapping
+    @Log(title = "新建菜单", businessType = BusinessType.INSERT)
     public R<Menu> create(@RequestBody CreateMenuRequest request) {
         var code = normalizeCode(request.code());
         var name = requireText(request.name(), "name is required");
@@ -60,12 +59,11 @@ public class MenuController {
                 blankToNull(request.path()), blankToNull(request.icon()),
                 request.sortOrder() == null ? 0 : request.sortOrder(),
                 request.visible() == null || request.visible());
-        auditRecorder.record(null, currentActor(), "CREATE", "menu",
-                String.valueOf(menu.id()), "menu " + code, null);
         return R.ok(menu);
     }
 
     @PutMapping("/{id}")
+    @Log(title = "更新菜单", businessType = BusinessType.UPDATE)
     public R<Menu> update(@PathVariable("id") Long id, @RequestBody UpdateMenuRequest request) {
         var existing = menuStore.findById(id);
         if (existing == null) {
@@ -85,12 +83,11 @@ public class MenuController {
                 blankToNull(request.path()), blankToNull(request.icon()),
                 request.sortOrder() == null ? 0 : request.sortOrder(),
                 request.visible() == null || request.visible());
-        auditRecorder.record(null, currentActor(), "UPDATE", "menu",
-                String.valueOf(id), "menu " + existing.code(), null);
         return R.ok(menu);
     }
 
     @DeleteMapping("/{id}")
+    @Log(title = "删除菜单", businessType = BusinessType.DELETE)
     public R<Void> delete(@PathVariable("id") Long id) {
         var existing = menuStore.findById(id);
         if (existing == null) {
@@ -100,8 +97,6 @@ public class MenuController {
             throw new IllegalArgumentException("menu still has children: " + existing.code());
         }
         menuStore.delete(id);
-        auditRecorder.record(null, currentActor(), "DELETE", "menu",
-                String.valueOf(id), "menu " + existing.code(), null);
         return R.ok();
     }
 
@@ -172,13 +167,5 @@ public class MenuController {
         }
         var trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private static String currentActor() {
-        try {
-            return LoginHelper.getUsername();
-        } catch (Exception exception) {
-            return null;
-        }
     }
 }

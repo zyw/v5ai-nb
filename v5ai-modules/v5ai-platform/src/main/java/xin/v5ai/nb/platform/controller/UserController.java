@@ -5,11 +5,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.UserAccount;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.util.List;
 
@@ -22,7 +22,6 @@ import java.util.List;
 public class UserController {
     private final UserAccountStore userAccountStore;
     private final PasswordEncoder passwordEncoder;
-    private final AuditLogRecorderService auditLogRecorderService;
 
     public record CreateUserRequest(String username, String password, String displayName,
                                     Long tenantId, List<String> roles) {
@@ -41,6 +40,7 @@ public class UserController {
     }
 
     @PostMapping
+    @Log(title = "新建用户", businessType = BusinessType.INSERT)
     public R<UserAccount> createUser(@RequestBody CreateUserRequest request) {
         if (request.username() == null || request.username().isBlank()
                 || request.password() == null || request.password().length() < 4) {
@@ -53,38 +53,26 @@ public class UserController {
                 ? List.of("USER") : request.roles();
         var account = userAccountStore.create(request.username().trim(),
                 passwordEncoder.encode(request.password()), request.displayName(), request.tenantId(), roles);
-        auditLogRecorderService.record(request.tenantId(), currentActor(), "CREATE", "user",
-                String.valueOf(account.id()), "user " + account.username(), null);
         return R.ok(account);
     }
 
     @PutMapping("/{id}/roles")
+    @Log(title = "更新用户角色", businessType = BusinessType.GRANT)
     public R<UserAccount> updateRoles(@PathVariable("id") Long id, @RequestBody UpdateRolesRequest request) {
         if (request.roles() == null || request.roles().isEmpty()) {
             throw new IllegalArgumentException("roles must not be empty");
         }
         userAccountStore.updateRoles(id, request.roles());
-        auditLogRecorderService.record(null, currentActor(), "UPDATE_ROLES", "user",
-                String.valueOf(id), "roles=" + request.roles(), null);
         return R.ok(userAccountStore.findById(id));
     }
 
     @PutMapping("/{id}/status")
+    @Log(title = "更新用户状态", businessType = BusinessType.UPDATE)
     public R<UserAccount> updateStatus(@PathVariable("id") Long id, @RequestBody UpdateStatusRequest request) {
         if (request.status() == null || !("0".equals(request.status()) || "1".equals(request.status()))) {
             throw new IllegalArgumentException("status must be '0' (normal) or '1' (disabled)");
         }
         userAccountStore.setStatus(id, request.status());
-        auditLogRecorderService.record(null, currentActor(), "UPDATE_STATUS", "user",
-                String.valueOf(id), "status=" + request.status(), null);
         return R.ok(userAccountStore.findById(id));
-    }
-
-    private static String currentActor() {
-        try {
-            return LoginHelper.getUsername();
-        } catch (Exception exception) {
-            return null;
-        }
     }
 }

@@ -1,7 +1,6 @@
 package xin.v5ai.nb.skill.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,9 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.skill.domain.bo.SkillBo;
 import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
@@ -41,17 +40,14 @@ public class SkillController extends BaseController {
 
     private final ISkillService skillService;
 
-    @Autowired(required = false)
-    private AuditLogRecorderService auditRecorder;
-
     @PostMapping(consumes = "multipart/form-data")
+    @Log(title = "上传技能", businessType = BusinessType.INSERT)
     public R<SkillVo> uploadSkill(
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "description", required = false) String description
     ) {
         try {
             var created = skillService.uploadSkill(file.getBytes(), description);
-            audit("CREATE", "skill", String.valueOf(created.getId()), "upload skill " + created.getName());
             return R.ok(created);
         } catch (IOException exception) {
             throw new UncheckedIOException("failed to read uploaded skill package", exception);
@@ -69,9 +65,9 @@ public class SkillController extends BaseController {
     }
 
     @DeleteMapping("/{id}")
+    @Log(title = "禁用技能", businessType = BusinessType.DISABLE)
     public R<Void> disableSkill(@PathVariable("id") Long id) {
         skillService.disableSkill(id);
-        audit("DISABLE", "skill", String.valueOf(id), "disable skill");
         return R.ok();
     }
 
@@ -82,32 +78,19 @@ public class SkillController extends BaseController {
     }
 
     @PostMapping("/{id}/versions/{versionId}/publish")
+    @Log(title = "发布技能", businessType = BusinessType.PUBLISH)
     public R<SkillVo> publishVersion(@PathVariable("id") Long id,
                                      @PathVariable("versionId") Long versionId) {
-        audit("PUBLISH", "skill", String.valueOf(id), "publish skill version " + versionId);
         return R.ok(skillService.publishVersion(id, versionId));
     }
 
     @PostMapping("/{id}/rollback")
+    @Log(title = "回滚技能", businessType = BusinessType.UPDATE)
     public R<SkillVo> rollback(@PathVariable("id") Long id,
                                @RequestBody RollbackRequest request) {
         if (request == null || request.versionId() == null) {
             throw new IllegalArgumentException("versionId is required");
         }
-        audit("ROLLBACK", "skill", String.valueOf(id), "rollback skill to version " + request.versionId());
         return R.ok(skillService.rollback(id, request.versionId()));
-    }
-
-    private void audit(String action, String targetType, String targetId, String detail) {
-        if (auditRecorder == null) {
-            return;
-        }
-        String actor;
-        try {
-            actor = LoginHelper.getUsername();
-        } catch (Exception exception) {
-            actor = null;
-        }
-        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
     }
 }

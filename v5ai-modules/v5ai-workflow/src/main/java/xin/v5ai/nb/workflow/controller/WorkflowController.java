@@ -1,7 +1,6 @@
 package xin.v5ai.nb.workflow.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,10 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.workflow.core.WorkflowEngine;
 import xin.v5ai.nb.workflow.core.WorkflowRun;
@@ -39,18 +38,15 @@ public class WorkflowController extends BaseController {
     private final IWorkflowService workflowService;
     private final WorkflowEngine engine;
 
-    @Autowired(required = false)
-    private AuditLogRecorderService auditRecorder;
-
     @GetMapping
     public R<PageResult<WorkflowVo>> list(WorkflowBo bo, PageQuery pageQuery) {
         return R.ok(workflowService.queryPageList(bo, pageQuery));
     }
 
     @PostMapping
+    @Log(title = "新建工作流", businessType = BusinessType.INSERT)
     public R<WorkflowVo> create(@Validated(AddGroup.class) @RequestBody WorkflowBo bo) {
         var created = workflowService.create(bo);
-        audit("CREATE", "workflow", created.getWorkflowKey(), "create workflow " + created.getName());
         return R.ok(created);
     }
 
@@ -60,29 +56,29 @@ public class WorkflowController extends BaseController {
     }
 
     @PutMapping("/{key}")
+    @Log(title = "更新工作流", businessType = BusinessType.UPDATE)
     public R<WorkflowVo> update(@PathVariable("key") String key, @RequestBody WorkflowBo bo) {
-        audit("UPDATE", "workflow", key, "update workflow draft");
         return R.ok(workflowService.update(key, bo));
     }
 
     @DeleteMapping("/{key}")
+    @Log(title = "禁用工作流", businessType = BusinessType.DISABLE)
     public R<Void> disable(@PathVariable("key") String key) {
         workflowService.disable(key);
-        audit("DISABLE", "workflow", key, "disable workflow");
         return R.ok();
     }
 
     @PostMapping("/{key}/publish")
+    @Log(title = "发布工作流", businessType = BusinessType.PUBLISH)
     public R<WorkflowVo> publish(@PathVariable("key") String key) {
-        audit("PUBLISH", "workflow", key, "publish workflow");
         return R.ok(workflowService.publish(key));
     }
 
     @PostMapping("/{key}/run")
+    @Log(title = "运行工作流", businessType = BusinessType.RUN)
     public R<WorkflowRun> run(@PathVariable("key") String key,
                               @RequestBody(required = false) RunWorkflowRequest request) {
         var inputs = request == null ? null : request.inputs();
-        audit("RUN", "workflow", key, "run workflow");
         return R.ok(engine.execute(key, inputs));
     }
 
@@ -97,18 +93,5 @@ public class WorkflowController extends BaseController {
         var run = workflowService.getRun(runId);
         var nodeRuns = workflowService.getNodeRuns(runId);
         return R.ok(new WorkflowRunDetailResponse(run, nodeRuns));
-    }
-
-    private void audit(String action, String targetType, String targetId, String detail) {
-        if (auditRecorder == null) {
-            return;
-        }
-        String actor;
-        try {
-            actor = LoginHelper.getUsername();
-        } catch (Exception exception) {
-            actor = null;
-        }
-        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
     }
 }

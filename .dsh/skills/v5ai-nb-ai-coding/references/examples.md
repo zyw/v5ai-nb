@@ -12,7 +12,7 @@
 ### 期望执行方式
 
 - 先读 generator 的 `domain/bo/vo/service/serviceImpl/controller` 模板。
-- 再读 `system` 模块里最接近的现有管理模块。
+- 再读 `platform` 模块里最接近的现有管理模块。
 - 先生成骨架，再补权限、日志、校验、导出等细节。
 
 ## 案例 2：修改已有复杂模块

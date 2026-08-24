@@ -23,6 +23,7 @@ import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.json.utils.JsonUtils;
 import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessStatus;
+import xin.v5ai.nb.common.log.enums.OperatorType;
 import xin.v5ai.nb.common.log.event.OperLogEvent;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
@@ -106,6 +107,7 @@ public class LogAspect {
 //                operLog.setDeptId(loginUser.getDeptId());
 //                operLog.setDeptName(loginUser.getDeptName());
 //                operLog.setDeviceType(loginUser.getDeviceType());
+                operLog.setDeviceType(OperatorType.MANAGE.getCode());
                 operLog.setBrowser(loginUser.getBrowser());
                 operLog.setOs(loginUser.getOs());
 //                if (StringUtils.isBlank(operLog.getClientKey())) {

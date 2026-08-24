@@ -4,11 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.Role;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.platform.service.IRoleService;
 
 import java.util.List;
@@ -24,7 +24,6 @@ public class RoleController {
 
     private final IRoleService roleService;
     private final MenuStore menuStore;
-    private final AuditLogRecorderService auditRecorder;
 
     public record CreateRoleRequest(String roleKey, String roleName, String description, String dataScope) {
     }
@@ -42,6 +41,7 @@ public class RoleController {
     }
 
     @PostMapping
+    @Log(title = "新建角色", businessType = BusinessType.INSERT)
     public R<Role> create(@RequestBody CreateRoleRequest request) {
         var key = normalizeKey(request.roleKey());
         if (key == null || key.isBlank()) {
@@ -58,11 +58,11 @@ public class RoleController {
             throw new IllegalArgumentException("role already exists: " + key);
         }
         var role = roleService.create(key, request.roleName().trim(), request.description(), request.dataScope());
-        auditRecorder.record(null, currentActor(), "CREATE", "role", key, "role " + key, null);
         return R.ok(role);
     }
 
     @PutMapping("/{roleKey}")
+    @Log(title = "更新角色", businessType = BusinessType.UPDATE)
     public R<Role> update(@PathVariable("roleKey") String roleKey, @RequestBody UpdateRoleRequest request) {
         var key = normalizeKey(roleKey);
         if (roleService.findByKey(key) == null) {
@@ -73,11 +73,11 @@ public class RoleController {
         }
         validateDataScope(request.dataScope());
         var role = roleService.update(key, request.roleName().trim(), request.description(), request.dataScope());
-        auditRecorder.record(null, currentActor(), "UPDATE", "role", key, "role " + key, null);
         return R.ok(role);
     }
 
     @DeleteMapping("/{roleKey}")
+    @Log(title = "删除角色", businessType = BusinessType.DELETE)
     public R<Void> delete(@PathVariable("roleKey") String roleKey) {
         var key = normalizeKey(roleKey);
         var role = roleService.findByKey(key);
@@ -91,7 +91,6 @@ public class RoleController {
             throw new IllegalArgumentException("role is still assigned to users: " + key);
         }
         roleService.delete(key);
-        auditRecorder.record(null, currentActor(), "DELETE", "role", key, "role " + key, null);
         return R.ok();
     }
 
@@ -105,6 +104,7 @@ public class RoleController {
     }
 
     @PutMapping("/{roleKey}/menus")
+    @Log(title = "分配角色菜单", businessType = BusinessType.GRANT)
     public R<Void> updateMenus(@PathVariable("roleKey") String roleKey, @RequestBody UpdateRoleMenusRequest request) {
         var key = normalizeKey(roleKey);
         if (roleService.findByKey(key) == null) {
@@ -112,7 +112,6 @@ public class RoleController {
         }
         var menuIds = request.menuIds() == null ? List.<Long>of() : request.menuIds();
         menuStore.replaceRoleMenus(key, menuIds);
-        auditRecorder.record(null, currentActor(), "UPDATE_MENUS", "role", key, "menus=" + menuIds, null);
         return R.ok();
     }
 
@@ -126,14 +125,6 @@ public class RoleController {
         }
         if (!dataScope.matches("[1-6]")) {
             throw new IllegalArgumentException("dataScope must be 1-6 (1全部 2自定 3本部门 4本部门及以下 5仅本人 6部门及以下或本人)");
-        }
-    }
-
-    private static String currentActor() {
-        try {
-            return LoginHelper.getUsername();
-        } catch (Exception exception) {
-            return null;
         }
     }
 }

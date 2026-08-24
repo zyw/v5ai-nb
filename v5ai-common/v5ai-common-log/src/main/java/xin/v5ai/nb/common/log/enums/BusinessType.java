@@ -55,4 +55,23 @@ public enum BusinessType {
      * 清空数据
      */
     CLEAN,
+
+    /**
+     * 禁用
+     */
+    DISABLE,
+
+    /**
+     * 启用
+     */
+    ENABLE,
+    /**
+     * 发布
+     */
+    PUBLISH,
+
+    /**
+     * 运行
+     */
+    RUN
 }

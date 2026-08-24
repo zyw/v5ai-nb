@@ -1,7 +1,6 @@
 package xin.v5ai.nb.agent.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.agent.controller.vo.GenerateAgentConfigRequest;
@@ -14,12 +13,10 @@ import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 
 import java.util.List;
@@ -39,24 +36,30 @@ public class AgentController extends BaseController {
     private final IAgentService agentService;
     private final AgentConfigGenerator agentConfigGenerator;
 
-    @Autowired(required = false)
-    private AuditLogRecorderService auditRecorder;
+//    @Autowired(required = false)
+//    private AuditLogRecorderService auditRecorder;
 
     /**
      * 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。
      */
-    @Log(title = "生成智能体配置", businessType = BusinessType.GENCODE)
     @PostMapping("/generate")
+    @Log(title = "生成智能体配置", businessType = BusinessType.GENCODE)
     public R<GenerateAgentConfigResponse> generateAgentConfig(@RequestBody GenerateAgentConfigRequest request) {
-        audit("GENERATE", "agent-config", null, "generate agent config");
+//        audit("GENERATE", "agent-config", null, "generate agent config");
         return R.ok(GenerateAgentConfigResponse.from(
                 agentConfigGenerator.generate(request.modelId(), request.description())));
     }
 
+    /**
+     * 新建智能体。
+     * @param bo 新建智能体的请求参数
+     * @return 新建智能体的响应结果
+     */
     @PostMapping
+    @Log(title = "新建智能体", businessType = BusinessType.INSERT)
     public R<AgentVo> createAgent(@Validated(AddGroup.class) @RequestBody AgentBo bo) {
         var created = agentService.createAgent(bo);
-        audit("CREATE", "agent", created.getAgentKey(), "create agent");
+//        audit("CREATE", "agent", created.getAgentKey(), "create agent");
         return R.ok(created);
     }
 
@@ -70,44 +73,74 @@ public class AgentController extends BaseController {
         return R.ok(agentService.getAgent(agentKey));
     }
 
+    /**
+     * 更新智能体。
+     * @param agentKey 智能体键
+     * @param bo 更新智能体的请求参数
+     * @return 更新智能体的响应结果
+     */
     @PutMapping("/{agentKey}")
+    @Log(title = "更新智能体", businessType = BusinessType.UPDATE)
     public R<AgentVo> updateAgent(@PathVariable("agentKey") String agentKey,
                                   @RequestBody AgentBo bo) {
         var updated = agentService.updateAgent(agentKey, bo);
-        audit("UPDATE", "agent", agentKey, "update agent");
+//        audit("UPDATE", "agent", agentKey, "update agent");
         return R.ok(updated);
     }
 
+    /**
+     * 禁用智能体。
+     * @param agentKey 智能体键
+     * @return 禁用智能体的响应结果
+     */
     @PostMapping("/{agentKey}/disable")
+    @Log(title = "禁用智能体", businessType = BusinessType.DISABLE)
     public R<Void> disableAgent(@PathVariable("agentKey") String agentKey) {
         agentService.disable(agentKey);
-        audit("DISABLE", "agent", agentKey, "disable agent");
+//        audit("DISABLE", "agent", agentKey, "disable agent");
         return R.ok();
     }
-
+    /**
+     * 删除智能体。
+     * @param agentKey 智能体键
+     * @return 删除智能体的响应结果
+     */
     @DeleteMapping("/{agentKey}")
+    @Log(title = "删除智能体", businessType = BusinessType.DELETE)
     public R<Void> deleteAgent(@PathVariable("agentKey") String agentKey) {
         agentService.delete(agentKey);
-        audit("DELETE", "agent", agentKey, "delete agent with all related data");
+//        audit("DELETE", "agent", agentKey, "delete agent with all related data");
         return R.ok();
     }
+    /**
+     * 智能体版本列表。
+     * @param agentKey 智能体键
+     * @param pageQuery 分页查询参数
+     * @return 智能体版本列表的响应结果
+     */
 
     @GetMapping("/{agentKey}/versions")
-    public R<PageResult<AgentVersionVo>> listVersions(@PathVariable("agentKey") String agentKey,
-                                                      PageQuery pageQuery) {
+    public R<PageResult<AgentVersionVo>> listVersions(@PathVariable("agentKey") String agentKey, PageQuery pageQuery) {
         List<AgentVersionVo> list = agentService.listVersions(agentKey);
         return R.ok(PageResult.build(list, (long) list.size()));
     }
 
+    /**
+     * 发布智能体。
+     * @param agentKey 智能体键
+     * @param request 发布智能体的请求参数
+     * @return 发布智能体的响应结果
+     */
     @PostMapping("/{agentKey}/publish")
+    @Log(title = "发布智能体", businessType = BusinessType.PUBLISH)
     public R<Void> publishAgent(@PathVariable("agentKey") String agentKey,
                                 @RequestBody PublishAgentRequest request) {
         agentService.publish(agentKey, request == null ? null : request.description());
-        audit("PUBLISH", "agent", agentKey, "publish agent");
+//        audit("PUBLISH", "agent", agentKey, "publish agent");
         return R.ok();
     }
 
-    private void audit(String action, String targetType, String targetId, String detail) {
+    /*private void audit(String action, String targetType, String targetId, String detail) {
         if (auditRecorder == null) {
             return;
         }
@@ -118,5 +151,5 @@ public class AgentController extends BaseController {
             actor = null;
         }
         auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
-    }
+    }*/
 }

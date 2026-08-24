@@ -1,23 +1,32 @@
 package xin.v5ai.nb.common.log.enums;
 
+import lombok.Getter;
+
 /**
  * 操作人类别
  *
  * @author ruoyi
  */
+@Getter
 public enum OperatorType {
     /**
      * 其它
      */
-    OTHER,
+    OTHER("0"),
 
     /**
      * 后台用户
      */
-    MANAGE,
+    MANAGE("1"),
 
     /**
      * 手机端用户
      */
-    MOBILE
+    MOBILE("2");
+
+    private final String code;
+
+    OperatorType(String code) {
+        this.code = code;
+    }
 }

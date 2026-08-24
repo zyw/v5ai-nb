@@ -3,11 +3,11 @@ package xin.v5ai.nb.platform.controller;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.Tenant;
 import xin.v5ai.nb.common.core.platform.TenantStore;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.time.Instant;
 
@@ -18,17 +18,16 @@ import java.time.Instant;
 @RequestMapping("/api/admin/tenants")
 public class TenantController {
     private final TenantStore tenantStore;
-    private final AuditLogRecorderService auditRecorder;
 
-    public TenantController(TenantStore tenantStore, AuditLogRecorderService auditRecorder) {
+    public TenantController(TenantStore tenantStore) {
         this.tenantStore = tenantStore;
-        this.auditRecorder = auditRecorder;
     }
 
     public record CreateTenantRequest(String tenantKey, String name) {
     }
 
     @PostMapping
+    @Log(title = "新建租户", businessType = BusinessType.INSERT)
     public R<Tenant> createTenant(@RequestBody CreateTenantRequest request) {
         if (request.tenantKey() == null || request.tenantKey().isBlank()
                 || request.name() == null || request.name().isBlank()) {
@@ -39,8 +38,6 @@ public class TenantController {
         }
         var tenant = tenantStore.save(new Tenant(null, request.tenantKey().trim(), request.name().trim(),
                 "ACTIVE", Instant.now(), Instant.now()));
-        auditRecorder.record(tenant.id(), currentActor(), "CREATE", "tenant",
-                String.valueOf(tenant.id()), "tenant " + tenant.tenantKey(), null);
         return R.ok(tenant);
     }
 
@@ -51,18 +48,9 @@ public class TenantController {
     }
 
     @DeleteMapping("/{id}")
+    @Log(title = "禁用租户", businessType = BusinessType.DISABLE)
     public R<Void> disableTenant(@PathVariable("id") Long id) {
         tenantStore.disable(id);
-        auditRecorder.record(id, currentActor(), "DISABLE", "tenant",
-                String.valueOf(id), "disable tenant", null);
         return R.ok();
-    }
-
-    private static String currentActor() {
-        try {
-            return LoginHelper.getUsername();
-        } catch (Exception exception) {
-            return null;
-        }
     }
 }

@@ -5,8 +5,8 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.platform.AppQuota;
 import xin.v5ai.nb.common.core.platform.AppQuotaService;
 import xin.v5ai.nb.common.core.platform.AppUsage;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 
 /**
  * 应用配额与当日用量 API（限流/配额/用量管理）。
@@ -15,11 +15,9 @@ import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 @RequestMapping("/api/admin/apps/{agentKey}")
 public class AppQuotaController {
     private final AppQuotaService quotaService;
-    private final AuditLogRecorderService auditRecorder;
 
-    public AppQuotaController(AppQuotaService quotaService, AuditLogRecorderService auditRecorder) {
+    public AppQuotaController(AppQuotaService quotaService) {
         this.quotaService = quotaService;
-        this.auditRecorder = auditRecorder;
     }
 
     public record UpdateQuotaRequest(Integer dailyModelCalls, Long dailyTokens, Integer ratePerMinute) {
@@ -31,24 +29,15 @@ public class AppQuotaController {
     }
 
     @PutMapping("/quota")
+    @Log(title = "更新应用配额", businessType = BusinessType.UPDATE)
     public R<AppQuota> updateQuota(@PathVariable("agentKey") String agentKey, @RequestBody UpdateQuotaRequest request) {
         var quota = quotaService.updateQuota(agentKey, request.dailyModelCalls(), request.dailyTokens(),
                 request.ratePerMinute());
-        auditRecorder.record(null, currentActor(), "UPDATE_QUOTA", "agent",
-                agentKey, "quota=" + quota, null);
         return R.ok(quota);
     }
 
     @GetMapping("/usage/daily")
     public R<AppUsage> getDailyUsage(@PathVariable("agentKey") String agentKey) {
         return R.ok(quotaService.getDailyUsage(agentKey));
-    }
-
-    private static String currentActor() {
-        try {
-            return LoginHelper.getUsername();
-        } catch (Exception exception) {
-            return null;
-        }
     }
 }

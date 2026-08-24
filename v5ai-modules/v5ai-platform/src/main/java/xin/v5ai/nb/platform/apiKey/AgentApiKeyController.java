@@ -1,28 +1,24 @@
 package xin.v5ai.nb.platform.apiKey;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AgentApiKeyController {
     private final AgentApiKeyManagementService apiKeyManagementService;
 
-    @Autowired(required = false)
-    private AuditLogRecorderService auditRecorder;
-
     public AgentApiKeyController(AgentApiKeyManagementService apiKeyManagementService) {
         this.apiKeyManagementService = apiKeyManagementService;
     }
 
     @PostMapping("/agents/{agentKey}/api-keys")
+    @Log(title = "生成应用API密钥", businessType = BusinessType.INSERT)
     public R<AgentApiKeyManagementService.CreateApiKeyResult> createApiKey(@PathVariable("agentKey") String agentKey) {
-        audit("CREATE", "api-key", agentKey, "create application api key");
         return R.ok(apiKeyManagementService.createApiKey(agentKey));
     }
 
@@ -33,22 +29,9 @@ public class AgentApiKeyController {
     }
 
     @DeleteMapping("/agents/{agentKey}/api-keys")
+    @Log(title = "删除应用API密钥", businessType = BusinessType.DELETE)
     public R<Void> deleteApiKey(@PathVariable("agentKey") String agentKey) {
-        audit("DELETE", "api-key", agentKey, "delete application api key");
         apiKeyManagementService.deleteApiKey(agentKey);
         return R.ok();
-    }
-
-    private void audit(String action, String targetType, String targetId, String detail) {
-        if (auditRecorder == null) {
-            return;
-        }
-        String actor;
-        try {
-            actor = LoginHelper.getUsername();
-        } catch (Exception exception) {
-            actor = null;
-        }
-        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
     }
 }

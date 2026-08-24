@@ -1,7 +1,6 @@
 package xin.v5ai.nb.rag.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeBaseVo;
@@ -36,16 +35,13 @@ public class KnowledgeBaseController extends BaseController {
 
     private final IKnowledgeBaseService knowledgeBaseService;
 
-    @Autowired(required = false)
-    private AuditLogRecorderService auditRecorder;
-
     @PostMapping
+    @Log(title = "新建知识库", businessType = BusinessType.INSERT)
     public R<KnowledgeBaseVo> createKnowledgeBase(@RequestBody CreateKnowledgeBaseRequest request) {
         var bo = new KnowledgeBaseBo();
         bo.setName(request == null ? null : request.name());
         bo.setDescription(request == null ? null : request.description());
         var created = knowledgeBaseService.createKnowledgeBase(bo);
-        audit("CREATE", "knowledge-base", String.valueOf(created.getId()), "create knowledge base " + created.getName());
         return R.ok(created);
     }
 
@@ -60,9 +56,9 @@ public class KnowledgeBaseController extends BaseController {
     }
 
     @DeleteMapping("/{id}")
+    @Log(title = "禁用知识库", businessType = BusinessType.DISABLE)
     public R<Void> disableKnowledgeBase(@PathVariable("id") Long id) {
         knowledgeBaseService.disableKnowledgeBase(id);
-        audit("DISABLE", "knowledge-base", String.valueOf(id), "disable knowledge base");
         return R.ok();
     }
 
@@ -71,18 +67,5 @@ public class KnowledgeBaseController extends BaseController {
         var list = knowledgeBaseService.listTasks(kbId);
 //      TODO PageUtils  return R.ok(PageUtils.page(list, pageQuery));
         return R.ok();
-    }
-
-    private void audit(String action, String targetType, String targetId, String detail) {
-        if (auditRecorder == null) {
-            return;
-        }
-        String actor;
-        try {
-            actor = LoginHelper.getUsername();
-        } catch (Exception exception) {
-            actor = null;
-        }
-        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
     }
 }

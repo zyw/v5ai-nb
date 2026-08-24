@@ -1,7 +1,6 @@
 package xin.v5ai.nb.mcp.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,11 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.core.validate.EditGroup;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.mcp.domain.bo.McpServerBo;
 import xin.v5ai.nb.mcp.domain.vo.McpServerVo;
@@ -42,13 +41,10 @@ public class McpServerController extends BaseController {
 
     private final IMcpServerService mcpServerService;
 
-    @Autowired(required = false)
-    private AuditLogRecorderService auditRecorder;
-
     @PostMapping
+    @Log(title = "新建MCP服务", businessType = BusinessType.INSERT)
     public R<McpServerVo> createServer(@Validated(AddGroup.class) @RequestBody McpServerBo bo) {
         var created = mcpServerService.createServer(bo);
-        audit("CREATE", "mcp-server", String.valueOf(created.getId()), "create mcp server " + created.getName());
         return R.ok(created);
     }
 
@@ -63,14 +59,15 @@ public class McpServerController extends BaseController {
     }
 
     @PutMapping
+    @Log(title = "更新MCP服务", businessType = BusinessType.UPDATE)
     public R<McpServerVo> updateServer(@Validated(EditGroup.class) @RequestBody McpServerBo bo) {
         return R.ok(mcpServerService.updateServer(bo));
     }
 
     @DeleteMapping("/{id}")
+    @Log(title = "禁用MCP服务", businessType = BusinessType.DISABLE)
     public R<Void> disableServer(@PathVariable("id") Long id) {
         mcpServerService.disableServer(id);
-        audit("DISABLE", "mcp-server", String.valueOf(id), "disable mcp server");
         return R.ok();
     }
 
@@ -106,18 +103,5 @@ public class McpServerController extends BaseController {
                                                                    PageQuery pageQuery) {
         var list = mcpServerService.listToolCallsByServer(id);
         return R.ok(PageResult.build(list, (long) list.size()));
-    }
-
-    private void audit(String action, String targetType, String targetId, String detail) {
-        if (auditRecorder == null) {
-            return;
-        }
-        String actor;
-        try {
-            actor = LoginHelper.getUsername();
-        } catch (Exception exception) {
-            actor = null;
-        }
-        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
     }
 }

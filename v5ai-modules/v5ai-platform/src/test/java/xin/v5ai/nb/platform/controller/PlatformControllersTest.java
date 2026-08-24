@@ -18,7 +18,7 @@ class PlatformControllersTest {
     @Test
     void tenantControllerCreatesAndLists() {
         var store = new RecordingTenantStore();
-        var controller = new TenantController(store, noOpAudit());
+        var controller = new TenantController(store);
         var created = controller.createTenant(new TenantController.CreateTenantRequest("acme", "Acme Corp")).getData();
         assertThat(created.tenantKey()).isEqualTo("acme");
         assertThat(controller.listTenants(new PageQuery()).getData().getRows())
@@ -38,7 +38,7 @@ class PlatformControllersTest {
             public boolean matches(CharSequence rawPassword, String encodedPassword) {
                 return false;
             }
-        }, noOpAudit());
+        });
         var created = controller.createUser(new UserController.CreateUserRequest(
                 "bob", "secret123", "Bob", 1L, null)).getData();
         assertThat(created.username()).isEqualTo("bob");
@@ -53,7 +53,7 @@ class PlatformControllersTest {
         when(service.getQuota("demo")).thenReturn(new AppQuota("demo", 0, 0, 0, null));
         when(service.updateQuota(anyString(), any(), any(), any()))
                 .thenReturn(new AppQuota("demo", 10, 1000L, 5, Instant.now()));
-        var controller = new AppQuotaController(service, noOpAudit());
+        var controller = new AppQuotaController(service);
 
         assertThat(controller.getQuota("demo").getData().ratePerMinute()).isZero();
         var updated = controller.updateQuota("demo", new AppQuotaController.UpdateQuotaRequest(10, 1000L, 5)).getData();
@@ -67,20 +67,6 @@ class PlatformControllersTest {
                 new AuditLogDTO(1L, null, "admin", "LOGIN", "auth", "admin", "login", null, Instant.now())));
         var controller = new AuditLogController(recorder);
         assertThat(controller.search(new PageQuery(), "admin", "LOGIN").getData().getRows()).hasSize(1);
-    }
-
-    private static AuditLogRecorderService noOpAudit() {
-        return new AuditLogRecorderService() {
-            @Override
-            public void record(Long tenantId, String actor, String action, String targetType,
-                               String targetId, String detail, String ip) {
-            }
-
-            @Override
-            public List<AuditLogDTO> search(String actor, String action, int limit) {
-                return List.of();
-            }
-        };
     }
 
     private static final class RecordingTenantStore implements TenantStore {

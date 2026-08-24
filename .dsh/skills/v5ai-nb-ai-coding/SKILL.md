@@ -65,6 +65,11 @@ reference 用来约束实现方式和自检范围；发生冲突时，仍以当�
 - 同模块没有现成代码时，再参考 generator 模板。
 - 不要因为“更通用”就覆盖掉项目已形成的强约定。
 
+## 数据库设计规则
+
+MySql和PostgreSql数据库设计时，字段长度、类型、是否为空、默认值、注释等，请参考 [references/database.md](references/database.md)。
+
+
 ## 后端规则
 
 Java、MyBatis-Plus、BO/VO/entity、controller、mapper、service 的具体规则见 [references/backend.md](references/backend.md)。
@@ -125,7 +130,7 @@ Vue 3、React、TypeScript API 文件、生成式列表页、表单状态、字�
 
 ### 2. 强业务模块扩展
 
-如果目标模块像 `system`、`workflow` 一样已经有复杂逻辑，优先增量修改，不要回退成模板式简化代码。
+如果目标模块像 `platform`、`model` 一样已经有复杂逻辑，优先增量修改，不要回退成模板式简化代码。
 
 ### 3. 基础能力复用
 
@@ -133,7 +138,7 @@ Vue 3、React、TypeScript API 文件、生成式列表页、表单状态、字�
 
 ### 4. 公共基础模块修改
 
-修改 `ruoyi-common` 下的基础能力时，优先保证二进制/API 兼容：不要轻易改公开方法签名、泛型、返回值或异常语义。新增注释和小范围能力时，先查同包现有风格，例如 `common-mybatis` 的链式 wrapper、`common-translation` 的 `TranslationInterface` 实现、`common-json` 的字段处理器。
+修改 `v5ai-common` 下的基础能力时，优先保证二进制/API 兼容：不要轻易改公开方法签名、泛型、返回值或异常语义。新增注释和小范围能力时，先查同包现有风格，例如 `common-mybatis` 的链式 wrapper、`common-translation` 的 `TranslationInterface` 实现、`common-json` 的字段处理器。
 
 ### 5. 注释修正任务
 

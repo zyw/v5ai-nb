@@ -3,8 +3,8 @@
 ## 优先参考的代码来源
 
 - `v5ai-modules/v5ai-gen/src/main/resources/fm/java/*.ftl`
-- `v5ai-modules/v5ai-demo/...`
-- `v5ai-modules/v5ai-system/...`
+- `v5ai-modules/v5ai-model/...`
+- `v5ai-modules/v5ai-platform/...`
 - `v5ai-modules/v5ai-workflow/...`
 - `v5ai-common/v5ai-common-mybatis/...`
 
@@ -255,7 +255,7 @@
 - 不要给新的管理接口漏掉权限注解。
 - 没有明确必要时，不要从 `BaseMapperPlus` 风格退回手工映射。
 - 前端查询页用了日期范围时，不要删掉后端 `params` 相关处理。
-- 不要把 `v5ai-system` 这类复杂逻辑强行简化成生成器式单表 CRUD。
+- 不要把 `v5ai-platform` 这类复杂逻辑强行简化成生成器式单表 CRUD。
 
 ## 交付前自检
 
