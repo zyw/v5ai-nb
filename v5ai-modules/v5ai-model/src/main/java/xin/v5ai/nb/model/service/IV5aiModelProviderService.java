@@ -1,7 +1,7 @@
 package xin.v5ai.nb.model.service;
 
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.model.domain.bo.ModelProviderBo;
 import xin.v5ai.nb.model.domain.vo.V5aiModelProviderVo;
 

@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.mcp.domain.vo.McpToolCallAuditVo;
 import xin.v5ai.nb.mcp.service.IMcpServerService;
 

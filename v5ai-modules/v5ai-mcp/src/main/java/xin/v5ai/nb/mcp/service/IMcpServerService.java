@@ -2,8 +2,8 @@ package xin.v5ai.nb.mcp.service;
 
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.mcp.core.domain.McpConnectionTestResult;
 import xin.v5ai.nb.mcp.domain.bo.McpServerBo;
 import xin.v5ai.nb.mcp.domain.vo.McpServerVo;

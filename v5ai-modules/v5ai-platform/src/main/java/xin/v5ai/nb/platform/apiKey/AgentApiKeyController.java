@@ -3,10 +3,9 @@ package xin.v5ai.nb.platform.apiKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 @RestController
@@ -29,7 +28,8 @@ public class AgentApiKeyController {
 
     @GetMapping("/api-keys")
     public R<PageResult<AgentApiKeyStore.ApiKeyRecord>> listApiKeys(PageQuery pageQuery) {
-        return R.ok(PageUtils.page(apiKeyManagementService.listApiKeys(), pageQuery));
+//      TODO PageUtils.page  return R.ok(PageUtils.page(apiKeyManagementService.listApiKeys(), pageQuery));
+        return R.ok();
     }
 
     @DeleteMapping("/agents/{agentKey}/api-keys")

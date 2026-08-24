@@ -2,6 +2,7 @@ package xin.v5ai.nb.platform.auth;
 
 import cn.dev33.satoken.stp.StpUtil;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.platform.Menu;
@@ -12,17 +13,13 @@ import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/auth")
 public class AuthController {
+
     private final V5aiLoginService loginService;
     private final UserAccountStore userAccountStore;
     private final MenuStore menuStore;
-
-    public AuthController(V5aiLoginService loginService, UserAccountStore userAccountStore, MenuStore menuStore) {
-        this.loginService = loginService;
-        this.userAccountStore = userAccountStore;
-        this.menuStore = menuStore;
-    }
 
     @PostMapping("/login")
     public R<LoginResponse> login(@Valid @RequestBody LoginRequest request) {

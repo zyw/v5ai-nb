@@ -60,7 +60,10 @@ public class PageQuery implements Serializable {
     public static final int DEFAULT_PAGE_SIZE = Integer.MAX_VALUE;
 
     /**
-     * 构建分页对象
+     * 构建分页对象。
+     *
+     * @param <T> 分页记录类型
+     * @return MyBatis-Plus 分页对象
      */
     public <T> Page<T> build() {
         Integer pageNum = ObjectUtil.defaultIfNull(getPageNum(), DEFAULT_PAGE_NUM);
@@ -98,7 +101,7 @@ public class PageQuery implements Serializable {
         String[] orderByArr = orderBy.split(StringUtils.SEPARATOR);
         String[] isAscArr = orderDirection.split(StringUtils.SEPARATOR);
         if (isAscArr.length != 1 && isAscArr.length != orderByArr.length) {
-            throw new V5aiException(ErrorCode.INVALID_ARGUMENT, "排序参数有误");
+            throw new V5aiException(ErrorCode.INVALID_ARGUMENT,"排序参数有误");
         }
 
         List<OrderItem> list = new ArrayList<>();
@@ -133,20 +136,12 @@ public class PageQuery implements Serializable {
     }
 
     /**
-     * 分页大小上限，防止恶意/误用超大分页参数。
-     */
-    public static final int MAX_PAGE_SIZE = 1000;
-
-    /**
      * 构造分页查询对象。
      *
      * @param pageSize 分页大小
      * @param pageNum  当前页码
      */
     public PageQuery(Integer pageSize, Integer pageNum) {
-        if (pageSize != null && (pageSize <= 0 || pageSize > MAX_PAGE_SIZE)) {
-            throw new IllegalArgumentException("pageSize must be between 1 and " + MAX_PAGE_SIZE);
-        }
         this.pageSize = pageSize;
         this.pageNum = pageNum;
     }

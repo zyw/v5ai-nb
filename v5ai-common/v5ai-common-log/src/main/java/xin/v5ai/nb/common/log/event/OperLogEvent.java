@@ -4,7 +4,7 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 操作日志事件
@@ -131,7 +131,7 @@ public class OperLogEvent implements Serializable {
     /**
      * 操作时间
      */
-    private LocalDateTime operTime;
+    private OffsetDateTime operTime;
 
     /**
      * 消耗时间

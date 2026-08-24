@@ -1,7 +1,6 @@
 package xin.v5ai.nb.common;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.common.core.page.PageQuery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

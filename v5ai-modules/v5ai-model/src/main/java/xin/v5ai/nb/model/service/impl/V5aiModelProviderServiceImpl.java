@@ -1,6 +1,5 @@
 package xin.v5ai.nb.model.service.impl;
 
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -8,9 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.utils.MapstructUtils;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;

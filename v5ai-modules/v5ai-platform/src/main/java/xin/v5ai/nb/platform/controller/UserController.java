@@ -4,12 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.UserAccount;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.util.List;
@@ -37,7 +36,8 @@ public class UserController {
 
     @GetMapping
     public R<PageResult<UserAccount>> listUsers(PageQuery pageQuery) {
-        return R.ok(PageUtils.page(userAccountStore.list(), pageQuery));
+//      TODO PageUtils.page  return R.ok(PageUtils.page(userAccountStore.list(), pageQuery));
+        return R.ok();
     }
 
     @PostMapping

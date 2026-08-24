@@ -3,24 +3,17 @@ package xin.v5ai.nb.platform.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.common.core.platform.UsageRecord;
-import xin.v5ai.nb.platform.domain.ModelUsage;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.platform.domain.bo.ModelUsageListBo;
 import xin.v5ai.nb.platform.domain.vo.ModelUsageRecordVo;
-import xin.v5ai.nb.platform.domain.vo.ModelUsageVo;
-import xin.v5ai.nb.platform.mapper.ModelUsageMapper;
 import xin.v5ai.nb.platform.service.IModelUsageService;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.List;
 
 /**
  * 用量明细查询 API（可观测性）。

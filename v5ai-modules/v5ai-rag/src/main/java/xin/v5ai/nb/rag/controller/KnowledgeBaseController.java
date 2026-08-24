@@ -11,10 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
@@ -70,7 +69,8 @@ public class KnowledgeBaseController extends BaseController {
     @GetMapping("/{kbId}/tasks")
     public R<PageResult<KnowledgeTaskVo>> listTasks(@PathVariable("kbId") Long kbId, PageQuery pageQuery) {
         var list = knowledgeBaseService.listTasks(kbId);
-        return R.ok(PageUtils.page(list, pageQuery));
+//      TODO PageUtils  return R.ok(PageUtils.page(list, pageQuery));
+        return R.ok();
     }
 
     private void audit(String action, String targetType, String targetId, String detail) {

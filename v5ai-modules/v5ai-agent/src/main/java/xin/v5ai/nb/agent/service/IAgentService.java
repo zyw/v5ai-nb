@@ -3,8 +3,8 @@ package xin.v5ai.nb.agent.service;
 import xin.v5ai.nb.agent.domain.bo.AgentBo;
 import xin.v5ai.nb.agent.domain.vo.AgentVersionVo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 
 import java.util.List;
 

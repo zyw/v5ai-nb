@@ -12,7 +12,6 @@ import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.runtime.controller.vo.ChatRequest;
 import xin.v5ai.nb.runtime.controller.vo.ConversationMessageResponse;
 
@@ -52,7 +51,8 @@ public class ChatController {
         var list = messageService.findByConversationId(conversationId).stream()
                 .map(ConversationMessageResponse::from)
                 .toList();
-        return R.ok(PageUtils.page(list, pageQuery));
+//     TODO PageUtils   return R.ok(PageUtils.page(list, pageQuery));
+        return R.ok();
     }
 
     @PostMapping("/conversations/{conversationId}/resume")

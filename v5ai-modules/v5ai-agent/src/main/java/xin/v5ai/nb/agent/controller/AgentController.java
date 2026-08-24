@@ -13,10 +13,12 @@ import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.log.annotation.Log;
+import xin.v5ai.nb.common.log.enums.BusinessType;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 
@@ -40,7 +42,10 @@ public class AgentController extends BaseController {
     @Autowired(required = false)
     private AuditLogRecorderService auditRecorder;
 
-    /** 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。 */
+    /**
+     * 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。
+     */
+    @Log(title = "生成智能体配置", businessType = BusinessType.GENCODE)
     @PostMapping("/generate")
     public R<GenerateAgentConfigResponse> generateAgentConfig(@RequestBody GenerateAgentConfigRequest request) {
         audit("GENERATE", "agent-config", null, "generate agent config");

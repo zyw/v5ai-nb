@@ -1,8 +1,8 @@
 package xin.v5ai.nb.rag.service;
 
 import xin.v5ai.nb.common.core.domain.OptionDTO;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeBaseVo;

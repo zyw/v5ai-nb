@@ -15,8 +15,8 @@ import xin.v5ai.nb.agent.mapper.AgentVersionMapper;
 import xin.v5ai.nb.agent.service.IAgentDeletionPortService;
 import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 
 import java.util.List;

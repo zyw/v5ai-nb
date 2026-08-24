@@ -2,12 +2,11 @@ package xin.v5ai.nb.platform.controller;
 
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.page.PageUtils;
 import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.Tenant;
 import xin.v5ai.nb.common.core.platform.TenantStore;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.time.Instant;
@@ -47,7 +46,8 @@ public class TenantController {
 
     @GetMapping
     public R<PageResult<Tenant>> listTenants(PageQuery pageQuery) {
-        return R.ok(PageUtils.page(tenantStore.list(), pageQuery));
+//       TODO PageUtils return R.ok(PageUtils.page(tenantStore.list(), pageQuery));
+        return R.ok();
     }
 
     @DeleteMapping("/{id}")

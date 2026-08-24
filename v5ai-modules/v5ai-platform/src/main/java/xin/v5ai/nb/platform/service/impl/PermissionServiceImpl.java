@@ -1,4 +1,4 @@
-package xin.v5ai.nb.platform.auth;
+package xin.v5ai.nb.platform.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

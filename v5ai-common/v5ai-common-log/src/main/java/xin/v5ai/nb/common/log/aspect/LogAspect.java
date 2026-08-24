@@ -98,7 +98,7 @@ public class LogAspect {
             String ip = ServletUtils.getClientIP();
             operLog.setOperIp(ip);
             operLog.setOperUrl(limit(request.getRequestURI(), MAX_URL_LENGTH));
-            operLog.setClientKey(limit(request.getHeader(LoginHelper.CLIENT_KEY), MAX_CLIENT_KEY_LENGTH));
+//            operLog.setClientKey(limit(request.getHeader(LoginHelper.CLIENT_KEY), MAX_CLIENT_KEY_LENGTH));
             LoginUser loginUser = LoginHelper.getLoginUser();
             if (ObjectUtil.isNotNull(loginUser)) {
                 operLog.setOperName(loginUser.getUsername());

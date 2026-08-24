@@ -5,10 +5,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.core.validate.EditGroup;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.model.domain.bo.ModelProviderBo;
 import xin.v5ai.nb.model.domain.vo.V5aiModelProviderVo;
@@ -33,7 +33,7 @@ public class V5aiModelProviderController extends BaseController {
     private final IV5aiModelProviderService service;
 
     @GetMapping
-    public R<PageResult<V5aiModelProviderVo>> listProviders(ModelProviderBo bo,PageQuery pageQuery) {
+    public R<PageResult<V5aiModelProviderVo>> listProviders(ModelProviderBo bo, PageQuery pageQuery) {
         return R.ok(service.queryPageList(bo, pageQuery));
     }
 

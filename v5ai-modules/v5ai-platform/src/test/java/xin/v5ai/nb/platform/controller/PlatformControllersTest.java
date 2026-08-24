@@ -1,7 +1,6 @@
 package xin.v5ai.nb.platform.controller;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.platform.*;
 import xin.v5ai.nb.common.core.platform.entity.AuditLogDTO;
 

@@ -1,8 +1,8 @@
 package xin.v5ai.nb.skill.service;
 
 import xin.v5ai.nb.common.core.domain.OptionDTO;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.skill.domain.bo.SkillBo;
 import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
 import xin.v5ai.nb.skill.domain.vo.SkillVo;
