@@ -10,6 +10,7 @@ import {
   NIcon,
   NInput,
   NModal,
+  NPagination,
   NSelect,
   NSpace,
   NStep,
@@ -52,6 +53,7 @@ const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
 const agents = ref<AgentResponse[]>([])
+const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 const modelOptions = ref<OptionResponse[]>([])
 const knowledgeBaseOptions = ref<OptionResponse[]>([])
 const mcpServerOptions = ref<OptionResponse[]>([])
@@ -160,13 +162,25 @@ const columns: DataTableColumns<AgentResponse> = [
 async function reload() {
   loading.value = true
   try {
-    const agentRows = await listAgents(adminToken.value)
+    const agentRows = await listAgents(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
     agents.value = agentRows.rows
+    pagination.itemCount = agentRows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载数据失败')
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page: number) {
+  pagination.page = page
+  void reload()
+}
+
+function handlePageSizeChange(pageSize: number) {
+  pagination.pageSize = pageSize
+  pagination.page = 1
+  void reload()
 }
 
 // ---- 下拉选项按需加载（打开创建/编辑/绑定弹窗时才拉取，Promise 缓存去重） ----
@@ -582,6 +596,16 @@ onMounted(reload)
 
     <n-card :bordered="true">
       <n-data-table :loading="loading" :columns="columns" :data="agents" :bordered="false" />
+      <n-pagination
+        :page="pagination.page"
+        :page-size="pagination.pageSize"
+        :item-count="pagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handlePageChange"
+        @update:page-size="handlePageSizeChange"
+      />
     </n-card>
 
     <!-- 新建向导 / 编辑：左右分栏 -->

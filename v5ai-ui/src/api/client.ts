@@ -344,8 +344,8 @@ export function testModelConnection(adminToken: string, id: number): Promise<Tes
 
 // ---- Agent ----
 
-export function listAgents(adminToken: string): Promise<PageResult<AgentResponse>> {
-  return requestJson<PageResult<AgentResponse>>('/api/admin/agents', {}, adminToken)
+export function listAgents(adminToken: string, query?: PageQuery): Promise<PageResult<AgentResponse>> {
+  return requestJson<PageResult<AgentResponse>>(`/api/admin/agents${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createAgent(adminToken: string, request: CreateAgentRequest): Promise<AgentResponse> {
@@ -518,8 +518,8 @@ export async function resumeConversation(
 
 // ---- Knowledge bases ----
 
-export function listKnowledgeBases(adminToken: string): Promise<PageResult<KnowledgeBaseResponse>> {
-  return requestJson<PageResult<KnowledgeBaseResponse>>('/api/admin/knowledge-bases', {}, adminToken)
+export function listKnowledgeBases(adminToken: string, query?: PageQuery): Promise<PageResult<KnowledgeBaseResponse>> {
+  return requestJson<PageResult<KnowledgeBaseResponse>>(`/api/admin/knowledge-bases${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createKnowledgeBase(adminToken: string, request: CreateKnowledgeBaseRequest): Promise<KnowledgeBaseResponse> {
@@ -533,8 +533,8 @@ export function disableKnowledgeBase(adminToken: string, id: number): Promise<vo
   return requestJson<void>(`/api/admin/knowledge-bases/${id}`, { method: 'DELETE' }, adminToken)
 }
 
-export function listDocuments(adminToken: string, kbId: number): Promise<PageResult<DocumentResponse>> {
-  return requestJson<PageResult<DocumentResponse>>(`/api/admin/knowledge-bases/${kbId}/documents`, {}, adminToken)
+export function listDocuments(adminToken: string, kbId: number, query?: PageQuery): Promise<PageResult<DocumentResponse>> {
+  return requestJson<PageResult<DocumentResponse>>(`/api/admin/knowledge-bases/${kbId}/documents${pageQueryString(query)}`, {}, adminToken)
 }
 
 export async function uploadDocument(adminToken: string, kbId: number, file: File, title?: string): Promise<DocumentResponse> {
@@ -670,8 +670,8 @@ export interface McpToolCallAuditResponse {
   createdAt?: string | null
 }
 
-export function listMcpServers(adminToken: string): Promise<PageResult<McpServerResponse>> {
-  return requestJson<PageResult<McpServerResponse>>('/api/admin/mcp-servers', {}, adminToken)
+export function listMcpServers(adminToken: string, query?: PageQuery): Promise<PageResult<McpServerResponse>> {
+  return requestJson<PageResult<McpServerResponse>>(`/api/admin/mcp-servers${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createMcpServer(adminToken: string, request: CreateMcpServerRequest): Promise<McpServerResponse> {
@@ -753,8 +753,8 @@ export interface SkillVersionResponse {
   createdAt?: string | null
 }
 
-export function listSkills(adminToken: string): Promise<PageResult<SkillResponse>> {
-  return requestJson<PageResult<SkillResponse>>('/api/admin/skills', {}, adminToken)
+export function listSkills(adminToken: string, query?: PageQuery): Promise<PageResult<SkillResponse>> {
+  return requestJson<PageResult<SkillResponse>>(`/api/admin/skills${pageQueryString(query)}`, {}, adminToken)
 }
 
 export async function uploadSkill(adminToken: string, file: File, description?: string): Promise<SkillResponse> {
@@ -915,8 +915,8 @@ export interface LoginResponseFull {
   roles?: string[]
 }
 
-export function listTenants(adminToken: string): Promise<PageResult<Tenant>> {
-  return requestJson<PageResult<Tenant>>('/api/admin/tenants', {}, adminToken)
+export function listTenants(adminToken: string, query?: PageQuery): Promise<PageResult<Tenant>> {
+  return requestJson<PageResult<Tenant>>(`/api/admin/tenants${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createTenant(adminToken: string, tenantKey: string, name: string): Promise<Tenant> {
@@ -930,8 +930,8 @@ export function disableTenant(adminToken: string, id: number): Promise<void> {
   return requestJson<void>(`/api/admin/tenants/${id}`, { method: 'DELETE' }, adminToken)
 }
 
-export function listUsers(adminToken: string): Promise<PageResult<UserAccount>> {
-  return requestJson<PageResult<UserAccount>>('/api/admin/users', {}, adminToken)
+export function listUsers(adminToken: string, query?: PageQuery): Promise<PageResult<UserAccount>> {
+  return requestJson<PageResult<UserAccount>>(`/api/admin/users${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createUser(adminToken: string, request: { username: string; password: string; displayName?: string; tenantId?: number; roles?: string[] }): Promise<UserAccount> {
@@ -957,8 +957,8 @@ export function updateUserStatus(adminToken: string, id: number, status: string)
 
 // ---- Roles ----
 
-export function listRoles(adminToken: string): Promise<PageResult<Role>> {
-  return requestJson<PageResult<Role>>('/api/admin/roles', {}, adminToken)
+export function listRoles(adminToken: string, query?: PageQuery): Promise<PageResult<Role>> {
+  return requestJson<PageResult<Role>>(`/api/admin/roles${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function createRole(adminToken: string, request: { roleKey: string; roleName: string; description?: string; dataScope?: string }): Promise<Role> {
@@ -1170,8 +1170,8 @@ export interface WorkflowRunDetailResponse {
   nodeRuns: WorkflowNodeRunResponse[]
 }
 
-export function listWorkflows(adminToken: string): Promise<PageResult<WorkflowResponse>> {
-  return requestJson<PageResult<WorkflowResponse>>('/api/admin/workflows', {}, adminToken)
+export function listWorkflows(adminToken: string, query?: PageQuery): Promise<PageResult<WorkflowResponse>> {
+  return requestJson<PageResult<WorkflowResponse>>(`/api/admin/workflows${pageQueryString(query)}`, {}, adminToken)
 }
 
 export function getWorkflow(adminToken: string, workflowKey: string): Promise<WorkflowResponse> {

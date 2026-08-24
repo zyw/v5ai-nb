@@ -10,6 +10,7 @@ import {
   NIcon,
   NInput,
   NModal,
+  NPagination,
   NSpace,
   NUpload,
   useDialog,
@@ -38,6 +39,7 @@ const loading = ref(false)
 const skills = ref<SkillResponse[]>([])
 const selectedSkill = ref<SkillResponse | null>(null)
 const versions = ref<SkillVersionResponse[]>([])
+const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 
 const showUploadModal = ref(false)
 const showVersionsModal = ref(false)
@@ -84,12 +86,25 @@ const versionColumns: DataTableColumns<SkillVersionResponse> = [
 async function reload() {
   loading.value = true
   try {
-    skills.value = (await listSkills(adminToken.value)).rows
+    const rows = await listSkills(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
+    skills.value = rows.rows
+    pagination.itemCount = rows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载 Skill 数据失败')
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page: number) {
+  pagination.page = page
+  void reload()
+}
+
+function handlePageSizeChange(pageSize: number) {
+  pagination.pageSize = pageSize
+  pagination.page = 1
+  void reload()
 }
 
 function handleFileChange(options: { file: UploadFileInfo }) {
@@ -181,6 +196,16 @@ onMounted(reload)
 
     <n-card :bordered="true">
       <n-data-table :loading="loading" :columns="skillColumns" :data="skills" :bordered="false" />
+      <n-pagination
+        :page="pagination.page"
+        :page-size="pagination.pageSize"
+        :item-count="pagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handlePageChange"
+        @update:page-size="handlePageSizeChange"
+      />
     </n-card>
 
     <n-modal

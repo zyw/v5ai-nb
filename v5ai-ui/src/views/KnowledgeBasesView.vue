@@ -10,6 +10,7 @@ import {
   NIcon,
   NInput,
   NModal,
+  NPagination,
   NSpace,
   NTag,
   NUpload,
@@ -45,6 +46,8 @@ const documents = ref<DocumentResponse[]>([])
 const tasks = ref<TaskResponse[]>([])
 const selectedKb = ref<KnowledgeBaseResponse | null>(null)
 const uploadFile = ref<File | null>(null)
+const kbPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+const docPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 
 const showCreateModal = ref(false)
 const saving = ref(false)
@@ -80,7 +83,9 @@ const taskColumns: DataTableColumns<TaskResponse> = [
 async function reload() {
   loading.value = true
   try {
-    knowledgeBases.value = (await listKnowledgeBases(adminToken.value)).rows
+    const kbRows = await listKnowledgeBases(adminToken.value, { pageNum: kbPagination.page, pageSize: kbPagination.pageSize })
+    knowledgeBases.value = kbRows.rows
+    kbPagination.itemCount = kbRows.total
     if (selectedKb.value == null && knowledgeBases.value.length > 0) {
       selectedKb.value = knowledgeBases.value[0]
     }
@@ -94,12 +99,35 @@ async function reload() {
   }
 }
 
+function handleKbPageChange(page: number) {
+  kbPagination.page = page
+  void reload()
+}
+
+function handleKbPageSizeChange(pageSize: number) {
+  kbPagination.pageSize = pageSize
+  kbPagination.page = 1
+  void reload()
+}
+
+function handleDocPageChange(page: number) {
+  docPagination.page = page
+  if (selectedKb.value) void reloadDocuments(selectedKb.value.id)
+}
+
+function handleDocPageSizeChange(pageSize: number) {
+  docPagination.pageSize = pageSize
+  docPagination.page = 1
+  if (selectedKb.value) void reloadDocuments(selectedKb.value.id)
+}
+
 async function reloadDocuments(kbId: number) {
   const [docRows, taskRows] = await Promise.all([
-    listDocuments(adminToken.value, kbId),
+    listDocuments(adminToken.value, kbId, { pageNum: docPagination.page, pageSize: docPagination.pageSize }),
     listTasks(adminToken.value, kbId)
   ])
   documents.value = docRows.rows
+  docPagination.itemCount = docRows.total
   tasks.value = taskRows.rows
 }
 
@@ -250,6 +278,16 @@ onMounted(reload)
         :data="knowledgeBases"
         :bordered="false"
       />
+      <n-pagination
+        :page="kbPagination.page"
+        :page-size="kbPagination.pageSize"
+        :item-count="kbPagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handleKbPageChange"
+        @update:page-size="handleKbPageSizeChange"
+      />
     </n-card>
 
     <n-card v-if="selectedKb" :title="`文档管理 · ${selectedKb.name}`" :bordered="true">
@@ -267,6 +305,16 @@ onMounted(reload)
         </div>
         <n-empty v-if="documents.length === 0" description="暂无文档" />
         <n-data-table v-else :loading="loading" :columns="documentColumns" :data="documents" :bordered="false" />
+        <n-pagination
+          :page="docPagination.page"
+          :page-size="docPagination.pageSize"
+          :item-count="docPagination.itemCount"
+          :page-sizes="[10, 20, 50, 100]"
+          show-size-picker
+          style="justify-content: flex-end; margin-top: 12px"
+          @update:page="handleDocPageChange"
+          @update:page-size="handleDocPageSizeChange"
+        />
       </n-space>
     </n-card>
 

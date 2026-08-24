@@ -11,6 +11,7 @@ import {
   NInput,
   NInputNumber,
   NModal,
+  NPagination,
   NSelect,
   NSpace,
   NTag,
@@ -42,6 +43,7 @@ const loading = ref(false)
 const servers = ref<McpServerResponse[]>([])
 const tools = ref<McpToolResponse[]>([])
 const activeServer = ref<McpServerResponse | null>(null)
+const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 
 const showCreateModal = ref(false)
 const showToolsModal = ref(false)
@@ -126,12 +128,25 @@ const toolColumns: DataTableColumns<McpToolResponse> = [
 async function reload() {
   loading.value = true
   try {
-    servers.value = (await listMcpServers(adminToken.value)).rows
+    const rows = await listMcpServers(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
+    servers.value = rows.rows
+    pagination.itemCount = rows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载 MCP 数据失败')
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page: number) {
+  pagination.page = page
+  void reload()
+}
+
+function handlePageSizeChange(pageSize: number) {
+  pagination.pageSize = pageSize
+  pagination.page = 1
+  void reload()
 }
 
 function resetForm() {
@@ -261,6 +276,16 @@ onMounted(reload)
 
     <n-card :bordered="true">
       <n-data-table :loading="loading" :columns="serverColumns" :data="servers" :bordered="false" />
+      <n-pagination
+        :page="pagination.page"
+        :page-size="pagination.pageSize"
+        :item-count="pagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handlePageChange"
+        @update:page-size="handlePageSizeChange"
+      />
     </n-card>
 
     <n-modal
