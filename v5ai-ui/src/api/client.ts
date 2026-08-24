@@ -1063,20 +1063,22 @@ export function getAppDailyUsage(adminToken: string, agentKey: string): Promise<
   return requestJson<AppUsage>(`/api/admin/apps/${encodeURIComponent(agentKey)}/usage/daily`, {}, adminToken)
 }
 
-export function listUsage(adminToken: string, params: { agentKey?: string; from?: string; to?: string; pageSize?: number } = {}): Promise<PageResult<UsageRecord>> {
+export function listUsage(adminToken: string, params: { agentKey?: string; from?: string; to?: string; pageNum?: number; pageSize?: number } = {}): Promise<PageResult<UsageRecord>> {
   const query = new URLSearchParams()
   if (params.agentKey) query.set('agentKey', params.agentKey)
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
+  if (params.pageNum) query.set('pageNum', String(params.pageNum))
   if (params.pageSize) query.set('pageSize', String(params.pageSize))
   const qs = query.toString()
   return requestJson<PageResult<UsageRecord>>(`/api/admin/usage${qs ? `?${qs}` : ''}`, {}, adminToken)
 }
 
-export function listAuditLogs(adminToken: string, params: { actor?: string; action?: string; pageSize?: number } = {}): Promise<PageResult<AuditLog>> {
+export function listAuditLogs(adminToken: string, params: { actor?: string; action?: string; pageNum?: number; pageSize?: number } = {}): Promise<PageResult<AuditLog>> {
   const query = new URLSearchParams()
   if (params.actor) query.set('actor', params.actor)
   if (params.action) query.set('action', params.action)
+  if (params.pageNum) query.set('pageNum', String(params.pageNum))
   if (params.pageSize) query.set('pageSize', String(params.pageSize))
   const qs = query.toString()
   return requestJson<PageResult<AuditLog>>(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`, {}, adminToken)

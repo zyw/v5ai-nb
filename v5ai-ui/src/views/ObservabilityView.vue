@@ -8,6 +8,7 @@ import {
   NGrid,
   NInput,
   NInputNumber,
+  NPagination,
   NSelect,
   NSpace,
   NStatistic,
@@ -40,6 +41,8 @@ const filterAppKey = ref('')
 const filterAction = ref('')
 const savingQuota = ref(false)
 const dailyUsage = ref('')
+const usagePagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+const auditPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 
 const quotaForm = reactive({
   agentKey: '',
@@ -93,18 +96,62 @@ async function reloadOverview() {
 
 async function reloadUsage() {
   try {
-    usage.value = (await listUsage(adminToken.value, { agentKey: filterAppKey.value || undefined, pageSize: 100 })).rows
+    const rows = await listUsage(adminToken.value, {
+      agentKey: filterAppKey.value || undefined,
+      pageNum: usagePagination.page,
+      pageSize: usagePagination.pageSize
+    })
+    usage.value = rows.rows
+    usagePagination.itemCount = rows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载用量失败')
   }
 }
 
+function handleUsageFilterChange() {
+  usagePagination.page = 1
+  void reloadUsage()
+}
+
+function handleUsagePageChange(page: number) {
+  usagePagination.page = page
+  void reloadUsage()
+}
+
+function handleUsagePageSizeChange(pageSize: number) {
+  usagePagination.pageSize = pageSize
+  usagePagination.page = 1
+  void reloadUsage()
+}
+
 async function reloadAudits() {
   try {
-    audits.value = (await listAuditLogs(adminToken.value, { action: filterAction.value || undefined, pageSize: 100 })).rows
+    const rows = await listAuditLogs(adminToken.value, {
+      action: filterAction.value || undefined,
+      pageNum: auditPagination.page,
+      pageSize: auditPagination.pageSize
+    })
+    audits.value = rows.rows
+    auditPagination.itemCount = rows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载审计失败')
   }
+}
+
+function handleAuditFilterChange() {
+  auditPagination.page = 1
+  void reloadAudits()
+}
+
+function handleAuditPageChange(page: number) {
+  auditPagination.page = page
+  void reloadAudits()
+}
+
+function handleAuditPageSizeChange(pageSize: number) {
+  auditPagination.pageSize = pageSize
+  auditPagination.page = 1
+  void reloadAudits()
 }
 
 async function reloadQuota() {
@@ -218,10 +265,20 @@ onMounted(async () => {
           placeholder="按 App 筛选"
           style="width: 220px"
           :options="apps.map((a) => ({ label: a.agentKey, value: a.agentKey }))"
-          @update:value="reloadUsage"
+          @update:value="handleUsageFilterChange"
         />
       </n-space>
       <n-data-table :columns="usageColumns" :data="usage" :bordered="false" />
+      <n-pagination
+        :page="usagePagination.page"
+        :page-size="usagePagination.pageSize"
+        :item-count="usagePagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handleUsagePageChange"
+        @update:page-size="handleUsagePageSizeChange"
+      />
     </n-card>
 
     <n-card title="审计日志" :bordered="true">
@@ -231,10 +288,20 @@ onMounted(async () => {
           placeholder="按动作筛选（如 CREATE / LOGIN）"
           style="width: 220px"
           clearable
-          @update:value="reloadAudits"
+          @update:value="handleAuditFilterChange"
         />
       </n-space>
       <n-data-table :columns="auditColumns" :data="audits" :bordered="false" />
+      <n-pagination
+        :page="auditPagination.page"
+        :page-size="auditPagination.pageSize"
+        :item-count="auditPagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handleAuditPageChange"
+        @update:page-size="handleAuditPageSizeChange"
+      />
     </n-card>
   </div>
 </template>

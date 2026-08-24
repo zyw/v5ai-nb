@@ -9,6 +9,7 @@ import {
   NIcon,
   NInput,
   NModal,
+  NPagination,
   NSpace,
   useDialog,
   useMessage,
@@ -24,6 +25,7 @@ const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
 const tenants = ref<Tenant[]>([])
+const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 const showCreateModal = ref(false)
 const saving = ref(false)
 const form = reactive({ tenantKey: '', name: '' })
@@ -50,12 +52,25 @@ const columns: DataTableColumns<Tenant> = [
 async function reload() {
   loading.value = true
   try {
-    tenants.value = (await listTenants(adminToken.value)).rows
+    const rows = await listTenants(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
+    tenants.value = rows.rows
+    pagination.itemCount = rows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载租户失败')
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page: number) {
+  pagination.page = page
+  void reload()
+}
+
+function handlePageSizeChange(pageSize: number) {
+  pagination.pageSize = pageSize
+  pagination.page = 1
+  void reload()
 }
 
 async function handleCreate() {
@@ -108,6 +123,16 @@ onMounted(reload)
 
     <n-card :bordered="true">
       <n-data-table :loading="loading" :columns="columns" :data="tenants" :bordered="false" />
+      <n-pagination
+        :page="pagination.page"
+        :page-size="pagination.pageSize"
+        :item-count="pagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handlePageChange"
+        @update:page-size="handlePageSizeChange"
+      />
     </n-card>
 
     <n-modal

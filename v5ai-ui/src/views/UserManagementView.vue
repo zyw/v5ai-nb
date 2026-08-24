@@ -9,6 +9,7 @@ import {
   NIcon,
   NInput,
   NModal,
+  NPagination,
   NSelect,
   NSpace,
   useDialog,
@@ -38,6 +39,7 @@ const loading = ref(false)
 const users = ref<UserAccount[]>([])
 const tenants = ref<Tenant[]>([])
 const roles = ref<Role[]>([])
+const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 
 const showCreateModal = ref(false)
 const showRolesModal = ref(false)
@@ -90,11 +92,12 @@ async function reload() {
   loading.value = true
   try {
     const [userRows, tenantRows, roleRows] = await Promise.all([
-      listUsers(adminToken.value),
-      listTenants(adminToken.value),
-      listRoles(adminToken.value)
+      listUsers(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize }),
+      listTenants(adminToken.value, { pageNum: 1, pageSize: 1000 }),
+      listRoles(adminToken.value, { pageNum: 1, pageSize: 1000 })
     ])
     users.value = userRows.rows
+    pagination.itemCount = userRows.total
     tenants.value = tenantRows.rows
     roles.value = roleRows.rows
   } catch (e) {
@@ -102,6 +105,17 @@ async function reload() {
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page: number) {
+  pagination.page = page
+  void reload()
+}
+
+function handlePageSizeChange(pageSize: number) {
+  pagination.pageSize = pageSize
+  pagination.page = 1
+  void reload()
 }
 
 function openCreate() {
@@ -181,6 +195,16 @@ onMounted(reload)
 
     <n-card :bordered="true">
       <n-data-table :loading="loading" :columns="columns" :data="users" :bordered="false" />
+      <n-pagination
+        :page="pagination.page"
+        :page-size="pagination.pageSize"
+        :item-count="pagination.itemCount"
+        :page-sizes="[10, 20, 50, 100]"
+        show-size-picker
+        style="justify-content: flex-end; margin-top: 12px"
+        @update:page="handlePageChange"
+        @update:page-size="handlePageSizeChange"
+      />
     </n-card>
 
     <n-modal
