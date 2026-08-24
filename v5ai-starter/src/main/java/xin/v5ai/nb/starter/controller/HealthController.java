@@ -17,6 +17,9 @@ import java.util.Map;
 public class HealthController {
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * 健康检查。
+     */
     @GetMapping
     public Map<String, Object> health() {
         boolean dbUp = isDatabaseUp();

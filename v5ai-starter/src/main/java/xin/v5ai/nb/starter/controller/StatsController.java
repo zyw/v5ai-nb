@@ -1,5 +1,6 @@
 package xin.v5ai.nb.starter.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,6 +10,7 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
 import xin.v5ai.nb.skill.mapper.SkillMapper;
+import xin.v5ai.nb.starter.controller.vo.OverviewResponse;
 
 import java.time.LocalDate;
 
@@ -16,6 +18,7 @@ import java.time.LocalDate;
  * 平台总览统计（可观测性）。
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/stats")
 public class StatsController {
     private final JdbcTemplate jdbcTemplate;
@@ -24,30 +27,9 @@ public class StatsController {
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final SkillMapper skillMapper;
 
-    public StatsController(JdbcTemplate jdbcTemplate,
-                           AgentRepository agentRepository,
-                           V5aiModelMapper modelMapper,
-                           KnowledgeBaseMapper knowledgeBaseMapper,
-                           SkillMapper skillMapper) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.agentRepository = agentRepository;
-        this.modelMapper = modelMapper;
-        this.knowledgeBaseMapper = knowledgeBaseMapper;
-        this.skillMapper = skillMapper;
-    }
-
-    public record OverviewResponse(
-            long agents,
-            long models,
-            long knowledgeBases,
-            long skills,
-            long totalRuns,
-            long todayRuns,
-            long todayModelCalls,
-            long todayTokens
-    ) {
-    }
-
+    /**
+     * 获取平台总览统计。
+     */
     @GetMapping("/overview")
     public R<OverviewResponse> overview() {
         // 直接传 LocalDate 对象：JDBC 映射为 date 类型，避免 "date = character varying" 报错
@@ -63,6 +45,13 @@ public class StatsController {
                 count("SELECT COALESCE(SUM(total_tokens),0) FROM v5ai_model_usage WHERE created_at::date = ?", today)));
     }
 
+    /**
+     * 执行 SQL 查询并返回结果。
+     *
+     * @param sql  SQL 语句
+     * @param args 参数
+     * @return 结果
+     */
     private long count(String sql, Object... args) {
         Long value = args == null || args.length == 0
                 ? jdbcTemplate.queryForObject(sql, Long.class)
