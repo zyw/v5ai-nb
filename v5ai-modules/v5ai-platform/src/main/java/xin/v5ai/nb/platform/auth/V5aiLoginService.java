@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.auth.UserCredentialStore;
 import xin.v5ai.nb.common.core.domain.LoginUser;
 import xin.v5ai.nb.common.core.domain.RoleDTO;
-import xin.v5ai.nb.common.core.platform.*;
+import xin.v5ai.nb.common.core.platform.Role;
+import xin.v5ai.nb.common.core.platform.UserAccount;
+import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.common.core.service.PermissionService;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.ThreadUtils;
@@ -30,7 +32,7 @@ public class V5aiLoginService {
     private final UserCredentialStore credentialStore;
     private final UserAccountStore userAccountStore;
     private final PasswordVerifier passwordVerifier;
-    private final AuditLogRecorderService auditRecorder;
+//    private final AuditLogRecorderService auditRecorder;
     private final PermissionService permissionService;
     private final IRoleService roleService;
     private final SaTokenConfig saTokenConfig;
@@ -39,9 +41,10 @@ public class V5aiLoginService {
         var account = userAccountStore.findByUsername(request.username());
         var passwordHash = credentialStore.findPasswordHash(request.username());
         if (account == null || passwordHash == null || !passwordVerifier.matches(request.password(), passwordHash)) {
-            auditRecorder.record(account == null ? null : account.tenantId(),
-                    request.username(), "LOGIN_FAILED", "auth", request.username(),
-                    "invalid credentials", null);
+//            auditRecorder.record(account == null ? null : account.tenantId(),
+//                    request.username(), "LOGIN_FAILED", "auth", request.username(),
+//                    "invalid credentials", null);
+            // TODO 登录日志
             log.warn("invalid credentials for {}", request.username());
             throw new IllegalArgumentException("invalid credentials");
         }
@@ -59,8 +62,9 @@ public class V5aiLoginService {
         LoginHelper.login(loginUser, model);
         var roles = account.roles() == null ? List.<String>of() : account.roles();
 
-        auditRecorder.record(account.tenantId(), account.username(), "LOGIN",
-                "auth", request.username(), "login success", null);
+//        auditRecorder.record(account.tenantId(), account.username(), "LOGIN",
+//                "auth", request.username(), "login success", null);
+        // TODO 登录日志
         // 登录成功：回写最后登录 IP 与时间（失败不阻断登录）
         recordLoginInfo(account.id());
         return new LoginResponse("Bearer", StpUtil.getTokenValue(), account.id(), account.username(),
@@ -91,7 +95,8 @@ public class V5aiLoginService {
             if (ObjectUtil.isNull(loginUser)) {
                 return;
             }
-            auditRecorder.record(null, loginUser.getUsername(), "LOGOUT", "auth", loginUser.getUsername() , "logout", null);
+//            auditRecorder.record(null, loginUser.getUsername(), "LOGOUT", "auth", loginUser.getUsername() , "logout", null);
+            // TODO 登出日志
         } catch (NotLoginException ignored) {
         } finally {
             try {

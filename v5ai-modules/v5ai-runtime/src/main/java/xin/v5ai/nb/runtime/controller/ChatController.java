@@ -10,8 +10,8 @@ import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.runtime.controller.vo.ChatRequest;
 import xin.v5ai.nb.runtime.controller.vo.ConversationMessageResponse;
 

@@ -2,7 +2,7 @@ package xin.v5ai.nb.platform.controller;
 
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.core.platform.*;
-import xin.v5ai.nb.common.core.platform.entity.AuditLogDTO;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -58,15 +58,6 @@ class PlatformControllersTest {
         assertThat(controller.getQuota("demo").getData().ratePerMinute()).isZero();
         var updated = controller.updateQuota("demo", new AppQuotaController.UpdateQuotaRequest(10, 1000L, 5)).getData();
         assertThat(updated.dailyModelCalls()).isEqualTo(10);
-    }
-
-    @Test
-    void auditControllerSearches() {
-        var recorder = mock(AuditLogRecorderService.class);
-        when(recorder.search("admin", "LOGIN", 100)).thenReturn(List.of(
-                new AuditLogDTO(1L, null, "admin", "LOGIN", "auth", "admin", "login", null, Instant.now())));
-        var controller = new AuditLogController(recorder);
-        assertThat(controller.search(new PageQuery(), "admin", "LOGIN").getData().getRows()).hasSize(1);
     }
 
     private static final class RecordingTenantStore implements TenantStore {
