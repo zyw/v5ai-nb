@@ -20,5 +20,6 @@
         <module>v5ai-common-encrypt</module>
         <module>v5ai-common-agentscope</module>
         <module>v5ai-common-storage</module>
+        <module>v5ai-common-log</module>
     </modules>
 </project>
