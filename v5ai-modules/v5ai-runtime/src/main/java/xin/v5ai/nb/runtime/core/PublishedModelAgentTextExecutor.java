@@ -2,7 +2,7 @@ package xin.v5ai.nb.runtime.core;
 
 import io.agentscope.core.model.Model;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.*;
+import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
@@ -14,13 +14,21 @@ import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 
 import java.nio.file.Path;
 
+/**
+ * MCP Agent 的文本执行器，负责解析 MCP Agent 的模型定义，并使用 Stream 模式执行。
+ */
+
 public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
     private final AgentModelResolver modelResolver;
     private final AgentScopeExecutorFactory executorFactory;
 
+    /**
+     * 默认构造：使用 Stream 模式执行。
+     */
     public PublishedModelAgentTextExecutor(AgentModelResolver modelResolver) {
         this(modelResolver, ModelStreamTextExecutor::new);
     }
+
 
     /**
      * MCP/Skill 感知构造：解析出的每个模型执行器都会携带 MCP 解析器、审计仓储、
@@ -37,11 +45,17 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
                 model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace));
     }
 
+    /**
+     * 使用指定的执行器工厂构造 MCP Agent 的文本执行器。
+     */
     PublishedModelAgentTextExecutor(AgentModelResolver modelResolver, AgentScopeExecutorFactory executorFactory) {
         this.modelResolver = modelResolver;
         this.executorFactory = executorFactory;
     }
 
+    /**
+     * 使用指定的执行器工厂构造 MCP Agent 的文本执行器。
+     */
     @Override
     public Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request) {
         var model = modelResolver.resolve(application.modelId());
@@ -51,6 +65,9 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
         return executorFactory.create(model).streamText(application, request);
     }
 
+    /**
+     * MCP/Skill 感知的执行器工厂接口，用于创建 MCP/Skill 感知的执行器。
+     */
     @FunctionalInterface
     interface AgentScopeExecutorFactory {
         AgentTextExecutor create(Model model);
