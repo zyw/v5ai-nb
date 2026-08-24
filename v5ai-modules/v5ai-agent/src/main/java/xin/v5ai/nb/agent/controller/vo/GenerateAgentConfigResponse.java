@@ -1,4 +1,4 @@
-package xin.v5ai.nb.agent.controller;
+package xin.v5ai.nb.agent.controller.vo;
 
 import xin.v5ai.nb.common.agentscope.core.domain.GeneratedAgentConfig;
 
@@ -17,7 +17,7 @@ public record GenerateAgentConfigResponse(
         List<String> presetQuestions,
         String systemPrompt
 ) {
-    static GenerateAgentConfigResponse from(GeneratedAgentConfig config) {
+    public static GenerateAgentConfigResponse from(GeneratedAgentConfig config) {
         return new GenerateAgentConfigResponse(config.name(), config.description(), config.greeting(),
                 config.presetQuestions() == null ? List.of() : config.presetQuestions(),
                 config.systemPrompt());

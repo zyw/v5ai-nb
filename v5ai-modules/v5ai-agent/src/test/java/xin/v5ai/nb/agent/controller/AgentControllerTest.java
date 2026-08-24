@@ -1,6 +1,8 @@
 package xin.v5ai.nb.agent.controller;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.agent.controller.vo.GenerateAgentConfigRequest;
+import xin.v5ai.nb.agent.controller.vo.PublishAgentRequest;
 import xin.v5ai.nb.agent.domain.bo.AgentBo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.service.IAgentService;

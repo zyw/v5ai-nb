@@ -1,4 +1,4 @@
-package xin.v5ai.nb.agent.controller;
+package xin.v5ai.nb.agent.controller.vo;
 
 /**
  * 新建智能体向导的配置生成请求体。

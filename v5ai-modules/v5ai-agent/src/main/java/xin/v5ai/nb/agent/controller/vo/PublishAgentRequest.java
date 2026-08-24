@@ -1,4 +1,4 @@
-package xin.v5ai.nb.agent.controller;
+package xin.v5ai.nb.agent.controller.vo;
 
 /**
  * 发布 Agent 请求体。
