@@ -1,23 +1,21 @@
 package xin.v5ai.nb.platform.service.impl;
 
-import org.springframework.stereotype.Repository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.platform.Role;
-import xin.v5ai.nb.common.core.platform.RoleStore;
 import xin.v5ai.nb.platform.mapper.RoleMapper;
 import xin.v5ai.nb.platform.mapper.UserRoleMapper;
+import xin.v5ai.nb.platform.service.IRoleService;
 
 import java.time.Instant;
 import java.util.List;
 
-@Repository
-public class MyBatisRoleStore implements RoleStore {
+@Service
+@RequiredArgsConstructor
+public class RoleServiceImpl implements IRoleService {
+
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
-
-    public MyBatisRoleStore(RoleMapper roleMapper, UserRoleMapper userRoleMapper) {
-        this.roleMapper = roleMapper;
-        this.userRoleMapper = userRoleMapper;
-    }
 
     @Override
     public List<Role> list() {

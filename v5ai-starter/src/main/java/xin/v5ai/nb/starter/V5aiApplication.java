@@ -1,17 +1,18 @@
 package xin.v5ai.nb.starter;
 
-import org.apache.ibatis.annotations.Mapper;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication(scanBasePackages = "xin.v5ai.nb")
-@MapperScan(basePackages = "xin.v5ai.nb", annotationClass = Mapper.class)
 @EnableScheduling
+@SpringBootApplication(scanBasePackages = "xin.v5ai.nb")
 public class V5aiApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(V5aiApplication.class, args);
+        SpringApplication application = new SpringApplication(V5aiApplication.class);
+        application.setApplicationStartup(new BufferingApplicationStartup(2048));
+        application.run(args);
+        System.out.println("(♥◠‿◠)ﾉﾞ  V5ai-NB-AI启动成功   ლ(´ڡ`ლ)ﾞ");
     }
 }

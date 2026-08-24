@@ -22,10 +22,16 @@ sa-token:
   jwt-secret-key: ${V5AI_JWT_SECRET:PFIcuElmiVI4tHg1H7TbQjvWQm4zkz57}
 
 mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
+  mapperLocations: classpath*:mapper/**/*Mapper.xml
+  # 多包名使用 例如 org.dromara.**.mapper,org.xxx.**.mapper
   mapperPackage: xin.v5ai.nb.**.mapper
   global-config:
     banner: false
+  sql-log:
+    # 完整 SQL 输出开关
+    enabled: true
+    # 输出方式，可选 console、log
+    output: console
 
 v5ai:
   agentscope:

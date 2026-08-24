@@ -1,6 +1,6 @@
 package xin.v5ai.nb.common.core.platform;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 /**
  * 单次模型调用用量明细（可观测性 / 用量统计）。
@@ -23,7 +23,7 @@ public record UsageRecord(
         long completionTokens,
         long durationMs,
         String status,
-        Instant createdAt
+        OffsetDateTime createdAt
 ) {
     public long totalTokens() {
         return promptTokens + completionTokens;

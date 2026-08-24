@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.core.platform.AppQuotaService;
 import xin.v5ai.nb.common.core.platform.UsageRecord;
 import xin.v5ai.nb.common.core.platform.UsageRecorder;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -195,7 +196,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         null, runId, request.agentKey(),
                         modelName == null || modelName.isBlank() ? "unknown" : modelName,
                         promptTokens, completionTokens, Math.max(durationMs, 0),
-                        success ? "SUCCESS" : "FAILED", java.time.Instant.now()));
+                        success ? "SUCCESS" : "FAILED", OffsetDateTime.now()));
             }
             if (quotaService != null) {
                 quotaService.recordUsage(request.agentKey(), promptTokens + completionTokens);

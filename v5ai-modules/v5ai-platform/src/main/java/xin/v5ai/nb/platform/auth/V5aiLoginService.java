@@ -18,6 +18,7 @@ import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.ThreadUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.platform.security.PasswordVerifier;
+import xin.v5ai.nb.platform.service.IRoleService;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,7 +32,7 @@ public class V5aiLoginService {
     private final PasswordVerifier passwordVerifier;
     private final AuditRecorder auditRecorder;
     private final PermissionService permissionService;
-    private final RoleStore roleService;
+    private final IRoleService roleService;
     private final SaTokenConfig saTokenConfig;
 
     public LoginResponse login(LoginRequest request) {

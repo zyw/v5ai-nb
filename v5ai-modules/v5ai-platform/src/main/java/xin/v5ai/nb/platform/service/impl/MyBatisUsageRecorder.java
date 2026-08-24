@@ -6,7 +6,7 @@ import xin.v5ai.nb.common.core.platform.UsageRecorder;
 import xin.v5ai.nb.platform.domain.ModelUsage;
 import xin.v5ai.nb.platform.mapper.ModelUsageMapper;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Component
 public class MyBatisUsageRecorder implements UsageRecorder {
@@ -27,7 +27,7 @@ public class MyBatisUsageRecorder implements UsageRecorder {
         entity.setTotalTokens(usage.totalTokens());
         entity.setDurationMs(usage.durationMs());
         entity.setStatus(usage.status());
-        entity.setCreatedAt(usage.createdAt() == null ? Instant.now() : usage.createdAt());
+        entity.setCreatedAt(usage.createdAt() == null ? OffsetDateTime.now() : usage.createdAt());
         mapper.insert(entity);
     }
 }
