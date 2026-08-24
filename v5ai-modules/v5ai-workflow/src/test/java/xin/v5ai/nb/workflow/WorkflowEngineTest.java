@@ -14,6 +14,7 @@ import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
 import xin.v5ai.nb.workflow.core.enums.WorkflowStatus;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -93,7 +94,7 @@ class WorkflowEngineTest {
     void rejectsUnpublishedWorkflow() {
         var repo = new InMemoryWorkflowRepository();
         repo.save(new Workflow(null, "draft", "Draft", null, WorkflowStatus.DRAFT,
-                linearDefinition(), null, null, null, Instant.now(), Instant.now()));
+                linearDefinition(), null, null, null, OffsetDateTime.now(), OffsetDateTime.now()));
         var engine = new WorkflowEngine(repo, new InMemoryRunRepository(), new FakeAgentRuntime());
 
         assertThatThrownBy(() -> engine.execute("draft", Map.of()))
@@ -145,7 +146,7 @@ class WorkflowEngineTest {
                                          WorkflowDefinition definition, String key) {
         var repo = new InMemoryWorkflowRepository();
         repo.save(new Workflow(null, key, "Linear", null, WorkflowStatus.PUBLISHED,
-                definition, definition, 1L, Instant.now(), Instant.now(), Instant.now()));
+                definition, definition, 1L, OffsetDateTime.now(), OffsetDateTime.now(), OffsetDateTime.now()));
         return new WorkflowEngine(repo, runRepo, runtime);
     }
 
@@ -235,7 +236,7 @@ class WorkflowEngineTest {
         public Workflow save(Workflow workflow) {
             var withId = new Workflow(1L, workflow.workflowKey(), workflow.name(), workflow.description(),
                     workflow.status(), workflow.draftDefinition(), workflow.publishedDefinition(),
-                    workflow.publishedVersion(), workflow.publishedAt(), Instant.now(), Instant.now());
+                    workflow.publishedVersion(), workflow.publishedAt(), OffsetDateTime.now(), OffsetDateTime.now());
             stored.add(withId);
             return withId;
         }
