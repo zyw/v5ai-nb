@@ -1,6 +1,6 @@
-package xin.v5ai.nb.common.core.platform;
+package xin.v5ai.nb.common.core.platform.entity;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 /**
  * 审计日志条目。
@@ -15,7 +15,7 @@ import java.time.Instant;
  * @param ip         来源 IP
  * @param createdAt  时间
  */
-public record AuditLog(
+public record AuditLogDTO(
         Long id,
         Long tenantId,
         String actor,
@@ -24,6 +24,6 @@ public record AuditLog(
         String targetId,
         String detail,
         String ip,
-        Instant createdAt
+        OffsetDateTime createdAt
 ) {
 }

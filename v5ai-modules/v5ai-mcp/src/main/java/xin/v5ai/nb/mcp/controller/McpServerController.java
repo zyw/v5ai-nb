@@ -15,7 +15,7 @@ import xin.v5ai.nb.common.core.domain.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.core.validate.EditGroup;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
@@ -43,7 +43,7 @@ public class McpServerController extends BaseController {
     private final IMcpServerService mcpServerService;
 
     @Autowired(required = false)
-    private AuditRecorder auditRecorder;
+    private AuditLogRecorderService auditRecorder;
 
     @PostMapping
     public R<McpServerVo> createServer(@Validated(AddGroup.class) @RequestBody McpServerBo bo) {

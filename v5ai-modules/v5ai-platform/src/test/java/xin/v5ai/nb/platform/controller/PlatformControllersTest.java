@@ -3,6 +3,7 @@ package xin.v5ai.nb.platform.controller;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.platform.*;
+import xin.v5ai.nb.common.core.platform.entity.AuditLogDTO;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -62,22 +63,22 @@ class PlatformControllersTest {
 
     @Test
     void auditControllerSearches() {
-        var recorder = mock(AuditRecorder.class);
+        var recorder = mock(AuditLogRecorderService.class);
         when(recorder.search("admin", "LOGIN", 100)).thenReturn(List.of(
-                new AuditLog(1L, null, "admin", "LOGIN", "auth", "admin", "login", null, Instant.now())));
-        var controller = new AuditController(recorder);
+                new AuditLogDTO(1L, null, "admin", "LOGIN", "auth", "admin", "login", null, Instant.now())));
+        var controller = new AuditLogController(recorder);
         assertThat(controller.search(new PageQuery(), "admin", "LOGIN").getData().getRows()).hasSize(1);
     }
 
-    private static AuditRecorder noOpAudit() {
-        return new AuditRecorder() {
+    private static AuditLogRecorderService noOpAudit() {
+        return new AuditLogRecorderService() {
             @Override
             public void record(Long tenantId, String actor, String action, String targetType,
                                String targetId, String detail, String ip) {
             }
 
             @Override
-            public List<AuditLog> search(String actor, String action, int limit) {
+            public List<AuditLogDTO> search(String actor, String action, int limit) {
                 return List.of();
             }
         };

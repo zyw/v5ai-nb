@@ -14,7 +14,7 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
@@ -38,7 +38,7 @@ public class KnowledgeBaseController extends BaseController {
     private final IKnowledgeBaseService knowledgeBaseService;
 
     @Autowired(required = false)
-    private AuditRecorder auditRecorder;
+    private AuditLogRecorderService auditRecorder;
 
     @PostMapping
     public R<KnowledgeBaseVo> createKnowledgeBase(@RequestBody CreateKnowledgeBaseRequest request) {

@@ -1,12 +1,13 @@
 package xin.v5ai.nb.platform.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.UserAccount;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
@@ -17,18 +18,12 @@ import java.util.List;
  * 用户管理 API（RBAC）。
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/users")
 public class UserController {
     private final UserAccountStore userAccountStore;
     private final PasswordEncoder passwordEncoder;
-    private final AuditRecorder auditRecorder;
-
-    public UserController(UserAccountStore userAccountStore, PasswordEncoder passwordEncoder,
-                          AuditRecorder auditRecorder) {
-        this.userAccountStore = userAccountStore;
-        this.passwordEncoder = passwordEncoder;
-        this.auditRecorder = auditRecorder;
-    }
+    private final AuditLogRecorderService auditLogRecorderService;
 
     public record CreateUserRequest(String username, String password, String displayName,
                                     Long tenantId, List<String> roles) {
@@ -58,7 +53,7 @@ public class UserController {
                 ? List.of("USER") : request.roles();
         var account = userAccountStore.create(request.username().trim(),
                 passwordEncoder.encode(request.password()), request.displayName(), request.tenantId(), roles);
-        auditRecorder.record(request.tenantId(), currentActor(), "CREATE", "user",
+        auditLogRecorderService.record(request.tenantId(), currentActor(), "CREATE", "user",
                 String.valueOf(account.id()), "user " + account.username(), null);
         return R.ok(account);
     }
@@ -69,7 +64,7 @@ public class UserController {
             throw new IllegalArgumentException("roles must not be empty");
         }
         userAccountStore.updateRoles(id, request.roles());
-        auditRecorder.record(null, currentActor(), "UPDATE_ROLES", "user",
+        auditLogRecorderService.record(null, currentActor(), "UPDATE_ROLES", "user",
                 String.valueOf(id), "roles=" + request.roles(), null);
         return R.ok(userAccountStore.findById(id));
     }
@@ -80,7 +75,7 @@ public class UserController {
             throw new IllegalArgumentException("status must be '0' (normal) or '1' (disabled)");
         }
         userAccountStore.setStatus(id, request.status());
-        auditRecorder.record(null, currentActor(), "UPDATE_STATUS", "user",
+        auditLogRecorderService.record(null, currentActor(), "UPDATE_STATUS", "user",
                 String.valueOf(id), "status=" + request.status(), null);
         return R.ok(userAccountStore.findById(id));
     }

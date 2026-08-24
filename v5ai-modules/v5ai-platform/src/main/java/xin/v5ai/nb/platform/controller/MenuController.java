@@ -5,12 +5,10 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.Menu;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
-
-import java.util.List;
 
 /**
  * 菜单管理 API（菜单树 CRUD）。
@@ -23,9 +21,9 @@ public class MenuController {
     private static final String MENU = "MENU";
 
     private final MenuStore menuStore;
-    private final AuditRecorder auditRecorder;
+    private final AuditLogRecorderService auditRecorder;
 
-    public MenuController(MenuStore menuStore, AuditRecorder auditRecorder) {
+    public MenuController(MenuStore menuStore, AuditLogRecorderService auditRecorder) {
         this.menuStore = menuStore;
         this.auditRecorder = auditRecorder;
     }

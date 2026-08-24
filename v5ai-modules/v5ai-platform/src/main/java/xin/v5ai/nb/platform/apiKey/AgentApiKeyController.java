@@ -6,11 +6,8 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
-import xin.v5ai.nb.platform.apiKey.AgentApiKeyStore;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -18,7 +15,7 @@ public class AgentApiKeyController {
     private final AgentApiKeyManagementService apiKeyManagementService;
 
     @Autowired(required = false)
-    private AuditRecorder auditRecorder;
+    private AuditLogRecorderService auditRecorder;
 
     public AgentApiKeyController(AgentApiKeyManagementService apiKeyManagementService) {
         this.apiKeyManagementService = apiKeyManagementService;

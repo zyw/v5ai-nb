@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
@@ -40,7 +40,7 @@ public class WorkflowController extends BaseController {
     private final WorkflowEngine engine;
 
     @Autowired(required = false)
-    private AuditRecorder auditRecorder;
+    private AuditLogRecorderService auditRecorder;
 
     @GetMapping
     public R<PageResult<WorkflowVo>> list(WorkflowBo bo, PageQuery pageQuery) {

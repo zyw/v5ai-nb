@@ -40,7 +40,7 @@ cd v5ai-ui && npx vue-tsc --noEmit
 
 ### 审计
 
-- `v5ai_audit_log` + `MyBatisAuditRecorder`；埋点：登录/登出、应用创建/禁用/发布、
+- `v5ai_audit_log` + `AuditLogRecorderServiceImpl`；埋点：登录/登出、应用创建/禁用/发布、
   API Key 生成/删除、知识库/MCP/Skill 创建/禁用/发布/回滚、租户/用户/配额变更；
 - 查询 API：`GET /api/admin/audit-logs?actor=&action=&limit=`。
 

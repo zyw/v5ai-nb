@@ -15,7 +15,7 @@ import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
@@ -38,7 +38,7 @@ public class AgentController extends BaseController {
     private final AgentConfigGenerator agentConfigGenerator;
 
     @Autowired(required = false)
-    private AuditRecorder auditRecorder;
+    private AuditLogRecorderService auditRecorder;
 
     /** 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。 */
     @PostMapping("/generate")

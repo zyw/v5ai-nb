@@ -5,7 +5,7 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.platform.AppQuota;
 import xin.v5ai.nb.common.core.platform.AppQuotaService;
 import xin.v5ai.nb.common.core.platform.AppUsage;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 /**
@@ -15,9 +15,9 @@ import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 @RequestMapping("/api/admin/apps/{agentKey}")
 public class AppQuotaController {
     private final AppQuotaService quotaService;
-    private final AuditRecorder auditRecorder;
+    private final AuditLogRecorderService auditRecorder;
 
-    public AppQuotaController(AppQuotaService quotaService, AuditRecorder auditRecorder) {
+    public AppQuotaController(AppQuotaService quotaService, AuditLogRecorderService auditRecorder) {
         this.quotaService = quotaService;
         this.auditRecorder = auditRecorder;
     }

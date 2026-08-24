@@ -5,13 +5,12 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.Tenant;
 import xin.v5ai.nb.common.core.platform.TenantStore;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.time.Instant;
-import java.util.List;
 
 /**
  * 租户管理 API。
@@ -20,9 +19,9 @@ import java.util.List;
 @RequestMapping("/api/admin/tenants")
 public class TenantController {
     private final TenantStore tenantStore;
-    private final AuditRecorder auditRecorder;
+    private final AuditLogRecorderService auditRecorder;
 
-    public TenantController(TenantStore tenantStore, AuditRecorder auditRecorder) {
+    public TenantController(TenantStore tenantStore, AuditLogRecorderService auditRecorder) {
         this.tenantStore = tenantStore;
         this.auditRecorder = auditRecorder;
     }

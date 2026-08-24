@@ -30,7 +30,7 @@ public class V5aiLoginService {
     private final UserCredentialStore credentialStore;
     private final UserAccountStore userAccountStore;
     private final PasswordVerifier passwordVerifier;
-    private final AuditRecorder auditRecorder;
+    private final AuditLogRecorderService auditRecorder;
     private final PermissionService permissionService;
     private final IRoleService roleService;
     private final SaTokenConfig saTokenConfig;

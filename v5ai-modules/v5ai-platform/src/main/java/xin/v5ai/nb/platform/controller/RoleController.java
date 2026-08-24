@@ -6,7 +6,7 @@ import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.page.PageQuery;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.page.PageUtils;
-import xin.v5ai.nb.common.core.platform.AuditRecorder;
+import xin.v5ai.nb.common.core.platform.AuditLogRecorderService;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.Role;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
@@ -25,7 +25,7 @@ public class RoleController {
 
     private final IRoleService roleService;
     private final MenuStore menuStore;
-    private final AuditRecorder auditRecorder;
+    private final AuditLogRecorderService auditRecorder;
 
     public record CreateRoleRequest(String roleKey, String roleName, String description, String dataScope) {
     }
