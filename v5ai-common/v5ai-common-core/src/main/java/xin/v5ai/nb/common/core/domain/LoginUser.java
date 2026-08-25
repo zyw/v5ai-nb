@@ -2,6 +2,7 @@ package xin.v5ai.nb.common.core.domain;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -90,6 +91,11 @@ public class LoginUser implements Serializable {
      * 数据权限 当前角色ID
      */
     private Long roleId;
+
+    /**
+     * 设备类型
+     */
+    private String deviceType;
 
     /**
      * 获取 Sa-Token 使用的登录标识。

@@ -8,8 +8,8 @@ import lombok.EqualsAndHashCode;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 import java.io.Serial;
-import java.io.Serializable;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 /**
  * 平台用户（MyBatis 实体）。账号状态由 status（'0'正常 '1'停用）控制。
@@ -46,6 +46,6 @@ public class User extends BaseEntity {
     @TableField("login_ip")
     private String loginIp;
     @TableField("login_date")
-    private Instant loginDate;
+    private OffsetDateTime loginDate;
     private String remark;
 }

@@ -7,6 +7,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.common.web.handler.GlobalExceptionHandler;
+import xin.v5ai.nb.platform.service.impl.LoginServiceImpl;
 
 import java.util.List;
 
@@ -19,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class AuthControllerTest {
 
-    private final V5aiLoginService loginService = mock(V5aiLoginService.class);
+    private final LoginServiceImpl loginService = mock(LoginServiceImpl.class);
 
     private MockMvc mvc() {
         return MockMvcBuilders.standaloneSetup(

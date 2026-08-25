@@ -9,6 +9,8 @@ import xin.v5ai.nb.common.core.platform.Menu;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.platform.domain.vo.LoginVo;
+import xin.v5ai.nb.platform.service.impl.LoginServiceImpl;
 
 import java.util.List;
 
@@ -17,12 +19,12 @@ import java.util.List;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final V5aiLoginService loginService;
+    private final LoginServiceImpl loginService;
     private final UserAccountStore userAccountStore;
     private final MenuStore menuStore;
 
     @PostMapping("/login")
-    public R<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public R<LoginVo> login(@Valid @RequestBody LoginRequest request) {
         return R.ok(loginService.login(request));
     }
 

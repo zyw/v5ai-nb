@@ -14,7 +14,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
 import xin.v5ai.nb.common.agentscope.core.factory.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
-import xin.v5ai.nb.common.core.domain.OptionDTO;
+import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;

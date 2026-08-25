@@ -1,6 +1,6 @@
 package xin.v5ai.nb.common.core.service;
 
-import xin.v5ai.nb.common.core.domain.RoleDTO;
+import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

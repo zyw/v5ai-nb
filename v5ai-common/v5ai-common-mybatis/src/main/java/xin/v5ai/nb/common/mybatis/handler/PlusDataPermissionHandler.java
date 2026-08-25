@@ -21,7 +21,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 import xin.v5ai.nb.common.core.domain.LoginUser;
-import xin.v5ai.nb.common.core.domain.RoleDTO;
+import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
