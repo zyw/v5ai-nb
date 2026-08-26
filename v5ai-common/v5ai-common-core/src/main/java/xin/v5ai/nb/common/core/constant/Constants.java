@@ -70,7 +70,7 @@ public interface Constants {
     /**
      * 顶级父级id
      */
-    Long TOP_PARENT_ID = 0L;
+    Long TOP_PARENT_ID = null;
 
     /**
      * 加密头

@@ -6,6 +6,7 @@ import xin.v5ai.nb.platform.domain.User;
 
 import java.io.Serializable;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Data
 @AutoMapper(target = User.class)
@@ -31,4 +32,9 @@ public class UserVo implements Serializable {
 
     private OffsetDateTime loginDate;
     private String remark;
+
+    /**
+     * 角色对象
+     */
+    private List<RoleVo> roles;
 }

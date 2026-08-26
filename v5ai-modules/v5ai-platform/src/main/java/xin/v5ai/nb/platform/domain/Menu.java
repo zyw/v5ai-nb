@@ -1,12 +1,26 @@
 package xin.v5ai.nb.platform.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+import xin.v5ai.nb.common.core.constant.Constants;
+import xin.v5ai.nb.common.core.constant.SystemConstants;
+import xin.v5ai.nb.common.core.utils.StringUtils;
 
-import java.time.Instant;
+import java.io.Serial;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+@Data
 @TableName("v5ai_menu")
-public class Menu {
+public class Menu implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     @TableId
     private Long id;
     private Long parentId;
@@ -18,31 +32,56 @@ public class Menu {
     private String icon;
     private Integer sortOrder;
     private Boolean visible;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getParentId() { return parentId; }
-    public void setParentId(Long parentId) { this.parentId = parentId; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
-    public String getRouteName() { return routeName; }
-    public void setRouteName(String routeName) { this.routeName = routeName; }
-    public String getPath() { return path; }
-    public void setPath(String path) { this.path = path; }
-    public String getIcon() { return icon; }
-    public void setIcon(String icon) { this.icon = icon; }
-    public Integer getSortOrder() { return sortOrder; }
-    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
-    public Boolean getVisible() { return visible; }
-    public void setVisible(Boolean visible) { this.visible = visible; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    /**
+     * 子菜单
+     */
+    @TableField(exist = false)
+    private List<Menu> children = new ArrayList<>();
+
+
+
+    /**
+     * 获取路由地址
+     */
+    public String getRouterPath() {
+        String routerPath = this.path;
+        // 内链打开外网方式
+//        if (!Constants.TOP_PARENT_ID.equals(getParentId()) && isInnerLink()) {
+//            routerPath = innerLinkReplaceEach(routerPath);
+//        }
+        // 非外链并且是一级目录（类型为目录）
+        if (Constants.TOP_PARENT_ID.equals(getParentId()) && SystemConstants.TYPE_DIR.equals(getType())) {
+            routerPath = "/" + this.path;
+        }
+        // 非外链并且是一级目录（类型为菜单）
+        else if (isMenuFrame()) {
+            routerPath = "/";
+        }
+        return routerPath;
+    }
+
+    /**
+     * 是否为菜单内部跳转
+     */
+    public boolean isMenuFrame() {
+        return Constants.TOP_PARENT_ID.equals(getParentId()) && SystemConstants.TYPE_MENU.equals(type);
+    }
+
+    /**
+     * 获取组件信息
+     */
+    public String getComponentInfo() {
+        String component = SystemConstants.LAYOUT;
+        if (StringUtils.isNotEmpty(this.component) && !isMenuFrame()) {
+            component = this.component;
+        } else if (StringUtils.isEmpty(this.component) && !Constants.TOP_PARENT_ID.equals(getParentId()) && isInnerLink()) {
+            component = SystemConstants.INNER_LINK;
+        } else if (StringUtils.isEmpty(this.component) && isParentView()) {
+            component = SystemConstants.PARENT_VIEW;
+        }
+        return component;
+    }
 }

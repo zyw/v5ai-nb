@@ -12,6 +12,7 @@ import cn.hutool.http.useragent.UserAgentUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import xin.v5ai.nb.common.core.constant.SystemConstants;
 import xin.v5ai.nb.common.core.domain.LoginUser;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 
@@ -194,18 +195,18 @@ public class LoginHelper {
      * @param userId 用户ID
      * @return 结果
      */
-//    public static boolean isSuperAdmin(Long userId) {
-//        return SystemConstants.SUPER_ADMIN_USER_ID.equals(userId);
-//    }
+    public static boolean isSuperAdmin(Long userId) {
+        return SystemConstants.SUPER_ADMIN_USER_ID.equals(userId);
+    }
 
     /**
      * 是否为超级管理员
      *
      * @return 结果
      */
-//    public static boolean isSuperAdmin() {
-//        return isSuperAdmin(getUserId());
-//    }
+    public static boolean isSuperAdmin() {
+        return isSuperAdmin(getUserId());
+    }
 
     /**
      * 检查当前用户是否已登录

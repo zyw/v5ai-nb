@@ -1,18 +1,29 @@
 package xin.v5ai.nb.platform.domain;
 
-import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 
+/**
+ * 用户和角色关联 v5ai_user_role
+ *
+ * @author Lion Li
+ */
+
+@Data
 @TableName("v5ai_user_role")
 public class UserRole {
-    @TableId(value = "user_id")
+
+    /**
+     * 用户ID
+     */
+    @TableId(type = IdType.INPUT)
     private Long userId;
-    @TableField("role_key")
+
+    /**
+     * 角色ID
+     */
     private String roleKey;
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-    public String getRoleKey() { return roleKey; }
-    public void setRoleKey(String roleKey) { this.roleKey = roleKey; }
 }

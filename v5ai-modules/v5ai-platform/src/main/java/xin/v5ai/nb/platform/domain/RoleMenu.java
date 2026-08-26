@@ -1,18 +1,29 @@
 package xin.v5ai.nb.platform.domain;
 
-import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 
+/**
+ * 角色和菜单关联 sys_role_menu
+ *
+ * @author Lion Li
+ */
+
+@Data
 @TableName("v5ai_role_menu")
 public class RoleMenu {
-    @TableId(value = "role_key")
+
+    /**
+     * 角色ID
+     */
+    @TableId(type = IdType.INPUT)
     private String roleKey;
-    @TableField("menu_id")
+
+    /**
+     * 菜单ID
+     */
     private Long menuId;
 
-    public String getRoleKey() { return roleKey; }
-    public void setRoleKey(String roleKey) { this.roleKey = roleKey; }
-    public Long getMenuId() { return menuId; }
-    public void setMenuId(Long menuId) { this.menuId = menuId; }
 }

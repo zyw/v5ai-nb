@@ -30,17 +30,17 @@ public interface SystemConstants {
     /**
      * 菜单类型（目录）
      */
-    String TYPE_DIR = "M";
+    String TYPE_DIR = "DIR";
 
     /**
      * 菜单类型（菜单）
      */
-    String TYPE_MENU = "C";
+    String TYPE_MENU = "MENU";
 
     /**
      * 菜单类型（按钮）
      */
-    String TYPE_BUTTON = "F";
+    String TYPE_BUTTON = "BTN";
 
     /**
      * Layout组件标识
