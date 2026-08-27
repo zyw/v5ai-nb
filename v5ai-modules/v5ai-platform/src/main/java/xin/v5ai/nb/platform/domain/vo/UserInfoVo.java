@@ -15,7 +15,7 @@ public class UserInfoVo {
     /**
      * 用户基本信息
      */
-    private UserVo user;
+    private PlmUserVo user;
 
     /**
      * 菜单权限

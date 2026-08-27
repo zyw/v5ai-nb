@@ -2,9 +2,9 @@ package xin.v5ai.nb.common.satoken.core.dao;
 
 import cn.dev33.satoken.dao.auto.SaTokenDaoBySessionFollowObject;
 import cn.dev33.satoken.util.SaFoxUtil;
-import cn.hutool.core.util.StrUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.redis.utils.RedisUtils;
 
 import java.time.Duration;
@@ -158,7 +158,7 @@ public class PlusSaTokenDao implements SaTokenDaoBySessionFollowObject {
     @Override
     public List<String> searchData(String prefix, String keyword, int start, int size, boolean sortType) {
         String pattern = prefix + "*" + keyword + "*";
-        String cacheKey = pattern + start + StrUtil.COLON + size + StrUtil.COLON + sortType;
+        String cacheKey = pattern + start + StringUtils.COLON + size + StringUtils.COLON + sortType;
         return (List<String>) CAFFEINE.get(cacheKey, k -> {
             Collection<String> keys = RedisUtils.keys(pattern);
             List<String> list = new ArrayList<>(keys);
@@ -215,4 +215,5 @@ public class PlusSaTokenDao implements SaTokenDaoBySessionFollowObject {
         // 加1的目的 解决sa-token使用秒 redis是毫秒导致1秒的精度问题 手动补偿
         return timeoutRedis < 0 ? timeoutRedis : timeoutRedis / 1000 + 1;
     }
+
 }

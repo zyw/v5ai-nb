@@ -1,24 +1,83 @@
+# 开发环境配置
+server:
+  # 服务器的HTTP端口，默认为8080
+  port: 8080
+  servlet:
+    # 应用的访问路径
+    context-path: /
+  # jetty 配置
+  jetty:
+    # HTTP post内容的最大大小。当值为-1时，默认值为大小是无限的
+    max-http-form-post-size: -1
+    threads:
+      # 最小线程数
+      min: 8
+      # 最大线程数
+      max: 256
 
+# 用户配置
+user:
+  password:
+    # 密码最大错误次数
+    maxRetryCount: 5
+    # 密码锁定时间（默认10分钟）
+    lockTime: 10
 
 spring:
-  profiles:
-    active: dev
   application:
     name: v5ai-nb
+  threads:
+    # 开启虚拟线程 仅jdk21可用
+    virtual:
+      enabled: true
+  task:
+    execution:
+      # 从 springboot 3.5 开始 spring自带线程池
+      # 不再需要 AsyncConfig与ThreadPoolConfig 可直接注入线程池使用
+      thread-name-prefix: async-
+      # 由spring自己初始化线程池
+      mode: force
+  # 资源信息
+  messages:
+    # 国际化资源文件路径
+    basename: i18n/messages
+  profiles:
+    active: @profiles.active@
+  # 文件上传
+  servlet:
+    multipart:
+      # 单个文件大小
+      max-file-size: ${V5AI_UPLOAD_MAX_FILE_SIZE:50MB}
+      # 设置总上传的文件大小
+      max-request-size: ${V5AI_UPLOAD_MAX_REQUEST_SIZE:60MB}
+  mvc:
+    # 设置静态资源路径 防止所有请求都去查静态资源
+    static-path-pattern: /static/**
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+  jackson:
+    serialization:
+      # 格式化输出
+      indent_output: false
+      # 忽略无法转换的对象
+      fail_on_empty_beans: false
+    deserialization:
+      # 允许对象忽略json中不存在的属性
+      fail_on_unknown_properties: false
   flyway:
     enabled: true
     locations: classpath:db/migration
     table: v5ai_flyway_schema_history
-  servlet:
-    multipart:
-      max-file-size: ${V5AI_UPLOAD_MAX_FILE_SIZE:50MB}
-      max-request-size: ${V5AI_UPLOAD_MAX_REQUEST_SIZE:60MB}
 
-
+# Sa-Token配置
 sa-token:
+  # token名称 (同时也是cookie名称)
   token-name: Authorization
+  # token前缀
   token-prefix: Bearer
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
   is-concurrent: false
+  # jwt秘钥
   jwt-secret-key: ${V5AI_JWT_SECRET:PFIcuElmiVI4tHg1H7TbQjvWQm4zkz57}
 
 mybatis-plus:
@@ -33,7 +92,61 @@ mybatis-plus:
     # 输出方式，可选 console、log
     output: console
 
+
+# 日志配置
+logging:
+  level:
+    xin.v5ai.nb: @logging.level@
+    org.springframework: warn
+    org.mybatis.spring.mapper: error
+    org.apache.fury: warn
+  config: classpath:logback-plus.xml
+
+
+
 v5ai:
+  # security配置
+  security:
+    # 排除路径
+    excludes:
+#      - /*.html
+#      - /**/*.html
+#      - /**/*.css
+#      - /**/*.js
+#      - /favicon.ico
+#      - /error
+#      - /*/api-docs
+#      - /*/api-docs/**
+#      - /warm-flow-ui/config
+#      - /snail-chat/**
+#      - /api/snail/chat/**
+  # 数据加密
+  mybatis-encryptor:
+    # 是否开启加密
+    enable: false
+    # 默认加密算法
+    algorithm: BASE64
+    # 编码方式 BASE64/HEX。默认BASE64
+    encode: BASE64
+    # 安全秘钥 对称算法的秘钥 如：AES，SM4
+    password:
+    # 公私钥 非对称算法的公私钥 如：SM2，RSA
+    publicKey:
+    privateKey:
+
+  # api接口加密
+  api-decrypt:
+    # 是否开启全局接口加密
+    enabled: true
+    # AES 加密头标识
+    headerFlag: encrypt-key
+    # 响应加密公钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+    # 对应前端解密私钥 MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAObq7yrxfvyieZtTjAYyrdvi59tYTXxjO5ajmPCRSXBY9M9wQ1tli297JN6mnY53UJMNyOFNSZVi8WSFoIXjpR87FmvChJlzeN/dZdd3SEs48Ee66XKeSePYqxa8oO5GKDsnajgpsOHKXSeeVSIysiIPS2/WsEqk0In9P4w3RsRFAgMBAAECgYBiMEWwce24SPICnRzuScBpvmsudrbEDIH7BOd0a6LZlcnLJwZNJ7mJlshPsHNQb+WgEf135+BBGEhioPtn0yuTdEuKP4kB9UdYUKiayWCoWhJpesv7sAD4RDClV7dhuV+gcd1AXD+YzyRIPbGm0VC2U+4q8/+UPRpVjqskbLVTgQJBAPRpou7g3S8n4XB527kq0D8I3+ZYwMxZhszwhrCDpJU319+ucmpLVwYIzDmZVeID2QQdUaDfIEViFHu95xDrGiUCQQDx3YOKn3yaEctk/ERVn7hDAyAXUbd8/pv2b24/M/l1ZevlsFem8U4Jk5Mu64t3z3YGJoymEjQmbucwT01iKhehAkEAxlnccsRmfFh/KkqauKE4M4++NTAd9zlInpUsmZ+cN8UEGnF2RTEzRKBrLOt1uWCqBB7PGiE6DVTVjr7FAQPrSQJAT5yeY87DcONSk9cFlzmPqV8p/QME5rvYEnHzVBKDlkUKNPyqnWToTvaoh9U4fyNmsfeWbEOprszqhFhWHG3GgQJAK8+ynmyFhaw63+Hx2KU5zR4hVuQso2IzrEurGxCxybV6mR7VBerb4502+EPx3PmOgxQL+niUFhcMWxcvBFP9+A==
+    publicKey: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDm6u8q8X78onmbU4wGMq3b4ufbWE18YzuWo5jwkUlwWPTPcENbZYtveyTepp2Od1CTDcjhTUmVYvFkhaCF46UfOxZrwoSZc3jf3WXXd0hLOPBHuulynknj2KsWvKDuRig7J2o4KbDhyl0nnlUiMrIiD0tv1rBKpNCJ/T+MN0bERQIDAQAB
+    # 请求解密私钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+    # 对应前端加密公钥 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDvEDuRIOM3oZPWj9Ukoc5pQklR4PFH6/clnjeFqjDLIgDyQvjxhgqAZQA+E9eD6qu6FsXPmK8djcL+nh3cFHz4pX473jDvO3Sve+8yL3VRQ0n2pRgQ2a01MJsy+WwTZCBYWf0VnLRIvANUoWQgy9vz94q7Va44dg7A1/3ICf+xAwIDAQAB
+    privateKey: MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw=
+
   agentscope:
     workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
     state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}

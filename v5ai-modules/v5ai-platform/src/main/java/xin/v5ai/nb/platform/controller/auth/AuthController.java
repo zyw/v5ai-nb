@@ -1,26 +1,23 @@
 package xin.v5ai.nb.platform.controller.auth;
 
 import cn.hutool.core.util.ObjectUtil;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-import xin.v5ai.nb.common.core.domain.LoginUser;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.domain.model.LoginBody;
-import xin.v5ai.nb.common.core.platform.MenuStore;
-import xin.v5ai.nb.common.core.platform.UserAccountStore;
-import xin.v5ai.nb.common.core.utils.ValidatorUtils;
-import xin.v5ai.nb.common.encrypt.annotation.ApiEncrypt;
-import xin.v5ai.nb.common.json.utils.JsonUtils;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
-import xin.v5ai.nb.platform.domain.Menu;
-import xin.v5ai.nb.platform.domain.vo.*;
-import xin.v5ai.nb.platform.service.IMenuService;
-import xin.v5ai.nb.platform.service.IPlmClientService;
-import xin.v5ai.nb.platform.service.IUserService;
-import xin.v5ai.nb.platform.service.impl.LoginServiceImpl;
+import xin.v5ai.nb.platform.domain.PlmMenu;
+import xin.v5ai.nb.platform.domain.vo.PlmUserVo;
+import xin.v5ai.nb.platform.domain.vo.RouterVo;
+import xin.v5ai.nb.platform.domain.vo.UserInfoVo;
+import xin.v5ai.nb.platform.service.ILoginService;
+import xin.v5ai.nb.platform.service.IPlmMenuService;
+import xin.v5ai.nb.platform.service.IPlmUserService;
 
 import java.util.List;
 
@@ -29,23 +26,24 @@ import java.util.List;
 @RequestMapping("/api/auth")
 public class AuthController extends BaseController {
 
-    private final LoginServiceImpl loginService;
-    private final UserAccountStore userAccountStore;
-    private final MenuStore menuStore;
+//    private final LoginServiceImpl loginService;
+//    private final UserAccountStore userAccountStore;
+//    private final MenuStore menuStore;
 
-    private final IUserService userService;
-    private final IMenuService menuService;
+
 
     // ================== 新 =======================
-    private final IPlmClientService clientService;
+    private final ILoginService loginService;
+    private final IPlmUserService userService;
+    private final IPlmMenuService menuService;
 
 
 
-    @PostMapping("/logout")
-    public R<Void> logout() {
-        loginService.logout();
-        return R.ok();
-    }
+//    @PostMapping("/logout")
+//    public R<Void> logout() {
+//        loginService.logout();
+//        return R.ok();
+//    }
 
     /**
      * 当前登录用户信息（需已登录）。
@@ -72,7 +70,7 @@ public class AuthController extends BaseController {
         UserInfoVo userInfoVo = new UserInfoVo();
         LoginUser loginUser = LoginHelper.getLoginUser();
 
-        UserVo user = DataPermissionHelper.ignore(() -> userService.selectUserById(loginUser.getUserId()));
+        PlmUserVo user = DataPermissionHelper.ignore(() -> userService.selectUserById(loginUser.getUserId()));
         if (ObjectUtil.isNull(user)) {
             return R.fail("没有权限访问用户数据!");
         }
@@ -89,8 +87,17 @@ public class AuthController extends BaseController {
      */
     @GetMapping("/getRouters")
     public R<List<RouterVo>> getRouters() {
-        List<Menu> menus = menuService.selectMenuTreeByUserId(LoginHelper.getUserId());
+        List<PlmMenu> menus = menuService.selectMenuTreeByUserId(LoginHelper.getUserId());
         return R.ok(menuService.buildMenus(menus));
+    }
+
+    /**
+     * 退出登录
+     */
+    @PostMapping("/logout")
+    public R<Void> logout() {
+        loginService.logout();
+        return R.ok("退出成功");
     }
 
     /**

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.constant.CacheNames;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
-import xin.v5ai.nb.common.core.domain.LoginUser;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.core.utils.MapstructUtils;

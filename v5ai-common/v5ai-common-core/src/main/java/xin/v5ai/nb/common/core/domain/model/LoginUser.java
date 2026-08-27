@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.core.domain;
+package xin.v5ai.nb.common.core.domain.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,6 +33,11 @@ public class LoginUser implements Serializable {
     private String token;
 
     /**
+     * 用户类型
+     */
+    private String userType;
+
+    /**
      * 登录时间
      */
     private Long loginTime;
@@ -46,6 +51,11 @@ public class LoginUser implements Serializable {
      * 登录IP地址
      */
     private String ipaddr;
+
+    /**
+     * 登录地点
+     */
+    private String loginLocation;
 
     /**
      * 浏览器类型
@@ -83,14 +93,19 @@ public class LoginUser implements Serializable {
     private List<RoleDTO> roles;
 
     /**
-     * 数据权限角色映射 key 为 dataScope 码 value 为可参与数据权限计算的角色 roleKey 列表
+     * 数据权限角色映射 key 为权限码 value 为可参与数据权限计算的角色ID列表
      */
-    private Map<String, List<String>> dataScopeRoleMap;
+    private Map<String, List<Long>> dataScopeRoleMap;
 
     /**
      * 数据权限 当前角色ID
      */
     private Long roleId;
+
+    /**
+     * 客户端
+     */
+    private String clientKey;
 
     /**
      * 设备类型
@@ -103,7 +118,13 @@ public class LoginUser implements Serializable {
      * @return 登录标识
      */
     public String getLoginId() {
-        return "v5ai-user:" + userId;
+        if (userType == null) {
+            throw new IllegalArgumentException("用户类型不能为空");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("用户ID不能为空");
+        }
+        return userType + ":" + userId;
     }
 
 }

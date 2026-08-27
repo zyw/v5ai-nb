@@ -75,13 +75,13 @@ public class Menu implements Serializable {
      */
     public String getComponentInfo() {
         String component = SystemConstants.LAYOUT;
-        if (StringUtils.isNotEmpty(this.component) && !isMenuFrame()) {
-            component = this.component;
-        } else if (StringUtils.isEmpty(this.component) && !Constants.TOP_PARENT_ID.equals(getParentId()) && isInnerLink()) {
-            component = SystemConstants.INNER_LINK;
-        } else if (StringUtils.isEmpty(this.component) && isParentView()) {
-            component = SystemConstants.PARENT_VIEW;
-        }
+//        if (StringUtils.isNotEmpty(this.component) && !isMenuFrame()) {
+//            component = this.component;
+//        } else if (StringUtils.isEmpty(this.component) && !Constants.TOP_PARENT_ID.equals(getParentId()) && isInnerLink()) {
+//            component = SystemConstants.INNER_LINK;
+//        } else if (StringUtils.isEmpty(this.component) && isParentView()) {
+//            component = SystemConstants.PARENT_VIEW;
+//        }
         return component;
     }
 }

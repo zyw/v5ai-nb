@@ -20,10 +20,9 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
-import xin.v5ai.nb.common.core.domain.LoginUser;
 import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
-import xin.v5ai.nb.common.core.exception.ErrorCode;
-import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
 import xin.v5ai.nb.common.core.utils.StreamUtils;
@@ -74,9 +73,9 @@ public class PlusDataPermissionHandler {
         try {
             LoginUser currentUser = currentUser();
             // 如果是超级管理员或租户管理员，则不过滤数据
-//            if (LoginHelper.isSuperAdmin()) {
-//                return where;
-//            }
+            if (LoginHelper.isSuperAdmin()) {
+                return where;
+            }
             // 构造数据过滤条件的 SQL 片段
             String dataFilterSql = buildDataFilter(getDataPermission(), currentUser, isSelect);
             if (StringUtils.isBlank(dataFilterSql)) {
@@ -91,7 +90,7 @@ public class PlusDataPermissionHandler {
                 return parenthesis;
             }
         } catch (JSQLParserException e) {
-            throw new V5aiException(ErrorCode.INVALID_ARGUMENT,"数据权限解析异常 => " + e.getMessage());
+            throw new ServiceException("数据权限解析异常 => " + e.getMessage());
         } finally {
             DataPermissionHelper.removePermission();
         }
@@ -103,7 +102,7 @@ public class PlusDataPermissionHandler {
      * @param dataPermission 数据权限注解
      * @param isSelect       标志当前操作是否为查询操作，查询操作和更新或删除操作在处理过滤条件时会有不同的处理方式
      * @return 构建的数据过滤条件的 SQL 语句
-     * @throws V5aiException 如果角色的数据范围异常或者 key 与 value 的长度不匹配，则抛出 ServiceException 异常
+     * @throws ServiceException 如果角色的数据范围异常或者 key 与 value 的长度不匹配，则抛出 ServiceException 异常
      */
     private String buildDataFilter(DataPermission dataPermission, LoginUser user, boolean isSelect) {
         // 更新或删除需满足所有条件
@@ -129,7 +128,7 @@ public class PlusDataPermissionHandler {
         List<String> keys = new ArrayList<>();
         for (DataColumn dataColumn : dataPermission.value()) {
             if (dataColumn.key().length != dataColumn.value().length) {
-                throw new V5aiException(ErrorCode.INVALID_ARGUMENT, "角色数据范围异常 => key与value长度不匹配");
+                throw new ServiceException("角色数据范围异常 => key与value长度不匹配");
             }
             // 设置注解变量 key 为表达式变量 value 为变量值
             for (int i = 0; i < dataColumn.key().length; i++) {
@@ -139,11 +138,11 @@ public class PlusDataPermissionHandler {
         }
 
         for (RoleDTO role : scopeRoles) {
-            context.setVariable("roleId", role.getRoleKey());
+            context.setVariable("roleId", role.getRoleId());
             // 获取角色权限泛型
             DataScopeType type = DataScopeType.findCode(role.getDataScope());
             if (ObjectUtil.isNull(type)) {
-                throw new V5aiException(ErrorCode.INVALID_ARGUMENT, "角色数据范围异常 => " + role.getDataScope());
+                throw new ServiceException("角色数据范围异常 => " + role.getDataScope());
             }
             // 全部数据权限直接返回
             if (type == DataScopeType.ALL) {
@@ -222,20 +221,20 @@ public class PlusDataPermissionHandler {
         if (!access.constrained()) {
             return roles;
         }
-        Map<String, RoleDTO> allRoleMap = new LinkedHashMap<>();
+        Map<Long, RoleDTO> allRoleMap = new LinkedHashMap<>();
         if (CollUtil.isNotEmpty(roles)) {
-            roles.forEach(role -> allRoleMap.put(role.getRoleKey(), role));
+            roles.forEach(role -> allRoleMap.put(role.getRoleId(), role));
         }
-        Map<String, RoleDTO> roleMap = new LinkedHashMap<>();
-        Map<String, List<String>> dataScopeRoleMap = user.getDataScopeRoleMap();
+        Map<Long, RoleDTO> roleMap = new LinkedHashMap<>();
+        Map<String, List<Long>> dataScopeRoleMap = user.getDataScopeRoleMap();
         if (CollUtil.isNotEmpty(dataScopeRoleMap)) {
             access.perms().forEach(perm -> {
-                List<String> roleIds = dataScopeRoleMap.get(perm);
+                List<Long> roleIds = dataScopeRoleMap.get(perm);
                 if (CollUtil.isNotEmpty(roleIds)) {
                     roleIds.forEach(roleId -> {
                         RoleDTO role = allRoleMap.get(roleId);
                         if (role != null) {
-                            roleMap.putIfAbsent(role.getRoleKey(), role);
+                            roleMap.putIfAbsent(role.getRoleId(), role);
                         }
                     });
                 }
@@ -245,7 +244,7 @@ public class PlusDataPermissionHandler {
             roles.stream()
                 .filter(role -> StringUtils.isNotBlank(role.getRoleKey()))
                 .filter(role -> StringUtils.splitList(role.getRoleKey()).stream().anyMatch(access.roleKeys()::contains))
-                .forEach(role -> roleMap.putIfAbsent(role.getRoleKey(), role));
+                .forEach(role -> roleMap.putIfAbsent(role.getRoleId(), role));
         }
         return new ArrayList<>(roleMap.values());
     }

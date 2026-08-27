@@ -45,7 +45,7 @@ public class LoginInfoEvent implements Serializable {
     /**
      * 客户端标识
      */
-//    private String clientId;
+    private String clientId;
 
     /**
      * 其他参数

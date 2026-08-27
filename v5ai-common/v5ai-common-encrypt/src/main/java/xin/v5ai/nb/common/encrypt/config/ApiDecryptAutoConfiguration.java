@@ -19,7 +19,7 @@ import xin.v5ai.nb.common.encrypt.properties.ApiDecryptProperties;
  */
 @AutoConfiguration
 @EnableConfigurationProperties(ApiDecryptProperties.class)
-@ConditionalOnProperty(value = "api-decrypt.enabled", havingValue = "true")
+@ConditionalOnProperty(value = "v5ai.api-decrypt.enabled", havingValue = "true")
 public class ApiDecryptAutoConfiguration {
 
     /**

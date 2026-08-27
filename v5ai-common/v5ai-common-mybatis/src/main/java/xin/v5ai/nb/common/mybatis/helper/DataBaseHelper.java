@@ -5,7 +5,7 @@ import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
 import com.baomidou.dynamic.datasource.toolkit.DynamicDataSourceContextHolder;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
 import xin.v5ai.nb.common.core.utils.sql.SqlUtil;
 import xin.v5ai.nb.common.mybatis.enums.DataBaseType;
@@ -45,7 +45,7 @@ public class DataBaseHelper {
      * 最后调用 DataBaseType.find 方法将数据库名称转换为对应的枚举类型
      *
      * @return 当前数据库对应的 DataBaseType 枚举，找不到时默认返回 MY_SQL
-     * @throws V5aiException 当获取数据库连接或元数据出现异常时抛出业务异常
+     * @throws ServiceException 当获取数据库连接或元数据出现异常时抛出业务异常
      */
     public static DataBaseType getDataBaseType() {
         DataSource dataSource = DS.determineDataSource();
@@ -67,7 +67,7 @@ public class DataBaseHelper {
      *
      * @param dsName 数据源名称
      * @return 指定数据库对应的 DataBaseType 枚举，找不到时默认返回 MY_SQL
-     * @throws V5aiException 当获取数据库连接或元数据出现异常时抛出业务异常
+     * @throws ServiceException 当获取数据库连接或元数据出现异常时抛出业务异常
      */
     public static DataBaseType getDataBaseType(String dsName) {
         DataSource dataSource = DS.getDataSource(dsName);

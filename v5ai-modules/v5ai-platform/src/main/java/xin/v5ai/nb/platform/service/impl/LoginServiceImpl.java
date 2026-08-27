@@ -1,6 +1,5 @@
 package xin.v5ai.nb.platform.service.impl;
 
-import cn.dev33.satoken.config.SaTokenConfig;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
@@ -12,41 +11,35 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.common.core.auth.UserCredentialStore;
 import xin.v5ai.nb.common.core.constant.CacheNames;
 import xin.v5ai.nb.common.core.constant.Constants;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
-import xin.v5ai.nb.common.core.domain.LoginUser;
 import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.domain.model.PasswordLoginBody;
 import xin.v5ai.nb.common.core.enums.LoginType;
 import xin.v5ai.nb.common.core.exception.user.UserException;
-import xin.v5ai.nb.common.core.platform.Role;
-import xin.v5ai.nb.common.core.platform.UserAccountStore;
-import xin.v5ai.nb.common.core.service.PermissionService;
 import xin.v5ai.nb.common.core.utils.*;
 import xin.v5ai.nb.common.json.utils.JsonUtils;
-import xin.v5ai.nb.common.log.enums.OperatorType;
 import xin.v5ai.nb.common.log.event.LoginInfoEvent;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.redis.utils.RedisUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
-import xin.v5ai.nb.platform.controller.auth.LoginRequest;
 import xin.v5ai.nb.platform.domain.PlmUser;
-import xin.v5ai.nb.platform.domain.User;
 import xin.v5ai.nb.platform.domain.vo.LoginVo;
 import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
+import xin.v5ai.nb.platform.domain.vo.PlmRoleVo;
 import xin.v5ai.nb.platform.domain.vo.PlmUserVo;
-import xin.v5ai.nb.platform.domain.vo.UserVo;
 import xin.v5ai.nb.platform.mapper.PlmUserMapper;
-import xin.v5ai.nb.platform.mapper.UserMapper;
-import xin.v5ai.nb.platform.security.PasswordVerifier;
 import xin.v5ai.nb.platform.service.ILoginService;
-import xin.v5ai.nb.platform.service.IRoleService;
+import xin.v5ai.nb.platform.service.IPlmPermissionService;
+import xin.v5ai.nb.platform.service.IPlmRoleService;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -66,14 +59,16 @@ public class LoginServiceImpl implements ILoginService {
     @Value("${user.password.lockTime:10}")
     private Integer lockTime;
 
-    private final UserCredentialStore credentialStore;
-    private final UserAccountStore userAccountStore;
-    private final PasswordVerifier passwordVerifier;
+//    private final UserCredentialStore credentialStore;
+//    private final UserAccountStore userAccountStore;
+//    private final PasswordVerifier passwordVerifier;
 //    private final AuditLogRecorderService auditRecorder;
-    private final PermissionService permissionService;
-    private final IRoleService roleService;
-    private final SaTokenConfig saTokenConfig;
 
+
+//    private final SaTokenConfig saTokenConfig;
+
+    private final IPlmRoleService roleService;
+    private final IPlmPermissionService permissionService;
     private final PlmUserMapper userMapper;
 
     @Override
@@ -85,11 +80,11 @@ public class LoginServiceImpl implements ILoginService {
         String code = loginBody.getCode();
         String uuid = loginBody.getUuid();
 
-        boolean captchaEnabled = captchaProperties.getEnable();
-        // 验证码开关
-        if (captchaEnabled) {
-            validateCaptcha(username, code, uuid);
-        }
+//        boolean captchaEnabled = captchaProperties.getEnable();
+//        // 验证码开关
+//        if (captchaEnabled) {
+//            validateCaptcha(username, code, uuid);
+//        }
         PlmUserVo user = loadUserByUsername(username);
         checkLogin(LoginType.PASSWORD, username, () -> !BCrypt.checkpw(password, user.getPassword()));
         // 此处可根据登录用户的数据不同 自行创建 loginUser
@@ -107,46 +102,46 @@ public class LoginServiceImpl implements ILoginService {
         return loginVo;
     }
 
-    @Override
-    public LoginVo login(LoginRequest request) {
-//        var account = userAccountStore.findByUsername(request.username());
-        // 1. 加载用户
-        var userInfo = loadUserByUsername(request.username());
-//        var passwordHash = credentialStore.findPasswordHash(request.username());
-        // 2. 验证密码
-        if (!passwordVerifier.matches(request.password(), userInfo.getPasswordHash())) {
-            recordLoginInfo(request.username(), Constants.LOGIN_FAIL, MessageUtils.message("user.login.fail"));
-            log.warn("invalid credentials for {}", request.username());
-            throw new IllegalArgumentException("invalid credentials");
-        }
-        // 3. 验证账号状态
-        if (!"0".equals(userInfo.getStatus())) {
-            log.warn("account {} is disabled", userInfo.getUsername());
-            throw new IllegalArgumentException("account is disabled");
-        }
-
-        // 此处可根据登录用户的数据不同 自行创建 loginUser
-        // 4. 构建权限
-        LoginUser loginUser = buildLoginUser(userInfo);
-        loginUser.setDeviceType(OperatorType.MANAGE.getCode());
-        SaLoginParameter model = new SaLoginParameter();
-        model.setTimeout(saTokenConfig.getTimeout());
-        model.setActiveTimeout(saTokenConfig.getActiveTimeout());
-
-//        var roles = account.roles() == null ? List.<String>of() : account.roles();
-        // 登录成功：回写最后登录 IP 与时间（失败不阻断登录）
-//        recordLoginInfo(account.id());
-//        return new LoginResponse("Bearer", StpUtil.getTokenValue(), userInfo.getId(), userInfo.getUsername(),
-//                userInfo.getDisplayName(), userInfo.getTenantId(), loginUser.getRolePermission());
-        // 生成token
-        LoginHelper.login(loginUser, model);
-
-        LoginVo loginVo = new LoginVo();
-        loginVo.setAccessToken(StpUtil.getTokenValue());
-        loginVo.setExpireIn(StpUtil.getTokenTimeout());
-//        loginVo.setClientId(client.getClientId());
-        return loginVo;
-    }
+//    @Override
+//    public LoginVo login(LoginRequest request) {
+////        var account = userAccountStore.findByUsername(request.username());
+//        // 1. 加载用户
+//        var userInfo = loadUserByUsername(request.username());
+////        var passwordHash = credentialStore.findPasswordHash(request.username());
+//        // 2. 验证密码
+//        if (!passwordVerifier.matches(request.password(), userInfo.getPasswordHash())) {
+//            recordLoginInfo(request.username(), Constants.LOGIN_FAIL, MessageUtils.message("user.login.fail"));
+//            log.warn("invalid credentials for {}", request.username());
+//            throw new IllegalArgumentException("invalid credentials");
+//        }
+//        // 3. 验证账号状态
+//        if (!"0".equals(userInfo.getStatus())) {
+//            log.warn("account {} is disabled", userInfo.getUsername());
+//            throw new IllegalArgumentException("account is disabled");
+//        }
+//
+//        // 此处可根据登录用户的数据不同 自行创建 loginUser
+//        // 4. 构建权限
+//        LoginUser loginUser = buildLoginUser(userInfo);
+//        loginUser.setDeviceType(OperatorType.MANAGE.getCode());
+//        SaLoginParameter model = new SaLoginParameter();
+//        model.setTimeout(saTokenConfig.getTimeout());
+//        model.setActiveTimeout(saTokenConfig.getActiveTimeout());
+//
+////        var roles = account.roles() == null ? List.<String>of() : account.roles();
+//        // 登录成功：回写最后登录 IP 与时间（失败不阻断登录）
+////        recordLoginInfo(account.id());
+////        return new LoginResponse("Bearer", StpUtil.getTokenValue(), userInfo.getId(), userInfo.getUsername(),
+////                userInfo.getDisplayName(), userInfo.getTenantId(), loginUser.getRolePermission());
+//        // 生成token
+//        LoginHelper.login(loginUser, model);
+//
+//        LoginVo loginVo = new LoginVo();
+//        loginVo.setAccessToken(StpUtil.getTokenValue());
+//        loginVo.setExpireIn(StpUtil.getTokenTimeout());
+////        loginVo.setClientId(client.getClientId());
+//        return loginVo;
+//    }
 
     /**
      * 登录成功后回写最后登录 IP 与时间。无请求上下文（如测试直调）时 IP 记为空串；
@@ -166,6 +161,9 @@ public class LoginServiceImpl implements ILoginService {
 //        }
 //    }
 
+    /**
+     * 退出登录
+     */
     @Override
     public void logout() {
         try {
@@ -200,7 +198,7 @@ public class LoginServiceImpl implements ILoginService {
         if (request != null) {
             loginInfoEvent.setIp(ServletUtils.getClientIP(request));
             loginInfoEvent.setUserAgent(request.getHeader("User-Agent"));
-//            loginInfoEvent.setClientId(request.getHeader(LoginHelper.CLIENT_KEY));
+            loginInfoEvent.setClientId(request.getHeader(LoginHelper.CLIENT_KEY));
         }
         SpringUtils.context().publishEvent(loginInfoEvent);
     }
@@ -212,12 +210,12 @@ public class LoginServiceImpl implements ILoginService {
      * @param ip     登录IP
      */
     public void updateLastLoginInfo(Long userId, String ip) {
-        User sysUser = new User();
-        sysUser.setId(userId);
-        sysUser.setLoginIp(ip);
-        sysUser.setLoginDate(OffsetDateTime.now());
-        sysUser.setUpdatedAt(OffsetDateTime.now());
-        DataPermissionHelper.ignore(() -> userMapper.updateById(sysUser));
+        PlmUser user = new PlmUser();
+        user.setId(userId);
+        user.setLoginIp(ip);
+        user.setLoginDate(LocalDateTime.now());
+        user.setUpdatedAt(OffsetDateTime.now());
+        DataPermissionHelper.ignore(() -> userMapper.updateById(user));
     }
 
     /**
@@ -238,7 +236,7 @@ public class LoginServiceImpl implements ILoginService {
         }, () -> {
             loginUser.setRolePermission(permissionService.getRolePermission(userId));
         }, () -> {
-            List<Role> roles = roleService.selectRolesByUserId(userId);
+            List<PlmRoleVo> roles = roleService.selectRolesByUserId(userId);
             List<RoleDTO> roleDtos = BeanUtil.copyToList(roles, RoleDTO.class);
             loginUser.setRoles(roleDtos);
             loginUser.setDataScopeRoleMap(permissionService.getDataScopeRoleMap(roleDtos));
@@ -302,5 +300,36 @@ public class LoginServiceImpl implements ILoginService {
             throw new UserException("user.blocked", username);
         }
         return user;
+    }
+
+    /**
+     * 按客户端配置构建统一登录参数。
+     *
+     * @param client 客户端配置
+     * @return Sa-Token 登录参数
+     */
+    static SaLoginParameter buildLoginParameter(PlmClientVo client) {
+        return buildLoginParameter(client, null);
+    }
+
+    /**
+     * 按客户端配置构建统一登录参数，并预留自定义扩展入口。
+     *
+     * @param client     客户端配置
+     * @param customizer 自定义扩展逻辑
+     * @return Sa-Token 登录参数
+     */
+    static SaLoginParameter buildLoginParameter(PlmClientVo client, Consumer<SaLoginParameter> customizer) {
+        SaLoginParameter model = new SaLoginParameter();
+        model.setDeviceType(client.getDeviceType());
+        model.setTimeout(client.getTimeout());
+        model.setActiveTimeout(client.getActiveTimeout());
+        model.setExtra(LoginHelper.CLIENT_KEY, client.getClientId());
+        model.setExtra(LoginHelper.CLIENT_ACCESS_PATH_KEY, client.getAccessPath());
+        model.setExtra(LoginHelper.CLIENT_IP_WHITELIST_KEY, client.getIpWhitelist());
+        if (ObjectUtil.isNotNull(customizer)) {
+            customizer.accept(model);
+        }
+        return model;
     }
 }

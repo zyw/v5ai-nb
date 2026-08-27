@@ -6,7 +6,6 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 /**
@@ -20,17 +19,17 @@ public class BaseEntity implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-//    /**
-//     * 创建部门
-//     */
+    /**
+     * 创建部门
+     */
 //    @TableField(fill = FieldFill.INSERT)
 //    private Long createDept;
-//
-//    /**
-//     * 创建者
-//     */
+
+    /**
+     * 创建者
+     */
 //    @TableField(fill = FieldFill.INSERT)
-//    private Long createBy;
+//    private Long createdBy;
 
     /**
      * 创建时间
@@ -38,11 +37,11 @@ public class BaseEntity implements Serializable {
     @TableField(fill = FieldFill.INSERT)
     private OffsetDateTime createdAt;
 
-//    /**
-//     * 更新者
-//     */
+    /**
+     * 更新者
+     */
 //    @TableField(fill = FieldFill.INSERT_UPDATE)
-//    private Long updateBy;
+//    private Long updatedBy;
 
     /**
      * 更新时间

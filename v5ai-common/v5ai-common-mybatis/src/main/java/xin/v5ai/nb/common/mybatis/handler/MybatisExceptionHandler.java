@@ -2,6 +2,7 @@ package xin.v5ai.nb.common.mybatis.handler;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.hutool.http.HttpStatus;
+import com.baomidou.dynamic.datasource.exception.CannotFindDataSourceException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.MyBatisSystemException;
@@ -48,10 +49,10 @@ public class MybatisExceptionHandler {
             log.error("请求地址'{}',认证失败'{}',无法访问系统资源", requestURI, root.getMessage());
             return R.fail(HttpStatus.HTTP_UNAUTHORIZED, "认证失败，无法访问系统资源");
         }
-//        if (root instanceof CannotFindDataSourceException) {
-//            log.error("请求地址'{}', 未找到数据源", requestURI);
-//            return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, "未找到数据源，请联系管理员确认");
-//        }
+        if (root instanceof CannotFindDataSourceException) {
+            log.error("请求地址'{}', 未找到数据源", requestURI);
+            return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, "未找到数据源，请联系管理员确认");
+        }
         log.error("请求地址'{}', Mybatis系统异常", requestURI, e);
         return R.fail(HttpStatus.HTTP_INTERNAL_ERROR, e.getMessage());
     }

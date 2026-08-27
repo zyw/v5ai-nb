@@ -3,9 +3,8 @@ package xin.v5ai.nb.common.satoken.core.service;
 import cn.dev33.satoken.stp.StpInterface;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
-import xin.v5ai.nb.common.core.domain.LoginUser;
-import xin.v5ai.nb.common.core.exception.ErrorCode;
-import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.service.PermissionService;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
@@ -14,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * sa-token 权限管理实现类
@@ -24,7 +22,11 @@ import java.util.function.Function;
 public class SaPermissionImpl implements StpInterface {
 
     /**
-     * 获取菜单权限列表
+     * 获取指定登录对象的菜单权限列表。
+     *
+     * @param loginId   登录ID
+     * @param loginType 登录类型
+     * @return 菜单权限列表
      */
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
@@ -32,7 +34,11 @@ public class SaPermissionImpl implements StpInterface {
     }
 
     /**
-     * 获取角色权限列表
+     * 获取指定登录对象的角色权限列表。
+     *
+     * @param loginId   登录ID
+     * @param loginType 登录类型
+     * @return 角色权限列表
      */
     @Override
     public List<String> getRoleList(Object loginId, String loginType) {
@@ -48,7 +54,7 @@ public class SaPermissionImpl implements StpInterface {
      * @return 权限列表
      */
     private List<String> resolvePermissionList(Object loginId,
-                                               Function<LoginUser, Collection<String>> localPermissionExtractor,
+                                               java.util.function.Function<LoginUser, Collection<String>> localPermissionExtractor,
                                                BiFunction<PermissionService, Long, Collection<String>> remotePermissionExtractor) {
         LoginUser loginUser = LoginHelper.getLoginUser();
         if (ObjectUtil.isNull(loginUser) || !loginUser.getLoginId().equals(loginId)) {
@@ -56,7 +62,7 @@ public class SaPermissionImpl implements StpInterface {
             if (ObjectUtil.isNotNull(permissionService)) {
                 return new ArrayList<>(remotePermissionExtractor.apply(permissionService, resolveUserId(loginId)));
             }
-            throw new V5aiException(ErrorCode.UNAUTHORIZED, "PermissionService 实现类不存在");
+            throw new ServiceException("PermissionService 实现类不存在");
         }
         Collection<String> permissionList = localPermissionExtractor.apply(loginUser);
         if (CollUtil.isNotEmpty(permissionList)) {
@@ -65,6 +71,11 @@ public class SaPermissionImpl implements StpInterface {
         return new ArrayList<>();
     }
 
+    /**
+     * 获取权限服务实现。
+     *
+     * @return 权限服务
+     */
     private PermissionService getPermissionService() {
         try {
             return SpringUtils.getBean(PermissionService.class);
@@ -83,7 +94,7 @@ public class SaPermissionImpl implements StpInterface {
         String loginIdStr = loginId.toString();
         int separatorIndex = loginIdStr.indexOf(':');
         if (separatorIndex < 0 || separatorIndex == loginIdStr.length() - 1) {
-            throw new V5aiException(ErrorCode.UNAUTHORIZED, "登录ID格式错误");
+            throw new ServiceException("登录ID格式错误");
         }
         return Long.parseLong(loginIdStr.substring(separatorIndex + 1));
     }

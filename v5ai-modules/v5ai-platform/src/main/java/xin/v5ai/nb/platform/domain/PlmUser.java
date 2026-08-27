@@ -3,6 +3,7 @@ package xin.v5ai.nb.platform.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
  * @date 2026-08-26
  */
 @Data
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @TableName("plm_user")
 public class PlmUser extends BaseEntity {

@@ -6,15 +6,17 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.useragent.UserAgent;
 import cn.hutool.http.useragent.UserAgentUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
-import xin.v5ai.nb.common.core.domain.LoginUser;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
+import xin.v5ai.nb.common.core.enums.UserType;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
+import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.common.core.utils.ip.AddressUtils;
 
 /**
  * 登录鉴权助手
@@ -34,9 +36,9 @@ public class LoginHelper {
     public static final String LOGIN_USER_KEY = "loginUser";
     public static final String USER_KEY = "userId";
     public static final String USER_NAME_KEY = "userName";
-    public static final String DEPT_KEY = "deptId";
-    public static final String DEPT_NAME_KEY = "deptName";
-    public static final String DEPT_CATEGORY_KEY = "deptCategory";
+//    public static final String DEPT_KEY = "deptId";
+//    public static final String DEPT_NAME_KEY = "deptName";
+//    public static final String DEPT_CATEGORY_KEY = "deptCategory";
     public static final String CLIENT_KEY = "clientid";
     public static final String CLIENT_ACCESS_PATH_KEY = "clientAccessPath";
     public static final String CLIENT_IP_WHITELIST_KEY = "clientIpWhitelist";
@@ -70,21 +72,28 @@ public class LoginHelper {
             return;
         }
         String ip = ServletUtils.getClientIP(request);
-        if (StrUtil.isBlank(loginUser.getIpaddr())) {
+        if (StringUtils.isBlank(loginUser.getIpaddr())) {
             loginUser.setIpaddr(ip);
         }
-
+        if (StringUtils.isBlank(loginUser.getLoginLocation()) && StringUtils.isNotBlank(ip)) {
+            loginUser.setLoginLocation(AddressUtils.getRealAddressByIP(ip));
+        }
         UserAgent userAgent = UserAgentUtil.parse(request.getHeader("User-Agent"));
-        if (StrUtil.isBlank(loginUser.getBrowser())) {
+        if (StringUtils.isBlank(loginUser.getBrowser())) {
             loginUser.setBrowser(userAgent.getBrowser().getName());
         }
-        if (StrUtil.isBlank(loginUser.getOs())) {
+        if (StringUtils.isBlank(loginUser.getOs())) {
             loginUser.setOs(userAgent.getOs().getName());
+        }
+        if (StringUtils.isBlank(loginUser.getDeviceType()) && StringUtils.isNotBlank(model.getDeviceType())) {
+            loginUser.setDeviceType(model.getDeviceType());
         }
     }
 
     /**
-     * 获取用户(多级缓存)
+     * 获取当前 Token 对应的登录用户信息。
+     *
+     * @return 登录用户
      */
     public static <T extends LoginUser> T getLoginUser() {
         try {
@@ -95,10 +104,13 @@ public class LoginHelper {
     }
 
     /**
-     * 获取用户基于token
+     * 根据指定 Token 获取登录用户信息。
+     *
+     * @param token Token
+     * @return 登录用户
      */
     public static <T extends LoginUser> T getLoginUser(String token) {
-        if (StrUtil.isBlank(token)) {
+        if (StringUtils.isBlank(token)) {
             return null;
         }
         SaSession session;
@@ -125,46 +137,58 @@ public class LoginHelper {
     }
 
     /**
-     * 获取用户id
+     * 获取当前登录用户 ID。
+     *
+     * @return 用户 ID
      */
     public static Long getUserId() {
         return Convert.toLong(getExtra(USER_KEY));
     }
 
     /**
-     * 获取用户id
+     * 获取当前登录用户 ID 字符串。
+     *
+     * @return 用户 ID 字符串
      */
     public static String getUserIdStr() {
         return Convert.toStr(getExtra(USER_KEY));
     }
 
     /**
-     * 获取用户账户
+     * 获取当前登录用户名。
+     *
+     * @return 用户名
      */
     public static String getUsername() {
         return Convert.toStr(getExtra(USER_NAME_KEY));
     }
 
-    /**
-     * 获取部门ID
-     */
-    public static Long getDeptId() {
-        return Convert.toLong(getExtra(DEPT_KEY));
-    }
-
-    /**
-     * 获取部门名
-     */
-    public static String getDeptName() {
-        return Convert.toStr(getExtra(DEPT_NAME_KEY));
-    }
-
-    /**
-     * 获取部门类别编码
-     */
-    public static String getDeptCategory() {
-        return Convert.toStr(getExtra(DEPT_CATEGORY_KEY));
-    }
+//    /**
+//     * 获取当前登录用户部门 ID。
+//     *
+//     * @return 部门 ID
+//     */
+//    public static Long getDeptId() {
+//        return Convert.toLong(getExtra(DEPT_KEY));
+//    }
+//
+//    /**
+//     * 获取当前登录用户部门名称。
+//     *
+//     * @return 部门名称
+//     */
+//    public static String getDeptName() {
+//        return Convert.toStr(getExtra(DEPT_NAME_KEY));
+//    }
+//
+//    /**
+//     * 获取当前登录用户部门类别编码。
+//     *
+//     * @return 部门类别编码
+//     */
+//    public static String getDeptCategory() {
+//        return Convert.toStr(getExtra(DEPT_CATEGORY_KEY));
+//    }
 
     /**
      * 获取当前 Token 的扩展信息
@@ -178,22 +202,23 @@ public class LoginHelper {
         } catch (Exception e) {
             return null;
         }
-
     }
 
     /**
-     * 获取用户类型
+     * 获取当前登录用户类型。
+     *
+     * @return 用户类型
      */
-//    public static UserType getUserType() {
-//        String loginType = StpUtil.getLoginIdAsString();
-//        return UserType.getUserType(loginType);
-//    }
+    public static UserType getUserType() {
+        String loginType = StpUtil.getLoginIdAsString();
+        return UserType.getUserType(loginType);
+    }
 
     /**
      * 是否为超级管理员
      *
      * @param userId 用户ID
-     * @return 结果
+     * @return 是否为超级管理员
      */
     public static boolean isSuperAdmin(Long userId) {
         return SystemConstants.SUPER_ADMIN_USER_ID.equals(userId);
@@ -202,7 +227,7 @@ public class LoginHelper {
     /**
      * 是否为超级管理员
      *
-     * @return 结果
+     * @return 是否为超级管理员
      */
     public static boolean isSuperAdmin() {
         return isSuperAdmin(getUserId());
@@ -211,7 +236,7 @@ public class LoginHelper {
     /**
      * 检查当前用户是否已登录
      *
-     * @return 结果
+     * @return 是否已登录
      */
     public static boolean isLogin() {
         return StpUtil.isLogin();

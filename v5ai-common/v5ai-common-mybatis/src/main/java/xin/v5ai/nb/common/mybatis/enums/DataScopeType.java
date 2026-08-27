@@ -2,7 +2,7 @@ package xin.v5ai.nb.common.mybatis.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import xin.v5ai.nb.common.core.domain.LoginUser;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 

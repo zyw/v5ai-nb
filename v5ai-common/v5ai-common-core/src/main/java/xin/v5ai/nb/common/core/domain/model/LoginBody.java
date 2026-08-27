@@ -27,7 +27,7 @@ public class LoginBody implements Serializable {
      * 授权类型
      */
     @NotBlank(message = "{auth.grant.type.not.blank}")
-    private String grantType;
+    private String grantType="password";
 
     /**
      * 验证码

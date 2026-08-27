@@ -19,7 +19,12 @@ import xin.v5ai.nb.common.json.utils.JsonUtils;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.platform.domain.vo.LoginVo;
 import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
+import xin.v5ai.nb.platform.service.ILoginService;
 import xin.v5ai.nb.platform.service.IPlmClientService;
+
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 登录、注册相关页面接口控制器
@@ -29,10 +34,11 @@ import xin.v5ai.nb.platform.service.IPlmClientService;
 @SaIgnore
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/login")
+@RequestMapping("/api/auth")
 public class LoginController extends BaseController {
 
     private final IPlmClientService clientService;
+    private final ILoginService loginService;
 
     /**
      * 登录
@@ -53,6 +59,9 @@ public class LoginController extends BaseController {
         } else if (!SystemConstants.NORMAL.equals(client.getStatus())) {
             return R.fail(MessageUtils.message("auth.grant.type.blocked"));
         }
-        return R.ok(loginService.login(request));
+        // 登录
+        LoginVo loginVo = loginService.login(body, client);
+
+        return R.ok(loginVo);
     }
 }

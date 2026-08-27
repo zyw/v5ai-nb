@@ -1,10 +1,9 @@
 package xin.v5ai.nb.platform.service;
 
-import xin.v5ai.nb.common.core.domain.LoginUser;
-import xin.v5ai.nb.platform.controller.auth.LoginRequest;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.platform.domain.vo.LoginVo;
 import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
-import xin.v5ai.nb.platform.domain.vo.UserVo;
+import xin.v5ai.nb.platform.domain.vo.PlmUserVo;
 
 /**
  * 登录相关服务
@@ -20,11 +19,6 @@ public interface ILoginService {
      * @return 当前策略完成认证后的登录结果
      */
     LoginVo login(String body, PlmClientVo client);
-
-    /**
-     * 登录
-     */
-    LoginVo login(LoginRequest request);
 
     /**
      * 登出
@@ -44,5 +38,5 @@ public interface ILoginService {
     /**
      * 构建登录用户
      */
-    LoginUser buildLoginUser(UserVo user);
+    LoginUser buildLoginUser(PlmUserVo user);
 }

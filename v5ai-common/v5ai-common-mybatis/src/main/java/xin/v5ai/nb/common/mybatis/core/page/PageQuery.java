@@ -7,8 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import xin.v5ai.nb.common.core.exception.ErrorCode;
-import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.core.utils.sql.SqlUtil;
 
@@ -101,7 +100,7 @@ public class PageQuery implements Serializable {
         String[] orderByArr = orderBy.split(StringUtils.SEPARATOR);
         String[] isAscArr = orderDirection.split(StringUtils.SEPARATOR);
         if (isAscArr.length != 1 && isAscArr.length != orderByArr.length) {
-            throw new V5aiException(ErrorCode.INVALID_ARGUMENT,"排序参数有误");
+            throw new ServiceException("排序参数有误");
         }
 
         List<OrderItem> list = new ArrayList<>();
@@ -114,7 +113,7 @@ public class PageQuery implements Serializable {
             } else if ("desc".equals(isAscStr)) {
                 list.add(OrderItem.desc(orderByStr));
             } else {
-                throw new V5aiException(ErrorCode.INVALID_ARGUMENT,"排序参数有误");
+                throw new ServiceException("排序参数有误");
             }
         }
         return list;

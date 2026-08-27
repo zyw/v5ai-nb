@@ -24,7 +24,7 @@ import xin.v5ai.nb.common.encrypt.properties.EncryptorProperties;
  */
 @AutoConfiguration(after = MybatisPlusAutoConfiguration.class)
 @EnableConfigurationProperties(EncryptorProperties.class)
-@ConditionalOnProperty(value = "mybatis-encryptor.enable", havingValue = "true")
+@ConditionalOnProperty(value = "v5ai.mybatis-encryptor.enable", havingValue = "true")
 @Slf4j
 public class EncryptorAutoConfiguration {
 

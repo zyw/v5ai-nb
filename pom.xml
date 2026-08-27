@@ -34,6 +34,8 @@
         <lombok.version>1.18.46</lombok.version>
         <therapi-javadoc.version>0.15.0</therapi-javadoc.version>
         <mapstruct-plus.lombok.version>0.2.0</mapstruct-plus.lombok.version>
+        <!-- 离线IP地址定位库 -->
+        <ip2region.version>3.3.7</ip2region.version>
 
         <!-- Maven 构建插件版本 -->
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
@@ -168,6 +170,13 @@
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcpkix-jdk18on</artifactId>
                 <version>${bouncycastle.version}</version>
+            </dependency>
+
+            <!-- 离线IP地址定位库 ip2region -->
+            <dependency>
+                <groupId>org.lionsoul</groupId>
+                <artifactId>ip2region</artifactId>
+                <version>${ip2region.version}</version>
             </dependency>
 
             <!-- 项目依赖配置（本仓库模块的版本由根 POM 直接管理；v5ai-common-bom 仅供外部消费方使用）

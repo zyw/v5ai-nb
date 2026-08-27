@@ -1,11 +1,5 @@
 package xin.v5ai.nb.common.core.service;
 
-import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -31,18 +25,4 @@ public interface PermissionService {
      */
     Set<String> getMenuPermission(Long userId);
 
-    /**
-     * 数据权限角色映射：key 为 dataScope 码，value 为具备该数据范围的角色 roleKey 列表。
-     */
-    default Map<String, List<String>> getDataScopeRoleMap(List<RoleDTO> roleList) {
-        Map<String, List<String>> map = new LinkedHashMap<>();
-        if (roleList == null) {
-            return map;
-        }
-        for (RoleDTO role : roleList) {
-            String dataScope = role.getDataScope() == null ? "1" : role.getDataScope();
-            map.computeIfAbsent(dataScope, key -> new ArrayList<>()).add(role.getRoleKey());
-        }
-        return map;
-    }
 }

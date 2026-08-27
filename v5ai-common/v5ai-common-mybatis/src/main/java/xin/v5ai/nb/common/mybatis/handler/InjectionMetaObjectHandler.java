@@ -1,14 +1,15 @@
 package xin.v5ai.nb.common.mybatis.handler;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.http.HttpStatus;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
-import xin.v5ai.nb.common.core.domain.LoginUser;
-import xin.v5ai.nb.common.core.exception.ErrorCode;
-import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.core.domain.model.LoginUser;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.utils.ObjectUtils;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
+import xin.v5ai.nb.common.mybatis.core.domain.PlmBaseEntity;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 
 import java.time.LocalDateTime;
@@ -37,37 +38,60 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
     @Override
     public void insertFill(MetaObject metaObject) {
         try {
-            if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof BaseEntity baseEntity) {
+            if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof PlmBaseEntity baseEntity) {
                 // 获取当前时间作为创建时间和更新时间，如果创建时间不为空，则使用创建时间，否则使用当前时间
                 OffsetDateTime current = ObjectUtils.notNull(baseEntity.getCreatedAt(), OffsetDateTime.now());
                 baseEntity.setCreatedAt(current);
                 baseEntity.setUpdatedAt(current);
 
                 // 如果创建人为空，则填充当前登录用户的信息
-                /*if (ObjectUtil.isNull(baseEntity.getCreateBy())) {
+                if (ObjectUtil.isNull(baseEntity.getCreatedBy())) {
                     LoginUser loginUser = getLoginUser();
                     if (ObjectUtil.isNotNull(loginUser)) {
                         Long userId = loginUser.getUserId();
                         // 填充创建人、更新人和创建部门信息
-                        baseEntity.setCreateBy(userId);
-                        baseEntity.setUpdateBy(userId);
+                        baseEntity.setCreatedBy(userId);
+                        baseEntity.setUpdatedBy(userId);
+//                        baseEntity.setCreateDept(ObjectUtils.notNull(baseEntity.getCreateDept(), loginUser.getDeptId()));
                     } else {
                         // 填充创建人、更新人和创建部门信息
-                        baseEntity.setCreateBy(DEFAULT_USER_ID);
-                        baseEntity.setUpdateBy(DEFAULT_USER_ID);
-                        baseEntity.setCreateDept(ObjectUtils.notNull(baseEntity.getCreateDept(), DEFAULT_USER_ID));
+                        baseEntity.setCreatedBy(DEFAULT_USER_ID);
+                        baseEntity.setUpdatedBy(DEFAULT_USER_ID);
+//                        baseEntity.setCreateDept(ObjectUtils.notNull(baseEntity.getCreateDept(), DEFAULT_USER_ID));
                     }
-                }*/
+                }
+            } else if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof BaseEntity baseEntity) {
+                // 获取当前时间作为创建时间和更新时间，如果创建时间不为空，则使用创建时间，否则使用当前时间
+                OffsetDateTime current = ObjectUtils.notNull(baseEntity.getCreatedAt(), OffsetDateTime.now());
+                baseEntity.setCreatedAt(current);
+                baseEntity.setUpdatedAt(current);
+
+                // 如果创建人为空，则填充当前登录用户的信息
+//                if (ObjectUtil.isNull(baseEntity.getCreatedBy())) {
+//                    LoginUser loginUser = getLoginUser();
+//                    if (ObjectUtil.isNotNull(loginUser)) {
+//                        Long userId = loginUser.getUserId();
+//                        // 填充创建人、更新人和创建部门信息
+//                        baseEntity.setCreatedBy(userId);
+//                        baseEntity.setUpdatedBy(userId);
+////                        baseEntity.setCreateDept(ObjectUtils.notNull(baseEntity.getCreateDept(), loginUser.getDeptId()));
+//                    } else {
+//                        // 填充创建人、更新人和创建部门信息
+//                        baseEntity.setCreatedBy(DEFAULT_USER_ID);
+//                        baseEntity.setUpdatedBy(DEFAULT_USER_ID);
+////                        baseEntity.setCreateDept(ObjectUtils.notNull(baseEntity.getCreateDept(), DEFAULT_USER_ID));
+//                    }
+//                }
             } else {
                 LocalDateTime date = LocalDateTime.now();
-                this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, date);
-                this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, date);
+                this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, date);
+                this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, date);
                 Date legacyDate = new Date();
-                this.strictInsertFill(metaObject, "createTime", Date.class, legacyDate);
-                this.strictInsertFill(metaObject, "updateTime", Date.class, legacyDate);
+                this.strictInsertFill(metaObject, "createdAt", Date.class, legacyDate);
+                this.strictInsertFill(metaObject, "updatedAt", Date.class, legacyDate);
             }
         } catch (Exception e) {
-            throw new V5aiException(ErrorCode.INVALID_ARGUMENT,"自动注入异常 => " + e.getMessage());
+            throw new ServiceException("自动注入异常 => " + e.getMessage(), HttpStatus.HTTP_INTERNAL_ERROR);
         }
     }
 
@@ -79,7 +103,7 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
     @Override
     public void updateFill(MetaObject metaObject) {
         try {
-            if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof BaseEntity baseEntity) {
+            if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof PlmBaseEntity baseEntity) {
                 // 获取当前时间作为更新时间，无论原始对象中的更新时间是否为空都填充
                 OffsetDateTime current = OffsetDateTime.now();
                 baseEntity.setUpdatedAt(current);
@@ -87,13 +111,22 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
                 // 获取当前登录用户的ID，并填充更新人信息
                 LoginUser loginUser = getLoginUser();
                 Long userId = ObjectUtil.isNotNull(loginUser) ? loginUser.getUserId() : DEFAULT_USER_ID;
-//                baseEntity.setUpdateBy(userId);
+                baseEntity.setUpdatedBy(userId);
+            } else if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof BaseEntity baseEntity) {
+                // 获取当前时间作为更新时间，无论原始对象中的更新时间是否为空都填充
+                OffsetDateTime current = OffsetDateTime.now();
+                baseEntity.setUpdatedAt(current);
+
+                // 获取当前登录用户的ID，并填充更新人信息
+//                LoginUser loginUser = getLoginUser();
+//                Long userId = ObjectUtil.isNotNull(loginUser) ? loginUser.getUserId() : DEFAULT_USER_ID;
+//                baseEntity.setUpdatedBy(userId);
             } else {
-                this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
-                this.strictUpdateFill(metaObject, "updateTime", Date.class, new Date());
+                this.strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+                this.strictUpdateFill(metaObject, "updatedAt", Date.class, new Date());
             }
         } catch (Exception e) {
-            throw new V5aiException(ErrorCode.INVALID_ARGUMENT,"自动注入异常 => " + e.getMessage());
+            throw new ServiceException("自动注入异常 => " + e.getMessage(), HttpStatus.HTTP_INTERNAL_ERROR);
         }
     }
 

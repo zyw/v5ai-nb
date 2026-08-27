@@ -1,7 +1,6 @@
 package xin.v5ai.nb.common.mybatis.config;
 
 import cn.hutool.core.net.NetUtil;
-import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.core.handlers.PostInitTableInfoHandler;
 import com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator;
@@ -129,24 +128,6 @@ public class MybatisPlusConfig {
     public PostInitTableInfoHandler postInitTableInfoHandler() {
         return new PlusPostInitTableInfoHandler();
     }
-
-    /**
-     * MyBatis 类型处理器注册：
-     * 兼容 PostgreSQL TIMESTAMPTZ 列的 LocalDateTime 处理器。
-     * 全库时间列为 TIMESTAMPTZ，而业务实体继承 {@code BaseEntity} 用 LocalDateTime 承载，
-     * PG JDBC 默认无法转换（Cannot convert TIMESTAMPTZ to LocalDateTime），需覆盖默认 TypeHandler。
-     *
-     * <p>注意：{@link MybatisPlusConfig} 未标注 {@code @Configuration} 且其
-     * AutoConfiguration.imports 为 .temp 后缀（不参与自动装配），因此本类独立注册，确保生效。</p>
-     *
-     * @author ZYW
-     * @since 2026-08-23
-     */
-//    @Bean
-//    public ConfigurationCustomizer timestamptzLocalDateTimeCustomizer() {
-//        return configuration -> configuration.getTypeHandlerRegistry()
-//                .register(TimestamptzLocalDateTimeTypeHandler.class);
-//    }
 
     /**
      * PaginationInnerInterceptor 分页插件，自动识别数据库类型
