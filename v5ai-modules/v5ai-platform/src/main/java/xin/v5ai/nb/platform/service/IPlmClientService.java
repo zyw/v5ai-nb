@@ -1,9 +1,9 @@
 package xin.v5ai.nb.platform.service;
 
-import xin.v5ai.nb.domain.vo.SysClientVo;
-import xin.v5ai.nb.domain.bo.SysClientBo;
-import org.dromara.common.mybatis.core.page.TableDataInfo;
-import org.dromara.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.platform.domain.bo.PlmClientBo;
+import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
 
 import java.util.Collection;
 import java.util.List;
@@ -14,55 +14,53 @@ import java.util.List;
  * @author zyw
  * @date 2026-08-26
  */
-public interface ISysClientService {
+public interface IPlmClientService {
 
     /**
-     * 查询系统授权
-     *
-     * @param ${pkColumn.javaField} 主键
-     * @return 系统授权
+     * 查询客户端管理
      */
-    SysClientVo queryById(Long id);
+    PlmClientVo queryById(Long id);
 
     /**
-     * 分页查询系统授权列表
-     *
-     * @param bo        查询条件
-     * @param pageQuery 分页参数
-     * @return 系统授权分页列表
+     * 查询客户端信息基于客户端id
      */
-    TableDataInfo queryPageList(SysClientBo bo, PageQuery pageQuery);
+    PlmClientVo queryByClientId(String clientId);
 
     /**
-     * 查询符合条件的系统授权列表
-     *
-     * @param bo 查询条件
-     * @return 系统授权列表
+     * 查询客户端管理列表
      */
-    List queryList(SysClientBo bo);
+    PageResult<PlmClientVo> queryPageList(PlmClientBo bo, PageQuery pageQuery);
 
     /**
-     * 新增系统授权
-     *
-     * @param bo 系统授权
-     * @return 是否新增成功
+     * 查询客户端管理列表
      */
-    Boolean insertByBo(SysClientBo bo);
+    List<PlmClientVo> queryList(PlmClientBo bo);
 
     /**
-     * 修改系统授权
-     *
-     * @param bo 系统授权
-     * @return 是否修改成功
+     * 新增客户端管理
      */
-    Boolean updateByBo(SysClientBo bo);
+    Boolean insertByBo(PlmClientBo bo);
 
     /**
-     * 校验并批量删除系统授权信息
-     *
-     * @param ids     待删除的主键集合
-     * @param isValid 是否进行有效性校验
-     * @return 是否删除成功
+     * 修改客户端管理
      */
-    Boolean deleteWithValidByIds(Collection ids, Boolean isValid);
+    Boolean updateByBo(PlmClientBo bo);
+
+    /**
+     * 修改状态
+     */
+    int updateClientStatus(String clientId, String status);
+
+    /**
+     * 校验并批量删除客户端管理信息
+     */
+    Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
+
+    /**
+     * 校验客户端key是否唯一
+     *
+     * @param client 客户端信息
+     * @return 结果
+     */
+    boolean checkClickKeyUnique(PlmClientBo client);
 }

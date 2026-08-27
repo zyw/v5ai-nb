@@ -1,4 +1,4 @@
-package xin.v5ai.nb.platform.auth;
+package xin.v5ai.nb.platform.controller.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

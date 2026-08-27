@@ -3,11 +3,11 @@ package xin.v5ai.nb.platform.domain;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import xin.v5ai.nb.common.core.constant.SystemConstants;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
-import java.util.Date;
-
 import java.io.Serial;
+import java.time.LocalDateTime;
 
 /**
  * 用户信息对象 sys_user
@@ -26,14 +26,8 @@ public class PlmUser extends BaseEntity {
     /**
      * 用户ID
      */
-    @TableId(value = "user_id")
-    private Long userId;
-
-    /**
-     * 部门ID
-     */
-    private Long deptId;
-
+    @TableId(value = "id")
+    private Long id;
     /**
      * 用户账号
      */
@@ -57,30 +51,35 @@ public class PlmUser extends BaseEntity {
     /**
      * 手机号码
      */
-    private String phonenumber;
+    private String phoneNumber;
 
     /**
-     * 用户性别（0男 1女 2未知）
+     * 用户性别
      */
-    private String sex;
+    private String gender;
 
     /**
-     * 头像地址
+     * 用户头像
      */
     private Long avatar;
 
     /**
      * 密码
      */
+    @TableField(
+            insertStrategy = FieldStrategy.NOT_EMPTY,
+            updateStrategy = FieldStrategy.NOT_EMPTY,
+            whereStrategy = FieldStrategy.NOT_EMPTY
+    )
     private String password;
 
     /**
-     * 帐号状态（0正常 1停用）
+     * 账号状态（0正常 1停用）
      */
     private String status;
 
     /**
-     * 删除标志（0代表存在 2代表删除）
+     * 删除标志（0代表存在 1代表删除）
      */
     @TableLogic
     private String delFlag;
@@ -93,12 +92,32 @@ public class PlmUser extends BaseEntity {
     /**
      * 最后登录时间
      */
-    private Date loginDate;
+    private LocalDateTime loginDate;
 
     /**
      * 备注
      */
     private String remark;
+
+
+    /**
+     * 使用用户ID构造系统用户对象。
+     *
+     * @param userId 用户ID
+     */
+    public PlmUser(Long userId) {
+        this.id = userId;
+    }
+
+    /**
+     * 判断当前用户是否为超级管理员。
+     *
+     * @return true 是超级管理员 false 不是超级管理员
+     */
+    public boolean isSuperAdmin() {
+        return SystemConstants.SUPER_ADMIN_USER_ID.equals(this.id);
+    }
+
 
 
 }

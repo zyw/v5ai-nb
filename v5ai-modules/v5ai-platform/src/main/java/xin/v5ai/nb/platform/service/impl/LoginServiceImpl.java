@@ -6,47 +6,66 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.crypto.digest.BCrypt;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.auth.UserCredentialStore;
+import xin.v5ai.nb.common.core.constant.CacheNames;
 import xin.v5ai.nb.common.core.constant.Constants;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
 import xin.v5ai.nb.common.core.domain.LoginUser;
 import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
+import xin.v5ai.nb.common.core.domain.model.PasswordLoginBody;
+import xin.v5ai.nb.common.core.enums.LoginType;
 import xin.v5ai.nb.common.core.exception.user.UserException;
 import xin.v5ai.nb.common.core.platform.Role;
-import xin.v5ai.nb.common.core.platform.UserAccount;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
 import xin.v5ai.nb.common.core.service.PermissionService;
-import xin.v5ai.nb.common.core.utils.MessageUtils;
-import xin.v5ai.nb.common.core.utils.ServletUtils;
-import xin.v5ai.nb.common.core.utils.SpringUtils;
-import xin.v5ai.nb.common.core.utils.ThreadUtils;
+import xin.v5ai.nb.common.core.utils.*;
+import xin.v5ai.nb.common.json.utils.JsonUtils;
 import xin.v5ai.nb.common.log.enums.OperatorType;
 import xin.v5ai.nb.common.log.event.LoginInfoEvent;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
+import xin.v5ai.nb.common.redis.utils.RedisUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
-import xin.v5ai.nb.platform.auth.LoginRequest;
-import xin.v5ai.nb.platform.auth.LoginResponse;
+import xin.v5ai.nb.platform.controller.auth.LoginRequest;
+import xin.v5ai.nb.platform.domain.PlmUser;
 import xin.v5ai.nb.platform.domain.User;
 import xin.v5ai.nb.platform.domain.vo.LoginVo;
+import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
+import xin.v5ai.nb.platform.domain.vo.PlmUserVo;
 import xin.v5ai.nb.platform.domain.vo.UserVo;
+import xin.v5ai.nb.platform.mapper.PlmUserMapper;
 import xin.v5ai.nb.platform.mapper.UserMapper;
 import xin.v5ai.nb.platform.security.PasswordVerifier;
 import xin.v5ai.nb.platform.service.ILoginService;
 import xin.v5ai.nb.platform.service.IRoleService;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LoginServiceImpl implements ILoginService {
+
+    /**
+     * 最大重试次数。
+     */
+    @Value("${user.password.maxRetryCount:5}")
+    private Integer maxRetryCount;
+
+    /**
+     * 锁定时间。
+     */
+    @Value("${user.password.lockTime:10}")
+    private Integer lockTime;
+
     private final UserCredentialStore credentialStore;
     private final UserAccountStore userAccountStore;
     private final PasswordVerifier passwordVerifier;
@@ -55,7 +74,38 @@ public class LoginServiceImpl implements ILoginService {
     private final IRoleService roleService;
     private final SaTokenConfig saTokenConfig;
 
-    private final UserMapper userMapper;
+    private final PlmUserMapper userMapper;
+
+    @Override
+    public LoginVo login(String body, PlmClientVo client) {
+        PasswordLoginBody loginBody = JsonUtils.parseObject(body, PasswordLoginBody.class);
+        ValidatorUtils.validate(loginBody);
+        String username = loginBody.getUsername();
+        String password = loginBody.getPassword();
+        String code = loginBody.getCode();
+        String uuid = loginBody.getUuid();
+
+        boolean captchaEnabled = captchaProperties.getEnable();
+        // 验证码开关
+        if (captchaEnabled) {
+            validateCaptcha(username, code, uuid);
+        }
+        PlmUserVo user = loadUserByUsername(username);
+        checkLogin(LoginType.PASSWORD, username, () -> !BCrypt.checkpw(password, user.getPassword()));
+        // 此处可根据登录用户的数据不同 自行创建 loginUser
+        LoginUser loginUser = buildLoginUser(user);
+        loginUser.setClientKey(client.getClientKey());
+        loginUser.setDeviceType(client.getDeviceType());
+        SaLoginParameter model = buildLoginParameter(client);
+        // 生成token
+        LoginHelper.login(loginUser, model);
+
+        LoginVo loginVo = new LoginVo();
+        loginVo.setAccessToken(StpUtil.getTokenValue());
+        loginVo.setExpireIn(StpUtil.getTokenTimeout());
+        loginVo.setClientId(client.getClientId());
+        return loginVo;
+    }
 
     @Override
     public LoginVo login(LoginRequest request) {
@@ -177,12 +227,12 @@ public class LoginServiceImpl implements ILoginService {
      * @return 包含部门、角色、岗位与权限数据的登录用户
      */
     @Override
-    public LoginUser buildLoginUser(UserVo user) {
+    public LoginUser buildLoginUser(PlmUserVo user) {
         LoginUser loginUser = new LoginUser();
         Long userId = user.getId();
         loginUser.setUserId(userId);
-        loginUser.setUsername(user.getUsername());
-        loginUser.setNickname(user.getDisplayName());
+        loginUser.setUsername(user.getUserName());
+        loginUser.setNickname(user.getNickName());
         ThreadUtils.virtualInvokeAll(() -> {
             loginUser.setMenuPermission(permissionService.getMenuPermission(userId));
         }, () -> {
@@ -197,14 +247,52 @@ public class LoginServiceImpl implements ILoginService {
     }
 
     /**
+     * 执行登录失败次数校验，并在成功后清空失败计数。
+     *
+     * @param loginType 登录类型
+     * @param username  登录标识
+     * @param supplier  返回 {@code true} 表示本次认证失败
+     */
+    public void checkLogin(LoginType loginType, String username, Supplier<Boolean> supplier) {
+        String errorKey = CacheNames.PWD_ERR_CNT_KEY + username;
+        String loginFail = Constants.LOGIN_FAIL;
+
+        // 获取用户登录错误次数，默认为0 (可自定义限制策略 例如: key + username + ip)
+        int errorNumber = ObjectUtil.defaultIfNull(RedisUtils.getCacheObject(errorKey), 0);
+        // 锁定时间内登录 则踢出
+        if (errorNumber >= maxRetryCount) {
+            recordLoginInfo(username, loginFail, MessageUtils.message(loginType.getRetryLimitExceed(), maxRetryCount, lockTime));
+            throw new UserException(loginType.getRetryLimitExceed(), maxRetryCount, lockTime);
+        }
+
+        if (supplier.get()) {
+            // 错误次数递增
+            errorNumber++;
+            RedisUtils.setCacheObject(errorKey, errorNumber, Duration.ofMinutes(lockTime));
+            // 达到规定错误次数 则锁定登录
+            if (errorNumber >= maxRetryCount) {
+                recordLoginInfo(username, loginFail, MessageUtils.message(loginType.getRetryLimitExceed(), maxRetryCount, lockTime));
+                throw new UserException(loginType.getRetryLimitExceed(), maxRetryCount, lockTime);
+            } else {
+                // 未达到规定错误次数
+                recordLoginInfo(username, loginFail, MessageUtils.message(loginType.getRetryLimitCount(), errorNumber));
+                throw new UserException(loginType.getRetryLimitCount(), errorNumber);
+            }
+        }
+
+        // 登录成功 清空错误次数
+        RedisUtils.deleteObject(errorKey);
+    }
+
+    /**
      * 按用户名加载可登录用户，并校验是否存在或被停用。
      *
      * @param username 用户名
      * @return 用户信息
      */
-    private UserVo loadUserByUsername(String username) {
-        UserVo user = userMapper.lambda()
-                .eq(User::getUsername, username)
+    private PlmUserVo loadUserByUsername(String username) {
+        PlmUserVo user = userMapper.lambda()
+                .eq(PlmUser::getUserName, username)
                 .voOne();
         if (ObjectUtil.isNull(user)) {
             log.info("登录用户：{} 不存在.", username);

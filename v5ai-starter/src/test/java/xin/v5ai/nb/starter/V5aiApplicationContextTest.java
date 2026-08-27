@@ -13,7 +13,7 @@ import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.runtime.controller.ChatController;
 import xin.v5ai.nb.model.controller.V5aiModelController;
 import xin.v5ai.nb.model.controller.V5aiModelProviderController;
-import xin.v5ai.nb.platform.auth.AuthController;
+import xin.v5ai.nb.platform.controller.auth.AuthController;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

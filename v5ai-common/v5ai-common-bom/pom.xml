@@ -71,6 +71,16 @@
             </dependency>
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-common-sensitive</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-common-translation</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-common-web</artifactId>
                 <version>${revision}</version>
             </dependency>

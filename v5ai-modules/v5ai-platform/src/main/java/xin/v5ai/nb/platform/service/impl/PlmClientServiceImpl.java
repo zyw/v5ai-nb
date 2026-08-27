@@ -1,24 +1,30 @@
 package xin.v5ai.nb.platform.service.impl;
 
-import org.dromara.common.core.utils.MapstructUtils;
-import org.dromara.common.core.utils.StringUtils;
-import org.dromara.common.mybatis.core.page.TableDataInfo;
-import org.dromara.common.mybatis.core.page.PageQuery;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.domain.bo.SysClientBo;
-import xin.v5ai.nb.domain.vo.SysClientVo;
-import xin.v5ai.nb.domain.SysClient;
-import xin.v5ai.nb.mapper.SysClientMapper;
-import xin.v5ai.nb.service.ISysClientService;
+import xin.v5ai.nb.common.core.constant.CacheNames;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.utils.MapstructUtils;
+import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.platform.domain.PlmClient;
+import xin.v5ai.nb.platform.domain.bo.PlmClientBo;
+import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
+import xin.v5ai.nb.platform.mapper.PlmClientMapper;
+import xin.v5ai.nb.platform.service.IPlmClientService;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Collection;
+import java.util.List;
+import java.util.function.UnaryOperator;
 
 /**
  * 系统授权Service业务层处理
@@ -27,74 +33,102 @@ import java.util.Collection;
  * @date 2026-08-26
  */
 @Slf4j
-@RequiredArgsConstructor
 @Service
-public class SysClientServiceImpl implements ISysClientService {
+@RequiredArgsConstructor
+public class PlmClientServiceImpl implements IPlmClientService {
 
-    private final SysClientMapper baseMapper;
+    private static final String CLIENT_RULE_SEPARATOR_REGEX = "[,;\\r\\n]+";
+
+    private final PlmClientMapper baseMapper;
 
     /**
-     * 查询系统授权
+     * 查询客户端管理
      *
      * @param id 主键
-     * @return 系统授权
+     * @return 客户端详情
      */
     @Override
-    public SysClientVo queryById(Long id){
-        return baseMapper.selectVoById(id);
+    public PlmClientVo queryById(Long id) {
+        PlmClientVo vo = baseMapper.selectVoById(id);
+        fillClientRuleFields(vo);
+        return vo;
     }
 
     /**
-     * 分页查询系统授权列表
+     * 查询客户端管理
+     *
+     * @param clientId 客户端标识
+     * @return 客户端详情
+     */
+    @Cacheable(cacheNames = CacheNames.SYS_CLIENT, key = "#clientId")
+    @Override
+    public PlmClientVo queryByClientId(String clientId) {
+        PlmClientVo vo = baseMapper.lambda().eq(PlmClient::getClientId, clientId).voOne();
+        fillClientRuleFields(vo);
+        return vo;
+    }
+
+    /**
+     * 查询客户端管理列表
      *
      * @param bo        查询条件
      * @param pageQuery 分页参数
-     * @return 系统授权分页列表
+     * @return 客户端分页列表
      */
     @Override
-    public TableDataInfo queryPageList(SysClientBo bo, PageQuery pageQuery) {
-        LambdaQueryWrapper lqw = buildQueryWrapper(bo);
-        Page result = baseMapper.selectVoPage(pageQuery.build(), lqw);
-        return TableDataInfo.build(result);
+    public PageResult<PlmClientVo> queryPageList(PlmClientBo bo, PageQuery pageQuery) {
+        LambdaQueryWrapper<PlmClient> lqw = buildQueryWrapper(bo);
+        Page<PlmClientVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);
+        result.getRecords().forEach(this::fillClientRuleFields);
+        return PageResult.build(result.getRecords(), result.getTotal());
     }
 
     /**
-     * 查询符合条件的系统授权列表
+     * 查询客户端管理列表
      *
      * @param bo 查询条件
-     * @return 系统授权列表
+     * @return 客户端列表
      */
     @Override
-    public List queryList(SysClientBo bo) {
-        LambdaQueryWrapper lqw = buildQueryWrapper(bo);
-        return baseMapper.selectVoList(lqw);
-    }
-
-    private LambdaQueryWrapper buildQueryWrapper(SysClientBo bo) {
-        Map params = bo.getParams();
-        LambdaQueryWrapper lqw = Wrappers.lambdaQuery();
-        lqw.orderByAsc(SysClient::getId);
-        lqw.eq(bo.getClientId() != null, SysClient::getClientId, bo.getClientId());
-        lqw.eq(bo.getClientKey() != null, SysClient::getClientKey, bo.getClientKey());
-        lqw.eq(bo.getClientSecret() != null, SysClient::getClientSecret, bo.getClientSecret());
-        lqw.eq(bo.getGrantType() != null, SysClient::getGrantType, bo.getGrantType());
-        lqw.eq(bo.getDeviceType() != null, SysClient::getDeviceType, bo.getDeviceType());
-        lqw.eq(bo.getActiveTimeout() != null, SysClient::getActiveTimeout, bo.getActiveTimeout());
-        lqw.eq(bo.getTimeout() != null, SysClient::getTimeout, bo.getTimeout());
-        lqw.eq(bo.getStatus() != null, SysClient::getStatus, bo.getStatus());
-        return lqw;
+    public List<PlmClientVo> queryList(PlmClientBo bo) {
+        LambdaQueryWrapper<PlmClient> lqw = buildQueryWrapper(bo);
+        List<PlmClientVo> list = baseMapper.selectVoList(lqw);
+        list.forEach(this::fillClientRuleFields);
+        return list;
     }
 
     /**
-     * 新增系统授权
+     * 构造客户端列表查询条件。
      *
-     * @param bo 系统授权
-     * @return 是否新增成功
+     * @param bo 客户端筛选条件
+     * @return 包含 clientId、clientKey、状态等条件的查询包装器
+     */
+    private LambdaQueryWrapper<PlmClient> buildQueryWrapper(PlmClientBo bo) {
+        return QueryBuilder.lambda(PlmClient.class)
+                .eqIfText(PlmClient::getClientId, bo.getClientId())
+                .eqIfText(PlmClient::getClientKey, bo.getClientKey())
+                .eqIfText(PlmClient::getClientSecret, bo.getClientSecret())
+                .eqIfText(PlmClient::getStatus, bo.getStatus())
+                .orderByAsc(PlmClient::getId)
+                .build();
+    }
+
+    /**
+     * 新增客户端管理
+     *
+     * @param bo 客户端业务对象
+     * @return 新增成功返回 {@code true}
      */
     @Override
-    public Boolean insertByBo(SysClientBo bo) {
-        SysClient add = MapstructUtils.convert(bo, SysClient.class);
-        validEntityBeforeSave(add);
+    public Boolean insertByBo(PlmClientBo bo) {
+        PlmClient add = MapstructUtils.convert(bo, PlmClient.class);
+        add.setGrantType(CollUtil.join(bo.getGrantTypeList(), StringUtils.SEPARATOR));
+        add.setAccessPath(resolveRuleValue(bo.getAccessPath(), bo.getAccessPathList(), this::normalizeAccessPath));
+        add.setIpWhitelist(resolveRuleValue(bo.getIpWhitelist(), bo.getIpWhitelistList(), UnaryOperator.identity()));
+        // 生成clientid
+        String clientKey = bo.getClientKey();
+        String clientSecret = bo.getClientSecret();
+        add.setClientId(SecureUtil.md5(clientKey + clientSecret));
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
             bo.setId(add.getId());
@@ -103,37 +137,131 @@ public class SysClientServiceImpl implements ISysClientService {
     }
 
     /**
-     * 修改系统授权
+     * 修改客户端管理
      *
-     * @param bo 系统授权
-     * @return 是否修改成功
+     * @param bo 客户端业务对象
+     * @return 修改成功返回 {@code true}
      */
+    @CacheEvict(cacheNames = CacheNames.SYS_CLIENT, key = "#bo.clientId")
     @Override
-    public Boolean updateByBo(SysClientBo bo) {
-        SysClient update = MapstructUtils.convert(bo, SysClient.class);
-        validEntityBeforeSave(update);
+    public Boolean updateByBo(PlmClientBo bo) {
+        PlmClient update = MapstructUtils.convert(bo, PlmClient.class);
+        update.setGrantType(StringUtils.joinComma(bo.getGrantTypeList()));
+        update.setAccessPath(resolveRuleValue(bo.getAccessPath(), bo.getAccessPathList(), this::normalizeAccessPath));
+        update.setIpWhitelist(resolveRuleValue(bo.getIpWhitelist(), bo.getIpWhitelistList(), UnaryOperator.identity()));
         return baseMapper.updateById(update) > 0;
     }
 
     /**
-     * 保存前的数据校验
+     * 修改状态
+     *
+     * @param clientId 客户端标识
+     * @param status   状态值
+     * @return 更新条数
      */
-    private void validEntityBeforeSave(SysClient entity){
-        //TODO 做一些数据校验,如唯一约束
+    @CacheEvict(cacheNames = CacheNames.SYS_CLIENT, key = "#clientId")
+    @Override
+    public int updateClientStatus(String clientId, String status) {
+        return baseMapper.lambda()
+                .set(PlmClient::getStatus, status)
+                .eq(PlmClient::getClientId, clientId)
+                .updateCount();
     }
 
     /**
-     * 校验并批量删除系统授权信息
+     * 批量删除客户端管理
      *
-     * @param ids     待删除的主键集合
-     * @param isValid 是否进行有效性校验
-     * @return 是否删除成功
+     * @param ids     主键集合
+     * @param isValid 是否执行业务校验
+     * @return 删除成功返回 {@code true}
+     */
+    @CacheEvict(cacheNames = CacheNames.SYS_CLIENT, allEntries = true)
+    @Override
+    public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
+        return baseMapper.deleteByIds(ids) > 0;
+    }
+
+    /**
+     * 校验客户端key是否唯一
+     *
+     * @param client 客户端信息
+     * @return 结果
      */
     @Override
-    public Boolean deleteWithValidByIds(Collection ids, Boolean isValid) {
-        if(isValid){
-            //TODO 做一些业务上的校验,判断是否需要校验
+    public boolean checkClickKeyUnique(PlmClientBo client) {
+        boolean exist = baseMapper.lambda()
+                .eq(PlmClient::getClientKey, client.getClientKey())
+                .neIfPresent(PlmClient::getId, client.getId())
+                .exists();
+        return !exist;
+    }
+
+    /**
+     * 回填客户端扩展规则字段，便于前端直接展示和编辑。
+     *
+     * @param vo 客户端视图对象
+     */
+    private void fillClientRuleFields(PlmClientVo vo) {
+        if (ObjectUtil.isNull(vo)) {
+            return;
         }
-        return baseMapper.deleteByIds(ids) > 0;
+        vo.setGrantTypeList(StringUtils.splitList(vo.getGrantType()));
+        vo.setAccessPathList(parseRuleList(vo.getAccessPath(), this::normalizeAccessPath));
+        vo.setIpWhitelistList(parseRuleList(vo.getIpWhitelist(), UnaryOperator.identity()));
+    }
+
+    /**
+     * 统一处理白名单与路径规则的入库格式。
+     *
+     * @param rawValue   原始字符串
+     * @param listValue  列表值
+     * @param normalizer 单条规则归一化器
+     * @return 逗号拼接后的规则串
+     */
+    private String resolveRuleValue(String rawValue, List<String> listValue, UnaryOperator<String> normalizer) {
+        List<String> rules = rawValue != null
+                ? StringUtils.str2List(rawValue, CLIENT_RULE_SEPARATOR_REGEX, true, true)
+                : listValue;
+        if (CollUtil.isEmpty(rules)) {
+            return listValue != null || rawValue != null ? "" : null;
+        }
+        return CollUtil.join(rules.stream()
+                .map(normalizer)
+                .filter(StringUtils::isNotBlank)
+                .toList(), StringUtils.SEPARATOR);
+    }
+
+    /**
+     * 将规则串转换为列表。
+     *
+     * @param value      规则串
+     * @param normalizer 单条规则归一化器
+     * @return 规则列表
+     */
+    private List<String> parseRuleList(String value, UnaryOperator<String> normalizer) {
+        return StringUtils.str2List(value, CLIENT_RULE_SEPARATOR_REGEX, true, true).stream()
+                .map(normalizer)
+                .filter(StringUtils::isNotBlank)
+                .toList();
+    }
+
+    /**
+     * 统一补齐路径前导斜杠，避免配置成 app/** 时无法命中。
+     *
+     * @param path 路径规则
+     * @return 规范化后的路径规则
+     */
+    private String normalizeAccessPath(String path) {
+        if (StringUtils.isBlank(path)) {
+            return null;
+        }
+        String accessPath = StringUtils.trim(path);
+        if (StringUtils.isBlank(accessPath)) {
+            return null;
+        }
+        if (StringUtils.equals(accessPath, "*") || StringUtils.equals(accessPath, "/**")) {
+            return "/**";
+        }
+        return accessPath.startsWith(StringUtils.SLASH) ? accessPath : StringUtils.SLASH + accessPath;
     }
 }

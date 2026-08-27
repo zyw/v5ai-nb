@@ -1,13 +1,12 @@
 package xin.v5ai.nb.platform.domain.bo;
 
-import xin.v5ai.nb.domain.SysUserRole;
-import org.dromara.common.mybatis.core.domain.BaseEntity;
-import org.dromara.common.core.validate.AddGroup;
-import org.dromara.common.core.validate.EditGroup;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import jakarta.validation.constraints.*;
+import xin.v5ai.nb.common.core.validate.EditGroup;
+import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
+import xin.v5ai.nb.platform.domain.PlmUserRole;
 
 /**
  * 用户和角色关联业务对象 sys_user_role
@@ -17,8 +16,8 @@ import jakarta.validation.constraints.*;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = SysUserRole.class, reverseConvertGenerate = false)
-public class SysUserRoleBo extends BaseEntity {
+@AutoMapper(target = PlmUserRole.class, reverseConvertGenerate = false)
+public class PlmUserRoleBo extends BaseEntity {
 
     /**
      * 用户ID

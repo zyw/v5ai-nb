@@ -1,12 +1,14 @@
 package xin.v5ai.nb.platform.service;
 
-import xin.v5ai.nb.domain.vo.SysRoleVo;
-import xin.v5ai.nb.domain.bo.SysRoleBo;
-import org.dromara.common.mybatis.core.page.TableDataInfo;
-import org.dromara.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.platform.domain.PlmUserRole;
+import xin.v5ai.nb.platform.domain.bo.PlmRoleBo;
+import xin.v5ai.nb.platform.domain.vo.PlmRoleVo;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 角色信息Service接口
@@ -14,55 +16,223 @@ import java.util.List;
  * @author zyw
  * @date 2026-08-26
  */
-public interface ISysRoleService {
+public interface IPlmRoleService {
 
     /**
-     * 查询角色信息
+     * 分页查询角色列表
      *
-     * @param ${pkColumn.javaField} 主键
-     * @return 角色信息
-     */
-    SysRoleVo queryById(Long roleId);
-
-    /**
-     * 分页查询角色信息列表
-     *
-     * @param bo        查询条件
+     * @param role      查询条件
      * @param pageQuery 分页参数
-     * @return 角色信息分页列表
+     * @return 角色分页列表
      */
-    TableDataInfo queryPageList(SysRoleBo bo, PageQuery pageQuery);
+    PageResult<PlmRoleVo> selectPageRoleList(PlmRoleBo role, PageQuery pageQuery);
 
     /**
-     * 查询符合条件的角色信息列表
+     * 根据条件查询角色数据
      *
-     * @param bo 查询条件
-     * @return 角色信息列表
+     * @param role 角色信息
+     * @return 角色列表
      */
-    List queryList(SysRoleBo bo);
+    List<PlmRoleVo> selectRoleList(PlmRoleBo role);
 
     /**
-     * 新增角色信息
+     * 根据用户ID查询角色列表
+     *
+     * @param userId 用户ID
+     * @return 角色列表
+     */
+    List<PlmRoleVo> selectRolesByUserId(Long userId);
+
+    /**
+     * 根据用户ID查询角色列表(包含被授权状态)
+     *
+     * @param userId 用户ID
+     * @return 角色列表
+     */
+    List<PlmRoleVo> selectRolesAuthByUserId(Long userId);
+
+    /**
+     * 根据用户ID查询角色权限
+     *
+     * @param userId 用户ID
+     * @return 权限列表
+     */
+    Set<String> selectRolePermissionByUserId(Long userId);
+
+    /**
+     * 查询所有角色
+     *
+     * @return 角色列表
+     */
+    List<PlmRoleVo> selectRoleAll();
+
+    /**
+     * 根据用户ID获取角色选择框列表
+     *
+     * @param userId 用户ID
+     * @return 选中角色ID列表
+     */
+    List<Long> selectRoleListByUserId(Long userId);
+
+    /**
+     * 通过角色ID查询角色
+     *
+     * @param roleId 角色ID
+     * @return 角色对象信息
+     */
+    PlmRoleVo selectRoleById(Long roleId);
+
+    /**
+     * 通过角色ID串查询角色
+     *
+     * @param roleIds 角色ID串
+     * @return 角色列表信息
+     */
+    List<PlmRoleVo> selectRoleByIds(Collection<Long> roleIds);
+
+    /**
+     * 校验角色名称是否唯一
+     *
+     * @param role 角色信息
+     * @return 是否唯一
+     */
+    boolean checkRoleNameUnique(PlmRoleBo role);
+
+    /**
+     * 校验角色权限是否唯一
+     *
+     * @param role 角色信息
+     * @return 是否唯一
+     */
+    boolean checkRoleKeyUnique(PlmRoleBo role);
+
+    /**
+     * 校验角色是否允许操作
+     *
+     * @param role 角色信息
+     */
+    void checkRoleAllowed(PlmRoleBo role);
+
+    /**
+     * 校验角色是否有数据权限
+     *
+     * @param roleId 角色id
+     */
+    void checkRoleDataScope(Long roleId);
+
+    /**
+     * 校验角色是否有数据权限
+     *
+     * @param roleIds 角色ID列表（支持传单个ID）
+     */
+    void checkRoleDataScope(Collection<Long> roleIds);
+
+    /**
+     * 通过角色ID查询角色使用数量
+     *
+     * @param roleId 角色ID
+     * @return 绑定用户数量
+     */
+    long countUserRoleByRoleId(Long roleId);
+
+    /**
+     * 新增保存角色信息
      *
      * @param bo 角色信息
-     * @return 是否新增成功
+     * @return 影响行数
      */
-    Boolean insertByBo(SysRoleBo bo);
+    int insertRole(PlmRoleBo bo);
 
     /**
-     * 修改角色信息
+     * 修改角色基础信息（不包含菜单/数据权限）。
      *
      * @param bo 角色信息
-     * @return 是否修改成功
+     * @return 影响行数
      */
-    Boolean updateByBo(SysRoleBo bo);
+    int updateRoleBaseInfo(PlmRoleBo bo);
 
     /**
-     * 校验并批量删除角色信息信息
+     * 修改角色权限信息（菜单权限 + 数据权限）。
      *
-     * @param ids     待删除的主键集合
-     * @param isValid 是否进行有效性校验
-     * @return 是否删除成功
+     * @param bo 角色权限参数
+     * @return 影响行数
      */
-    Boolean deleteWithValidByIds(Collection ids, Boolean isValid);
+    int updateRolePermission(PlmRoleBo bo);
+
+    /**
+     * 修改角色状态
+     *
+     * @param roleId 角色ID
+     * @param status 角色状态
+     * @return 影响行数
+     */
+    int updateRoleStatus(Long roleId, String status);
+
+
+    /**
+     * 通过角色ID删除角色
+     *
+     * @param roleId 角色ID
+     * @return 影响行数
+     */
+    int deleteRoleById(Long roleId);
+
+    /**
+     * 批量删除角色信息
+     *
+     * @param roleIds 需要删除的角色ID
+     * @return 影响行数
+     */
+    int deleteRoleByIds(Collection<Long> roleIds);
+
+    /**
+     * 取消授权用户角色
+     *
+     * @param userRole 用户和角色关联信息
+     * @return 影响行数
+     */
+    int deleteAuthUser(PlmUserRole userRole);
+
+    /**
+     * 批量取消授权用户角色
+     *
+     * @param roleId  角色ID
+     * @param userIds 需要取消授权的用户数据ID
+     * @return 影响行数
+     */
+    int deleteAuthUsers(Long roleId, Collection<Long> userIds);
+
+    /**
+     * 批量选择授权用户角色
+     *
+     * @param roleId  角色ID
+     * @param userIds 需要删除的用户数据ID
+     * @return 影响行数
+     */
+    int insertAuthUsers(Long roleId, Collection<Long> userIds);
+
+    /**
+     * 根据角色ID清除该角色关联的所有在线用户的登录状态（踢出在线用户）
+     *
+     * <p>
+     * 先判断角色是否绑定用户，若无绑定则直接返回
+     * 然后遍历当前所有在线Token，查找拥有该角色的用户并强制登出
+     * 注意：在线用户量过大时，操作可能导致 Redis 阻塞，需谨慎调用
+     * </p>
+     *
+     * @param roleId 角色ID
+     */
+    void cleanOnlineUserByRole(Long roleId);
+
+    /**
+     * 根据用户ID列表清除对应在线用户的登录状态（踢出指定用户）
+     *
+     * <p>
+     * 遍历当前所有在线Token，匹配用户ID列表中的用户，强制登出
+     * 注意：在线用户量过大时，操作可能导致 Redis 阻塞，需谨慎调用
+     * </p>
+     *
+     * @param userIds 需要清除的用户ID列表
+     */
+    void cleanOnlineUser(Collection<Long> userIds);
 }

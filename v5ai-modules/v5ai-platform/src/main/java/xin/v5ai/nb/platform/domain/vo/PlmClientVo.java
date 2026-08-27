@@ -6,6 +6,7 @@ import xin.v5ai.nb.platform.domain.PlmClient;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
 
 
 /**
@@ -44,6 +45,11 @@ public class PlmClientVo implements Serializable {
     /**
      * 授权类型
      */
+    private List<String> grantTypeList;
+
+    /**
+     * 授权类型
+     */
     private String grantType;
 
     /**
@@ -52,12 +58,32 @@ public class PlmClientVo implements Serializable {
     private String deviceType;
 
     /**
+     * 允许访问路径
+     */
+    private String accessPath;
+
+    /**
+     * 允许访问路径列表
+     */
+    private List<String> accessPathList;
+
+    /**
+     * IP白名单
+     */
+    private String ipWhitelist;
+
+    /**
+     * IP白名单列表
+     */
+    private List<String> ipWhitelistList;
+
+    /**
      * token活跃超时时间
      */
     private Long activeTimeout;
 
     /**
-     * token固定超时
+     * token固定超时时间
      */
     private Long timeout;
 

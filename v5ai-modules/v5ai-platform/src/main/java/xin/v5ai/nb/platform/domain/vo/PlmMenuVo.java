@@ -24,7 +24,7 @@ public class PlmMenuVo implements Serializable {
     /**
      * 菜单ID
      */
-    private Long menuId;
+    private Long id;
 
     /**
      * 菜单名称

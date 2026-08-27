@@ -1,11 +1,11 @@
 package xin.v5ai.nb.platform.domain;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
-
-import java.io.Serial;
+import xin.v5ai.nb.common.mybatis.core.domain.PlmBaseEntity;
 
 /**
  * 角色信息对象 sys_role
@@ -16,16 +16,13 @@ import java.io.Serial;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("plm_role")
-public class PlmRole extends BaseEntity {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class PlmRole extends PlmBaseEntity {
 
     /**
      * 角色ID
      */
-    @TableId(value = "role_id")
-    private Long roleId;
+    @TableId(value = "id")
+    private Long id;
 
     /**
      * 角色名称
@@ -33,29 +30,29 @@ public class PlmRole extends BaseEntity {
     private String roleName;
 
     /**
-     * 角色权限字符串
+     * 角色权限
      */
     private String roleKey;
 
     /**
-     * 显示顺序
+     * 角色排序
      */
-    private Long roleSort;
+    private Integer roleSort;
 
     /**
-     * 数据范围（1：全部数据权限 2：自定数据权限 3：本部门数据权限 4：本部门及以下数据权限）
+     * 数据范围（1：全部数据权限 2：自定数据权限 3：本部门数据权限 4：本部门及以下数据权限 5：仅本人数据权限 6：部门及以下或本人数据权限）
      */
     private String dataScope;
 
     /**
-     * 菜单树选择项是否关联显示
+     * 菜单树选择项是否关联显示（ 0：父子不互相关联显示 1：父子互相关联显示）
      */
-    private Long menuCheckStrictly;
+    private Boolean menuCheckStrictly;
 
     /**
-     * 部门树选择项是否关联显示
+     * 部门树选择项是否关联显示（0：父子不互相关联显示 1：父子互相关联显示 ）
      */
-    private Long deptCheckStrictly;
+    private Boolean deptCheckStrictly;
 
     /**
      * 角色状态（0正常 1停用）
@@ -63,7 +60,7 @@ public class PlmRole extends BaseEntity {
     private String status;
 
     /**
-     * 删除标志（0代表存在 2代表删除）
+     * 删除标志（0代表存在 1代表删除）
      */
     @TableLogic
     private String delFlag;

@@ -1,13 +1,16 @@
 package xin.v5ai.nb.platform.domain.bo;
 
-import xin.v5ai.nb.domain.SysClient;
-import org.dromara.common.mybatis.core.domain.BaseEntity;
-import org.dromara.common.core.validate.AddGroup;
-import org.dromara.common.core.validate.EditGroup;
 import io.github.linpeilie.annotations.AutoMapper;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import jakarta.validation.constraints.*;
+import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.core.validate.EditGroup;
+import xin.v5ai.nb.platform.domain.PlmClient;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.List;
 
 /**
  * 系统授权业务对象 sys_client
@@ -16,14 +19,16 @@ import jakarta.validation.constraints.*;
  * @date 2026-08-26
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = SysClient.class, reverseConvertGenerate = false)
-public class SysClientBo extends BaseEntity {
+@AutoMapper(target = PlmClient.class, reverseConvertGenerate = false)
+public class PlmClientBo implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
      * id
      */
-    @NotNull(message = "id不能为空", groups = { EditGroup.class })
+    @NotNull(message = "id不能为空", groups = {EditGroup.class})
     private Long id;
 
     /**
@@ -34,12 +39,20 @@ public class SysClientBo extends BaseEntity {
     /**
      * 客户端key
      */
+    @NotBlank(message = "客户端key不能为空", groups = {AddGroup.class, EditGroup.class})
     private String clientKey;
 
     /**
      * 客户端秘钥
      */
+    @NotBlank(message = "客户端秘钥不能为空", groups = {AddGroup.class, EditGroup.class})
     private String clientSecret;
+
+    /**
+     * 授权类型
+     */
+    @NotNull(message = "授权类型不能为空", groups = {AddGroup.class, EditGroup.class})
+    private List<String> grantTypeList;
 
     /**
      * 授权类型
@@ -52,12 +65,32 @@ public class SysClientBo extends BaseEntity {
     private String deviceType;
 
     /**
+     * 允许访问路径
+     */
+    private String accessPath;
+
+    /**
+     * 允许访问路径列表
+     */
+    private List<String> accessPathList;
+
+    /**
+     * IP白名单
+     */
+    private String ipWhitelist;
+
+    /**
+     * IP白名单列表
+     */
+    private List<String> ipWhitelistList;
+
+    /**
      * token活跃超时时间
      */
     private Long activeTimeout;
 
     /**
-     * token固定超时
+     * token固定超时时间
      */
     private Long timeout;
 

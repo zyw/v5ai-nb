@@ -1,9 +1,11 @@
 package xin.v5ai.nb.platform.domain;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
+import xin.v5ai.nb.common.mybatis.core.domain.PlmBaseEntity;
 
 import java.io.Serial;
 
@@ -16,7 +18,7 @@ import java.io.Serial;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("plm_client")
-public class PlmClient extends BaseEntity {
+public class PlmClient extends PlmBaseEntity {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -53,12 +55,22 @@ public class PlmClient extends BaseEntity {
     private String deviceType;
 
     /**
+     * 允许访问路径
+     */
+    private String accessPath;
+
+    /**
+     * IP白名单
+     */
+    private String ipWhitelist;
+
+    /**
      * token活跃超时时间
      */
     private Long activeTimeout;
 
     /**
-     * token固定超时
+     * token固定超时时间
      */
     private Long timeout;
 
@@ -68,7 +80,7 @@ public class PlmClient extends BaseEntity {
     private String status;
 
     /**
-     * 删除标志（0代表存在 2代表删除）
+     * 删除标志（0代表存在 1代表删除）
      */
     @TableLogic
     private String delFlag;

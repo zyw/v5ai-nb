@@ -21,5 +21,7 @@
         <module>v5ai-common-agentscope</module>
         <module>v5ai-common-storage</module>
         <module>v5ai-common-log</module>
+        <module>v5ai-common-translation</module>
+        <module>v5ai-common-sensitive</module>
     </modules>
 </project>

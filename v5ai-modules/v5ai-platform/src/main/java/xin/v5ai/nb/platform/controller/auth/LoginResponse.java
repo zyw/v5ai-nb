@@ -1,4 +1,4 @@
-package xin.v5ai.nb.platform.auth;
+package xin.v5ai.nb.platform.controller.auth;
 
 import java.util.List;
 

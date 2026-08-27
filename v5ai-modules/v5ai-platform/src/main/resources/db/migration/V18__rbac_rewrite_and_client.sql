@@ -227,6 +227,8 @@ comment on column plm_client.created_at            is '创建时间';
 comment on column plm_client.updated_by              is '更新者';
 comment on column plm_client.updated_at            is '更新时间';
 
+insert into plm_client values (1, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 'password', 'pc', '', '', 1800, 604800, 0, 0, 1761100000000000001, now(), 1761100000000000001, now());
+
 -- ----------------------------
 -- 8、回填基础数据（结构重建后系统保持可用）
 -- ----------------------------

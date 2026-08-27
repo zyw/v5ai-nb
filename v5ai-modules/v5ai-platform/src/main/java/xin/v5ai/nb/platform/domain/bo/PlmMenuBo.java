@@ -1,13 +1,16 @@
 package xin.v5ai.nb.platform.domain.bo;
 
-import xin.v5ai.nb.domain.SysMenu;
-import org.dromara.common.mybatis.core.domain.BaseEntity;
-import org.dromara.common.core.validate.AddGroup;
-import org.dromara.common.core.validate.EditGroup;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import jakarta.validation.constraints.*;
+import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.core.validate.EditGroup;
+import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
+import xin.v5ai.nb.platform.domain.PlmMenu;
+
+import java.io.Serial;
+import java.io.Serializable;
 
 /**
  * 菜单权限业务对象 sys_menu
@@ -16,15 +19,17 @@ import jakarta.validation.constraints.*;
  * @date 2026-08-26
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = SysMenu.class, reverseConvertGenerate = false)
-public class SysMenuBo extends BaseEntity {
+@AutoMapper(target = PlmMenu.class, reverseConvertGenerate = false)
+public class PlmMenuBo implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
      * 菜单ID
      */
     @NotNull(message = "菜单ID不能为空", groups = { EditGroup.class })
-    private Long menuId;
+    private Long id;
 
     /**
      * 菜单名称

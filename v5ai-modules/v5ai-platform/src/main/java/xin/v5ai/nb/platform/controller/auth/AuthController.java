@@ -1,4 +1,4 @@
-package xin.v5ai.nb.platform.auth;
+package xin.v5ai.nb.platform.controller.auth;
 
 import cn.hutool.core.util.ObjectUtil;
 import jakarta.validation.Valid;
@@ -6,16 +6,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.LoginUser;
 import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.domain.model.LoginBody;
 import xin.v5ai.nb.common.core.platform.MenuStore;
 import xin.v5ai.nb.common.core.platform.UserAccountStore;
+import xin.v5ai.nb.common.core.utils.ValidatorUtils;
+import xin.v5ai.nb.common.encrypt.annotation.ApiEncrypt;
+import xin.v5ai.nb.common.json.utils.JsonUtils;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.platform.domain.Menu;
-import xin.v5ai.nb.platform.domain.vo.LoginVo;
-import xin.v5ai.nb.platform.domain.vo.RouterVo;
-import xin.v5ai.nb.platform.domain.vo.UserInfoVo;
-import xin.v5ai.nb.platform.domain.vo.UserVo;
+import xin.v5ai.nb.platform.domain.vo.*;
 import xin.v5ai.nb.platform.service.IMenuService;
+import xin.v5ai.nb.platform.service.IPlmClientService;
 import xin.v5ai.nb.platform.service.IUserService;
 import xin.v5ai.nb.platform.service.impl.LoginServiceImpl;
 
@@ -24,7 +27,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
-public class AuthController {
+public class AuthController extends BaseController {
 
     private final LoginServiceImpl loginService;
     private final UserAccountStore userAccountStore;
@@ -33,10 +36,10 @@ public class AuthController {
     private final IUserService userService;
     private final IMenuService menuService;
 
-    @PostMapping("/login")
-    public R<LoginVo> login(@Valid @RequestBody LoginRequest request) {
-        return R.ok(loginService.login(request));
-    }
+    // ================== 新 =======================
+    private final IPlmClientService clientService;
+
+
 
     @PostMapping("/logout")
     public R<Void> logout() {
