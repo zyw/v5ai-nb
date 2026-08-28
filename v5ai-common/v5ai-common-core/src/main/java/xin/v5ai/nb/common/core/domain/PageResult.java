@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.core.page;
+package xin.v5ai.nb.common.core.domain;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

@@ -1,6 +1,6 @@
 package xin.v5ai.nb.platform.service;
 
-import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
+import xin.v5ai.nb.platform.api.domain.RoleDTO;
 
 import java.util.*;
 

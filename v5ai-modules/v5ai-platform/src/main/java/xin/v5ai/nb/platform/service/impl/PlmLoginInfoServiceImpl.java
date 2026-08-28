@@ -1,7 +1,7 @@
 package xin.v5ai.nb.platform.service.impl;
 
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.platform.domain.bo.PlmLoginInfoBo;
 import xin.v5ai.nb.platform.domain.vo.PlmLoginInfoVo;

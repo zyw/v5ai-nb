@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.core.validate.EditGroup;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;

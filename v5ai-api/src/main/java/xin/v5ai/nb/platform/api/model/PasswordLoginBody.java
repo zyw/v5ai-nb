@@ -1,9 +1,10 @@
-package xin.v5ai.nb.common.core.domain.model;
+package xin.v5ai.nb.platform.api.model;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.hibernate.validator.constraints.Length;
+import xin.v5ai.nb.common.core.domain.model.LoginBody;
 
 /**
  * 密码登录对象

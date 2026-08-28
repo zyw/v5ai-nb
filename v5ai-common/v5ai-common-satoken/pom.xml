@@ -16,6 +16,11 @@
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-common-redis</artifactId>
         </dependency>
+        <!-- api模块 -->
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-http</artifactId>

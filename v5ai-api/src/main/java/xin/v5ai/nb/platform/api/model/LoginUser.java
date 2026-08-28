@@ -1,8 +1,8 @@
-package xin.v5ai.nb.common.core.domain.model;
+package xin.v5ai.nb.platform.api.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
+import xin.v5ai.nb.platform.api.domain.RoleDTO;
 
 import java.io.Serial;
 import java.io.Serializable;

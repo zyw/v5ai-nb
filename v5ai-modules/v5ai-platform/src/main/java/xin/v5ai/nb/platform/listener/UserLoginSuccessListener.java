@@ -9,12 +9,12 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.core.constant.CacheNames;
 import xin.v5ai.nb.common.core.constant.Constants;
-import xin.v5ai.nb.common.core.domain.dto.UserOnlineDTO;
 import xin.v5ai.nb.common.core.utils.MessageUtils;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.redis.utils.RedisUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.platform.api.domain.UserOnlineDTO;
 import xin.v5ai.nb.platform.event.UserLoginSuccessEvent;
 import xin.v5ai.nb.platform.service.ILoginService;
 

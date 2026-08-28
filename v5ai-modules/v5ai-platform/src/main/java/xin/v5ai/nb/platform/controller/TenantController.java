@@ -2,7 +2,7 @@ package xin.v5ai.nb.platform.controller;
 
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.platform.Tenant;
 import xin.v5ai.nb.common.core.platform.TenantStore;
 import xin.v5ai.nb.common.log.annotation.Log;

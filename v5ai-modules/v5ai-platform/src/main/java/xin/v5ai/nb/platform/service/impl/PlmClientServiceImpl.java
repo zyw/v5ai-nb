@@ -11,7 +11,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.constant.CacheNames;
-import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;

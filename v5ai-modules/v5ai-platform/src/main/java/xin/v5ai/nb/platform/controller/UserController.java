@@ -4,7 +4,7 @@
 //import org.springframework.security.crypto.password.PasswordEncoder;
 //import org.springframework.web.bind.annotation.*;
 //import xin.v5ai.nb.common.core.domain.R;
-//import xin.v5ai.nb.common.core.page.PageResult;
+//import xin.v5ai.nb.common.core.domain.PageResult;
 //import xin.v5ai.nb.common.core.platform.UserAccount;
 //import xin.v5ai.nb.common.core.platform.UserAccountStore;
 //import xin.v5ai.nb.common.log.annotation.Log;

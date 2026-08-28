@@ -76,7 +76,7 @@ public class OperLogEvent implements Serializable {
     /**
      * 客户端
      */
-//    private String clientKey;
+    private String clientKey;
 
     /**
      * 设备类型

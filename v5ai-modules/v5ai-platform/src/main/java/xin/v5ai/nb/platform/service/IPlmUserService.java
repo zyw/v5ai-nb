@@ -1,6 +1,6 @@
 package xin.v5ai.nb.platform.service;
 
-import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.platform.domain.bo.PlmUserBo;
 import xin.v5ai.nb.platform.domain.vo.PlmUserVo;

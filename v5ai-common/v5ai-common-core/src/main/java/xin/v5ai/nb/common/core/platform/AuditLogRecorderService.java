@@ -1,7 +1,7 @@
 //package xin.v5ai.nb.common.core.platform;
 //
 //import xin.v5ai.nb.common.core.page.PageQuery;
-//import xin.v5ai.nb.common.core.page.PageResult;
+//import xin.v5ai.nb.common.core.domain.PageResult;
 //import xin.v5ai.nb.common.core.platform.entity.AuditLogDTO;
 //import xin.v5ai.nb.common.core.platform.entity.bo.AuditLogListBo;
 //

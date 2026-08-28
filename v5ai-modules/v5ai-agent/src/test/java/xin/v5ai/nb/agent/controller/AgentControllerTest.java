@@ -7,7 +7,7 @@ import xin.v5ai.nb.agent.domain.bo.AgentBo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.common.agentscope.core.domain.GeneratedAgentConfig;
-import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 
 import java.util.List;

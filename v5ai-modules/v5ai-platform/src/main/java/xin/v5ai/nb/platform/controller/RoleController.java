@@ -3,7 +3,7 @@
 //import lombok.RequiredArgsConstructor;
 //import org.springframework.web.bind.annotation.*;
 //import xin.v5ai.nb.common.core.domain.R;
-//import xin.v5ai.nb.common.core.page.PageResult;
+//import xin.v5ai.nb.common.core.domain.PageResult;
 //import xin.v5ai.nb.common.core.platform.MenuStore;
 //import xin.v5ai.nb.common.core.platform.Role;
 //import xin.v5ai.nb.common.log.annotation.Log;

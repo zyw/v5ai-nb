@@ -7,7 +7,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.*;
+import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.AgentScopeRuntime;
+import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
+import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentScopeHarnessExecutor;
@@ -18,7 +21,8 @@ import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.core.service.*;
 import xin.v5ai.nb.common.core.platform.AppQuotaService;
-import xin.v5ai.nb.common.core.platform.UsageRecorder;
+import xin.v5ai.nb.model.api.ModelUsageService;
+import xin.v5ai.nb.runtime.core.PersistingAgentRuntime;
 import xin.v5ai.nb.runtime.core.PublishedModelAgentTextExecutor;
 import xin.v5ai.nb.runtime.core.config.properties.AgentScopeRuntimeProperties;
 
@@ -69,7 +73,7 @@ public class RuntimeConfiguration {
             RunEventService runEventService,
             ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
-            ObjectProvider<UsageRecorder> usageRecorderProvider,
+            ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
         var runtime = new AgentScopeRuntime(resolver, executor, ragContextProviderProvider.getIfAvailable());
@@ -92,7 +96,7 @@ public class RuntimeConfiguration {
             RunEventService runEventService,
             ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
-            ObjectProvider<UsageRecorder> usageRecorderProvider,
+            ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable());

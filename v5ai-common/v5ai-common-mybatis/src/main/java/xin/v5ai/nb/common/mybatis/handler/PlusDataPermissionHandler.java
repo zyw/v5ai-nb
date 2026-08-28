@@ -20,8 +20,6 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
-import xin.v5ai.nb.common.core.domain.dto.RoleDTO;
-import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
@@ -33,6 +31,8 @@ import xin.v5ai.nb.common.mybatis.core.domain.DataPermissionAccess;
 import xin.v5ai.nb.common.mybatis.enums.DataScopeType;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.platform.api.domain.RoleDTO;
+import xin.v5ai.nb.platform.api.model.LoginUser;
 
 import java.lang.annotation.Annotation;
 import java.util.*;

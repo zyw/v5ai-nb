@@ -12,11 +12,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
-import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.enums.UserType;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.core.utils.ip.AddressUtils;
+import xin.v5ai.nb.platform.api.model.LoginUser;
 
 /**
  * 登录鉴权助手

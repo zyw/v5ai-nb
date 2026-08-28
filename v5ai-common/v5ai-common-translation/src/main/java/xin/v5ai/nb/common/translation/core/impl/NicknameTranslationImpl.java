@@ -2,10 +2,10 @@ package xin.v5ai.nb.common.translation.core.impl;
 
 import cn.hutool.core.convert.Convert;
 import lombok.AllArgsConstructor;
-import xin.v5ai.nb.common.core.service.UserService;
 import xin.v5ai.nb.common.translation.annotation.TranslationType;
 import xin.v5ai.nb.common.translation.constant.TransConstant;
 import xin.v5ai.nb.common.translation.core.TranslationInterface;
+import xin.v5ai.nb.platform.api.UserService;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

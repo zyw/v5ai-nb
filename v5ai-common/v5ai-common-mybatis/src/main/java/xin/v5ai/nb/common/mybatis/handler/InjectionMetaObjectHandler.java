@@ -5,12 +5,12 @@ import cn.hutool.http.HttpStatus;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
-import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.utils.ObjectUtils;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 import xin.v5ai.nb.common.mybatis.core.domain.PlmBaseEntity;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.platform.api.model.LoginUser;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;

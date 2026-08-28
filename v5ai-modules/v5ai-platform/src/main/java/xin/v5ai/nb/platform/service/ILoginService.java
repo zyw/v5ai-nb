@@ -1,6 +1,6 @@
 package xin.v5ai.nb.platform.service;
 
-import xin.v5ai.nb.common.core.domain.model.LoginUser;
+import xin.v5ai.nb.platform.api.model.LoginUser;
 import xin.v5ai.nb.platform.domain.vo.LoginVo;
 import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
 import xin.v5ai.nb.platform.domain.vo.PlmUserVo;

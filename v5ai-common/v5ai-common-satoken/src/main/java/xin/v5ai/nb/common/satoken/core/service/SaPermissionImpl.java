@@ -3,11 +3,11 @@ package xin.v5ai.nb.common.satoken.core.service;
 import cn.dev33.satoken.stp.StpInterface;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
-import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.service.PermissionService;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.platform.api.model.LoginUser;
 
 import java.util.ArrayList;
 import java.util.Collection;

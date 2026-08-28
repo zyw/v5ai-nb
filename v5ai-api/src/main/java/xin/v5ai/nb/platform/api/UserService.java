@@ -1,6 +1,6 @@
-package xin.v5ai.nb.common.core.service;
+package xin.v5ai.nb.platform.api;
 
-import xin.v5ai.nb.common.core.domain.dto.UserDTO;
+import xin.v5ai.nb.platform.api.domain.UserDTO;
 
 import java.util.Collection;
 import java.util.List;

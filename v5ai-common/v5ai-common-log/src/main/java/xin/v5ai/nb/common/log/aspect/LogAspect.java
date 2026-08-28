@@ -16,7 +16,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.multipart.MultipartFile;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
-import xin.v5ai.nb.common.core.domain.model.LoginUser;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
 import xin.v5ai.nb.common.core.utils.StringUtils;
@@ -26,6 +25,7 @@ import xin.v5ai.nb.common.log.enums.BusinessStatus;
 import xin.v5ai.nb.common.log.enums.OperatorType;
 import xin.v5ai.nb.common.log.event.OperLogEvent;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.platform.api.model.LoginUser;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
@@ -99,20 +99,20 @@ public class LogAspect {
             String ip = ServletUtils.getClientIP();
             operLog.setOperIp(ip);
             operLog.setOperUrl(limit(request.getRequestURI(), MAX_URL_LENGTH));
-//            operLog.setClientKey(limit(request.getHeader(LoginHelper.CLIENT_KEY), MAX_CLIENT_KEY_LENGTH));
+            operLog.setClientKey(limit(request.getHeader(LoginHelper.CLIENT_KEY), MAX_CLIENT_KEY_LENGTH));
             LoginUser loginUser = LoginHelper.getLoginUser();
             if (ObjectUtil.isNotNull(loginUser)) {
                 operLog.setOperName(loginUser.getUsername());
                 operLog.setUserId(loginUser.getUserId());
 //                operLog.setDeptId(loginUser.getDeptId());
 //                operLog.setDeptName(loginUser.getDeptName());
-//                operLog.setDeviceType(loginUser.getDeviceType());
+                operLog.setDeviceType(loginUser.getDeviceType());
                 operLog.setDeviceType(OperatorType.MANAGE.getCode());
                 operLog.setBrowser(loginUser.getBrowser());
                 operLog.setOs(loginUser.getOs());
-//                if (StringUtils.isBlank(operLog.getClientKey())) {
-//                    operLog.setClientKey(loginUser.getClientKey());
-//                }
+                if (StringUtils.isBlank(operLog.getClientKey())) {
+                    operLog.setClientKey(loginUser.getClientKey());
+                }
             }
 
             if (e != null) {

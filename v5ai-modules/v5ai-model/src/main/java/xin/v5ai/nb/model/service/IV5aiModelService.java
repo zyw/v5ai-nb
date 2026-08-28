@@ -1,7 +1,7 @@
 package xin.v5ai.nb.model.service;
 
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
-import xin.v5ai.nb.common.core.page.PageResult;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.model.domain.bo.ModelBo;
 import xin.v5ai.nb.model.domain.vo.TestModelConnectionVo;
