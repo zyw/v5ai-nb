@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.core.constant.Constants;
 import xin.v5ai.nb.common.core.utils.MessageUtils;
 import xin.v5ai.nb.common.core.utils.ServletUtils;
 import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.common.core.utils.ip.AddressUtils;
 import xin.v5ai.nb.common.redis.utils.RedisUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.platform.api.domain.UserOnlineDTO;
@@ -47,13 +48,13 @@ public class UserLoginSuccessListener {
 
         UserOnlineDTO dto = new UserOnlineDTO();
         dto.setIpaddr(ip);
-//        dto.setLoginLocation(AddressUtils.getRealAddressByIP(ip));
+        dto.setLoginLocation(AddressUtils.getRealAddressByIP(ip));
         dto.setBrowser(userAgent.getBrowser().getName());
         dto.setOs(userAgent.getOs().getName());
         dto.setLoginTime(System.currentTimeMillis());
         dto.setTokenId(tokenValue);
         dto.setUserName(username);
-//        dto.setClientKey((String) loginParameter.getExtra(LoginHelper.CLIENT_KEY));
+        dto.setClientKey((String) loginParameter.getExtra(LoginHelper.CLIENT_KEY));
         dto.setDeviceType(loginParameter.getDeviceType());
 //        dto.setDeptName((String) loginParameter.getExtra(LoginHelper.DEPT_NAME_KEY));
         if (loginParameter.getTimeout() == -1) {

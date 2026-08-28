@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.common.core.utils.ip.AddressUtils;
 import xin.v5ai.nb.common.log.event.OperLogEvent;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
@@ -47,8 +48,7 @@ public class PlmOperLogServiceImpl implements IPlmOperLogService {
     @EventListener
     public void recordOper(OperLogEvent operLogEvent) {
         PlmOperLogBo operLog = MapstructUtils.convert(operLogEvent, PlmOperLogBo.class);
-        // TODO 远程查询操作地点
-//        operLog.setOperLocation(AddressUtils.getRealAddressByIP(operLog.getOperIp()));
+        operLog.setOperLocation(AddressUtils.getRealAddressByIP(operLog.getOperIp()));
         insertOperlog(operLog);
     }
 
