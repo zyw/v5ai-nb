@@ -9,7 +9,7 @@ import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.platform.domain.bo.ModelUsageListBo;
 import xin.v5ai.nb.platform.domain.vo.ModelUsageRecordVo;
-import xin.v5ai.nb.platform.service.IModelUsageService;
+import xin.v5ai.nb.platform.service.IV5aiModelUsageService;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,14 +23,14 @@ import java.time.ZoneOffset;
 @RequestMapping("/api/admin/usage")
 public class UsageController {
 
-    private final IModelUsageService service;
+    private final IV5aiModelUsageService service;
 
     @GetMapping
     public R<PageResult<ModelUsageRecordVo>> listUsage(ModelUsageListBo bo, PageQuery pageQuery) {
 //        var fromInstant = parseDayStart(from);
 //        var toInstant = parseDayEnd(to);
 //        int limit = pageQuery.getPageSize() == null ? 100 : pageQuery.getPageSize();
-//        List<ModelUsage> entities = (agentKey == null || agentKey.isBlank())
+//        List<V5aiModelUsage> entities = (agentKey == null || agentKey.isBlank())
 //                ? usageMapper.selectRecent(limit)
 //                : usageMapper.selectByAppRange(agentKey, fromInstant, toInstant, limit);
 //        var records = entities.stream().map(entity -> new UsageRecord(
