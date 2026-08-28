@@ -4,8 +4,8 @@ import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import xin.v5ai.nb.common.core.platform.AppQuota;
-import xin.v5ai.nb.common.core.platform.AppQuotaService;
+import xin.v5ai.nb.platform.api.AppQuotaService;
+import xin.v5ai.nb.platform.api.domain.AppQuotaDTO;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -15,7 +15,7 @@ class AgentApiKeyServletFilterTest {
     private static AppQuotaService quotaService(boolean allowed) {
         var service = mock(AppQuotaService.class);
         when(service.checkAllowed("demo")).thenReturn(allowed);
-        when(service.getQuota("demo")).thenReturn(new AppQuota("demo", 0, 0, 0, null));
+        when(service.getQuota("demo")).thenReturn(new AppQuotaDTO("demo", 0, 0, 0, null,null));
         return service;
     }
 

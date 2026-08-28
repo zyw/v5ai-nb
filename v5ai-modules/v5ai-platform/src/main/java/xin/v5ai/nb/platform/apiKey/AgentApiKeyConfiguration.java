@@ -4,7 +4,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import xin.v5ai.nb.common.core.apiKey.AgentApiKeyVerifier;
-import xin.v5ai.nb.common.core.platform.AppQuotaService;
+import xin.v5ai.nb.platform.api.AppQuotaService;
 
 @Configuration
 public class AgentApiKeyConfiguration {

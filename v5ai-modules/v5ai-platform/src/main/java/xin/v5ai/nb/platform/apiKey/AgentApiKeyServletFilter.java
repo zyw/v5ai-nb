@@ -4,7 +4,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import xin.v5ai.nb.common.core.apiKey.AgentApiKeyVerifier;
-import xin.v5ai.nb.common.core.platform.AppQuotaService;
+import xin.v5ai.nb.platform.api.AppQuotaService;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

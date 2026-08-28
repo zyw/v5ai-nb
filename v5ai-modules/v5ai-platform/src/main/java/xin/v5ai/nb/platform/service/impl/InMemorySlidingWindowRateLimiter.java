@@ -1,7 +1,7 @@
 package xin.v5ai.nb.platform.service.impl;
 
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.core.platform.RateLimiter;
+import xin.v5ai.nb.platform.api.RateLimiter;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

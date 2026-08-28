@@ -9,9 +9,9 @@ import xin.v5ai.nb.common.agentscope.core.domain.*;
 import xin.v5ai.nb.common.agentscope.core.service.*;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
-import xin.v5ai.nb.common.core.platform.AppQuotaService;
 import xin.v5ai.nb.model.api.ModelUsageService;
 import xin.v5ai.nb.model.api.domain.ModelUsageDTO;
+import xin.v5ai.nb.platform.api.AppQuotaService;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
