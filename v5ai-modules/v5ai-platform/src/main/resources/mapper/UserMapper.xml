@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="xin.v5ai.nb.platform.mapper.UserMapper">
-    <select id="findByUsername" resultType="xin.v5ai.nb.platform.domain.User">
-        SELECT id, username, password_hash, status, tenant_id, display_name
-        FROM v5ai_user
-        WHERE username = #{username}
-    </select>
-</mapper>

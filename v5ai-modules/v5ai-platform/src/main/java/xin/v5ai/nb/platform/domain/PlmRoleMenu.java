@@ -30,7 +30,6 @@ public class PlmRoleMenu extends BaseEntity {
     /**
      * 菜单ID
      */
-    @TableId(value = "menu_id")
     private Long menuId;
 
 

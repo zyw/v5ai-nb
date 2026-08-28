@@ -1,6 +1,8 @@
 package xin.v5ai.nb.platform.domain;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
@@ -24,13 +26,12 @@ public class PlmUserRole extends BaseEntity {
     /**
      * 用户ID
      */
-    @TableId(value = "user_id")
+    @TableId(type = IdType.INPUT)
     private Long userId;
 
     /**
      * 角色ID
      */
-    @TableId(value = "role_id")
     private Long roleId;
 
 

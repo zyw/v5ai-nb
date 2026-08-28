@@ -65,3 +65,19 @@ CREATE TABLE v5ai_model_usage (
 );
 CREATE INDEX idx_v5ai_model_usage_app ON v5ai_model_usage(app_key, created_at);
 CREATE INDEX idx_v5ai_model_usage_created ON v5ai_model_usage(created_at);
+
+-- ---- Audit log ----
+
+CREATE TABLE v5ai_audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT,
+    actor VARCHAR(100),
+    action VARCHAR(100) NOT NULL,
+    target_type VARCHAR(100),
+    target_id VARCHAR(100),
+    detail TEXT,
+    ip VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_v5ai_audit_log_created ON v5ai_audit_log(created_at);
+CREATE INDEX idx_v5ai_audit_log_actor ON v5ai_audit_log(actor);

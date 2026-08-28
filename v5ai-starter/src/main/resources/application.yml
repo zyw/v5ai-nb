@@ -84,6 +84,9 @@ mybatis-plus:
   mapperLocations: classpath*:mapper/**/*Mapper.xml
   # 多包名使用 例如 org.dromara.**.mapper,org.xxx.**.mapper
   mapperPackage: xin.v5ai.nb.**.mapper
+  configuration:
+    # MyBatis 配置
+    map-underscore-to-camel-case: true
   global-config:
     banner: false
   sql-log:
