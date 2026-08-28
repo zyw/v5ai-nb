@@ -11,6 +11,7 @@ import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.platform.domain.V5aiApiKey;
 import xin.v5ai.nb.platform.domain.bo.V5aiApiKeyBo;
+import xin.v5ai.nb.platform.domain.vo.ApiKeyRespVo;
 import xin.v5ai.nb.platform.domain.vo.V5aiApiKeyVo;
 import xin.v5ai.nb.platform.mapper.V5aiApiKeyMapper;
 import xin.v5ai.nb.platform.service.IV5aiApiKeyService;
@@ -68,9 +69,13 @@ public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService {
     }
 
     @Override
-    public int insertApiKey(String agentKey) {
+    public ApiKeyRespVo insertApiKey(String agentKey) {
         var rawKey = generateApiKey();
-        return upsertSecret(agentKey, passwordEncoder.encode(rawKey));
+        upsertSecret(agentKey, passwordEncoder.encode(rawKey));
+        return ApiKeyRespVo.builder()
+                .agentKey(agentKey)
+                .apiKey(rawKey)
+                .build();
     }
 
 //    @Override

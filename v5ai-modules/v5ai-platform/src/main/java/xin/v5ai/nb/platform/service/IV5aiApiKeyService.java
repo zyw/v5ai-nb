@@ -3,6 +3,7 @@ package xin.v5ai.nb.platform.service;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.platform.domain.bo.V5aiApiKeyBo;
+import xin.v5ai.nb.platform.domain.vo.ApiKeyRespVo;
 import xin.v5ai.nb.platform.domain.vo.V5aiApiKeyVo;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public interface IV5aiApiKeyService {
      * @param agentKey Agent Key
      * @return 影响行数
      */
-    int insertApiKey(String agentKey);
+    ApiKeyRespVo insertApiKey(String agentKey);
 
     String findSecretHash(String agentKey);
 

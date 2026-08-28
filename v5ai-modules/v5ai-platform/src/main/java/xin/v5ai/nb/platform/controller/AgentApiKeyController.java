@@ -9,6 +9,7 @@ import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.platform.domain.bo.V5aiApiKeyBo;
+import xin.v5ai.nb.platform.domain.vo.ApiKeyRespVo;
 import xin.v5ai.nb.platform.domain.vo.V5aiApiKeyVo;
 import xin.v5ai.nb.platform.service.IV5aiApiKeyService;
 
@@ -21,8 +22,8 @@ public class AgentApiKeyController extends BaseController {
 
     @PostMapping("/agents/{agentKey}/api-keys")
     @Log(title = "生成应用API密钥", businessType = BusinessType.INSERT)
-    public R<Void> add(@PathVariable("agentKey") String agentKey) {
-        return toAjax(service.insertApiKey(agentKey));
+    public R<ApiKeyRespVo> add(@PathVariable("agentKey") String agentKey) {
+        return R.ok(service.insertApiKey(agentKey));
     }
 
     @GetMapping("/api-keys")
