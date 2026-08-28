@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.encrypt.core;
+package xin.v5ai.nb.common.encrypt.cipher;
 
 /**
  * 凭据加密端口：对敏感配置（模型 API Key、MCP Headers/环境变量、第三方 Token 等）做加解密。

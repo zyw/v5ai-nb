@@ -11,7 +11,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallResult;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
-import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 import xin.v5ai.nb.mcp.domain.McpServer;
 import xin.v5ai.nb.mcp.domain.McpTool;

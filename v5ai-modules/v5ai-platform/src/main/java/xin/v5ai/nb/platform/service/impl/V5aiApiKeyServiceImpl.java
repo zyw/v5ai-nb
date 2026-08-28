@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.encrypt.utils.CipherUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.platform.domain.V5aiApiKey;
@@ -16,7 +16,6 @@ import xin.v5ai.nb.platform.domain.vo.V5aiApiKeyVo;
 import xin.v5ai.nb.platform.mapper.V5aiApiKeyMapper;
 import xin.v5ai.nb.platform.service.IV5aiApiKeyService;
 
-import java.security.SecureRandom;
 import java.util.List;
 
 @Slf4j
@@ -24,11 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService {
 
-    private static final String KEY_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
-
     private final V5aiApiKeyMapper baseMapper;
-    private final PasswordEncoder passwordEncoder;
 
     @Override
     public String findSecretHash(String agentKey) {
@@ -55,13 +50,6 @@ public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService {
         return baseMapper.deleteByAgentKey(agentKey);
     }
 
-//    @Override
-//    public CreateApiKeyResult createApiKey(String agentKey) {
-//        var rawKey = generateApiKey();
-//        upsertSecret(agentKey, passwordEncoder.encode(rawKey));
-//        return new CreateApiKeyResult(agentKey, rawKey);
-//    }
-
     @Override
     public PageResult<V5aiApiKeyVo> selectPageList(V5aiApiKeyBo bo, PageQuery pageQuery) {
         Page<V5aiApiKeyVo> page = baseMapper.selectVoPage(pageQuery.build(), this.buildQueryWrapper(bo));
@@ -70,25 +58,12 @@ public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService {
 
     @Override
     public ApiKeyRespVo insertApiKey(String agentKey) {
-        var rawKey = generateApiKey();
-        upsertSecret(agentKey, passwordEncoder.encode(rawKey));
+        var apiKey = CipherUtils.generateApiKey();
+        upsertSecret(agentKey, apiKey.getSecond());
         return ApiKeyRespVo.builder()
                 .agentKey(agentKey)
-                .apiKey(rawKey)
+                .apiKey(apiKey.getFirst())
                 .build();
-    }
-
-//    @Override
-//    public void deleteApiKey(String agentKey) {
-//        delete(agentKey);
-//    }
-
-    private String generateApiKey() {
-        var sb = new StringBuilder("v5ai_");
-        for (int i = 0; i < 32; i++) {
-            sb.append(KEY_ALPHABET.charAt(RANDOM.nextInt(KEY_ALPHABET.length())));
-        }
-        return sb.toString();
     }
 
     /**

@@ -5,7 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
 import xin.v5ai.nb.common.agentscope.core.factory.config.AgentModelCredentialConfig;
 import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
-import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 import java.net.URI;
 import java.net.http.HttpClient;

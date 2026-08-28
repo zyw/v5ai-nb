@@ -6,8 +6,6 @@ import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.GenerateOptions;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -18,7 +16,7 @@ import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
 import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
 import xin.v5ai.nb.common.agentscope.core.domain.GeneratedAgentConfig;
 import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
-import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 import java.time.Duration;
 import java.util.ArrayList;

@@ -1,5 +1,6 @@
 package xin.v5ai.nb.platform.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.log.annotation.Log;
@@ -12,13 +13,11 @@ import xin.v5ai.nb.platform.api.domain.AppUsageDTO;
  * 应用配额与当日用量 API（限流/配额/用量管理）。
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/apps/{agentKey}")
 public class V5aiAppQuotaController {
-    private final AppQuotaService quotaService;
 
-    public V5aiAppQuotaController(AppQuotaService quotaService) {
-        this.quotaService = quotaService;
-    }
+    private final AppQuotaService quotaService;
 
     public record UpdateQuotaRequest(Integer dailyModelCalls, Long dailyTokens, Integer ratePerMinute) {
     }

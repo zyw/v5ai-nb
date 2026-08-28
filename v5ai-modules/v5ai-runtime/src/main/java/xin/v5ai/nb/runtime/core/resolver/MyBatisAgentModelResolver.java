@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
 import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
 import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
-import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 @Component
 @RequiredArgsConstructor

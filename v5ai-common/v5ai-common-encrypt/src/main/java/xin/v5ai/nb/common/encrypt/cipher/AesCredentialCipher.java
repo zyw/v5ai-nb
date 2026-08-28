@@ -1,10 +1,11 @@
-package xin.v5ai.nb.common.encrypt.core;
+package xin.v5ai.nb.common.encrypt.cipher;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 public class AesCredentialCipher implements CredentialCipher {
@@ -31,7 +32,7 @@ public class AesCredentialCipher implements CredentialCipher {
         }
         try {
             var iv = new byte[IV_BYTES];
-            java.security.SecureRandom.getInstanceStrong().nextBytes(iv);
+            SecureRandom.getInstanceStrong().nextBytes(iv);
             var cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(TAG_BITS, iv));
             var encrypted = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));

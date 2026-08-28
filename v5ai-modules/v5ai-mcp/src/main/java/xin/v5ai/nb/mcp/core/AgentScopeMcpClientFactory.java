@@ -10,7 +10,7 @@ import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
 import xin.v5ai.nb.common.agentscope.core.factory.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
-import xin.v5ai.nb.common.encrypt.core.CredentialCipher;
+import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 import java.time.Duration;
 import java.util.Map;
