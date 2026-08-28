@@ -24,7 +24,7 @@ public class PlmRoleMenu extends BaseEntity {
     /**
      * 角色ID
      */
-    @TableId(value = "role_id")
+    @TableId(type = IdType.INPUT)
     private Long roleId;
 
     /**
