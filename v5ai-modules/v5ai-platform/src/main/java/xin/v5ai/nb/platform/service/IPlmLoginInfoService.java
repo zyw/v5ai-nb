@@ -2,8 +2,8 @@ package xin.v5ai.nb.platform.service;
 
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.platform.domain.bo.LoginInfoBo;
-import xin.v5ai.nb.platform.domain.vo.LoginInfoVo;
+import xin.v5ai.nb.platform.domain.bo.PlmLoginInfoBo;
+import xin.v5ai.nb.platform.domain.vo.PlmLoginInfoVo;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ import java.util.List;
  * @author ZYW
  * @since 2026-08-24
  */
-public interface ILoginInfoService {
+public interface IPlmLoginInfoService {
     /**
      * 分页查询登录日志列表
      *
@@ -23,14 +23,14 @@ public interface ILoginInfoService {
      * @param pageQuery 分页参数
      * @return 登录日志分页列表
      */
-    PageResult<LoginInfoVo> selectPageLoginInfoList(LoginInfoBo loginInfo, PageQuery pageQuery);
+    PageResult<PlmLoginInfoVo> selectPageLoginInfoList(PlmLoginInfoBo loginInfo, PageQuery pageQuery);
 
     /**
      * 新增系统登录日志
      *
      * @param bo 访问日志对象
      */
-    void insertLoginInfo(LoginInfoBo bo);
+    void insertLoginInfo(PlmLoginInfoBo bo);
 
     /**
      * 查询系统登录日志集合
@@ -38,7 +38,7 @@ public interface ILoginInfoService {
      * @param loginInfo 访问日志对象
      * @return 登录记录集合
      */
-    List<LoginInfoVo> selectLoginInfoList(LoginInfoBo loginInfo);
+    List<PlmLoginInfoVo> selectLoginInfoList(PlmLoginInfoBo loginInfo);
 
     /**
      * 批量删除系统登录日志

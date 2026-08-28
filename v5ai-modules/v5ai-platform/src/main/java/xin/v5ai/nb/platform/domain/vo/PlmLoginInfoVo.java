@@ -1,11 +1,12 @@
-package xin.v5ai.nb.platform.domain;
+package xin.v5ai.nb.platform.domain.vo;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import xin.v5ai.nb.platform.domain.PlmLoginInfo;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -22,8 +23,8 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @ToString
-@TableName("v5ai_login_info")
-public class LoginInfo implements Serializable {
+@AutoMapper(target = PlmLoginInfo.class)
+public class PlmLoginInfoVo implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -38,6 +39,11 @@ public class LoginInfo implements Serializable {
      * 用户账号
      */
     private String userName;
+
+    /**
+     * 客户端Key
+     */
+    private String clientKey;
 
     /**
      * 设备类型

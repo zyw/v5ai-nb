@@ -1,8 +1,8 @@
 package xin.v5ai.nb.platform.mapper;
 
 import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
-import xin.v5ai.nb.platform.domain.OperLog;
-import xin.v5ai.nb.platform.domain.vo.OperLogVo;
+import xin.v5ai.nb.platform.domain.PlmOperLog;
+import xin.v5ai.nb.platform.domain.vo.PlmOperLogVo;
 
 /**
  * <p>
@@ -12,6 +12,6 @@ import xin.v5ai.nb.platform.domain.vo.OperLogVo;
  * @author ZYW
  * @since 2026-08-24
  */
-public interface OperLogMapper extends BaseMapperPlus<OperLog, OperLogVo> {
+public interface PlmOperLogMapper extends BaseMapperPlus<PlmOperLog, PlmOperLogVo> {
 
 }

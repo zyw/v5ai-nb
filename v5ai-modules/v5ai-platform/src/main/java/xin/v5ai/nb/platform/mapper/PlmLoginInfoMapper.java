@@ -1,8 +1,8 @@
 package xin.v5ai.nb.platform.mapper;
 
 import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
-import xin.v5ai.nb.platform.domain.LoginInfo;
-import xin.v5ai.nb.platform.domain.vo.LoginInfoVo;
+import xin.v5ai.nb.platform.domain.PlmLoginInfo;
+import xin.v5ai.nb.platform.domain.vo.PlmLoginInfoVo;
 
 /**
  * <p>
@@ -12,6 +12,6 @@ import xin.v5ai.nb.platform.domain.vo.LoginInfoVo;
  * @author ZYW
  * @since 2026-08-24
  */
-public interface LoginInfoMapper extends BaseMapperPlus<LoginInfo, LoginInfoVo> {
+public interface PlmLoginInfoMapper extends BaseMapperPlus<PlmLoginInfo, PlmLoginInfoVo> {
 
 }

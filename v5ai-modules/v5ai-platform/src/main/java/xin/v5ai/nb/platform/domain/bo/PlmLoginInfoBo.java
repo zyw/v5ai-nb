@@ -1,30 +1,21 @@
-package xin.v5ai.nb.platform.domain.vo;
+package xin.v5ai.nb.platform.domain.bo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import io.github.linpeilie.annotations.AutoMapper;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-import xin.v5ai.nb.platform.domain.LoginInfo;
+import lombok.Data;
+import xin.v5ai.nb.platform.domain.PlmLoginInfo;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * <p>
- * 系统访问记录
- * </p>
- *
- * @author ZYW
- * @since 2026-08-24
+ * 系统访问记录业务对象 sys_login_info
  */
-@Getter
-@Setter
-@ToString
-@AutoMapper(target = LoginInfo.class)
-public class LoginInfoVo implements Serializable {
+@Data
+@AutoMapper(target = PlmLoginInfo.class, reverseConvertGenerate = false)
+public class PlmLoginInfoBo implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -32,13 +23,17 @@ public class LoginInfoVo implements Serializable {
     /**
      * 访问ID
      */
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
+    private Long infoId;
 
     /**
      * 用户账号
      */
     private String userName;
+
+    /**
+     * 客户端
+     */
+    private String clientKey;
 
     /**
      * 设备类型
@@ -66,7 +61,7 @@ public class LoginInfoVo implements Serializable {
     private String os;
 
     /**
-     * 登录状态（0正常 1异常）
+     * 登录状态（0成功 1失败）
      */
     private String status;
 
@@ -79,4 +74,9 @@ public class LoginInfoVo implements Serializable {
      * 访问时间
      */
     private OffsetDateTime loginTime;
+
+    /**
+     * 请求参数
+     */
+    private Map<String, Object> params = new HashMap<>();
 }

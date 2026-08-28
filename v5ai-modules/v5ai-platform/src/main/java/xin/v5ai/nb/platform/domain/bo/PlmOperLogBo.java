@@ -1,31 +1,23 @@
-package xin.v5ai.nb.platform.domain.vo;
+package xin.v5ai.nb.platform.domain.bo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import io.github.linpeilie.annotations.AutoMapper;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-import xin.v5ai.nb.platform.domain.OperLog;
+import io.github.linpeilie.annotations.AutoMappers;
+import lombok.Data;
+import xin.v5ai.nb.common.log.event.OperLogEvent;
+import xin.v5ai.nb.platform.domain.PlmOperLog;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
-/**
- * <p>
- * 操作日志记录
- * </p>
- *
- * @author ZYW
- * @since 2026-08-24
- */
-@Getter
-@Setter
-@ToString
-@AutoMapper(target = OperLog.class)
-public class OperLogVo implements Serializable {
+@Data
+@AutoMappers({
+        @AutoMapper(target = PlmOperLog.class, reverseConvertGenerate = false),
+        @AutoMapper(target = OperLogEvent.class)
+})
+public class PlmOperLogBo implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -33,8 +25,7 @@ public class OperLogVo implements Serializable {
     /**
      * 日志主键
      */
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
+    private Long operId;
 
     /**
      * 模块标题
@@ -45,6 +36,11 @@ public class OperLogVo implements Serializable {
      * 业务类型（0其它 1新增 2修改 3删除）
      */
     private Integer businessType;
+
+    /**
+     * 业务类型数组
+     */
+    private Integer[] businessTypes;
 
     /**
      * 方法名称
@@ -70,6 +66,21 @@ public class OperLogVo implements Serializable {
      * 操作用户ID
      */
     private Long userId;
+
+    /**
+     * 操作部门ID
+     */
+    private Long deptId;
+
+    /**
+     * 部门名称
+     */
+    private String deptName;
+
+    /**
+     * 客户端
+     */
+    private String clientKey;
 
     /**
      * 设备类型
@@ -130,4 +141,9 @@ public class OperLogVo implements Serializable {
      * 消耗时间
      */
     private Long costTime;
+
+    /**
+     * 请求参数
+     */
+    private Map<String, Object> params = new HashMap<>();
 }

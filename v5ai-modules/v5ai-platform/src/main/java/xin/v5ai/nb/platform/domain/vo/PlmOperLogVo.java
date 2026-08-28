@@ -1,23 +1,30 @@
-package xin.v5ai.nb.platform.domain.bo;
+package xin.v5ai.nb.platform.domain.vo;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import io.github.linpeilie.annotations.AutoMapper;
-import io.github.linpeilie.annotations.AutoMappers;
-import lombok.Data;
-import xin.v5ai.nb.common.log.event.OperLogEvent;
-import xin.v5ai.nb.platform.domain.OperLog;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import xin.v5ai.nb.platform.domain.PlmOperLog;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
-@Data
-@AutoMappers({
-        @AutoMapper(target = OperLog.class, reverseConvertGenerate = false),
-        @AutoMapper(target = OperLogEvent.class)
-})
-public class OperLogBo implements Serializable {
+/**
+ * <p>
+ * 操作日志记录
+ * </p>
+ *
+ * @author ZYW
+ * @since 2026-08-24
+ */
+@Getter
+@Setter
+@ToString
+@AutoMapper(target = PlmOperLog.class)
+public class PlmOperLogVo implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -25,7 +32,8 @@ public class OperLogBo implements Serializable {
     /**
      * 日志主键
      */
-    private Long operId;
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
 
     /**
      * 模块标题
@@ -33,14 +41,14 @@ public class OperLogBo implements Serializable {
     private String title;
 
     /**
+     * 客户端Key
+     */
+    private String clientKey;
+
+    /**
      * 业务类型（0其它 1新增 2修改 3删除）
      */
     private Integer businessType;
-
-    /**
-     * 业务类型数组
-     */
-    private Integer[] businessTypes;
 
     /**
      * 方法名称
@@ -66,21 +74,6 @@ public class OperLogBo implements Serializable {
      * 操作用户ID
      */
     private Long userId;
-
-    /**
-     * 操作部门ID
-     */
-    private Long deptId;
-
-    /**
-     * 部门名称
-     */
-    private String deptName;
-
-    /**
-     * 客户端
-     */
-    private String clientKey;
 
     /**
      * 设备类型
@@ -141,9 +134,4 @@ public class OperLogBo implements Serializable {
      * 消耗时间
      */
     private Long costTime;
-
-    /**
-     * 请求参数
-     */
-    private Map<String, Object> params = new HashMap<>();
 }

@@ -2,8 +2,8 @@ package xin.v5ai.nb.platform.service;
 
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.platform.domain.bo.OperLogBo;
-import xin.v5ai.nb.platform.domain.vo.OperLogVo;
+import xin.v5ai.nb.platform.domain.bo.PlmOperLogBo;
+import xin.v5ai.nb.platform.domain.vo.PlmOperLogVo;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ import java.util.List;
  * @author ZYW
  * @since 2026-08-24
  */
-public interface IOperLogService {
+public interface IPlmOperLogService {
     /**
      * 分页查询操作日志列表
      *
@@ -23,14 +23,14 @@ public interface IOperLogService {
      * @param pageQuery 分页参数
      * @return 操作日志分页列表
      */
-    PageResult<OperLogVo> selectPageOperLogList(OperLogBo operLog, PageQuery pageQuery);
+    PageResult<PlmOperLogVo> selectPageOperLogList(PlmOperLogBo operLog, PageQuery pageQuery);
 
     /**
      * 新增操作日志
      *
      * @param bo 操作日志对象
      */
-    void insertOperlog(OperLogBo bo);
+    void insertOperlog(PlmOperLogBo bo);
 
     /**
      * 查询系统操作日志集合
@@ -38,7 +38,7 @@ public interface IOperLogService {
      * @param operLog 操作日志对象
      * @return 操作日志集合
      */
-    List<OperLogVo> selectOperLogList(OperLogBo operLog);
+    List<PlmOperLogVo> selectOperLogList(PlmOperLogBo operLog);
 
     /**
      * 批量删除系统操作日志
@@ -54,7 +54,7 @@ public interface IOperLogService {
      * @param operId 操作ID
      * @return 操作日志对象
      */
-    OperLogVo selectOperLogById(Long operId);
+    PlmOperLogVo selectOperLogById(Long operId);
 
     /**
      * 清空操作日志

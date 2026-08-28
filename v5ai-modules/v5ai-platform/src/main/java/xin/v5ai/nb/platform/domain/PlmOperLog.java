@@ -22,8 +22,8 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @ToString
-@TableName("v5ai_oper_log")
-public class OperLog implements Serializable {
+@TableName("plm_oper_log")
+public class PlmOperLog implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -38,6 +38,11 @@ public class OperLog implements Serializable {
      * 模块标题
      */
     private String title;
+
+    /**
+     * 客户端Key
+     */
+    private String clientKey;
 
     /**
      * 业务类型（0其它 1新增 2修改 3删除）

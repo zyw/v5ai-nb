@@ -6,14 +6,14 @@ import xin.v5ai.nb.common.web.core.BaseController;
 
 /**
  * <p>
- * 系统访问记录 前端控制器
+ * 操作日志记录 前端控制器
  * </p>
  *
  * @author ZYW
  * @since 2026-08-24
  */
 @Controller
-@RequestMapping("/v5aiLoginInfo")
-public class LoginInfoController extends BaseController {
+@RequestMapping("/v5aiOperLog")
+public class PlmOperLogController extends BaseController {
 
 }

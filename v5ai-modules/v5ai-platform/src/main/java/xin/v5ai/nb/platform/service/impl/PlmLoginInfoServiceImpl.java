@@ -3,9 +3,9 @@ package xin.v5ai.nb.platform.service.impl;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.page.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.platform.domain.bo.LoginInfoBo;
-import xin.v5ai.nb.platform.domain.vo.LoginInfoVo;
-import xin.v5ai.nb.platform.service.ILoginInfoService;
+import xin.v5ai.nb.platform.domain.bo.PlmLoginInfoBo;
+import xin.v5ai.nb.platform.domain.vo.PlmLoginInfoVo;
+import xin.v5ai.nb.platform.service.IPlmLoginInfoService;
 
 import java.util.List;
 
@@ -18,20 +18,20 @@ import java.util.List;
  * @since 2026-08-24
  */
 @Service
-public class LoginInfoServiceImpl implements ILoginInfoService {
+public class PlmLoginInfoServiceImpl implements IPlmLoginInfoService {
 
     @Override
-    public PageResult<LoginInfoVo> selectPageLoginInfoList(LoginInfoBo loginInfo, PageQuery pageQuery) {
+    public PageResult<PlmLoginInfoVo> selectPageLoginInfoList(PlmLoginInfoBo loginInfo, PageQuery pageQuery) {
         return null;
     }
 
     @Override
-    public void insertLoginInfo(LoginInfoBo bo) {
+    public void insertLoginInfo(PlmLoginInfoBo bo) {
 
     }
 
     @Override
-    public List<LoginInfoVo> selectLoginInfoList(LoginInfoBo loginInfo) {
+    public List<PlmLoginInfoVo> selectLoginInfoList(PlmLoginInfoBo loginInfo) {
         return List.of();
     }
 

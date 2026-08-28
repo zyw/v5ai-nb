@@ -13,11 +13,11 @@ import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.log.event.OperLogEvent;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
-import xin.v5ai.nb.platform.domain.OperLog;
-import xin.v5ai.nb.platform.domain.bo.OperLogBo;
-import xin.v5ai.nb.platform.domain.vo.OperLogVo;
-import xin.v5ai.nb.platform.mapper.OperLogMapper;
-import xin.v5ai.nb.platform.service.IOperLogService;
+import xin.v5ai.nb.platform.domain.PlmOperLog;
+import xin.v5ai.nb.platform.domain.bo.PlmOperLogBo;
+import xin.v5ai.nb.platform.domain.vo.PlmOperLogVo;
+import xin.v5ai.nb.platform.mapper.PlmOperLogMapper;
+import xin.v5ai.nb.platform.service.IPlmOperLogService;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -34,9 +34,9 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
-public class OperLogServiceImpl implements IOperLogService {
+public class PlmOperLogServiceImpl implements IPlmOperLogService {
 
-    private final OperLogMapper mapper;
+    private final PlmOperLogMapper mapper;
 
     /**
      * 操作日志记录
@@ -46,33 +46,33 @@ public class OperLogServiceImpl implements IOperLogService {
     @Async
     @EventListener
     public void recordOper(OperLogEvent operLogEvent) {
-        OperLogBo operLog = MapstructUtils.convert(operLogEvent, OperLogBo.class);
+        PlmOperLogBo operLog = MapstructUtils.convert(operLogEvent, PlmOperLogBo.class);
         // TODO 远程查询操作地点
 //        operLog.setOperLocation(AddressUtils.getRealAddressByIP(operLog.getOperIp()));
         insertOperlog(operLog);
     }
 
     @Override
-    public PageResult<OperLogVo> selectPageOperLogList(OperLogBo operLog, PageQuery pageQuery) {
-        LambdaQueryWrapper<OperLog> lqw = buildQueryWrapper(operLog);
+    public PageResult<PlmOperLogVo> selectPageOperLogList(PlmOperLogBo operLog, PageQuery pageQuery) {
+        LambdaQueryWrapper<PlmOperLog> lqw = buildQueryWrapper(operLog);
         if (StringUtils.isBlank(pageQuery.getOrderByColumn())) {
-            lqw.orderByDesc(OperLog::getId);
+            lqw.orderByDesc(PlmOperLog::getId);
         }
-        Page<OperLogVo> page = mapper.selectVoPage(pageQuery.build(), lqw);
+        Page<PlmOperLogVo> page = mapper.selectVoPage(pageQuery.build(), lqw);
         return PageResult.build(page.getRecords(), page.getTotal());
     }
 
     @Override
-    public void insertOperlog(OperLogBo bo) {
-        OperLog operLog = MapstructUtils.convert(bo, OperLog.class);
+    public void insertOperlog(PlmOperLogBo bo) {
+        PlmOperLog operLog = MapstructUtils.convert(bo, PlmOperLog.class);
         operLog.setOperTime(OffsetDateTime.now());
         mapper.insert(operLog);
     }
 
     @Override
-    public List<OperLogVo> selectOperLogList(OperLogBo operLog) {
-        LambdaQueryWrapper<OperLog> lqw = buildQueryWrapper(operLog);
-        return mapper.selectVoList(lqw.orderByDesc(OperLog::getId));
+    public List<PlmOperLogVo> selectOperLogList(PlmOperLogBo operLog) {
+        LambdaQueryWrapper<PlmOperLog> lqw = buildQueryWrapper(operLog);
+        return mapper.selectVoList(lqw.orderByDesc(PlmOperLog::getId));
     }
 
     @Override
@@ -81,7 +81,7 @@ public class OperLogServiceImpl implements IOperLogService {
     }
 
     @Override
-    public OperLogVo selectOperLogById(Long operId) {
+    public PlmOperLogVo selectOperLogById(Long operId) {
         return mapper.selectVoById(operId);
     }
 
@@ -96,25 +96,25 @@ public class OperLogServiceImpl implements IOperLogService {
      * @param operLog 操作日志筛选条件
      * @return 包含业务类型、状态、操作人和时间区间的查询包装器
      */
-    private LambdaQueryWrapper<OperLog> buildQueryWrapper(OperLogBo operLog) {
+    private LambdaQueryWrapper<PlmOperLog> buildQueryWrapper(PlmOperLogBo operLog) {
         Map<String, Object> params = operLog.getParams();
-        return QueryBuilder.lambda(OperLog.class)
-                .likeIfText(OperLog::getOperIp, operLog.getOperIp())
-                .likeIfText(OperLog::getTitle, operLog.getTitle())
+        return QueryBuilder.lambda(PlmOperLog.class)
+                .likeIfText(PlmOperLog::getOperIp, operLog.getOperIp())
+                .likeIfText(PlmOperLog::getTitle, operLog.getTitle())
                 .eq(operLog.getBusinessType() != null && operLog.getBusinessType() > 0,
-                        OperLog::getBusinessType, operLog.getBusinessType())
+                        PlmOperLog::getBusinessType, operLog.getBusinessType())
                 .func(f -> {
                     if (ArrayUtil.isNotEmpty(operLog.getBusinessTypes())) {
-                        f.in(OperLog::getBusinessType, Arrays.asList(operLog.getBusinessTypes()));
+                        f.in(PlmOperLog::getBusinessType, Arrays.asList(operLog.getBusinessTypes()));
                     }
                 })
-                .eqIfPresent(OperLog::getStatus, operLog.getStatus())
-                .likeIfText(OperLog::getOperName, operLog.getOperName())
-                .eqIfPresent(OperLog::getUserId, operLog.getUserId())
-                .eqIfText(OperLog::getDeviceType, operLog.getDeviceType())
-                .likeIfText(OperLog::getBrowser, operLog.getBrowser())
-                .likeIfText(OperLog::getOs, operLog.getOs())
-                .betweenParams(OperLog::getOperTime, params, "beginTime", "endTime")
+                .eqIfPresent(PlmOperLog::getStatus, operLog.getStatus())
+                .likeIfText(PlmOperLog::getOperName, operLog.getOperName())
+                .eqIfPresent(PlmOperLog::getUserId, operLog.getUserId())
+                .eqIfText(PlmOperLog::getDeviceType, operLog.getDeviceType())
+                .likeIfText(PlmOperLog::getBrowser, operLog.getBrowser())
+                .likeIfText(PlmOperLog::getOs, operLog.getOs())
+                .betweenParams(PlmOperLog::getOperTime, params, "beginTime", "endTime")
                 .build();
     }
 }

@@ -25,7 +25,7 @@ public class CodeGenerator {
                         .xml("mapper.xml")
                 )
                 .strategyConfig(builder -> builder
-                        .addInclude("v5ai_oper_log","v5ai_login_info")
+                        .addInclude("plm_oper_log","plm_login_info")
                         .entityBuilder()
                         .enableLombok()
                 )
