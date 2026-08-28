@@ -11,3 +11,4 @@ dist/
 .flattened-pom.xml
 .npm-cache/
 .tmp-ponytail/
+/logs/
