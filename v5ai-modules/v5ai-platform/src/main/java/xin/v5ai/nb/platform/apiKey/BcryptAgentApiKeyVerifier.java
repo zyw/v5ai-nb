@@ -1,22 +1,21 @@
 package xin.v5ai.nb.platform.apiKey;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.core.apiKey.AgentApiKeyVerifier;
+import xin.v5ai.nb.platform.service.IV5aiApiKeyService;
 
 @Component
+@RequiredArgsConstructor
 public class BcryptAgentApiKeyVerifier implements AgentApiKeyVerifier {
-    private final AgentApiKeyStore store;
-    private final PasswordEncoder passwordEncoder;
 
-    public BcryptAgentApiKeyVerifier(AgentApiKeyStore store, PasswordEncoder passwordEncoder) {
-        this.store = store;
-        this.passwordEncoder = passwordEncoder;
-    }
+    private final IV5aiApiKeyService service;;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public boolean verify(String agentKey, String apiKey) {
-        var secretHash = store.findSecretHash(agentKey);
+        var secretHash = service.findSecretHash(agentKey);
         return secretHash != null && passwordEncoder.matches(apiKey, secretHash);
     }
 }

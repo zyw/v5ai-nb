@@ -13,10 +13,10 @@ import xin.v5ai.nb.platform.api.domain.AppUsageDTO;
  */
 @RestController
 @RequestMapping("/api/admin/apps/{agentKey}")
-public class AppQuotaController {
+public class V5aiAppQuotaController {
     private final AppQuotaService quotaService;
 
-    public AppQuotaController(AppQuotaService quotaService) {
+    public V5aiAppQuotaController(AppQuotaService quotaService) {
         this.quotaService = quotaService;
     }
 

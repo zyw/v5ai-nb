@@ -13,7 +13,7 @@ import xin.v5ai.nb.common.web.core.BaseController;
  * @since 2026-08-24
  */
 @Controller
-@RequestMapping("/v5aiOperLog")
+@RequestMapping("/api/admin/oper/log")
 public class PlmOperLogController extends BaseController {
 
 }

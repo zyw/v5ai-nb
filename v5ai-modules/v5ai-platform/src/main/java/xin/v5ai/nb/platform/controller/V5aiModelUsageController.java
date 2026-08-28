@@ -21,7 +21,7 @@ import java.time.ZoneOffset;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/usage")
-public class UsageController {
+public class V5aiModelUsageController {
 
     private final IV5aiModelUsageService service;
 

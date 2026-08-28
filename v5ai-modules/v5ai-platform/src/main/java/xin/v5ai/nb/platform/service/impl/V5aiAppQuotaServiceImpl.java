@@ -1,5 +1,6 @@
 package xin.v5ai.nb.platform.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.platform.api.RateLimiter;
@@ -19,16 +20,12 @@ import java.time.OffsetDateTime;
  * 0 表示不限制。
  */
 @Service
+@RequiredArgsConstructor
 public class V5aiAppQuotaServiceImpl implements IV5aiAppQuotaService, AppQuotaService {
+
     private final V5aiAppQuotaMapper quotaMapper;
     private final V5aiAppUsageMapper usageMapper;
     private final RateLimiter rateLimiter;
-
-    public V5aiAppQuotaServiceImpl(V5aiAppQuotaMapper quotaMapper, V5aiAppUsageMapper usageMapper, RateLimiter rateLimiter) {
-        this.quotaMapper = quotaMapper;
-        this.usageMapper = usageMapper;
-        this.rateLimiter = rateLimiter;
-    }
 
     @Override
     public AppQuotaDTO getQuota(String agentKey) {
