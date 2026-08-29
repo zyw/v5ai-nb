@@ -12,10 +12,10 @@
     <artifactId>v5ai-common-web</artifactId>
 
     <dependencies>
-        <!-- 序列化模块 -->
+        <!-- Redis模块 -->
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-common-json</artifactId>
+            <artifactId>v5ai-common-redis</artifactId>
         </dependency>
         <!-- SpringBoot Web容器 -->
         <dependency>

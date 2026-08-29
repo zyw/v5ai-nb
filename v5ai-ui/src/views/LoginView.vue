@@ -3,9 +3,13 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NAlert, NButton, NIcon, NInput } from 'naive-ui'
 import { Bot, Lock, Moon, Sun, User } from 'lucide-vue-next'
-import { login } from '../api/client'
+import { ApiError, login } from '../api/client'
 import { loadCurrentUser, setAdminToken } from '../stores/session'
 import { isDark, toggleTheme } from '../stores/theme'
+import SliderCaptcha from '../components/SliderCaptcha.vue'
+
+/** 与后端 SliderCaptchaService.CAPTCHA_REQUIRED_CODE 对应。 */
+const CAPTCHA_REQUIRED_CODE = 1006
 
 const route = useRoute()
 const router = useRouter()
@@ -14,6 +18,9 @@ const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const captchaRequired = ref(false)
+const sliderUuid = ref('')
+const sliderVerified = ref(false)
 
 async function handleSubmit() {
   if (!username.value.trim() || !password.value) {
@@ -23,16 +30,34 @@ async function handleSubmit() {
   loading.value = true
   error.value = ''
   try {
-    const res = await login(username.value.trim(), password.value)
-    setAdminToken(res.token)
+    const res = await login(
+      username.value.trim(),
+      password.value,
+      sliderVerified.value ? sliderUuid.value : undefined
+    )
+    setAdminToken(res.access_token)
     await loadCurrentUser()
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
     router.replace(redirect)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '登录失败，请稍后重试'
+    if (e instanceof ApiError && e.code === CAPTCHA_REQUIRED_CODE) {
+      // 错误次数已达阈值：弹出滑块，验证通过后自动重试登录
+      captchaRequired.value = true
+      sliderVerified.value = false
+      error.value = e.message
+    } else {
+      error.value = e instanceof Error ? e.message : '登录失败，请稍后重试'
+    }
   } finally {
     loading.value = false
   }
+}
+
+function onSliderSuccess(uuid: string) {
+  sliderUuid.value = uuid
+  sliderVerified.value = true
+  error.value = ''
+  handleSubmit()
 }
 </script>
 
@@ -84,6 +109,12 @@ async function handleSubmit() {
         >
           <template #prefix><n-icon :component="Lock" /></template>
         </n-input>
+
+        <SliderCaptcha
+          v-if="captchaRequired && !sliderVerified"
+          class="login-slider"
+          @success="onSliderSuccess"
+        />
 
         <n-button type="primary" size="large" block attr-type="submit" :loading="loading">
           登 录
@@ -167,6 +198,10 @@ async function handleSubmit() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.login-slider {
+  align-self: center;
 }
 
 .field-label {

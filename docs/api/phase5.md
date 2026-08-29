@@ -4,25 +4,49 @@
 
 管理 API（`/api/admin/**`）现在要求登录：
 
-- `POST /api/auth/login` 返回令牌 + 当前用户信息（userId/username/tenantId/roles）；
-- `GET /api/auth/me` 返回当前登录用户信息；
-- **所有 `/api/admin/**` 需登录**（`/api/auth/login` 除外）；非 GET 写操作需 `ADMIN` 角色；
+- `POST /api/auth/login` 返回令牌（`access_token`/`expire_in`/`client_id`）；
+- **所有 `/api/admin/**` 需登录**（`/api/auth/login` 与验证码接口除外）；非 GET 写操作需 `ADMIN` 角色；
 - 未登录返回 401，角色不足返回 403（JSON 错误体）。
+
+### 登录（加密传输）
+
+`/api/auth/login` 标注了 `@ApiEncrypt`，请求体必须加密（RSA+AES 混合，与 RuoYi-Vue-Plus 协议一致）：
+
+1. 生成随机 16 位 AES 密钥；
+2. 用 AES-128/ECB/PKCS5 加密 JSON 请求体，输出 base64 作为请求体；
+3. AES 密钥先 base64 编码，再用 RSA 公钥（对应后端 `v5ai.api-decrypt.private-key`，即前端 `VITE_APP_RSA_PUBLIC_KEY`）加密，放入请求头 `encrypt-key`。
 
 ```http
 POST /api/auth/login
-{ "username": "admin", "password": "admin" }
+Content-Type: application/json
+encrypt-key: <RSA(base64(AES密钥))>
 
-{
-  "tokenType": "Bearer",
-  "token": "<jwt>",
-  "userId": 1,
-  "username": "admin",
-  "displayName": "Platform Admin",
-  "tenantId": null,
-  "roles": ["ADMIN"]
-}
+<AES(JSON)>
+
+# 解密后的请求体：
+{ "clientId": "e5cd7e4891bf95d1d19206ce24a7b32e", "grantType": "password", "username": "admin", "password": "admin", "uuid": "<滑块令牌，可选>" }
 ```
+
+```json
+// 响应（明文）
+{ "code": 200, "msg": "操作成功", "data": { "access_token": "<jwt>", "expire_in": 1800, "client_id": "e5cd7e4891bf95d1d19206ce24a7b32e" } }
+```
+
+前端密钥配置见 `v5ai-ui/.env`（`VITE_APP_RSA_PUBLIC_KEY`/`VITE_APP_RSA_PRIVATE_KEY`），更换需与后端 `v5ai.api-decrypt` 一同更换。
+
+### 滑块验证码（登录防爆破）
+
+当某账号登录错误次数达到 `v5ai.captcha.slider-threshold`（默认 3，需小于 `user.password.maxRetryCount`=5）后，再次登录返回错误码 `1006`，需先通过滑块验证再携带 `uuid` 登录。
+
+```http
+GET /api/auth/captcha
+# 响应 data：{ "uuid": "...", "background": "<PNG base64>", "puzzle": "<PNG base64>", "y": 62 }
+
+POST /api/auth/captcha/verify
+{ "uuid": "...", "x": 128 }   # x 为拼图块横向像素位置，误差 ±5px 内通过
+```
+
+缺口 x 坐标仅存于服务端 Redis（`captcha:slider:gap:{uuid}`，TTL 默认 2 分钟），令牌一次性；校验通过后标记 `captcha:slider:ok:{uuid}`，登录时消费。失败/过期分别返回「滑块验证失败，请重试」「验证码已过期，请刷新后重试」。
 
 启动时若无任何用户，会自动创建默认管理员 `admin/admin`（生产环境务必修改密码）。
 

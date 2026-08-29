@@ -1,6 +1,20 @@
+import { encryptRequest } from '../utils/crypto'
+
 export interface LoginResponse {
-  tokenType: string
-  token: string
+  access_token: string
+  expire_in?: number
+  client_id?: string
+}
+
+/** 业务错误：携带后端 R.code，便于前端按错误码分支（如滑块验证码 1006）。 */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: number
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
 }
 
 export interface ProviderResponse {
@@ -233,10 +247,24 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
-async function requestJson<T>(path: string, init: RequestInit = {}, adminToken?: string, raw = false): Promise<T> {
+async function requestJson<T>(
+  path: string,
+  init: RequestInit = {},
+  adminToken?: string,
+  raw = false,
+  encrypt = false
+): Promise<T> {
+  let body = init.body
+  const extraHeaders: Record<string, string> = {}
+  if (encrypt && typeof body === 'string') {
+    const encrypted = encryptRequest(JSON.parse(body))
+    body = encrypted.body
+    extraHeaders['encrypt-key'] = encrypted.encryptKey
+  }
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+    ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+    ...extraHeaders,
     ...(init.headers as Record<string, string> | undefined)
   }
 
@@ -244,7 +272,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}, adminToken?:
     headers.Authorization = normalizeBearer(adminToken)
   }
 
-  const response = await fetch(`${apiBase}${path}`, { ...init, headers })
+  const response = await fetch(`${apiBase}${path}`, { ...init, body, headers })
   if (!response.ok) {
     throw new Error(await readError(response))
   }
@@ -255,21 +283,55 @@ async function requestJson<T>(path: string, init: RequestInit = {}, adminToken?:
   if (!text) {
     return undefined as T
   }
-  const body = JSON.parse(text)
+  const bodyJson = JSON.parse(text)
   if (raw) {
-    return body as T
+    return bodyJson as T
   }
-  const r = body as R<T>
+  const r = bodyJson as R<T>
   if (r.code !== 200) {
-    throw new Error(r.msg || '请求失败')
+    throw new ApiError(r.msg || '请求失败', r.code)
   }
   return r.data
 }
 
-export async function login(username: string, password: string): Promise<LoginResponse> {
-  return requestJson<LoginResponse>('/api/auth/login', {
+/** 登录：请求体 RSA+AES 混合加密后发送（对应后端 @ApiEncrypt）。 */
+export async function login(username: string, password: string, sliderUuid?: string): Promise<LoginResponse> {
+  return requestJson<LoginResponse>(
+    '/api/auth/login',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        clientId: import.meta.env.VITE_APP_CLIENT_ID,
+        grantType: 'password',
+        username,
+        password,
+        uuid: sliderUuid
+      })
+    },
+    undefined,
+    false,
+    true
+  )
+}
+
+/** 滑块拼图（背景图/拼图块为 PNG base64，y 为拼图块纵向位置）。 */
+export interface SliderCaptcha {
+  uuid: string
+  background: string
+  puzzle: string
+  y: number
+}
+
+/** 获取滑块拼图。 */
+export function getSliderCaptcha(): Promise<SliderCaptcha> {
+  return requestJson<SliderCaptcha>('/api/auth/captcha')
+}
+
+/** 校验滑块拼图位置（x 为拼图块横向像素位置），失败抛 ApiError。 */
+export async function verifySliderCaptcha(uuid: string, x: number): Promise<void> {
+  await requestJson<void>('/api/auth/captcha/verify', {
     method: 'POST',
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ uuid, x: Math.round(x) })
   })
 }
 

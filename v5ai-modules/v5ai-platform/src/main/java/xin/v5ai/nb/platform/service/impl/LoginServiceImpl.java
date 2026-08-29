@@ -13,8 +13,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.constant.CacheNames;
 import xin.v5ai.nb.common.core.constant.Constants;
+import xin.v5ai.nb.common.core.constant.GlobalConstants;
 import xin.v5ai.nb.common.core.constant.SystemConstants;
 import xin.v5ai.nb.common.core.enums.LoginType;
+import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.common.core.exception.user.CaptchaException;
+import xin.v5ai.nb.common.core.exception.user.CaptchaExpireException;
 import xin.v5ai.nb.common.core.exception.user.UserException;
 import xin.v5ai.nb.common.core.utils.*;
 import xin.v5ai.nb.common.json.utils.JsonUtils;
@@ -22,6 +26,7 @@ import xin.v5ai.nb.common.log.event.LoginInfoEvent;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.redis.utils.RedisUtils;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
+import xin.v5ai.nb.common.web.config.properties.CaptchaProperties;
 import xin.v5ai.nb.platform.api.domain.RoleDTO;
 import xin.v5ai.nb.platform.api.model.LoginUser;
 import xin.v5ai.nb.platform.api.model.PasswordLoginBody;
@@ -34,6 +39,7 @@ import xin.v5ai.nb.platform.mapper.PlmUserMapper;
 import xin.v5ai.nb.platform.service.ILoginService;
 import xin.v5ai.nb.platform.service.IPlmPermissionService;
 import xin.v5ai.nb.platform.service.IPlmRoleService;
+import xin.v5ai.nb.platform.service.IPlmSliderCaptchaService;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -70,6 +76,8 @@ public class LoginServiceImpl implements ILoginService {
     private final IPlmRoleService roleService;
     private final IPlmPermissionService permissionService;
     private final PlmUserMapper userMapper;
+    private final IPlmSliderCaptchaService sliderCaptchaService;
+    private final CaptchaProperties captchaProperties;
 
     @Override
     public LoginVo login(String body, PlmClientVo client) {
@@ -80,11 +88,11 @@ public class LoginServiceImpl implements ILoginService {
         String code = loginBody.getCode();
         String uuid = loginBody.getUuid();
 
-//        boolean captchaEnabled = captchaProperties.getEnable();
-//        // 验证码开关
-//        if (captchaEnabled) {
-//            validateCaptcha(username, code, uuid);
-//        }
+        boolean captchaEnabled = captchaProperties.getEnable();
+        // 验证码开关
+        if (captchaEnabled) {
+            validateCaptcha(username, code, uuid);
+        }
         PlmUserVo user = loadUserByUsername(username);
         checkLogin(LoginType.PASSWORD, username, () -> !BCrypt.checkpw(password, user.getPassword()));
         // 此处可根据登录用户的数据不同 自行创建 loginUser
@@ -300,6 +308,44 @@ public class LoginServiceImpl implements ILoginService {
             throw new UserException("user.blocked", username);
         }
         return user;
+    }
+
+    /**
+     * 校验图形验证码是否有效且匹配。
+     *
+     * @param username 用户名
+     * @param code     用户输入的验证码
+     * @param uuid     验证码缓存标识
+     */
+    private void validateCaptcha(String username, String code, String uuid) {
+
+        String captchaType = captchaProperties.getType();
+
+        if("slider".equalsIgnoreCase(captchaType)) {
+            // 滑块验证门控：登录错误次数达到阈值后，必须携带通过校验的滑块令牌
+            Integer sliderThreshold = captchaProperties.getSliderThreshold();
+            if (sliderThreshold != null && sliderThreshold > 0) {
+                int errorNumber = ObjectUtil.defaultIfNull(
+                        RedisUtils.getCacheObject(CacheNames.PWD_ERR_CNT_KEY + username), 0);
+                if (errorNumber >= sliderThreshold && !sliderCaptchaService.checkAndConsumeVerified(uuid)) {
+                    throw new ServiceException(
+                            MessageUtils.message("user.captcha.required"),
+                            IPlmSliderCaptchaService.CAPTCHA_REQUIRED_CODE);
+                }
+            }
+        } else {
+            String verifyKey = GlobalConstants.CAPTCHA_CODE_KEY + StringUtils.blankToDefault(uuid, "");
+            String captcha = RedisUtils.getCacheObject(verifyKey);
+            RedisUtils.deleteObject(verifyKey);
+            if (captcha == null) {
+                recordLoginInfo(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.expire"));
+                throw new CaptchaExpireException();
+            }
+            if (!StringUtils.equalsIgnoreCase(code, captcha)) {
+                recordLoginInfo(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error"));
+                throw new CaptchaException();
+            }
+        }
     }
 
     /**

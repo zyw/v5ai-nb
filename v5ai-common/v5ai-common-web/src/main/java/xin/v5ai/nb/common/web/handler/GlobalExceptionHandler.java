@@ -28,6 +28,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.core.exception.base.BaseException;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
@@ -63,6 +64,16 @@ public class GlobalExceptionHandler {
         log.error(e.getMessage());
         ErrorCode code = e.code();
         return ObjectUtil.isNotNull(code) ? R.fail(code.getCode(), e.getMessage()) : R.fail(e.getMessage());
+    }
+
+    /**
+     * 业务异常
+     */
+    @ExceptionHandler(ServiceException.class)
+    public R<Void> handleServiceException(ServiceException e, HttpServletRequest request) {
+        log.error(e.getMessage());
+        Integer code = e.getCode();
+        return ObjectUtil.isNotNull(code) ? R.fail(code, e.getMessage()) : R.fail(e.getMessage());
     }
 
     /**
