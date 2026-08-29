@@ -9,6 +9,7 @@ import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.encrypt.utils.CipherUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.platform.api.ApiKeyService;
 import xin.v5ai.nb.platform.domain.V5aiApiKey;
 import xin.v5ai.nb.platform.domain.bo.V5aiApiKeyBo;
 import xin.v5ai.nb.platform.domain.vo.ApiKeyRespVo;
@@ -21,7 +22,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService {
+public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService, ApiKeyService {
 
     private final V5aiApiKeyMapper baseMapper;
 
@@ -79,5 +80,11 @@ public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService {
                 .eq(V5aiApiKey::getEnabled, bo.getEnabled())
                 .orderByAsc(V5aiApiKey::getCreatedAt)
                 .build();
+    }
+
+    @Override
+    public boolean checkApiKey(String agentKey, String apiKey) {
+        var secretHash = findSecretHash(agentKey);
+        return CipherUtils.verify(secretHash, apiKey);
     }
 }

@@ -3,16 +3,14 @@ package xin.v5ai.nb.platform.filter;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import xin.v5ai.nb.common.encrypt.utils.CipherUtils;
+import xin.v5ai.nb.platform.api.ApiKeyService;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Servlet variant of the runtime API key guard. The application runs on Servlet MVC
- * (Tomcat, pulled in transitively by Sa-Token), where WebFlux {@code WebFilter} beans
- * are not applied — without this filter the runtime endpoints would accept any request.
+ * 运行时API密钥保护的Servlet版本。该应用运行在Servlet MVC（通过Sa-Token间接引入的Tomcat）环境中，其中未应用WebFlux的{@code WebFilter} Bean——如果没有此过滤器，运行时端点将接受任何请求。
  *
  * 额外承担运行面限流与配额检查：验证通过后按 agentKey 检查每分钟限流与每日配额，
  * 超限返回 429。
@@ -24,13 +22,15 @@ public class AgentApiKeyServletFilter implements Filter {
     private static final String RUNTIME_PREFIX = "/api/v1/agents/";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String RATE_LIMITED_BODY = """
-            {"success":false,"code":"CONFLICT","message":"rate limit exceeded or daily quota reached for this application"}
+            {"success":false,"code":"CONFLICT","message":"此Agent的速率限制已超或每日配额已满"}
             """.strip();
 
     private final AppQuotaService quotaService;
+    private final ApiKeyService apiKeyService;
 
-    public AgentApiKeyServletFilter(AppQuotaService quotaService) {
+    public AgentApiKeyServletFilter(AppQuotaService quotaService, ApiKeyService apiKeyService) {
         this.quotaService = quotaService;
+        this.apiKeyService = apiKeyService;
     }
 
     @Override
@@ -55,7 +55,7 @@ public class AgentApiKeyServletFilter implements Filter {
 
         // 校验 API Key：与 agentKey 对应的密钥哈希比对，失败返回 401
         var apiKey = authorization.substring(BEARER_PREFIX.length()).trim();
-        if (apiKey.isEmpty() || !CipherUtils.verify(agentKey, apiKey)) {
+        if (apiKey.isEmpty() || !apiKeyService.checkApiKey(agentKey, apiKey)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }

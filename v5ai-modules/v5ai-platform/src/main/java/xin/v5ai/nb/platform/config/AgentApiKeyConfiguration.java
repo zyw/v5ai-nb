@@ -1,8 +1,9 @@
-package xin.v5ai.nb.platform.apiKey;
+package xin.v5ai.nb.platform.config;
 
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import xin.v5ai.nb.platform.api.ApiKeyService;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.platform.filter.AgentApiKeyAuthenticationFilter;
 import xin.v5ai.nb.platform.filter.AgentApiKeyServletFilter;
@@ -34,9 +35,9 @@ public class AgentApiKeyConfiguration {
      * @param quotaService 应用配额/限流服务（鉴权后校验用量）
      */
     @Bean
-    FilterRegistrationBean<AgentApiKeyServletFilter> applicationApiKeyServletFilter(AppQuotaService quotaService) {
+    FilterRegistrationBean<AgentApiKeyServletFilter> applicationApiKeyServletFilter(AppQuotaService quotaService, ApiKeyService apiKeyService) {
         var registration = new FilterRegistrationBean<>(
-                new AgentApiKeyServletFilter(quotaService));
+                new AgentApiKeyServletFilter(quotaService, apiKeyService));
         registration.addUrlPatterns("/api/v1/agents/*");
         registration.setName("applicationApiKeyServletFilter");
         return registration;
