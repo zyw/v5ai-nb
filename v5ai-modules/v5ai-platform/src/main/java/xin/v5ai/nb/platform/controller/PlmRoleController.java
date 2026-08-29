@@ -31,7 +31,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/system/role")
+@RequestMapping("/api/admin/roles")
 public class PlmRoleController extends BaseController {
 
     private final IPlmRoleService roleService;

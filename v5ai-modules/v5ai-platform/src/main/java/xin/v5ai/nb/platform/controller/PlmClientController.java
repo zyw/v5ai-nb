@@ -31,7 +31,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/system/client")
+@RequestMapping("/api/admin/client")
 public class PlmClientController extends BaseController {
 
     private final IPlmClientService sysClientService;

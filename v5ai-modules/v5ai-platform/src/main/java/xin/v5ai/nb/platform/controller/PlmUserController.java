@@ -39,7 +39,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/system/user")
+@RequestMapping("/api/admin/users")
 public class PlmUserController extends BaseController {
 
     private final IPlmUserService userService;

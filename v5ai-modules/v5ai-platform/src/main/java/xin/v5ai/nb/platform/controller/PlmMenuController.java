@@ -29,7 +29,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/system/menu")
+@RequestMapping("/api/admin/menus")
 public class PlmMenuController extends BaseController {
 
     private final IPlmMenuService menuService;
