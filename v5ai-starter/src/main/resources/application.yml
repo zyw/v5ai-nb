@@ -161,6 +161,11 @@ v5ai:
     # 滑块拼图令牌有效期（分钟）
     expire-minutes: 2
 
+  # 刷新令牌配置
+  auth:
+    # 刷新令牌有效期（分钟，默认 30 天）
+    refresh-token-ttl: 43200
+
   agentscope:
     workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
     state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}

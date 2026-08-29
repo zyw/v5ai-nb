@@ -3,6 +3,8 @@ package xin.v5ai.nb.platform.service.impl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.web.config.properties.CaptchaProperties;
+import xin.v5ai.nb.common.web.core.SliderCaptchaStore;
+import xin.v5ai.nb.platform.domain.VerifyEnum;
 import xin.v5ai.nb.platform.domain.vo.SliderCaptchaVO;
 import xin.v5ai.nb.platform.service.IPlmSliderCaptchaService;
 
@@ -31,7 +33,7 @@ class SliderCaptchaServiceTest {
         properties.setEnable(true);
         properties.setSliderThreshold(3);
         properties.setExpireMinutes(2);
-        service = new IPlmSliderCaptchaService(properties, store);
+        service = new PlmSliderCaptchaServiceImpl(properties, store);
     }
 
     @Test
@@ -57,12 +59,12 @@ class SliderCaptchaServiceTest {
         int gapX = store.gap(vo.uuid());
 
         // 误差在允许范围内通过
-        assertEquals(IPlmSliderCaptchaService.VerifyResult.OK,
+        assertEquals(VerifyEnum.OK,
                 service.verify(vo.uuid(), (double) (gapX + IPlmSliderCaptchaService.TOLERANCE)));
         assertTrue(store.verified.containsKey(vo.uuid()));
 
         // 令牌一次性：再次校验报过期
-        assertEquals(IPlmSliderCaptchaService.VerifyResult.EXPIRED,
+        assertEquals(VerifyEnum.EXPIRED,
                 service.verify(vo.uuid(), (double) gapX));
     }
 
@@ -71,14 +73,14 @@ class SliderCaptchaServiceTest {
         SliderCaptchaVO vo = service.generate();
         int gapX = store.gap(vo.uuid());
 
-        assertEquals(IPlmSliderCaptchaService.VerifyResult.MISMATCH,
+        assertEquals(VerifyEnum.MISMATCH,
                 service.verify(vo.uuid(), (double) (gapX + IPlmSliderCaptchaService.TOLERANCE + 1)));
         assertFalse(store.verified.containsKey(vo.uuid()));
     }
 
     @Test
     void verifyRejectsExpiredToken() {
-        assertEquals(IPlmSliderCaptchaService.VerifyResult.EXPIRED, service.verify("unknown-uuid", 100d));
+        assertEquals(VerifyEnum.EXPIRED, service.verify("unknown-uuid", 100d));
         assertFalse(store.verified.containsKey("unknown-uuid"));
     }
 

@@ -4,14 +4,18 @@ import cn.hutool.core.util.ObjectUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.common.json.utils.JsonUtils;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.platform.api.model.LoginUser;
 import xin.v5ai.nb.platform.domain.PlmMenu;
+import xin.v5ai.nb.platform.domain.bo.RefreshBody;
 import xin.v5ai.nb.platform.domain.vo.PlmUserVo;
 import xin.v5ai.nb.platform.domain.vo.RouterVo;
 import xin.v5ai.nb.platform.domain.vo.UserInfoVo;
@@ -36,6 +40,7 @@ public class AuthController extends BaseController {
     private final ILoginService loginService;
     private final IPlmUserService userService;
     private final IPlmMenuService menuService;
+    private final RefreshTokenService refreshTokenService;
 
 
 
@@ -95,7 +100,14 @@ public class AuthController extends BaseController {
      * 退出登录
      */
     @PostMapping("/logout")
-    public R<Void> logout() {
+    public R<Void> logout(@RequestBody(required = false) String body) {
+        // 可选：携带刷新令牌一并吊销
+        if (StringUtils.isNotBlank(body)) {
+            RefreshBody refreshBody = JsonUtils.parseObject(body, RefreshBody.class);
+            if (ObjectUtil.isNotNull(refreshBody)) {
+                refreshTokenService.revoke(refreshBody.refreshToken());
+            }
+        }
         loginService.logout();
         return R.ok("退出成功");
     }

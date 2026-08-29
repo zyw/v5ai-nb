@@ -21,6 +21,14 @@ public interface ILoginService {
     LoginVo login(String body, PlmClientVo client);
 
     /**
+     * 刷新令牌：校验并消费刷新令牌，重新签发访问令牌（轮换刷新令牌）。
+     *
+     * @param refreshToken 刷新令牌
+     * @return 新的访问令牌与刷新令牌
+     */
+    LoginVo refresh(String refreshToken);
+
+    /**
      * 登出
      */
     void logout();

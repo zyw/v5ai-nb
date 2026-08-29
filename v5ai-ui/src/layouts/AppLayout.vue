@@ -38,8 +38,8 @@ import {
   Workflow
 } from 'lucide-vue-next'
 import { isDark, toggleTheme } from '../stores/theme'
-import { clearAdminToken, currentMenus, displayName, ensureSession, isAdmin } from '../stores/session'
-import type { RouterVo } from '../api/client'
+import { adminToken, clearAdminToken, currentMenus, displayName, ensureSession, isAdmin, refreshToken } from '../stores/session'
+import { logout, type RouterVo } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,8 +140,14 @@ function handleMenuUpdate(key: string) {
 
 const userOptions = [{ label: '退出登录', key: 'logout', icon: icon(LogOut) }]
 
-function handleUserSelect(key: string) {
+async function handleUserSelect(key: string) {
   if (key === 'logout') {
+    // 吊销服务端会话与刷新令牌（失败不阻断本地清理）
+    try {
+      await logout(adminToken.value, refreshToken.value)
+    } catch {
+      // 忽略：本地会话照常清理
+    }
     clearAdminToken()
     router.push({ name: 'login' })
   }

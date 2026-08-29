@@ -3,6 +3,8 @@ import { encryptRequest } from '../utils/crypto'
 export interface LoginResponse {
   access_token: string
   expire_in?: number
+  refresh_token?: string
+  refresh_expire_in?: number
   client_id?: string
 }
 
@@ -248,12 +250,85 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
+const adminTokenKey = 'v5ai.adminToken'
+const refreshTokenKey = 'v5ai.adminRefreshToken'
+
+interface SessionHooks {
+  /** 读取当前刷新令牌（用于 401 自动刷新）。 */
+  getRefreshToken: () => string | null
+  /** 刷新成功后同步会话（更新访问令牌，轮换刷新令牌）。 */
+  applySession: (accessToken: string, refreshToken: string | null) => void
+  /** 刷新失败（刷新令牌失效）：清除本地会话。 */
+  onExpired: () => void
+}
+
+/** 会话钩子：默认直接读写 localStorage；session store 可注册以同步响应式状态。 */
+let sessionHooks: SessionHooks = {
+  getRefreshToken: () => localStorage.getItem(refreshTokenKey),
+  applySession: (accessToken, refreshToken) => {
+    localStorage.setItem(adminTokenKey, accessToken)
+    if (refreshToken) {
+      localStorage.setItem(refreshTokenKey, refreshToken)
+    }
+  },
+  onExpired: () => {
+    localStorage.removeItem(adminTokenKey)
+    localStorage.removeItem(refreshTokenKey)
+  }
+}
+
+export function setSessionHooks(hooks: Partial<SessionHooks>): void {
+  sessionHooks = { ...sessionHooks, ...hooks }
+}
+
+/** 用刷新令牌换取新的访问令牌（并发去重）。 */
+let refreshPromise: Promise<string | null> | null = null
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = sessionHooks.getRefreshToken()
+      if (!refreshToken) {
+        return null
+      }
+      try {
+        const res = await doRequest<LoginResponse>(
+          '/api/auth/refresh',
+          { method: 'POST', body: JSON.stringify({ refreshToken }) },
+          undefined,
+          false,
+          true,
+          true
+        )
+        sessionHooks.applySession(res.access_token, res.refresh_token ?? null)
+        return res.access_token
+      } catch {
+        sessionHooks.onExpired()
+        return null
+      } finally {
+        refreshPromise = null
+      }
+    })()
+  }
+  return refreshPromise
+}
+
 async function requestJson<T>(
   path: string,
   init: RequestInit = {},
   adminToken?: string,
   raw = false,
   encrypt = false
+): Promise<T> {
+  return doRequest<T>(path, init, adminToken, raw, encrypt, false)
+}
+
+async function doRequest<T>(
+  path: string,
+  init: RequestInit,
+  adminToken: string | undefined,
+  raw: boolean,
+  encrypt: boolean,
+  retried: boolean
 ): Promise<T> {
   let body = init.body
   const extraHeaders: Record<string, string> = {}
@@ -276,6 +351,14 @@ async function requestJson<T>(
   }
 
   const response = await fetch(`${apiBase}${path}`, { ...init, body, headers })
+  // 访问令牌过期：尝试刷新令牌后重试一次
+  if (response.status === 401 && adminToken && !retried) {
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      return doRequest<T>(path, init, newToken, raw, encrypt, true)
+    }
+    throw new ApiError((await readError(response)) || '登录已过期，请重新登录', 401)
+  }
   if (!response.ok) {
     throw new Error(await readError(response))
   }
@@ -292,9 +375,27 @@ async function requestJson<T>(
   }
   const r = bodyJson as R<T>
   if (r.code !== 200) {
+    if (r.code === 401 && adminToken && !retried) {
+      const newToken = await refreshAccessToken()
+      if (newToken) {
+        return doRequest<T>(path, init, newToken, raw, encrypt, true)
+      }
+    }
     throw new ApiError(r.msg || '请求失败', r.code)
   }
   return r.data
+}
+
+/** 退出登录：吊销服务端会话与刷新令牌。 */
+export async function logout(adminToken: string, refreshToken?: string): Promise<void> {
+  await requestJson<void>(
+    '/api/auth/logout',
+    {
+      method: 'POST',
+      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined
+    },
+    adminToken
+  )
 }
 
 /** 登录：请求体 RSA+AES 混合加密后发送（对应后端 @ApiEncrypt）。 */

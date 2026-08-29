@@ -11,10 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.common.core.constant.CacheNames;
-import xin.v5ai.nb.common.core.constant.Constants;
-import xin.v5ai.nb.common.core.constant.GlobalConstants;
-import xin.v5ai.nb.common.core.constant.SystemConstants;
+import xin.v5ai.nb.common.core.constant.*;
 import xin.v5ai.nb.common.core.enums.LoginType;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.exception.user.CaptchaException;
@@ -25,6 +22,7 @@ import xin.v5ai.nb.common.json.utils.JsonUtils;
 import xin.v5ai.nb.common.log.event.LoginInfoEvent;
 import xin.v5ai.nb.common.mybatis.helper.DataPermissionHelper;
 import xin.v5ai.nb.common.redis.utils.RedisUtils;
+import xin.v5ai.nb.common.satoken.token.RefreshTokenService;
 import xin.v5ai.nb.common.satoken.utils.LoginHelper;
 import xin.v5ai.nb.common.web.config.properties.CaptchaProperties;
 import xin.v5ai.nb.platform.api.domain.RoleDTO;
@@ -36,10 +34,7 @@ import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
 import xin.v5ai.nb.platform.domain.vo.PlmRoleVo;
 import xin.v5ai.nb.platform.domain.vo.PlmUserVo;
 import xin.v5ai.nb.platform.mapper.PlmUserMapper;
-import xin.v5ai.nb.platform.service.ILoginService;
-import xin.v5ai.nb.platform.service.IPlmPermissionService;
-import xin.v5ai.nb.platform.service.IPlmRoleService;
-import xin.v5ai.nb.platform.service.IPlmSliderCaptchaService;
+import xin.v5ai.nb.platform.service.*;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -78,6 +73,8 @@ public class LoginServiceImpl implements ILoginService {
     private final PlmUserMapper userMapper;
     private final IPlmSliderCaptchaService sliderCaptchaService;
     private final CaptchaProperties captchaProperties;
+    private final IPlmClientService clientService;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     public LoginVo login(String body, PlmClientVo client) {
@@ -95,6 +92,41 @@ public class LoginServiceImpl implements ILoginService {
         }
         PlmUserVo user = loadUserByUsername(username);
         checkLogin(LoginType.PASSWORD, username, () -> !BCrypt.checkpw(password, user.getPassword()));
+        return doLogin(user, client);
+    }
+
+    /**
+     * 刷新令牌：消费刷新令牌（一次性），校验客户端与用户状态后重新签发访问令牌。
+     * Sa-Token is-concurrent=false，新登录会使旧访问令牌自动失效。
+     *
+     * @param refreshToken 刷新令牌
+     * @return 新的访问令牌与轮换后的刷新令牌
+     */
+    @Override
+    public LoginVo refresh(String refreshToken) {
+        RefreshTokenService.RefreshTokenInfo info = refreshTokenService.consume(refreshToken);
+        if (info == null) {
+            throw new ServiceException(MessageUtils.message("auth.refresh.token.invalid"), HttpStatus.UNAUTHORIZED);
+        }
+        PlmClientVo client = clientService.queryByClientId(info.clientId());
+        if (ObjectUtil.isNull(client) || !StringUtils.contains(client.getGrantType(), "password")) {
+            throw new ServiceException(MessageUtils.message("auth.refresh.token.invalid"), HttpStatus.UNAUTHORIZED);
+        }
+        if (!SystemConstants.NORMAL.equals(client.getStatus())) {
+            throw new ServiceException(MessageUtils.message("auth.refresh.token.invalid"), HttpStatus.UNAUTHORIZED);
+        }
+        PlmUserVo user = loadUserById(info.userId());
+        return doLogin(user, client);
+    }
+
+    /**
+     * 统一登录落地：构建登录用户、签发访问令牌与刷新令牌。
+     *
+     * @param user   登录用户
+     * @param client 客户端配置
+     * @return 登录结果（访问令牌 + 刷新令牌）
+     */
+    private LoginVo doLogin(PlmUserVo user, PlmClientVo client) {
         // 此处可根据登录用户的数据不同 自行创建 loginUser
         LoginUser loginUser = buildLoginUser(user);
         loginUser.setClientKey(client.getClientKey());
@@ -107,6 +139,9 @@ public class LoginServiceImpl implements ILoginService {
         loginVo.setAccessToken(StpUtil.getTokenValue());
         loginVo.setExpireIn(StpUtil.getTokenTimeout());
         loginVo.setClientId(client.getClientId());
+        // 签发刷新令牌（Redis，TTL 见 v5ai.auth.refresh-token-ttl）
+        loginVo.setRefreshToken(refreshTokenService.issue(user.getId(), client.getClientId()));
+        loginVo.setRefreshExpireIn(refreshTokenService.ttlSeconds());
         return loginVo;
     }
 
@@ -306,6 +341,22 @@ public class LoginServiceImpl implements ILoginService {
         } else if (SystemConstants.DISABLE.equals(user.getStatus())) {
             log.info("登录用户：{} 已被停用.", username);
             throw new UserException("user.blocked", username);
+        }
+        return user;
+    }
+
+    /**
+     * 按用户ID加载可登录用户（刷新令牌场景），不存在或停用视为刷新令牌无效。
+     *
+     * @param userId 用户ID
+     * @return 用户信息
+     */
+    private PlmUserVo loadUserById(Long userId) {
+        PlmUserVo user = userMapper.lambda()
+                .eq(PlmUser::getId, userId)
+                .voOne();
+        if (ObjectUtil.isNull(user) || SystemConstants.DISABLE.equals(user.getStatus())) {
+            throw new ServiceException(MessageUtils.message("auth.refresh.token.invalid"), HttpStatus.UNAUTHORIZED);
         }
         return user;
     }

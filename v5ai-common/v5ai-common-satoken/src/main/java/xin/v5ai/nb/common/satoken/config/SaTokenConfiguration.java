@@ -11,6 +11,8 @@ import xin.v5ai.nb.common.core.factory.YmlPropertySourceFactory;
 import xin.v5ai.nb.common.satoken.core.dao.PlusSaTokenDao;
 import xin.v5ai.nb.common.satoken.core.service.SaPermissionImpl;
 import xin.v5ai.nb.common.satoken.handler.SaTokenExceptionHandler;
+import xin.v5ai.nb.common.satoken.token.RefreshTokenService;
+import xin.v5ai.nb.common.satoken.token.RefreshTokenServiceImpl;
 
 /**
  * Sa-Token 配置
@@ -48,6 +50,15 @@ public class SaTokenConfiguration {
     @Bean
     public SaTokenExceptionHandler saTokenExceptionHandler() {
         return new SaTokenExceptionHandler();
+    }
+
+
+    /**
+     * 刷新Token服务
+     */
+    @Bean
+    public RefreshTokenService refreshTokenService() {
+        return new RefreshTokenServiceImpl();
     }
 
 }

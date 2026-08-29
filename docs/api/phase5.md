@@ -29,10 +29,27 @@ encrypt-key: <RSA(base64(AES密钥))>
 
 ```json
 // 响应（明文）
-{ "code": 200, "msg": "操作成功", "data": { "access_token": "<jwt>", "expire_in": 1800, "client_id": "e5cd7e4891bf95d1d19206ce24a7b32e" } }
+{ "code": 200, "msg": "操作成功", "data": { "access_token": "<jwt>", "expire_in": 1800, "refresh_token": "<uuid>", "refresh_expire_in": 604800, "client_id": "e5cd7e4891bf95d1d19206ce24a7b32e" } }
 ```
 
 前端密钥配置见 `v5ai-ui/.env`（`VITE_APP_RSA_PUBLIC_KEY`/`VITE_APP_RSA_PRIVATE_KEY`），更换需与后端 `v5ai.api-decrypt` 一同更换。
+
+### 刷新令牌
+
+登录与刷新都会返回 `refresh_token`（UUID，Redis 存储，TTL `v5ai.auth.refresh-token-ttl` 默认 7 天）与 `refresh_expire_in`。访问令牌过期（401）时，用刷新令牌换取新令牌（轮换：旧刷新令牌立即失效）：
+
+```http
+POST /api/auth/refresh        # 同样需要 RSA+AES 加密（@ApiEncrypt）
+encrypt-key: <RSA(base64(AES密钥))>
+
+# 解密后请求体
+{ "refreshToken": "<uuid>" }
+```
+
+- 成功：返回新的 `access_token` + `expire_in` + 轮换后的 `refresh_token` + `refresh_expire_in`；
+- 失败（令牌无效/过期/客户端停用/用户停用）：`R.fail(401, "刷新令牌无效或已过期，请重新登录")`；
+- 前端行为：任意接口返回 401 时自动调用 refresh 并重试一次，刷新失败才清除会话回登录页；
+- `POST /api/auth/logout` 可携带 `{ "refreshToken": "..." }` 一并吊销刷新令牌。
 
 ### 滑块验证码（登录防爆破）
 

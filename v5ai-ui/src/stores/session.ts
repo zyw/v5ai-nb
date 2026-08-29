@@ -1,9 +1,12 @@
 import { computed, ref } from 'vue'
-import { getInfo, getRouters, type RouterVo, type UserInfo } from '../api/client'
+import { getInfo, getRouters, setSessionHooks, type RouterVo, type UserInfo } from '../api/client'
 
 const tokenKey = 'v5ai.adminToken'
+const refreshTokenKey = 'v5ai.adminRefreshToken'
 
 export const adminToken = ref(localStorage.getItem(tokenKey) ?? '')
+/** 刷新令牌（401 自动刷新用），登录/刷新时轮换。 */
+export const refreshToken = ref(localStorage.getItem(refreshTokenKey) ?? '')
 /** 登录后 getInfo 结果：用户信息 + 角色 + 权限集合。 */
 export const currentUser = ref<UserInfo | null>(null)
 /** 登录后 getRouters 结果：当前用户权限允许的路由菜单树。 */
@@ -40,19 +43,47 @@ export const defaultPath = computed<string>(() => {
   return first ?? '/dashboard'
 })
 
-export function setAdminToken(token: string): void {
+export function setAdminToken(token: string, refreshTokenValue?: string | null): void {
   adminToken.value = token
   localStorage.setItem(tokenKey, token)
+  if (refreshTokenValue) {
+    refreshToken.value = refreshTokenValue
+    localStorage.setItem(refreshTokenKey, refreshTokenValue)
+  }
   sessionLoaded = false
 }
 
 export function clearAdminToken(): void {
   adminToken.value = ''
+  refreshToken.value = ''
   currentUser.value = null
   currentMenus.value = []
   sessionLoaded = false
   localStorage.removeItem(tokenKey)
+  localStorage.removeItem(refreshTokenKey)
 }
+
+// 注册会话钩子：client.ts 在 401 自动刷新/失效时同步响应式状态
+setSessionHooks({
+  getRefreshToken: () => refreshToken.value || localStorage.getItem(refreshTokenKey),
+  applySession: (accessToken, newRefreshToken) => {
+    adminToken.value = accessToken
+    localStorage.setItem(tokenKey, accessToken)
+    if (newRefreshToken) {
+      refreshToken.value = newRefreshToken
+      localStorage.setItem(refreshTokenKey, newRefreshToken)
+    }
+  },
+  onExpired: () => {
+    adminToken.value = ''
+    refreshToken.value = ''
+    currentUser.value = null
+    currentMenus.value = []
+    sessionLoaded = false
+    localStorage.removeItem(tokenKey)
+    localStorage.removeItem(refreshTokenKey)
+  }
+})
 
 /** 登录后调用 getInfo：拉取用户信息、角色与权限并存储到本地。 */
 export async function loadCurrentUser(): Promise<void> {

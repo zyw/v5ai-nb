@@ -35,7 +35,7 @@ async function handleSubmit() {
       password.value,
       sliderVerified.value ? sliderUuid.value : undefined
     )
-    setAdminToken(res.access_token)
+    setAdminToken(res.access_token, res.refresh_token)
     // 登录成功写入 token 后：getInfo 拉取用户/角色/权限，getRouters 拉取权限内菜单
     await ensureSession()
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'

@@ -33,6 +33,7 @@ import xin.v5ai.nb.common.web.config.properties.CaptchaProperties;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.common.web.core.WaveAndCircleCaptcha;
 import xin.v5ai.nb.platform.domain.VerifyEnum;
+import xin.v5ai.nb.platform.domain.bo.RefreshBody;
 import xin.v5ai.nb.platform.domain.vo.LoginVo;
 import xin.v5ai.nb.platform.domain.vo.PlmClientVo;
 import xin.v5ai.nb.platform.domain.vo.SliderCaptchaVO;
@@ -83,6 +84,17 @@ public class LoginController extends BaseController {
         LoginVo loginVo = loginService.login(body, client);
 
         return R.ok(loginVo);
+    }
+
+    /**
+     * 刷新令牌：换取新的访问令牌（旧访问令牌因 is-concurrent=false 自动失效）。
+     */
+    @ApiEncrypt
+    @PostMapping("/refresh")
+    public R<LoginVo> refresh(@RequestBody String body) {
+        RefreshBody refreshBody = JsonUtils.parseObject(body, RefreshBody.class);
+        ValidatorUtils.validate(refreshBody);
+        return R.ok(loginService.refresh(refreshBody.refreshToken()));
     }
 
     /**
