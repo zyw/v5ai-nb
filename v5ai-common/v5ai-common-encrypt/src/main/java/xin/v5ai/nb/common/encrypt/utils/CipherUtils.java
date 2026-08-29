@@ -1,5 +1,7 @@
 package xin.v5ai.nb.common.encrypt.utils;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import xin.v5ai.nb.common.core.domain.model.Tuple2;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
 import xin.v5ai.nb.common.encrypt.apikey.AgentApiKeyVerifier;
@@ -8,6 +10,7 @@ import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 /**
  * 加密工具类
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CipherUtils {
 
     /**

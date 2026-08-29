@@ -22,6 +22,7 @@ import java.util.stream.Stream;
  * @version 3.1.0 新增
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@SuppressWarnings(value = {"rawtypes"})
 public class RedisUtils {
 
     private static final RedissonClient CLIENT = SpringUtils.getBean(RedissonClient.class);
@@ -583,6 +584,7 @@ public class RedisUtils {
      *                        chunkSize-设置每次扫描的块大小(默认为0)
      *                        type-设置键的类型(默认为null,查询全部类型)
      *                        </P>
+     * @return 对象列表
      * @see KeysScanOptions
      */
     public static Collection<String> keys(final KeysScanOptions keysScanOptions) {
@@ -603,6 +605,7 @@ public class RedisUtils {
      * 检查redis中是否存在key
      *
      * @param key 键
+     * @return 是否存在
      */
     public static Boolean hasKey(String key) {
         RKeys rKeys = CLIENT.getKeys();

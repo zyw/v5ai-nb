@@ -1,8 +1,7 @@
 package xin.v5ai.nb.common.redis.handler;
 
-import cn.hutool.core.util.StrUtil;
-import io.micrometer.common.util.StringUtils;
 import org.redisson.config.NameMapper;
+import xin.v5ai.nb.common.core.utils.StringUtils;
 
 /**
  * redis缓存key前缀处理
@@ -22,7 +21,7 @@ public class KeyPrefixHandler implements NameMapper {
      */
     public KeyPrefixHandler(String keyPrefix) {
         //前缀为空 则返回空前缀
-        this.keyPrefix = StrUtil.isBlank(keyPrefix) ? "" : keyPrefix + StrUtil.COLON;
+        this.keyPrefix = StringUtils.isBlank(keyPrefix) ? "" : keyPrefix + StringUtils.COLON;
     }
 
     /**

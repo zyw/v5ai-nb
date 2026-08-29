@@ -13,6 +13,15 @@
 
     <dependencies>
 
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-json</artifactId>
+        </dependency>
+
         <!-- spring-webmvc 依赖 -->
         <dependency>
             <groupId>org.springframework</groupId>
@@ -22,6 +31,17 @@
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-boot-starter</artifactId>
+        </dependency>
+        <!-- 分布式锁 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
+        </dependency>
+        <!-- Redisson 缓存 -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-cache</artifactId>
+            <version>${redisson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
@@ -36,9 +56,15 @@
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-crypto</artifactId>
         </dependency>
+        <!-- Sa-Token 核心 -->
         <dependency>
-            <groupId>xin.v5ai.nb</groupId>
-            <artifactId>v5ai-common-core</artifactId>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-core</artifactId>
+        </dependency>
+        <!-- redis序列化替代方案 比json快无数的跨语言二进制序列化 -->
+        <dependency>
+            <groupId>org.apache.fory</groupId>
+            <artifactId>fory-core</artifactId>
         </dependency>
     </dependencies>
 
