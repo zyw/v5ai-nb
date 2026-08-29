@@ -41,12 +41,12 @@ public class CipherUtils {
 
     /**
      * 验证ApiKey
-     * @param secretHash 数据库中的密文
      * @param apiKey 接收的ApiKey
+     * @param secretHash 数据库中的密文
      * @return 是否验证通过
      */
-    public static boolean verify(String secretHash, String apiKey) {
-        return VERIFIER.verify(secretHash, apiKey);
+    public static boolean verify(String apiKey, String secretHash) {
+        return VERIFIER.verify(apiKey, secretHash);
     }
 
     /**

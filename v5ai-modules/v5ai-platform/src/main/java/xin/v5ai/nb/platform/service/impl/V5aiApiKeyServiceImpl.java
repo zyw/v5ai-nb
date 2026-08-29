@@ -85,6 +85,6 @@ public class V5aiApiKeyServiceImpl implements IV5aiApiKeyService, ApiKeyService 
     @Override
     public boolean checkApiKey(String agentKey, String apiKey) {
         var secretHash = findSecretHash(agentKey);
-        return CipherUtils.verify(secretHash, apiKey);
+        return CipherUtils.verify(apiKey, secretHash);
     }
 }

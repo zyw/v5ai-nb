@@ -1,7 +1,6 @@
 package xin.v5ai.nb.platform.service.impl;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import xin.v5ai.nb.platform.api.RateLimiter;
 import xin.v5ai.nb.platform.domain.V5aiAppQuota;
 import xin.v5ai.nb.platform.domain.V5aiAppUsage;
@@ -70,19 +69,16 @@ class MyBatisAppQuotaServiceTest {
     }
 
     @Test
-    void recordUsageInsertsNewDailyRow() {
+    void recordUsageUpsertsDailyRowAtomically() {
         var quotaMapper = mock(V5aiAppQuotaMapper.class);
         var usageMapper = mock(V5aiAppUsageMapper.class);
         var service = new V5aiAppQuotaServiceImpl(quotaMapper, usageMapper, rateLimiter(true));
 
         service.recordUsage("demo", 123);
 
-        var captor = ArgumentCaptor.forClass(V5aiAppUsage.class);
-        verify(usageMapper).insert(captor.capture());
-        assertThat(captor.getValue().getAgentKey()).isEqualTo("demo");
-        assertThat(captor.getValue().getModelCalls()).isEqualTo(1);
-        assertThat(captor.getValue().getTokens()).isEqualTo(123);
-        assertThat(captor.getValue().getUpdatedAt()).isNotNull();
+        verify(usageMapper).upsertUsage(eq("demo"), eq(LocalDate.now()), eq(123L));
+        verify(usageMapper, never()).insert(any(V5aiAppUsage.class));
+        verify(usageMapper, never()).updateById(any(V5aiAppUsage.class));
     }
 
     private static RateLimiter rateLimiter(boolean allowed) {

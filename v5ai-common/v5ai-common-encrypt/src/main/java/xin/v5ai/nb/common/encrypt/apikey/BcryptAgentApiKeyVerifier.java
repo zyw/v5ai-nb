@@ -10,8 +10,15 @@ public class BcryptAgentApiKeyVerifier implements AgentApiKeyVerifier {
     private static final String KEY_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    /**
+     * 校验 API Key。
+     *
+     * @param secretHash 数据库中存储的密文（BCrypt）
+     * @param apiKey     请求携带的明文 API Key
+     * @return 是否匹配
+     */
     @Override
-    public boolean verify(String apiKey, String secretHash) {
+    public boolean verify(String apiKey,String secretHash) {
         return secretHash != null && BCrypt.checkpw(apiKey, secretHash);
     }
 

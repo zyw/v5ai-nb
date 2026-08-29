@@ -1,5 +1,6 @@
 package xin.v5ai.nb.runtime.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -16,15 +17,12 @@ import xin.v5ai.nb.runtime.controller.vo.ChatRequest;
 import xin.v5ai.nb.runtime.controller.vo.ConversationMessageResponse;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/agents/{agentKey}/chat")
 public class ChatController {
+
     private final AgentRuntime agentRuntime;
     private final MessageService messageService;
-
-    public ChatController(AgentRuntime agentRuntime, MessageService messageService) {
-        this.agentRuntime = agentRuntime;
-        this.messageService = messageService;
-    }
 
     @PostMapping("/stream")
     public Flux<ServerSentEvent<RuntimeEvent>> stream(

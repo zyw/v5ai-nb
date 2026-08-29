@@ -24,8 +24,8 @@ public class AgentApiKeyConfiguration {
      * WebFlux 变体：仅当应用运行在响应式栈时生效（当前项目为 Servlet 栈，实际不生效）。
      */
     @Bean
-    AgentApiKeyAuthenticationFilter applicationApiKeyAuthenticationFilter() {
-        return new AgentApiKeyAuthenticationFilter();
+    AgentApiKeyAuthenticationFilter applicationApiKeyAuthenticationFilter(AppQuotaService quotaService, ApiKeyService apiKeyService) {
+        return new AgentApiKeyAuthenticationFilter(quotaService, apiKeyService);
     }
 
     /**

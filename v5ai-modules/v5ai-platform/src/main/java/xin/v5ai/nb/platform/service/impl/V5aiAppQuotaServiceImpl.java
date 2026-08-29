@@ -7,7 +7,6 @@ import xin.v5ai.nb.platform.api.RateLimiter;
 import xin.v5ai.nb.platform.api.domain.AppQuotaDTO;
 import xin.v5ai.nb.platform.api.domain.AppUsageDTO;
 import xin.v5ai.nb.platform.domain.V5aiAppQuota;
-import xin.v5ai.nb.platform.domain.V5aiAppUsage;
 import xin.v5ai.nb.platform.mapper.V5aiAppQuotaMapper;
 import xin.v5ai.nb.platform.mapper.V5aiAppUsageMapper;
 import xin.v5ai.nb.platform.service.IV5aiAppQuotaService;
@@ -71,22 +70,8 @@ public class V5aiAppQuotaServiceImpl implements IV5aiAppQuotaService, AppQuotaSe
 
     @Override
     public void recordUsage(String agentKey, long tokens) {
-        var today = LocalDate.now();
-        var entity = usageMapper.selectByAppAndDate(agentKey, today);
-        if (entity == null) {
-            entity = new V5aiAppUsage();
-            entity.setAgentKey(agentKey);
-            entity.setUsageDate(today);
-            entity.setModelCalls(1);
-            entity.setTokens(Math.max(tokens, 0));
-            entity.setUpdatedAt(OffsetDateTime.now());
-            usageMapper.insert(entity);
-            return;
-        }
-        entity.setModelCalls(entity.getModelCalls() + 1);
-        entity.setTokens(entity.getTokens() + Math.max(tokens, 0));
-        entity.setUpdatedAt(OffsetDateTime.now());
-        usageMapper.updateById(entity);
+        // 原子 upsert：按复合主键 (agent_key, usage_date) 累加，避免 updateById 误改多行/主键冲突
+        usageMapper.upsertUsage(agentKey, LocalDate.now(), Math.max(tokens, 0));
     }
 
     @Override

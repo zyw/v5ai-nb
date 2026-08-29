@@ -1,5 +1,6 @@
 package xin.v5ai.nb.runtime.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -14,13 +15,15 @@ import xin.v5ai.nb.runtime.controller.vo.ChatRequest;
  * 直接调用运行时执行对话，无需生成 API Key，供管理后台的预览/调试面板使用。
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/agents/{agentKey}/chat")
 public class AgentDebugController {
+
     private final AgentRuntime agentRuntime;
 
-    public AgentDebugController(@Qualifier("agentDebugRuntime") AgentRuntime agentRuntime) {
-        this.agentRuntime = agentRuntime;
-    }
+//    public AgentDebugController(@Qualifier("agentDebugRuntime") AgentRuntime agentRuntime) {
+//        this.agentRuntime = agentRuntime;
+//    }
 
     @PostMapping(value = "/stream", produces = "text/event-stream")
     public Flux<ServerSentEvent<RuntimeEvent>> stream(

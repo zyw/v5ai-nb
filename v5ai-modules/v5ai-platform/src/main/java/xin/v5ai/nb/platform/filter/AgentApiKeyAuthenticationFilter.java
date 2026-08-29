@@ -7,6 +7,10 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.encrypt.utils.CipherUtils;
+import xin.v5ai.nb.platform.api.ApiKeyService;
+import xin.v5ai.nb.platform.api.AppQuotaService;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * Agent API Key 鉴权过滤器（WebFlux 变体）。
@@ -26,6 +30,14 @@ public class AgentApiKeyAuthenticationFilter implements WebFilter {
     /** Authorization 请求头的 Bearer 前缀 */
     private static final String BEARER_PREFIX = "Bearer ";
 
+    private final AppQuotaService quotaService;
+    private final ApiKeyService apiKeyService;
+
+    public AgentApiKeyAuthenticationFilter(AppQuotaService quotaService, ApiKeyService apiKeyService) {
+        this.quotaService = quotaService;
+        this.apiKeyService = apiKeyService;
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         var path = exchange.getRequest().getPath().pathWithinApplication().value();
@@ -43,7 +55,12 @@ public class AgentApiKeyAuthenticationFilter implements WebFilter {
 
         // 校验 API Key：与 agentKey 对应的密钥哈希比对，失败返回 401
         var apiKey = authorization.substring(BEARER_PREFIX.length()).trim();
-        if (apiKey.isEmpty() || !CipherUtils.verify(agentKey, apiKey)) {
+        if (apiKey.isEmpty() || !apiKeyService.checkApiKey(agentKey, apiKey)) {
+            return unauthorized(exchange);
+        }
+
+        // 限流 + 配额：配额/限流为 0 表示不限，超限返回 429
+        if (!quotaService.checkAllowed(agentKey)) {
             return unauthorized(exchange);
         }
         return chain.filter(exchange);

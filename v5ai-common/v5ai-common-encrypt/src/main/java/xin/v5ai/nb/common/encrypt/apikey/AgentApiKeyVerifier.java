@@ -5,11 +5,11 @@ import xin.v5ai.nb.common.core.domain.model.Tuple2;
 public interface AgentApiKeyVerifier {
     /**
      * 验证ApiKey
-     * @param secretHash 数据库中的密文
      * @param apiKey 接收的ApiKey
+     * @param secretHash 数据库中的密文
      * @return 是否验证通过
      */
-    boolean verify(String secretHash, String apiKey);
+    boolean verify(String apiKey,String secretHash);
 
     /**
      * 生成ApiKey
