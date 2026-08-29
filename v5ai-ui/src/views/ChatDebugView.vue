@@ -55,8 +55,16 @@ async function handleStream() {
   try {
     await streamChat(agentKey.value, appApiKey.value, chatRequest(), (event, data) => {
       events.value.push(event)
+      if (event === 'RUN_STARTED') {
+        runId.value = parseRunId(data)
+      }
       if (event === 'TEXT_DELTA') {
         streamAnswer.value += parseDelta(data)
+      }
+      if (event === 'RUN_FAILED') {
+        const reason = parseRunFailed(data)
+        streamAnswer.value = `调用失败：${reason}`
+        message.error(`流式调用失败：${reason}`)
       }
       if (event === 'MESSAGE_COMPLETED' && !streamAnswer.value) {
         streamAnswer.value = parseDelta(data)
@@ -66,6 +74,24 @@ async function handleStream() {
     message.error(e instanceof Error ? e.message : '流式调用失败')
   } finally {
     streaming.value = false
+  }
+}
+
+function parseRunId(data: string): string {
+  if (!data) return ''
+  try {
+    return (JSON.parse(data) as { runId?: string }).runId ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function parseRunFailed(data: string): string {
+  if (!data) return '未知错误'
+  try {
+    return (JSON.parse(data) as { payload?: string }).payload || '未知错误'
+  } catch {
+    return data
   }
 }
 </script>

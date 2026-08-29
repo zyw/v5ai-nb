@@ -30,6 +30,8 @@ import {
   listModels,
   listProviders,
   testModelConnection,
+  updateModel,
+  updateProvider,
   type ModelResponse,
   type ProviderResponse
 } from '../api/client'
@@ -38,7 +40,7 @@ import { adminToken } from '../stores/session'
 const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
-const activeTab = ref('provider')
+const activeTab = ref('model')
 const providers = ref<ProviderResponse[]>([])
 const models = ref<ModelResponse[]>([])
 const allProviders = ref<ProviderResponse[]>([])
@@ -51,6 +53,8 @@ const showProviderModal = ref(false)
 const showModelModal = ref(false)
 const savingProvider = ref(false)
 const savingModel = ref(false)
+const editingProviderId = ref<number | null>(null)
+const editingModelId = ref<number | null>(null)
 
 const providerForm = reactive({
   providerKey: '',
@@ -66,7 +70,8 @@ const modelForm = reactive({
   apiKey: '',
   baseUrl: '',
   temperature: 0.7,
-  maxTokens: 4096
+  maxTokens: 4096,
+  enabled: true
 })
 
 const providerTypeOptions = [
@@ -107,18 +112,18 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 90,
+    width: 140,
     render: (row) =>
-      h(
-        NButton,
-        {
-          size: 'small',
-          type: 'error',
-          secondary: true,
-          onClick: () => handleDeleteProvider(row.id)
-        },
-        { default: () => '删除' }
-      )
+      h(NSpace, { size: 4 }, {
+        default: () => [
+          h(NButton, { size: 'small', quaternary: true, onClick: () => openEditProvider(row) }, { default: () => '编辑' }),
+          h(
+            NButton,
+            { size: 'small', type: 'error', secondary: true, onClick: () => handleDeleteProvider(row.id) },
+            { default: () => '删除' }
+          )
+        ]
+      })
   }
 ]
 
@@ -165,13 +170,18 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 90,
+    width: 140,
     render: (row) =>
-      h(
-        NButton,
-        { size: 'small', type: 'error', secondary: true, onClick: () => handleDeleteModel(row.id) },
-        { default: () => '删除' }
-      )
+      h(NSpace, { size: 4 }, {
+        default: () => [
+          h(NButton, { size: 'small', quaternary: true, onClick: () => openEditModel(row) }, { default: () => '编辑' }),
+          h(
+            NButton,
+            { size: 'small', type: 'error', secondary: true, onClick: () => handleDeleteModel(row.id) },
+            { default: () => '删除' }
+          )
+        ]
+      })
   }
 ]
 
@@ -227,6 +237,7 @@ function handleTabChange(tab: string) {
 }
 
 function openProviderModal() {
+  editingProviderId.value = null
   providerForm.providerKey = ''
   providerForm.name = ''
   providerForm.providerType = 'OPENAI_COMPATIBLE'
@@ -234,7 +245,17 @@ function openProviderModal() {
   showProviderModal.value = true
 }
 
+function openEditProvider(row: ProviderResponse) {
+  editingProviderId.value = row.id
+  providerForm.providerKey = row.providerKey
+  providerForm.name = row.name
+  providerForm.providerType = row.providerType
+  providerForm.enabled = row.enabled
+  showProviderModal.value = true
+}
+
 async function openModelModal() {
+  editingModelId.value = null
   try {
     allProviders.value = (await listProviders(adminToken.value, { pageNum: 1, pageSize: 1000 })).rows
   } catch {
@@ -247,14 +268,40 @@ async function openModelModal() {
   modelForm.baseUrl = ''
   modelForm.temperature = 0.7
   modelForm.maxTokens = 4096
+  modelForm.enabled = true
   showModelModal.value = true
 }
 
-async function handleCreateProvider() {
+function openEditModel(row: ModelResponse) {
+  editingModelId.value = row.id
+  const provider = allProviders.value.find((p) => p.id === row.providerId)
+  modelForm.providerKey = provider?.providerKey ?? ''
+  modelForm.modelKey = row.modelKey
+  modelForm.type = row.modelType
+  // 凭据加密存储不可回显：留空表示不修改
+  modelForm.apiKey = ''
+  modelForm.baseUrl = ''
+  modelForm.temperature = 0.7
+  modelForm.maxTokens = 4096
+  modelForm.enabled = row.enabled
+  showModelModal.value = true
+}
+
+async function handleSaveProvider() {
   savingProvider.value = true
   try {
-    await createProvider(adminToken.value, providerForm)
-    message.success('Provider 已保存')
+    if (editingProviderId.value != null) {
+      await updateProvider(adminToken.value, {
+        id: editingProviderId.value,
+        name: providerForm.name,
+        providerType: providerForm.providerType,
+        enabled: providerForm.enabled
+      })
+      message.success('Provider 已更新')
+    } else {
+      await createProvider(adminToken.value, providerForm)
+      message.success('Provider 已保存')
+    }
     showProviderModal.value = false
     await reload()
   } catch (e) {
@@ -264,16 +311,30 @@ async function handleCreateProvider() {
   }
 }
 
-async function handleCreateModel() {
+async function handleSaveModel() {
   savingModel.value = true
   try {
-    await createModel(adminToken.value, {
-      providerKey: modelForm.providerKey,
-      modelKey: modelForm.modelKey,
-      type: modelForm.type,
-      credentials: modelCredentials()
-    })
-    message.success('Model 已保存')
+    if (editingModelId.value != null) {
+      await updateModel(adminToken.value, {
+        id: editingModelId.value,
+        providerKey: modelForm.providerKey,
+        modelKey: modelForm.modelKey,
+        type: modelForm.type,
+        enabled: modelForm.enabled,
+        // 编辑时凭据留空则保留原密文，仅在填写 API Key 时更新
+        credentials: modelForm.apiKey ? modelCredentials() : undefined
+      })
+      message.success('Model 已更新')
+    } else {
+      await createModel(adminToken.value, {
+        providerKey: modelForm.providerKey,
+        modelKey: modelForm.modelKey,
+        type: modelForm.type,
+        enabled: modelForm.enabled,
+        credentials: modelCredentials()
+      })
+      message.success('Model 已保存')
+    }
     showModelModal.value = false
     await reload()
   } catch (e) {
@@ -343,27 +404,6 @@ onMounted(reload)
     <PageHeader title="模型管理" description="配置模型 Provider 与可用模型，模型凭证将加密存储。" />
 
     <n-tabs v-model:value="activeTab" type="line" @update:value="handleTabChange">
-      <!-- 供应商管理 -->
-      <n-tab-pane name="provider" tab="供应商管理">
-        <n-space style="margin-bottom: 12px" justify="end">
-          <n-button size="small" type="primary" @click="openProviderModal">
-            <template #icon><n-icon :component="Plus" /></template>
-            新建 Provider
-          </n-button>
-        </n-space>
-        <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" />
-        <n-pagination
-          :page="providerPagination.page"
-          :page-size="providerPagination.pageSize"
-          :item-count="providerPagination.itemCount"
-          :page-sizes="[10, 20, 50, 100]"
-          show-size-picker
-          style="justify-content: flex-end; margin-top: 12px"
-          @update:page="handleProviderPageChange"
-          @update:page-size="handleProviderPageSizeChange"
-        />
-      </n-tab-pane>
-
       <!-- 模型管理 -->
       <n-tab-pane name="model" tab="模型管理">
         <n-space style="margin-bottom: 12px" justify="end">
@@ -384,18 +424,39 @@ onMounted(reload)
           @update:page-size="handleModelPageSizeChange"
         />
       </n-tab-pane>
+
+      <!-- 供应商管理 -->
+      <n-tab-pane name="provider" tab="供应商管理">
+        <n-space style="margin-bottom: 12px" justify="end">
+          <n-button size="small" type="primary" @click="openProviderModal">
+            <template #icon><n-icon :component="Plus" /></template>
+            新建 Provider
+          </n-button>
+        </n-space>
+        <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" />
+        <n-pagination
+            :page="providerPagination.page"
+            :page-size="providerPagination.pageSize"
+            :item-count="providerPagination.itemCount"
+            :page-sizes="[10, 20, 50, 100]"
+            show-size-picker
+            style="justify-content: flex-end; margin-top: 12px"
+            @update:page="handleProviderPageChange"
+            @update:page-size="handleProviderPageSizeChange"
+        />
+      </n-tab-pane>
     </n-tabs>
 
     <n-modal
       v-model:show="showProviderModal"
       preset="card"
-      title="新建 Provider"
+      :title="editingProviderId != null ? '编辑 Provider' : '新建 Provider'"
       style="width: 460px"
       :bordered="false"
     >
       <n-form label-placement="top">
         <n-form-item label="Provider Key">
-          <n-input v-model:value="providerForm.providerKey" placeholder="如 openai" />
+          <n-input v-model:value="providerForm.providerKey" :disabled="editingProviderId != null" placeholder="如 openai" />
         </n-form-item>
         <n-form-item label="名称">
           <n-input v-model:value="providerForm.name" placeholder="如 OpenAI" />
@@ -410,7 +471,7 @@ onMounted(reload)
       <template #footer>
         <n-space justify="end">
           <n-button @click="showProviderModal = false">取消</n-button>
-          <n-button type="primary" :loading="savingProvider" @click="handleCreateProvider">保存</n-button>
+          <n-button type="primary" :loading="savingProvider" @click="handleSaveProvider">保存</n-button>
         </n-space>
       </template>
     </n-modal>
@@ -418,7 +479,7 @@ onMounted(reload)
     <n-modal
       v-model:show="showModelModal"
       preset="card"
-      title="新建 Model"
+      :title="editingModelId != null ? '编辑 Model' : '新建 Model'"
       style="width: 500px"
       :bordered="false"
     >
@@ -432,7 +493,7 @@ onMounted(reload)
         <n-form-item label="Model Type">
           <n-select v-model:value="modelForm.type" :options="modelTypeOptions" />
         </n-form-item>
-        <n-form-item label="API Key">
+        <n-form-item :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
           <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
         </n-form-item>
         <n-form-item label="Base URL（可选，OpenAI Compatible）">
@@ -444,11 +505,14 @@ onMounted(reload)
         <n-form-item label="Max Tokens">
           <n-input-number v-model:value="modelForm.maxTokens" :min="1" :max="32768" style="width: 100%" />
         </n-form-item>
+        <n-form-item label="启用">
+          <n-switch v-model:value="modelForm.enabled" />
+        </n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="end">
           <n-button @click="showModelModal = false">取消</n-button>
-          <n-button type="primary" :loading="savingModel" @click="handleCreateModel">保存</n-button>
+          <n-button type="primary" :loading="savingModel" @click="handleSaveModel">保存</n-button>
         </n-space>
       </template>
     </n-modal>
