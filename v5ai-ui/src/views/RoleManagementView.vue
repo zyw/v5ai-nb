@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { h, onMounted, reactive, ref } from 'vue'
 import {
-  NAlert,
   NButton,
   NCard,
   NDataTable,
@@ -9,117 +8,116 @@ import {
   NFormItem,
   NIcon,
   NInput,
+  NInputNumber,
   NModal,
+  NPopconfirm,
   NPagination,
+  NSelect,
   NSpace,
   NTag,
   NTree,
   useDialog,
   useMessage,
-  type DataTableColumns
+  type DataTableColumns,
+  type TreeOption
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus, RefreshCw, Search, ShieldCheck } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
-import RoleTag from '../components/RoleTag.vue'
 import {
+  changeRoleStatus,
   createRole,
-  deleteRole,
-  listMenus,
-  listRoleMenus,
+  deleteRoles,
   listRoles,
+  roleMenuTreeSelect,
   updateRole,
-  updateRoleMenus,
-  type Menu,
-  type Role
+  updateRolePermission,
+  type MenuTreeNode,
+  type Role,
+  type RoleForm
 } from '../api/client'
 import { adminToken } from '../stores/session'
 
 const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
-const roles = ref<Role[]>([])
+const rows = ref<Role[]>([])
 const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
-const showModal = ref(false)
-const editingKey = ref<string | null>(null)
-const saving = ref(false)
+const search = reactive({ roleName: '', roleKey: '', status: null as string | null })
 
-const showMenusModal = ref(false)
-const editingMenuRole = ref<Role | null>(null)
-const menus = ref<Menu[]>([])
-const checkedMenuKeys = ref<number[]>([])
-const savingMenus = ref(false)
-
-const form = reactive({ roleKey: '', name: '', description: '', dataScope: '1' })
-
-const dataScopeOptions = [
-  { label: '全部数据权限', value: '1' },
-  { label: '自定数据权限', value: '2' },
-  { label: '本部门数据权限', value: '3' },
-  { label: '本部门及以下数据权限', value: '4' },
-  { label: '仅本人数据权限', value: '5' },
-  { label: '部门及以下或本人数据权限', value: '6' }
-]
-
-type TreeOption = { key: number; label: string; children?: TreeOption[] }
-
-function buildMenuTree(list: Menu[]): TreeOption[] {
-  const byParent = new Map<number | null, Menu[]>()
-  for (const m of list) {
-    const key = m.parentId ?? null
-    const bucket = byParent.get(key) ?? []
-    bucket.push(m)
-    byParent.set(key, bucket)
-  }
-  const build = (parentId: number | null): TreeOption[] =>
-    (byParent.get(parentId) ?? [])
-      .slice()
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((m) => {
-        const node: TreeOption = { key: m.id, label: m.name }
-        const kids = build(m.id)
-        if (kids.length) node.children = kids
-        return node
-      })
-  return build(null)
+const DATA_SCOPE_LABELS: Record<string, string> = {
+  '1': '全部数据权限',
+  '2': '自定义数据权限',
+  '3': '本部门数据权限',
+  '4': '本部门及以下数据权限',
+  '5': '仅本人数据权限'
 }
 
-const menuTreeOptions = computed(() => buildMenuTree(menus.value))
-
 const columns: DataTableColumns<Role> = [
-  { title: 'Role Key', key: 'roleKey' },
-  { title: '名称', key: 'roleName' },
-  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
+  { title: 'ID', key: 'id', width: 64 },
+  { title: '角色名称', key: 'roleName', width: 150 },
+  { title: '权限字符', key: 'roleKey', width: 130 },
+  { title: '显示顺序', key: 'roleSort', width: 90 },
+  { title: '数据范围', key: 'dataScope', width: 150, render: (r) => DATA_SCOPE_LABELS[r.dataScope ?? ''] ?? r.dataScope ?? '-' },
   {
-    title: '内置',
-    key: 'builtin',
-    width: 90,
-    render: (row) => h(NTag, { size: 'small', type: row.builtin ? 'warning' : 'default', bordered: false }, { default: () => (row.builtin ? '内置' : '自定义') })
+    title: '状态',
+    key: 'status',
+    width: 80,
+    render: (r) => (r.status === '0'
+      ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '正常' })
+      : h(NTag, { type: 'default', size: 'small', bordered: false, round: true }, { default: () => '停用' }))
   },
-  { title: '创建时间', key: 'createdAt', width: 180, render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleString() : '-') },
+  { title: '备注', key: 'remark', render: (r) => r.remark ?? '-' },
   {
     title: '操作',
     key: 'actions',
-    width: 210,
-    render: (row) =>
-      h(NSpace, { size: 6 }, { default: () => [
-        h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => openEdit(row) }, { default: () => '编辑' }),
-        h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => openMenus(row) }, { default: () => '菜单' }),
-        h(NButton, { size: 'small', secondary: true, type: 'error', disabled: row.builtin, onClick: () => handleDelete(row) }, { default: () => '删除' })
-      ] })
+    width: 260,
+    render: (r) =>
+      h(NSpace, { size: 4 }, {
+        default: () => [
+          h(NButton, { size: 'small', quaternary: true, onClick: () => openEdit(r) }, { default: () => '编辑' }),
+          h(
+            NButton,
+            { size: 'small', quaternary: true, onClick: () => openPermission(r) },
+            { default: () => '菜单权限' }
+          ),
+          h(NButton, { size: 'small', quaternary: true, onClick: () => toggleStatus(r) }, { default: () => (r.status === '0' ? '停用' : '启用') }),
+          h(
+            NPopconfirm,
+            { onPositiveClick: () => handleDelete([r]) },
+            {
+              trigger: () => h(NButton, { size: 'small', quaternary: true, type: 'error' }, { default: () => '删除' }),
+              default: () => `确认删除角色「${r.roleName}」？`
+            }
+          )
+        ]
+      })
   }
 ]
+
+const selectedIds = ref<number[]>([])
 
 async function reload() {
   loading.value = true
   try {
-    const rows = await listRoles(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
-    roles.value = rows.rows
-    pagination.itemCount = rows.total
+    const res = await listRoles(adminToken.value, {
+      pageNum: pagination.page,
+      pageSize: pagination.pageSize,
+      roleName: search.roleName || undefined,
+      roleKey: search.roleKey || undefined,
+      status: search.status ?? undefined
+    })
+    rows.value = res.rows
+    pagination.itemCount = res.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载角色失败')
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  pagination.page = 1
+  void reload()
 }
 
 function handlePageChange(page: number) {
@@ -133,98 +131,146 @@ function handlePageSizeChange(pageSize: number) {
   void reload()
 }
 
+// ---- 新增/编辑 ----
+
+const showModal = ref(false)
+const saving = ref(false)
+const isEdit = ref(false)
+const form = reactive<RoleForm>({ roleName: '', roleKey: '', roleSort: 1, dataScope: '1', menuCheckStrictly: true, status: '0', remark: '' })
+
 function openCreate() {
-  editingKey.value = null
-  form.roleKey = ''
-  form.name = ''
-  form.description = ''
-  form.dataScope = '1'
+  isEdit.value = false
+  Object.assign(form, { id: undefined, roleName: '', roleKey: '', roleSort: 1, dataScope: '1', menuCheckStrictly: true, status: '0', remark: '' })
   showModal.value = true
 }
 
 function openEdit(row: Role) {
-  editingKey.value = row.roleKey
-  form.roleKey = row.roleKey
-  form.name = row.roleName
-  form.description = row.description ?? ''
-  form.dataScope = row.dataScope ?? '1'
+  isEdit.value = true
+  Object.assign(form, {
+    id: row.id,
+    roleName: row.roleName,
+    roleKey: row.roleKey,
+    roleSort: row.roleSort,
+    dataScope: row.dataScope ?? '1',
+    menuCheckStrictly: row.menuCheckStrictly ?? true,
+    status: row.status ?? '0',
+    remark: row.remark ?? ''
+  })
   showModal.value = true
 }
 
 async function handleSave() {
+  if (!form.roleName || !form.roleKey) {
+    message.warning('请填写角色名称与权限字符')
+    return
+  }
   saving.value = true
   try {
-    if (editingKey.value) {
-      await updateRole(adminToken.value, editingKey.value, {
-        roleName: form.name,
-        description: form.description || undefined,
-        dataScope: form.dataScope
-      })
+    if (isEdit.value) {
+      await updateRole(adminToken.value, { ...form })
       message.success('角色已更新')
     } else {
-      await createRole(adminToken.value, {
-        roleKey: form.roleKey,
-        roleName: form.name,
-        description: form.description || undefined,
-        dataScope: form.dataScope
-      })
+      await createRole(adminToken.value, { ...form })
       message.success('角色已创建')
     }
     showModal.value = false
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '保存角色失败')
+    message.error(e instanceof Error ? e.message : '保存失败')
   } finally {
     saving.value = false
   }
 }
 
-async function handleDelete(row: Role) {
+// ---- 菜单权限分配 ----
+
+const showPermModal = ref(false)
+const permSaving = ref(false)
+const permRole = ref<Role | null>(null)
+const menuTreeOptions = ref<TreeOption[]>([])
+const checkedKeys = ref<Array<string | number>>([])
+const permDataScope = ref('1')
+const menuTreeRef = ref<{ getHalfCheckedKeys?: () => Array<string | number> } | null>(null)
+
+function toTreeOptions(nodes: MenuTreeNode[] | undefined): TreeOption[] {
+  return (nodes ?? []).map((n) => ({
+    key: n.id ?? -1,
+    label: n.label ?? '',
+    children: toTreeOptions(n.children)
+  }))
+}
+
+async function openPermission(row: Role) {
+  permRole.value = row
+  permDataScope.value = row.dataScope ?? '1'
+  try {
+    const res = await roleMenuTreeSelect(adminToken.value, row.id)
+    menuTreeOptions.value = toTreeOptions(res.menus)
+    checkedKeys.value = res.checkedKeys
+    showPermModal.value = true
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '加载菜单树失败')
+  }
+}
+
+async function handleSavePermission() {
+  if (!permRole.value) return
+  permSaving.value = true
+  try {
+    // 合并全选与半选节点，避免父节点勾选丢失
+    const half = menuTreeRef.value?.getHalfCheckedKeys?.() ?? []
+    const menuIds = [...new Set([...checkedKeys.value, ...half])].filter((k) => typeof k === 'number') as number[]
+    await updateRolePermission(adminToken.value, {
+      id: permRole.value.id,
+      menuIds,
+      dataScope: permDataScope.value,
+      menuCheckStrictly: permRole.value.menuCheckStrictly ?? true
+    })
+    message.success('权限已更新')
+    showPermModal.value = false
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '保存权限失败')
+  } finally {
+    permSaving.value = false
+  }
+}
+
+// ---- 状态 / 删除 ----
+
+async function toggleStatus(row: Role) {
+  const next = row.status === '0' ? '1' : '0'
+  try {
+    await changeRoleStatus(adminToken.value, row.id, next)
+    message.success(next === '0' ? '已启用' : '已停用')
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '操作失败')
+  }
+}
+
+async function handleDelete(targets: Role[]) {
+  try {
+    await deleteRoles(adminToken.value, targets.map((t) => t.id))
+    message.success('已删除')
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '删除失败')
+  }
+}
+
+function handleBatchDelete() {
+  const targets = rows.value.filter((r) => selectedIds.value.includes(r.id))
+  if (targets.length === 0) {
+    message.warning('请先选择角色')
+    return
+  }
   dialog.warning({
-    title: '删除确认',
-    content: `确认删除角色「${row.roleName}」？若该角色仍被用户占用，删除将被拒绝。`,
+    title: '批量删除',
+    content: `确认删除选中的 ${targets.length} 个角色？`,
     positiveText: '删除',
     negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await deleteRole(adminToken.value, row.roleKey)
-        message.success('角色已删除')
-        await reload()
-      } catch (e) {
-        message.error(e instanceof Error ? e.message : '删除角色失败')
-      }
-    }
+    onPositiveClick: async () => handleDelete(targets)
   })
-}
-
-async function openMenus(row: Role) {
-  editingMenuRole.value = row
-  checkedMenuKeys.value = []
-  showMenusModal.value = true
-  try {
-    const [allMenus, roleMenus] = await Promise.all([
-      listMenus(adminToken.value),
-      listRoleMenus(adminToken.value, row.roleKey)
-    ])
-    menus.value = allMenus.rows
-    checkedMenuKeys.value = roleMenus
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '加载菜单失败')
-  }
-}
-
-async function handleSaveMenus() {
-  if (!editingMenuRole.value) return
-  savingMenus.value = true
-  try {
-    await updateRoleMenus(adminToken.value, editingMenuRole.value.roleKey, checkedMenuKeys.value)
-    message.success(`${editingMenuRole.value.roleName} 菜单已更新`)
-    showMenusModal.value = false
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '更新菜单失败')
-  } finally {
-    savingMenus.value = false
-  }
 }
 
 onMounted(reload)
@@ -232,24 +278,48 @@ onMounted(reload)
 
 <template>
   <div class="page">
-    <PageHeader title="角色管理" description="管理角色定义（名称与描述）。内置角色不可删除。">
+    <PageHeader title="角色管理" description="管理角色与菜单权限分配。">
       <template #actions>
-        <n-button size="small" type="primary" @click="openCreate">
-          <template #icon><n-icon :component="Plus" /></template>
-          新建角色
-        </n-button>
+        <n-space size="small">
+          <n-button size="small" type="primary" @click="openCreate">
+            <template #icon><n-icon :component="Plus" /></template>
+            新增角色
+          </n-button>
+          <n-button size="small" secondary type="error" @click="handleBatchDelete">批量删除</n-button>
+        </n-space>
       </template>
     </PageHeader>
 
-    <n-alert type="info" :bordered="false">
-      页面级权限由「角色 → 菜单」控制：分配给角色的菜单决定该角色用户可见的页面。
-      后端写操作（非 GET 的 <code>/api/admin/**</code>）仍仅对
-      <n-tag type="warning" size="small" :bordered="false">ADMIN</n-tag>
-      角色开放。
-    </n-alert>
-
     <n-card :bordered="true">
-      <n-data-table :loading="loading" :columns="columns" :data="roles" :bordered="false" />
+      <n-space style="margin-bottom: 12px" :size="8" align="center">
+        <n-input v-model:value="search.roleName" placeholder="角色名称" clearable style="width: 160px" @keyup.enter="handleSearch" />
+        <n-input v-model:value="search.roleKey" placeholder="权限字符" clearable style="width: 140px" @keyup.enter="handleSearch" />
+        <n-select
+          v-model:value="search.status"
+          placeholder="状态"
+          clearable
+          style="width: 110px"
+          :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]"
+        />
+        <n-button size="small" type="primary" secondary @click="handleSearch">
+          <template #icon><n-icon :component="Search" /></template>
+          查询
+        </n-button>
+        <n-button size="small" quaternary @click="handleSearch">
+          <template #icon><n-icon :component="RefreshCw" /></template>
+          刷新
+        </n-button>
+      </n-space>
+
+      <n-data-table
+        :loading="loading"
+        :columns="columns"
+        :data="rows"
+        :row-key="(r: Role) => r.id"
+        :checked-row-keys="selectedIds"
+        @update:checked-row-keys="(keys: Array<string | number>) => (selectedIds = keys as number[])"
+        :bordered="false"
+      />
       <n-pagination
         :page="pagination.page"
         :page-size="pagination.pageSize"
@@ -262,29 +332,37 @@ onMounted(reload)
       />
     </n-card>
 
-    <n-modal
-      v-model:show="showModal"
-      preset="card"
-      :title="editingKey ? '编辑角色' : '新建角色'"
-      style="width: 440px"
-      :bordered="false"
-    >
+    <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑角色' : '新增角色'" style="width: 520px" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="Role Key">
-          <n-input
-            v-model:value="form.roleKey"
-            :disabled="!!editingKey"
-            placeholder="大写字母，如 OPERATOR"
+        <n-form-item label="角色名称" required>
+          <n-input v-model:value="form.roleName" placeholder="如：运营人员" />
+        </n-form-item>
+        <n-form-item label="权限字符" required>
+          <n-input v-model:value="form.roleKey" placeholder="如：operator（字母数字）" />
+        </n-form-item>
+        <n-space style="width: 100%">
+          <n-form-item label="显示顺序" style="flex: 1">
+            <n-input-number v-model:value="form.roleSort" :min="0" style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="状态" style="flex: 1">
+            <n-select v-model:value="form.status" :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]" />
+          </n-form-item>
+        </n-space>
+        <n-form-item label="数据范围">
+          <n-select
+            v-model:value="form.dataScope"
+            :options="Object.entries(DATA_SCOPE_LABELS).map(([value, label]) => ({ label, value }))"
           />
         </n-form-item>
-        <n-form-item label="名称">
-          <n-input v-model:value="form.name" placeholder="如 运营人员" />
+        <n-form-item label="菜单树选择项是否关联显示">
+          <n-select
+            :value="form.menuCheckStrictly ? 'true' : 'false'"
+            :options="[{ label: '关联显示', value: 'true' }, { label: '不关联', value: 'false' }]"
+            @update:value="(v: string) => (form.menuCheckStrictly = v === 'true')"
+          />
         </n-form-item>
-        <n-form-item label="描述">
-          <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" />
-        </n-form-item>
-        <n-form-item label="数据范围">
-          <n-select v-model:value="form.dataScope" :options="dataScopeOptions" />
+        <n-form-item label="备注">
+          <n-input v-model:value="form.remark" type="textarea" placeholder="备注" />
         </n-form-item>
       </n-form>
       <template #footer>
@@ -295,25 +373,32 @@ onMounted(reload)
       </template>
     </n-modal>
 
-    <n-modal
-      v-model:show="showMenusModal"
-      preset="card"
-      :title="`分配菜单（${editingMenuRole?.roleName ?? ''}）`"
-      style="width: 440px"
-      :bordered="false"
-    >
-      <n-tree
-        checkable
-        cascade
-        :data="menuTreeOptions"
-        :checked-keys="checkedMenuKeys"
-        :default-expand-all="true"
-        @update:checked-keys="(keys: number[]) => (checkedMenuKeys = keys)"
-      />
+    <n-modal v-model:show="showPermModal" preset="card" :title="`菜单权限 - ${permRole?.roleName ?? ''}`" style="width: 480px" :bordered="false">
+      <n-form label-placement="top">
+        <n-form-item label="数据范围">
+          <n-select
+            v-model:value="permDataScope"
+            :options="Object.entries(DATA_SCOPE_LABELS).map(([value, label]) => ({ label, value }))"
+          />
+        </n-form-item>
+        <n-form-item label="菜单权限">
+          <div style="max-height: 360px; overflow: auto; width: 100%; border: 1px solid rgba(128,128,128,.2); border-radius: 8px; padding: 8px">
+            <n-tree
+              ref="menuTreeRef"
+              :options="menuTreeOptions"
+              :checked-keys="checkedKeys"
+              checkable
+              selectable
+              cascade
+              @update:checked-keys="(keys: Array<string | number>) => (checkedKeys = keys)"
+            />
+          </div>
+        </n-form-item>
+      </n-form>
       <template #footer>
         <n-space justify="end">
-          <n-button @click="showMenusModal = false">取消</n-button>
-          <n-button type="primary" :loading="savingMenus" @click="handleSaveMenus">保存</n-button>
+          <n-button @click="showPermModal = false">取消</n-button>
+          <n-button type="primary" :loading="permSaving" @click="handleSavePermission">保存</n-button>
         </n-space>
       </template>
     </n-modal>

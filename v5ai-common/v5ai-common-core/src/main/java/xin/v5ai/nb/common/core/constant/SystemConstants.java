@@ -30,17 +30,17 @@ public interface SystemConstants {
     /**
      * 菜单类型（目录）
      */
-    String TYPE_DIR = "DIR";
+    String TYPE_DIR = "M";
 
     /**
      * 菜单类型（菜单）
      */
-    String TYPE_MENU = "MENU";
+    String TYPE_MENU = "C";
 
     /**
      * 菜单类型（按钮）
      */
-    String TYPE_BUTTON = "BTN";
+    String TYPE_BUTTON = "F";
 
     /**
      * Layout组件标识
@@ -60,27 +60,27 @@ public interface SystemConstants {
     /**
      * 超级管理员用户ID
      */
-    Long SUPER_ADMIN_USER_ID = 1761100000000000001L;
+    Long SUPER_ADMIN_USER_ID = 1L;
 
     /**
      * 超级管理员角色ID
      */
-    Long SUPER_ADMIN_ROLE_ID = 1761300000000000001L;
+    Long SUPER_ADMIN_ROLE_ID = 1L;
 
     /**
      * 超级管理员角色 roleKey
      */
     String SUPER_ADMIN_ROLE_KEY = "superadmin";
 
-    /**
-     * 根部门祖级列表
-     */
-    String ROOT_DEPT_ANCESTORS = "0";
-
-    /**
-     * 默认部门 ID
-     */
-    Long DEFAULT_DEPT_ID = 1761000000000000100L;
+//    /**
+//     * 根部门祖级列表
+//     */
+//    String ROOT_DEPT_ANCESTORS = "0";
+//
+//    /**
+//     * 默认部门 ID
+//     */
+//    Long DEFAULT_DEPT_ID = 1761000000000000100L;
 
     /**
      * 排除敏感属性字段

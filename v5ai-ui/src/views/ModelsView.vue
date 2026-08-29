@@ -38,6 +38,7 @@ import { adminToken } from '../stores/session'
 const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
+const activeTab = ref('provider')
 const providers = ref<ProviderResponse[]>([])
 const models = ref<ModelResponse[]>([])
 const allProviders = ref<ProviderResponse[]>([])
@@ -215,6 +216,16 @@ function handleModelPageSizeChange(pageSize: number) {
   void reload()
 }
 
+/** 切换页签时回到第一页并刷新列表。 */
+function handleTabChange(tab: string) {
+  if (tab === 'provider') {
+    providerPagination.page = 1
+  } else {
+    modelPagination.page = 1
+  }
+  void reload()
+}
+
 function openProviderModal() {
   providerForm.providerKey = ''
   providerForm.name = ''
@@ -329,46 +340,51 @@ onMounted(reload)
 
 <template>
   <div class="page">
-    <PageHeader title="模型管理" description="配置模型 Provider 与可用模型，模型凭证将加密存储。">
-      <template #actions>
-        <n-button size="small" secondary @click="openProviderModal">
-          <template #icon><n-icon :component="Plus" /></template>
-          新建 Provider
-        </n-button>
-        <n-button size="small" type="primary" @click="openModelModal">
-          <template #icon><n-icon :component="Plus" /></template>
-          新建 Model
-        </n-button>
-      </template>
-    </PageHeader>
+    <PageHeader title="模型管理" description="配置模型 Provider 与可用模型，模型凭证将加密存储。" />
 
-    <n-card title="Provider 列表" :bordered="true">
-      <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" />
-      <n-pagination
-        :page="providerPagination.page"
-        :page-size="providerPagination.pageSize"
-        :item-count="providerPagination.itemCount"
-        :page-sizes="[10, 20, 50, 100]"
-        show-size-picker
-        style="justify-content: flex-end; margin-top: 12px"
-        @update:page="handleProviderPageChange"
-        @update:page-size="handleProviderPageSizeChange"
-      />
-    </n-card>
+    <n-tabs v-model:value="activeTab" type="line" @update:value="handleTabChange">
+      <!-- 供应商管理 -->
+      <n-tab-pane name="provider" tab="供应商管理">
+        <n-space style="margin-bottom: 12px" justify="end">
+          <n-button size="small" type="primary" @click="openProviderModal">
+            <template #icon><n-icon :component="Plus" /></template>
+            新建 Provider
+          </n-button>
+        </n-space>
+        <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" />
+        <n-pagination
+          :page="providerPagination.page"
+          :page-size="providerPagination.pageSize"
+          :item-count="providerPagination.itemCount"
+          :page-sizes="[10, 20, 50, 100]"
+          show-size-picker
+          style="justify-content: flex-end; margin-top: 12px"
+          @update:page="handleProviderPageChange"
+          @update:page-size="handleProviderPageSizeChange"
+        />
+      </n-tab-pane>
 
-    <n-card title="Model 列表" :bordered="true">
-      <n-data-table :loading="loading" :columns="modelColumns" :data="models" :bordered="false" />
-      <n-pagination
-        :page="modelPagination.page"
-        :page-size="modelPagination.pageSize"
-        :item-count="modelPagination.itemCount"
-        :page-sizes="[10, 20, 50, 100]"
-        show-size-picker
-        style="justify-content: flex-end; margin-top: 12px"
-        @update:page="handleModelPageChange"
-        @update:page-size="handleModelPageSizeChange"
-      />
-    </n-card>
+      <!-- 模型管理 -->
+      <n-tab-pane name="model" tab="模型管理">
+        <n-space style="margin-bottom: 12px" justify="end">
+          <n-button size="small" type="primary" @click="openModelModal">
+            <template #icon><n-icon :component="Plus" /></template>
+            新建 Model
+          </n-button>
+        </n-space>
+        <n-data-table :loading="loading" :columns="modelColumns" :data="models" :bordered="false" />
+        <n-pagination
+          :page="modelPagination.page"
+          :page-size="modelPagination.pageSize"
+          :item-count="modelPagination.itemCount"
+          :page-sizes="[10, 20, 50, 100]"
+          show-size-picker
+          style="justify-content: flex-end; margin-top: 12px"
+          @update:page="handleModelPageChange"
+          @update:page-size="handleModelPageSizeChange"
+        />
+      </n-tab-pane>
+    </n-tabs>
 
     <n-modal
       v-model:show="showProviderModal"

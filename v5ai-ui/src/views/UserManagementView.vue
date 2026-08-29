@@ -9,102 +9,116 @@ import {
   NIcon,
   NInput,
   NModal,
+  NPopconfirm,
   NPagination,
   NSelect,
   NSpace,
+  NTag,
   useDialog,
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
-import RoleTag from '../components/RoleTag.vue'
-import StatusTag from '../components/StatusTag.vue'
 import {
+  changeUserStatus,
   createUser,
-  listRoles,
-  listTenants,
+  deleteUsers,
+  getUserDetail,
+  listRoleOptions,
   listUsers,
-  updateUserStatus,
-  updateUserRoles,
+  resetUserPwd,
+  unlockUser,
+  updateUser,
   type Role,
-  type Tenant,
-  type UserAccount
+  type UserAccount,
+  type UserForm
 } from '../api/client'
 import { adminToken } from '../stores/session'
 
 const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
-const users = ref<UserAccount[]>([])
-const tenants = ref<Tenant[]>([])
+const rows = ref<UserAccount[]>([])
 const roles = ref<Role[]>([])
 const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
-
-const showCreateModal = ref(false)
-const showRolesModal = ref(false)
-const saving = ref(false)
-
-const form = reactive({
-  username: '',
-  password: '',
-  displayName: '',
-  tenantId: null as number | null,
-  roles: ['USER'] as string[]
-})
-
-const editingUser = ref<UserAccount | null>(null)
-const roleForm = reactive({ roles: [] as string[] })
-
-const roleOptions = () => roles.value.map((r) => ({ label: `${r.roleName} (${r.roleKey})`, value: r.roleKey }))
-const tenantOptions = () => tenants.value.map((t) => ({ label: `${t.name} (${t.tenantKey})`, value: t.id }))
+const search = reactive({ userName: '', phoneNumber: '', status: null as string | null })
 
 const columns: DataTableColumns<UserAccount> = [
+  { type: 'selection' },
   { title: 'ID', key: 'id', width: 64 },
-  { title: '用户名', key: 'username' },
-  { title: '显示名', key: 'displayName', render: (row) => row.displayName ?? '-' },
-  { title: '租户', key: 'tenantId', width: 90, render: (row) => (row.tenantId ? `#${row.tenantId}` : '-') },
+  { title: '账号', key: 'userName', width: 140 },
+  { title: '昵称', key: 'nickName', width: 120, render: (r) => r.nickName ?? '-' },
+  { title: '手机号', key: 'phoneNumber', width: 130, render: (r) => r.phoneNumber ?? '-' },
+  { title: '邮箱', key: 'email', render: (r) => r.email ?? '-' },
   {
     title: '角色',
     key: 'roles',
-    render: (row) =>
-      h(NSpace, { size: 4 }, { default: () => row.roles.map((role) => h(RoleTag, { role })) })
+    width: 180,
+    render: (r) =>
+      h(NSpace, { size: 4 }, {
+        default: () => (r.roles ?? []).map((role) => h(NTag, { size: 'small', bordered: false, round: true }, { default: () => role.roleName }))
+      })
   },
   {
     title: '状态',
     key: 'status',
-    width: 100,
-    render: (row) => h(StatusTag, { status: row.status === '1' ? 'DISABLED' : 'ACTIVE' })
+    width: 80,
+    render: (r) => (r.status === '0'
+      ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '正常' })
+      : h(NTag, { type: 'default', size: 'small', bordered: false, round: true }, { default: () => '停用' }))
   },
+  { title: '最后登录', key: 'loginDate', width: 170, render: (r) => (r.loginDate ? new Date(r.loginDate).toLocaleString() : '-') },
   {
     title: '操作',
     key: 'actions',
-    width: 180,
-    render: (row) =>
-      h(NSpace, { size: 6 }, { default: () => [
-        h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => openRoles(row) }, { default: () => '分配角色' }),
-        h(NButton, { size: 'small', secondary: true, type: row.status === '1' ? 'primary' : 'warning', onClick: () => handleToggleStatus(row) }, { default: () => (row.status === '1' ? '启用' : '禁用') })
-      ] })
+    width: 300,
+    render: (r) =>
+      h(NSpace, { size: 4 }, {
+        default: () => [
+          h(NButton, { size: 'small', quaternary: true, onClick: () => openEdit(r) }, { default: () => '编辑' }),
+          h(NButton, { size: 'small', quaternary: true, onClick: () => openResetPwd(r) }, { default: () => '重置密码' }),
+          h(NButton, { size: 'small', quaternary: true, onClick: () => toggleStatus(r) }, { default: () => (r.status === '0' ? '停用' : '启用') }),
+          r.status === '1'
+            ? h(NButton, { size: 'small', quaternary: true, onClick: () => handleUnlock(r) }, { default: () => '解锁' })
+            : null,
+          h(
+            NPopconfirm,
+            { onPositiveClick: () => handleDelete([r]) },
+            {
+              trigger: () => h(NButton, { size: 'small', quaternary: true, type: 'error' }, { default: () => '删除' }),
+              default: () => `确认删除用户「${r.userName}」？`
+            }
+          )
+        ]
+      })
   }
 ]
+
+const selectedIds = ref<number[]>([])
 
 async function reload() {
   loading.value = true
   try {
-    const [userRows, tenantRows, roleRows] = await Promise.all([
-      listUsers(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize }),
-      listTenants(adminToken.value, { pageNum: 1, pageSize: 1000 }),
-      listRoles(adminToken.value, { pageNum: 1, pageSize: 1000 })
-    ])
-    users.value = userRows.rows
-    pagination.itemCount = userRows.total
-    tenants.value = tenantRows.rows
-    roles.value = roleRows.rows
+    const res = await listUsers(adminToken.value, {
+      pageNum: pagination.page,
+      pageSize: pagination.pageSize,
+      userName: search.userName || undefined,
+      phoneNumber: search.phoneNumber || undefined,
+      status: search.status ?? undefined
+    })
+    rows.value = res.rows
+    pagination.itemCount = res.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载用户失败')
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  pagination.page = 1
+  void reload()
 }
 
 function handlePageChange(page: number) {
@@ -118,83 +132,202 @@ function handlePageSizeChange(pageSize: number) {
   void reload()
 }
 
+// ---- 新增/编辑 ----
+
+const showModal = ref(false)
+const saving = ref(false)
+const isEdit = ref(false)
+const form = reactive<UserForm>({ userName: '', nickName: '', password: '', phoneNumber: '', email: '', gender: '', status: '0', remark: '', roleIds: [] })
+
+/** 加载可选角色列表（角色下拉选项接口）。 */
+async function loadRoleOptions() {
+  try {
+    roles.value = await listRoleOptions(adminToken.value)
+  } catch {
+    roles.value = []
+  }
+}
+
 function openCreate() {
-  form.username = ''
-  form.password = ''
-  form.displayName = ''
-  form.tenantId = null
-  form.roles = ['USER']
-  showCreateModal.value = true
+  isEdit.value = false
+  Object.assign(form, { id: undefined, userName: '', nickName: '', password: '', phoneNumber: '', email: '', gender: '', status: '0', remark: '', roleIds: [] })
+  void loadRoleOptions()
+  showModal.value = true
 }
 
-async function handleCreate() {
-  saving.value = true
+async function openEdit(row: UserAccount) {
+  isEdit.value = true
   try {
-    await createUser(adminToken.value, {
-      username: form.username,
-      password: form.password,
-      displayName: form.displayName || undefined,
-      tenantId: form.tenantId ?? undefined,
-      roles: form.roles
+    const detail = await getUserDetail(adminToken.value, row.id)
+    roles.value = detail.roles
+    Object.assign(form, {
+      id: detail.user.id,
+      userName: detail.user.userName,
+      nickName: detail.user.nickName ?? '',
+      password: '',
+      phoneNumber: detail.user.phoneNumber ?? '',
+      email: detail.user.email ?? '',
+      gender: detail.user.gender ?? '',
+      status: detail.user.status ?? '0',
+      remark: detail.user.remark ?? '',
+      roleIds: detail.roleIds ?? []
     })
-    message.success('用户已创建')
-    showCreateModal.value = false
-    await reload()
+    showModal.value = true
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '创建用户失败')
-  } finally {
-    saving.value = false
+    message.error(e instanceof Error ? e.message : '加载用户详情失败')
   }
 }
 
-function openRoles(row: UserAccount) {
-  editingUser.value = row
-  roleForm.roles = [...row.roles]
-  showRolesModal.value = true
-}
-
-async function handleSaveRoles() {
-  if (!editingUser.value) return
+async function handleSave() {
+  if (!form.userName || !form.nickName || (!isEdit.value && !form.password)) {
+    message.warning('请填写账号、昵称与密码')
+    return
+  }
   saving.value = true
   try {
-    await updateUserRoles(adminToken.value, editingUser.value.id, roleForm.roles)
-    message.success(`${editingUser.value.username} 角色已更新`)
-    showRolesModal.value = false
+    if (isEdit.value) {
+      const { password, ...rest } = form
+      await updateUser(adminToken.value, { ...rest, password: password || undefined })
+      message.success('用户已更新')
+    } else {
+      await createUser(adminToken.value, { ...form, password: form.password! })
+      message.success('用户已创建')
+    }
+    showModal.value = false
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '更新角色失败')
+    message.error(e instanceof Error ? e.message : '保存失败')
   } finally {
     saving.value = false
   }
 }
 
-async function handleToggleStatus(row: UserAccount) {
+// ---- 重置密码 / 状态 / 解锁 / 删除 ----
+
+const resetPwdUser = ref<UserAccount | null>(null)
+const resetPwdValue = ref('')
+const resetPwdSaving = ref(false)
+
+function openResetPwd(row: UserAccount) {
+  resetPwdUser.value = row
+  resetPwdValue.value = ''
+  showResetPwdModal.value = true
+}
+
+const showResetPwdModal = ref(false)
+
+async function handleResetPwd() {
+  if (!resetPwdUser.value || !resetPwdValue.value) {
+    message.warning('请输入新密码')
+    return
+  }
+  resetPwdSaving.value = true
   try {
-    const next = row.status === '1' ? '0' : '1'
-    await updateUserStatus(adminToken.value, row.id, next)
-    message.success(`${row.username} 已${next === '1' ? '禁用' : '启用'}`)
+    await resetUserPwd(adminToken.value, resetPwdUser.value.id, resetPwdValue.value)
+    message.success('密码已重置')
+    showResetPwdModal.value = false
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '重置失败')
+  } finally {
+    resetPwdSaving.value = false
+  }
+}
+
+async function toggleStatus(row: UserAccount) {
+  const next = row.status === '0' ? '1' : '0'
+  try {
+    await changeUserStatus(adminToken.value, row.id, next)
+    message.success(next === '0' ? '已启用' : '已停用')
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '操作失败')
   }
 }
 
-onMounted(reload)
+async function handleUnlock(row: UserAccount) {
+  try {
+    await unlockUser(adminToken.value, row.id)
+    message.success('已解锁')
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '解锁失败')
+  }
+}
+
+async function handleDelete(targets: UserAccount[]) {
+  try {
+    await deleteUsers(adminToken.value, targets.map((t) => t.id))
+    message.success('已删除')
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '删除失败')
+  }
+}
+
+function handleBatchDelete() {
+  const targets = rows.value.filter((r) => selectedIds.value.includes(r.id))
+  if (targets.length === 0) {
+    message.warning('请先选择用户')
+    return
+  }
+  dialog.warning({
+    title: '批量删除',
+    content: `确认删除选中的 ${targets.length} 个用户？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => handleDelete(targets)
+  })
+}
+
+onMounted(() => {
+  void reload()
+  void loadRoleOptions()
+})
 </script>
 
 <template>
   <div class="page">
-    <PageHeader title="用户管理" description="管理平台账号、所属租户与角色分配。">
+    <PageHeader title="用户管理" description="管理平台登录账号、角色与状态。">
       <template #actions>
-        <n-button size="small" type="primary" @click="openCreate">
-          <template #icon><n-icon :component="Plus" /></template>
-          新建用户
-        </n-button>
+        <n-space size="small">
+          <n-button size="small" type="primary" @click="openCreate">
+            <template #icon><n-icon :component="Plus" /></template>
+            新增用户
+          </n-button>
+          <n-button size="small" secondary type="error" @click="handleBatchDelete">批量删除</n-button>
+        </n-space>
       </template>
     </PageHeader>
 
     <n-card :bordered="true">
-      <n-data-table :loading="loading" :columns="columns" :data="users" :bordered="false" />
+      <n-space style="margin-bottom: 12px" :size="8" align="center">
+        <n-input v-model:value="search.userName" placeholder="账号" clearable style="width: 180px" @keyup.enter="handleSearch" />
+        <n-input v-model:value="search.phoneNumber" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleSearch" />
+        <n-select
+          v-model:value="search.status"
+          placeholder="状态"
+          clearable
+          style="width: 120px"
+          :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]"
+        />
+        <n-button size="small" type="primary" secondary @click="handleSearch">
+          <template #icon><n-icon :component="Search" /></template>
+          查询
+        </n-button>
+        <n-button size="small" quaternary @click="handleSearch">
+          <template #icon><n-icon :component="RefreshCw" /></template>
+          刷新
+        </n-button>
+      </n-space>
+
+      <n-data-table
+        :loading="loading"
+        :columns="columns"
+        :data="rows"
+        :row-key="(r: UserAccount) => r.id"
+        :checked-row-keys="selectedIds"
+        @update:checked-row-keys="(keys: Array<string | number>) => (selectedIds = keys as number[])"
+        :bordered="false"
+      />
       <n-pagination
         :page="pagination.page"
         :page-size="pagination.pageSize"
@@ -207,54 +340,61 @@ onMounted(reload)
       />
     </n-card>
 
-    <n-modal
-      v-model:show="showCreateModal"
-      preset="card"
-      title="新建用户"
-      style="width: 460px"
-      :bordered="false"
-    >
+    <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑用户' : '新增用户'" style="width: 560px" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="用户名">
-          <n-input v-model:value="form.username" />
+        <n-form-item label="账号" required>
+          <n-input v-model:value="form.userName" :disabled="isEdit" placeholder="登录账号" />
         </n-form-item>
-        <n-form-item label="密码">
-          <n-input v-model:value="form.password" type="password" show-password-on="click" />
+        <n-form-item :label="isEdit ? '密码（留空则不修改）' : '密码'" :required="!isEdit">
+          <n-input v-model:value="form.password" type="password" show-password-on="click" placeholder="至少 5 位" />
         </n-form-item>
-        <n-form-item label="显示名">
-          <n-input v-model:value="form.displayName" placeholder="可选" />
+        <n-form-item label="昵称" required>
+          <n-input v-model:value="form.nickName" placeholder="显示名称" />
         </n-form-item>
-        <n-form-item label="归属租户">
-          <n-select v-model:value="form.tenantId" clearable :options="tenantOptions()" placeholder="可选，默认不归属" />
-        </n-form-item>
+        <n-space style="width: 100%">
+          <n-form-item label="手机号" style="flex: 1">
+            <n-input v-model:value="form.phoneNumber" placeholder="手机号" />
+          </n-form-item>
+          <n-form-item label="邮箱" style="flex: 1">
+            <n-input v-model:value="form.email" placeholder="邮箱" />
+          </n-form-item>
+        </n-space>
+        <n-space style="width: 100%">
+          <n-form-item label="性别" style="flex: 1">
+            <n-select v-model:value="form.gender" placeholder="性别" clearable :options="[{ label: '男', value: '0' }, { label: '女', value: '1' }, { label: '未知', value: '2' }]" />
+          </n-form-item>
+          <n-form-item label="状态" style="flex: 1">
+            <n-select v-model:value="form.status" :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]" />
+          </n-form-item>
+        </n-space>
         <n-form-item label="角色">
-          <n-select v-model:value="form.roles" multiple :options="roleOptions()" />
+          <n-select
+            v-model:value="form.roleIds"
+            multiple
+            clearable
+            placeholder="选择角色"
+            :options="roles.map((r) => ({ label: r.roleName, value: r.id }))"
+          />
+        </n-form-item>
+        <n-form-item label="备注">
+          <n-input v-model:value="form.remark" type="textarea" placeholder="备注" />
         </n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="end">
-          <n-button @click="showCreateModal = false">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="handleCreate">创建</n-button>
+          <n-button @click="showModal = false">取消</n-button>
+          <n-button type="primary" :loading="saving" @click="handleSave">保存</n-button>
         </n-space>
       </template>
     </n-modal>
 
-    <n-modal
-      v-model:show="showRolesModal"
-      preset="card"
-      :title="`分配角色（${editingUser?.username ?? ''}）`"
-      style="width: 440px"
-      :bordered="false"
-    >
-      <n-form label-placement="top">
-        <n-form-item label="角色">
-          <n-select v-model:value="roleForm.roles" multiple :options="roleOptions()" />
-        </n-form-item>
-      </n-form>
+    <n-modal v-model:show="showResetPwdModal" preset="card" title="重置密码" style="width: 420px" :bordered="false">
+      <p style="margin: 0 0 12px; opacity: 0.7">为账号「{{ resetPwdUser?.userName }}」设置新密码</p>
+      <n-input v-model:value="resetPwdValue" type="password" show-password-on="click" placeholder="新密码（至少 5 位）" />
       <template #footer>
         <n-space justify="end">
-          <n-button @click="showRolesModal = false">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="handleSaveRoles">保存</n-button>
+          <n-button @click="showResetPwdModal = false">取消</n-button>
+          <n-button type="primary" :loading="resetPwdSaving" @click="handleResetPwd">确认重置</n-button>
         </n-space>
       </template>
     </n-modal>

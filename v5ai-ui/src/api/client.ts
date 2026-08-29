@@ -495,6 +495,19 @@ function pageQueryString(query?: PageQuery): string {
   return s ? `?${s}` : ''
 }
 
+/** 拼接查询参数（忽略空值）。 */
+function paramString(params?: object): string {
+  if (!params) return ''
+  const usp = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') {
+      usp.set(k, String(v))
+    }
+  }
+  const s = usp.toString()
+  return s ? `?${s}` : ''
+}
+
 // ---- Provider ----
 
 export function listProviders(adminToken: string, query?: PageQuery): Promise<PageResult<ProviderResponse>> {
@@ -1047,22 +1060,66 @@ export interface Tenant {
 }
 
 export interface Role {
-  roleKey: string
+  id: number
   roleName: string
-  description?: string | null
+  roleKey: string
+  roleSort: number
   dataScope?: string | null
-  builtin: boolean
+  menuCheckStrictly?: boolean | null
+  status: string
+  remark?: string | null
+  flag?: boolean
   createdAt?: string | null
   updatedAt?: string | null
 }
 
+export interface RoleForm {
+  id?: number
+  roleName: string
+  roleKey: string
+  roleSort: number
+  dataScope?: string
+  menuCheckStrictly?: boolean
+  status?: string
+  remark?: string
+  menuIds?: number[]
+}
+
 export interface UserAccount {
   id: number
-  username: string
-  displayName?: string | null
-  tenantId?: number | null
-  roles: string[]
+  userName: string
+  nickName?: string | null
+  userType?: string | null
+  email?: string | null
+  phoneNumber?: string | null
+  gender?: string | null
   status?: string | null
+  loginIp?: string | null
+  loginDate?: string | null
+  remark?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+  roles?: Role[] | null
+  roleIds?: number[] | null
+}
+
+export interface UserForm {
+  id?: number
+  userName: string
+  nickName: string
+  password?: string
+  phoneNumber?: string
+  email?: string
+  gender?: string
+  status?: string
+  remark?: string
+  roleIds?: number[]
+}
+
+export interface UserDetail {
+  user: UserAccount
+  roleIds: number[]
+  roles: Role[]
 }
 
 export interface AppQuota {
@@ -1131,118 +1188,326 @@ export function disableTenant(adminToken: string, id: number): Promise<void> {
   return requestJson<void>(`/api/admin/tenants/${id}`, { method: 'DELETE' }, adminToken)
 }
 
-export function listUsers(adminToken: string, query?: PageQuery): Promise<PageResult<UserAccount>> {
-  return requestJson<PageResult<UserAccount>>(`/api/admin/users${pageQueryString(query)}`, {}, adminToken)
+// ---- 用户管理（Plm 契约） ----
+
+export function listUsers(adminToken: string, query?: PageQuery & { userName?: string; phoneNumber?: string; status?: string }): Promise<PageResult<UserAccount>> {
+  return requestJson<PageResult<UserAccount>>(`/api/admin/users/list${paramString(query)}`, {}, adminToken)
 }
 
-export function createUser(adminToken: string, request: { username: string; password: string; displayName?: string; tenantId?: number; roles?: string[] }): Promise<UserAccount> {
-  return requestJson<UserAccount>('/api/admin/users', {
+export function getUserDetail(adminToken: string, userId: number): Promise<UserDetail> {
+  return requestJson<UserDetail>(`/api/admin/users/${userId}`, {}, adminToken)
+}
+
+export function createUser(adminToken: string, form: UserForm): Promise<void> {
+  return requestJson<void>('/api/admin/users', {
     method: 'POST',
-    body: JSON.stringify(request)
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-export function updateUserRoles(adminToken: string, id: number, roles: string[]): Promise<UserAccount> {
-  return requestJson<UserAccount>(`/api/admin/users/${id}/roles`, {
+export function updateUser(adminToken: string, form: UserForm): Promise<void> {
+  return requestJson<void>('/api/admin/users', {
     method: 'PUT',
-    body: JSON.stringify({ roles })
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-export function updateUserStatus(adminToken: string, id: number, status: string): Promise<UserAccount> {
-  return requestJson<UserAccount>(`/api/admin/users/${id}/status`, {
+export function deleteUsers(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/users/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+/** 重置密码（接口带 @ApiEncrypt，请求体需加密）。 */
+export function resetUserPwd(adminToken: string, id: number, password: string): Promise<void> {
+  return requestJson<void>('/api/admin/users/resetPwd', {
     method: 'PUT',
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ id, password })
+  }, adminToken, false, true)
+}
+
+export function changeUserStatus(adminToken: string, id: number, status: string): Promise<void> {
+  return requestJson<void>('/api/admin/users/changeStatus', {
+    method: 'PUT',
+    body: JSON.stringify({ id, status })
   }, adminToken)
 }
 
-// ---- Roles ----
-
-export function listRoles(adminToken: string, query?: PageQuery): Promise<PageResult<Role>> {
-  return requestJson<PageResult<Role>>(`/api/admin/roles${pageQueryString(query)}`, {}, adminToken)
+export function unlockUser(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/users/unlock/${id}`, {}, adminToken)
 }
 
-export function createRole(adminToken: string, request: { roleKey: string; roleName: string; description?: string; dataScope?: string }): Promise<Role> {
-  return requestJson<Role>('/api/admin/roles', {
+// ---- 角色管理（Plm 契约） ----
+
+export function listRoles(adminToken: string, query?: PageQuery & { roleName?: string; roleKey?: string; status?: string }): Promise<PageResult<Role>> {
+  return requestJson<PageResult<Role>>(`/api/admin/roles/list${paramString(query)}`, {}, adminToken)
+}
+
+export function getRole(adminToken: string, id: number): Promise<Role> {
+  return requestJson<Role>(`/api/admin/roles/${id}`, {}, adminToken)
+}
+
+export function createRole(adminToken: string, form: RoleForm): Promise<void> {
+  return requestJson<void>('/api/admin/roles', {
     method: 'POST',
-    body: JSON.stringify(request)
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-export function updateRole(adminToken: string, roleKey: string, request: { roleName: string; description?: string; dataScope?: string }): Promise<Role> {
-  return requestJson<Role>(`/api/admin/roles/${encodeURIComponent(roleKey)}`, {
+export function updateRole(adminToken: string, form: RoleForm): Promise<void> {
+  return requestJson<void>('/api/admin/roles', {
     method: 'PUT',
-    body: JSON.stringify(request)
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-export function deleteRole(adminToken: string, roleKey: string): Promise<void> {
-  return requestJson<void>(`/api/admin/roles/${encodeURIComponent(roleKey)}`, {
-    method: 'DELETE'
+/** 角色权限分配入参（菜单 + 数据权限）。 */
+export interface RolePermissionForm {
+  id: number
+  menuIds: number[]
+  dataScope?: string
+  menuCheckStrictly?: boolean
+}
+
+export function updateRolePermission(adminToken: string, form: RolePermissionForm): Promise<void> {
+  return requestJson<void>('/api/admin/roles/permission', {
+    method: 'PUT',
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-// ---- Menus ----
+export function changeRoleStatus(adminToken: string, id: number, status: string): Promise<void> {
+  return requestJson<void>('/api/admin/roles/changeStatus', {
+    method: 'PUT',
+    body: JSON.stringify({ id, status })
+  }, adminToken)
+}
+
+export function deleteRoles(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/roles/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+/** 角色下拉选项（系统全部正常角色）。 */
+export function listRoleOptions(adminToken: string): Promise<Role[]> {
+  return requestJson<Role[]>('/api/admin/roles/optionselect', {}, adminToken)
+}
+
+// ---- 菜单管理（Plm 契约） ----
 
 export interface Menu {
   id: number
+  menuName: string
   parentId?: number | null
-  code: string
-  name: string
-  type: string // 'DIR' | 'MENU'
-  routeName?: string | null
+  orderNum?: number | null
   path?: string | null
+  component?: string | null
+  queryParam?: string | null
+  isFrame?: number | null
+  isCache?: number | null
+  menuType: string // 'M' 目录 | 'C' 菜单 | 'F' 按钮
+  visible?: string | null // '0' 显示 | '1' 隐藏
+  status?: string | null // '0' 正常 | '1' 停用
+  perms?: string | null
   icon?: string | null
-  sortOrder: number
-  visible: boolean
-  createdAt?: string | null
-  updatedAt?: string | null
+  remark?: string | null
 }
 
-export interface MenuRequest {
+export interface MenuForm {
+  id?: number
+  menuName: string
+  parentId?: number
+  orderNum?: number
+  path?: string
+  component?: string
+  queryParam?: string
+  isFrame?: number
+  isCache?: number
+  menuType: string
+  visible?: string
+  status?: string
+  perms?: string
+  icon?: string
+  remark?: string
+}
+
+/** 菜单下拉树节点（后端 hutool Tree：name 序列化为 label）。 */
+export interface MenuTreeNode {
+  id?: number | null
   parentId?: number | null
-  name: string
-  type: string
-  routeName?: string | null
-  path?: string | null
-  icon?: string | null
-  sortOrder?: number
-  visible?: boolean
+  label?: string
+  weight?: number | null
+  children?: MenuTreeNode[]
 }
 
-export function listMenus(adminToken: string): Promise<PageResult<Menu>> {
-  return requestJson<PageResult<Menu>>('/api/admin/menus', {}, adminToken)
+export interface RoleMenuTreeSelect {
+  checkedKeys: number[]
+  menus: MenuTreeNode[]
 }
 
-export function createMenu(adminToken: string, request: MenuRequest & { code: string }): Promise<Menu> {
-  return requestJson<Menu>('/api/admin/menus', {
+export function listMenus(adminToken: string, query?: { menuName?: string; status?: string }): Promise<Menu[]> {
+  return requestJson<Menu[]>(`/api/admin/menus/list${paramString(query)}`, {}, adminToken)
+}
+
+export function getMenu(adminToken: string, id: number): Promise<Menu> {
+  return requestJson<Menu>(`/api/admin/menus/${id}`, {}, adminToken)
+}
+
+export function createMenu(adminToken: string, form: MenuForm): Promise<void> {
+  return requestJson<void>('/api/admin/menus', {
     method: 'POST',
-    body: JSON.stringify(request)
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-export function updateMenu(adminToken: string, id: number, request: MenuRequest): Promise<Menu> {
-  return requestJson<Menu>(`/api/admin/menus/${id}`, {
+export function updateMenu(adminToken: string, form: MenuForm): Promise<void> {
+  return requestJson<void>('/api/admin/menus', {
     method: 'PUT',
-    body: JSON.stringify(request)
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
 export function deleteMenu(adminToken: string, id: number): Promise<void> {
-  return requestJson<void>(`/api/admin/menus/${id}`, {
-    method: 'DELETE'
+  return requestJson<void>(`/api/admin/menus/${id}`, { method: 'DELETE' }, adminToken)
+}
+
+export function deleteMenusCascade(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/menus/cascade/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+/** 角色菜单分配树（checkedKeys 为已选中菜单 ID）。 */
+export function roleMenuTreeSelect(adminToken: string, roleId: number): Promise<RoleMenuTreeSelect> {
+  return requestJson<RoleMenuTreeSelect>(`/api/admin/menus/roleMenuTreeselect/${roleId}`, {}, adminToken)
+}
+
+// ---- 客户端管理（Plm 契约） ----
+
+export interface Client {
+  id: number
+  clientId: string
+  clientKey: string
+  clientSecret?: string | null
+  grantTypeList?: string[] | null
+  grantType?: string | null
+  deviceType?: string | null
+  accessPath?: string | null
+  accessPathList?: string[] | null
+  ipWhitelist?: string | null
+  ipWhitelistList?: string[] | null
+  activeTimeout?: number | null
+  timeout?: number | null
+  status?: string | null
+}
+
+export interface ClientForm {
+  id?: number
+  clientKey: string
+  clientSecret: string
+  grantTypeList: string[]
+  deviceType?: string
+  accessPath?: string
+  ipWhitelist?: string
+  activeTimeout?: number
+  timeout?: number
+  status?: string
+}
+
+export function listClients(adminToken: string, query?: PageQuery & { clientKey?: string; status?: string }): Promise<PageResult<Client>> {
+  return requestJson<PageResult<Client>>(`/api/admin/client/list${paramString(query)}`, {}, adminToken)
+}
+
+export function getClient(adminToken: string, id: number): Promise<Client> {
+  return requestJson<Client>(`/api/admin/client/${id}`, {}, adminToken)
+}
+
+export function createClient(adminToken: string, form: ClientForm): Promise<void> {
+  return requestJson<void>('/api/admin/client', {
+    method: 'POST',
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-export function listRoleMenus(adminToken: string, roleKey: string): Promise<number[]> {
-  return requestJson<number[]>(`/api/admin/roles/${encodeURIComponent(roleKey)}/menus`, {}, adminToken)
-}
-
-export function updateRoleMenus(adminToken: string, roleKey: string, menuIds: number[]): Promise<void> {
-  return requestJson<void>(`/api/admin/roles/${encodeURIComponent(roleKey)}/menus`, {
+export function updateClient(adminToken: string, form: ClientForm): Promise<void> {
+  return requestJson<void>('/api/admin/client', {
     method: 'PUT',
-    body: JSON.stringify({ menuIds })
+    body: JSON.stringify(form)
   }, adminToken)
+}
+
+export function changeClientStatus(adminToken: string, clientId: string, status: string): Promise<void> {
+  return requestJson<void>('/api/admin/client/changeStatus', {
+    method: 'PUT',
+    body: JSON.stringify({ clientId, status })
+  }, adminToken)
+}
+
+export function deleteClients(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/client/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+// ---- 日志（登录日志 / 操作日志，仅列表与清理） ----
+
+export interface LoginLog {
+  id: number
+  userName?: string | null
+  clientKey?: string | null
+  deviceType?: string | null
+  ipaddr?: string | null
+  loginLocation?: string | null
+  browser?: string | null
+  os?: string | null
+  status?: string | null // '0' 成功 | '1' 失败
+  msg?: string | null
+  loginTime?: string | null
+}
+
+export interface OperLog {
+  id: number
+  title?: string | null
+  clientKey?: string | null
+  businessType?: number | null
+  method?: string | null
+  requestMethod?: string | null
+  operatorType?: number | null
+  operName?: string | null
+  userId?: number | null
+  deviceType?: string | null
+  browser?: string | null
+  os?: string | null
+  operUrl?: string | null
+  operIp?: string | null
+  operLocation?: string | null
+  operParam?: string | null
+  jsonResult?: string | null
+  status?: number | null // 0 成功 | 1 失败
+  errorMsg?: string | null
+  operTime?: string | null
+  costTime?: number | null
+}
+
+export function listLoginLogs(adminToken: string, query?: PageQuery & { userName?: string; ipaddr?: string; status?: string }): Promise<PageResult<LoginLog>> {
+  return requestJson<PageResult<LoginLog>>(`/api/admin/login/log/list${paramString(query)}`, {}, adminToken)
+}
+
+export function deleteLoginLogs(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/login/log/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+export function cleanLoginLogs(adminToken: string): Promise<void> {
+  return requestJson<void>('/api/admin/login/log/clean', { method: 'DELETE' }, adminToken)
+}
+
+export function unlockLoginUser(adminToken: string, userName: string): Promise<void> {
+  return requestJson<void>(`/api/admin/login/log/unlock/${encodeURIComponent(userName)}`, {}, adminToken)
+}
+
+export function listOperLogs(adminToken: string, query?: PageQuery & { title?: string; operName?: string; businessType?: number; status?: number }): Promise<PageResult<OperLog>> {
+  return requestJson<PageResult<OperLog>>(`/api/admin/oper/log/list${paramString(query)}`, {}, adminToken)
+}
+
+export function deleteOperLogs(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/oper/log/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+export function cleanOperLogs(adminToken: string): Promise<void> {
+  return requestJson<void>('/api/admin/oper/log/clean', { method: 'DELETE' }, adminToken)
 }
 
 export function getAppQuota(adminToken: string, agentKey: string): Promise<AppQuota> {
