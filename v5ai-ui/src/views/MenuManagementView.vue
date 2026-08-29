@@ -149,8 +149,8 @@ const form = reactive<MenuForm>({
   path: '',
   component: '',
   queryParam: '',
-  isFrame: 0,
-  isCache: 0,
+  isFrame: 'N',
+  isCache: 'Y',
   menuType: 'C',
   visible: '0',
   status: '0',
@@ -169,8 +169,8 @@ function openCreate(parent?: MenuRow) {
     path: '',
     component: '',
     queryParam: '',
-    isFrame: 0,
-    isCache: 0,
+    isFrame: 'N',
+    isCache: 'Y',
     menuType: parent?.menuType === 'M' ? 'C' : 'M',
     visible: '0',
     status: '0',
@@ -191,8 +191,8 @@ function openEdit(row: Menu) {
     path: row.path ?? '',
     component: row.component ?? '',
     queryParam: row.queryParam ?? '',
-    isFrame: row.isFrame ?? 0,
-    isCache: row.isCache ?? 0,
+    isFrame: row.isFrame ?? 'N',
+    isCache: row.isCache ?? 'Y',
     menuType: row.menuType,
     visible: row.visible ?? '0',
     status: row.status ?? '0',
@@ -361,10 +361,10 @@ onMounted(reload)
         </n-space>
         <n-space style="width: 100%">
           <n-form-item label="外链">
-            <n-switch :value="form.isFrame === 1" @update:value="(v: boolean) => (form.isFrame = v ? 1 : 0)" />
+            <n-switch :value="form.isFrame === 'Y'" @update:value="(v: boolean) => (form.isFrame = v ? 'Y' : 'N')" />
           </n-form-item>
           <n-form-item label="缓存">
-            <n-switch :value="form.isCache === 1" @update:value="(v: boolean) => (form.isCache = v ? 1 : 0)" />
+            <n-switch :value="form.isCache === 'Y'" @update:value="(v: boolean) => (form.isCache = v ? 'Y' : 'N')" />
           </n-form-item>
           <n-form-item label="备注" style="flex: 1">
             <n-input v-model:value="form.remark" placeholder="可选" />

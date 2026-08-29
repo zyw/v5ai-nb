@@ -274,6 +274,7 @@ public class LoginServiceImpl implements ILoginService {
         loginUser.setUserId(userId);
         loginUser.setUsername(user.getUserName());
         loginUser.setNickname(user.getNickName());
+        loginUser.setUserType(user.getUserType());
         ThreadUtils.virtualInvokeAll(() -> {
             loginUser.setMenuPermission(permissionService.getMenuPermission(userId));
         }, () -> {

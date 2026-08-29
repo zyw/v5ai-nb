@@ -1300,8 +1300,8 @@ export interface Menu {
   path?: string | null
   component?: string | null
   queryParam?: string | null
-  isFrame?: number | null
-  isCache?: number | null
+  isFrame?: string | null // 'Y' 外链 | 'N' 非外链
+  isCache?: string | null // 'Y' 缓存 | 'N' 不缓存
   menuType: string // 'M' 目录 | 'C' 菜单 | 'F' 按钮
   visible?: string | null // '0' 显示 | '1' 隐藏
   status?: string | null // '0' 正常 | '1' 停用
@@ -1318,8 +1318,8 @@ export interface MenuForm {
   path?: string
   component?: string
   queryParam?: string
-  isFrame?: number
-  isCache?: number
+  isFrame?: string // 'Y' 外链 | 'N' 非外链
+  isCache?: string // 'Y' 缓存 | 'N' 不缓存
   menuType: string
   visible?: string
   status?: string
