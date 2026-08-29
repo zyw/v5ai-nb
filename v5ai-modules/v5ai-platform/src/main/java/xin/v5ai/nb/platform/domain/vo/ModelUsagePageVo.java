@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
  */
 @Data
 @Builder
-public class ModelUsageRecordVo implements Serializable {
+public class ModelUsagePageVo implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;

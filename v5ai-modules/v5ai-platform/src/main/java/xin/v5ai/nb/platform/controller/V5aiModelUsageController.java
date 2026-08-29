@@ -4,16 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.platform.domain.bo.ModelUsageListBo;
-import xin.v5ai.nb.platform.domain.vo.ModelUsageRecordVo;
+import xin.v5ai.nb.platform.domain.vo.ModelUsagePageVo;
 import xin.v5ai.nb.platform.service.IV5aiModelUsageService;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 
 /**
  * 用量明细查询 API（可观测性）。
@@ -26,7 +22,7 @@ public class V5aiModelUsageController {
     private final IV5aiModelUsageService service;
 
     @GetMapping
-    public R<PageResult<ModelUsageRecordVo>> listUsage(ModelUsageListBo bo, PageQuery pageQuery) {
+    public R<PageResult<ModelUsagePageVo>> list(ModelUsageListBo bo, PageQuery pageQuery) {
 //        var fromInstant = parseDayStart(from);
 //        var toInstant = parseDayEnd(to);
 //        int limit = pageQuery.getPageSize() == null ? 100 : pageQuery.getPageSize();
@@ -40,17 +36,17 @@ public class V5aiModelUsageController {
         return R.ok(service.queryPageList(bo, pageQuery));
     }
 
-    private static Instant parseDayStart(String date) {
-        if (date == null || date.isBlank()) {
-            return Instant.EPOCH;
-        }
-        return LocalDate.parse(date).atStartOfDay().toInstant(ZoneOffset.UTC);
-    }
-
-    private static Instant parseDayEnd(String date) {
-        if (date == null || date.isBlank()) {
-            return Instant.now().plusSeconds(86400);
-        }
-        return LocalDate.parse(date).plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
-    }
+//    private static Instant parseDayStart(String date) {
+//        if (date == null || date.isBlank()) {
+//            return Instant.EPOCH;
+//        }
+//        return LocalDate.parse(date).atStartOfDay().toInstant(ZoneOffset.UTC);
+//    }
+//
+//    private static Instant parseDayEnd(String date) {
+//        if (date == null || date.isBlank()) {
+//            return Instant.now().plusSeconds(86400);
+//        }
+//        return LocalDate.parse(date).plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+//    }
 }

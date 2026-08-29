@@ -14,7 +14,7 @@ import xin.v5ai.nb.model.api.ModelUsageService;
 import xin.v5ai.nb.model.api.domain.ModelUsageDTO;
 import xin.v5ai.nb.platform.domain.V5aiModelUsage;
 import xin.v5ai.nb.platform.domain.bo.ModelUsageListBo;
-import xin.v5ai.nb.platform.domain.vo.ModelUsageRecordVo;
+import xin.v5ai.nb.platform.domain.vo.ModelUsagePageVo;
 import xin.v5ai.nb.platform.domain.vo.V5aiModelUsageVo;
 import xin.v5ai.nb.platform.mapper.V5aiModelUsageMapper;
 import xin.v5ai.nb.platform.service.IV5aiModelUsageService;
@@ -30,7 +30,7 @@ public class V5aiModelUsageServiceImpl implements IV5aiModelUsageService, ModelU
     private final V5aiModelUsageMapper mapper;
 
     @Override
-    public PageResult<ModelUsageRecordVo> queryPageList(ModelUsageListBo bo, PageQuery pageQuery) {
+    public PageResult<ModelUsagePageVo> queryPageList(ModelUsageListBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<V5aiModelUsage> lqw = buildQueryWrapper(bo);
         Page<V5aiModelUsageVo> result = mapper.selectVoPage(pageQuery.build(), lqw);
         var records = getRecords(result);
@@ -52,9 +52,9 @@ public class V5aiModelUsageServiceImpl implements IV5aiModelUsageService, ModelU
                 .build();
     }
 
-    private List<ModelUsageRecordVo> getRecords(Page<V5aiModelUsageVo> result) {
+    private List<ModelUsagePageVo> getRecords(Page<V5aiModelUsageVo> result) {
         List<V5aiModelUsageVo> entities = result.getRecords();
-        return entities.stream().map(entity -> ModelUsageRecordVo.builder()
+        return entities.stream().map(entity -> ModelUsagePageVo.builder()
                 .id(entity.getId())
                 .runId(entity.getRunId())
                 .agentKey(entity.getAgentKey())
