@@ -852,6 +852,7 @@ export interface CreateMcpServerRequest {
 }
 
 export interface UpdateMcpServerRequest {
+  id: number
   name?: string
   transportType?: McpTransportType
   endpoint?: string
@@ -906,8 +907,8 @@ export function createMcpServer(adminToken: string, request: CreateMcpServerRequ
   }, adminToken)
 }
 
-export function updateMcpServer(adminToken: string, id: number, request: UpdateMcpServerRequest): Promise<McpServerResponse> {
-  return requestJson<McpServerResponse>(`/api/admin/mcp-servers/${id}`, {
+export function updateMcpServer(adminToken: string, request: UpdateMcpServerRequest): Promise<McpServerResponse> {
+  return requestJson<McpServerResponse>('/api/admin/mcp-servers', {
     method: 'PUT',
     body: JSON.stringify(request)
   }, adminToken)

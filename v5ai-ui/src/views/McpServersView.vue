@@ -29,6 +29,7 @@ import {
   listMcpServers,
   listMcpTools,
   testMcpServerConnection,
+  updateMcpServer,
   updateMcpToolPermission,
   type McpServerResponse,
   type McpToolPermission,
@@ -48,6 +49,7 @@ const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 const showCreateModal = ref(false)
 const showToolsModal = ref(false)
 const saving = ref(false)
+const editingId = ref<number | null>(null)
 
 const form = reactive({
   name: '',
@@ -92,6 +94,7 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
         { size: 6 },
         {
           default: () => [
+            h(NButton, { size: 'small', quaternary: true, onClick: () => openEditModal(row) }, { default: () => '编辑' }),
             h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => handleTestConnection(row) }, { default: () => '测试连接' }),
             h(NButton, { size: 'small', secondary: true, type: 'info', disabled: row.status !== 'ACTIVE', onClick: () => handleDiscover(row) }, { default: () => '发现工具' }),
             h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => handleShowTools(row) }, { default: () => '工具' }),
@@ -150,6 +153,7 @@ function handlePageSizeChange(pageSize: number) {
 }
 
 function resetForm() {
+  editingId.value = null
   form.name = ''
   form.transportType = 'STREAMABLE_HTTP'
   form.endpoint = ''
@@ -159,24 +163,55 @@ function resetForm() {
   form.timeoutSeconds = 30
 }
 
-async function handleCreate() {
+function openCreateModal() {
+  resetForm()
+  showCreateModal.value = true
+}
+
+function openEditModal(row: McpServerResponse) {
+  editingId.value = row.id
+  form.name = row.name
+  form.transportType = row.transportType
+  form.endpoint = row.endpoint ?? ''
+  form.args = (row.args ?? []).join(', ')
+  form.headers = mapToText(row.headers)
+  form.envVars = mapToText(row.envVars)
+  form.timeoutSeconds = row.timeoutSeconds ?? 30
+  showCreateModal.value = true
+}
+
+async function handleSave() {
   saving.value = true
   try {
-    await createMcpServer(adminToken.value, {
-      name: form.name,
-      transportType: form.transportType,
-      endpoint: form.endpoint || undefined,
-      args: form.args ? form.args.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
-      headers: parseMap(form.headers),
-      envVars: parseMap(form.envVars),
-      timeoutSeconds: form.timeoutSeconds
-    })
-    message.success('MCP Server 已创建')
+    if (editingId.value != null) {
+      await updateMcpServer(adminToken.value, {
+        id: editingId.value,
+        name: form.name,
+        transportType: form.transportType,
+        endpoint: form.endpoint || undefined,
+        args: form.args ? form.args.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+        headers: parseMap(form.headers),
+        envVars: parseMap(form.envVars),
+        timeoutSeconds: form.timeoutSeconds
+      })
+      message.success('MCP Server 已更新')
+    } else {
+      await createMcpServer(adminToken.value, {
+        name: form.name,
+        transportType: form.transportType,
+        endpoint: form.endpoint || undefined,
+        args: form.args ? form.args.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+        headers: parseMap(form.headers),
+        envVars: parseMap(form.envVars),
+        timeoutSeconds: form.timeoutSeconds
+      })
+      message.success('MCP Server 已创建')
+    }
     showCreateModal.value = false
     resetForm()
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '创建 MCP Server 失败')
+    message.error(e instanceof Error ? e.message : '保存 MCP Server 失败')
   } finally {
     saving.value = false
   }
@@ -260,6 +295,12 @@ function parseMap(text: string): Record<string, string> | undefined {
   return Object.keys(result).length > 0 ? result : undefined
 }
 
+function mapToText(map: Record<string, string> | null | undefined): string {
+  return Object.entries(map ?? {})
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n')
+}
+
 onMounted(reload)
 </script>
 
@@ -267,7 +308,7 @@ onMounted(reload)
   <div class="page">
     <PageHeader title="MCP 管理" description="接入外部 MCP Server，发现工具并配置运行时权限。">
       <template #actions>
-        <n-button size="small" type="primary" @click="showCreateModal = true">
+        <n-button size="small" type="primary" @click="openCreateModal">
           <template #icon><n-icon :component="Plus" /></template>
           新建 MCP Server
         </n-button>
@@ -291,7 +332,7 @@ onMounted(reload)
     <n-modal
       v-model:show="showCreateModal"
       preset="card"
-      title="新建 MCP Server"
+      :title="editingId != null ? '编辑 MCP Server' : '新建 MCP Server'"
       style="width: 540px"
       :bordered="false"
     >
@@ -321,7 +362,7 @@ onMounted(reload)
       <template #footer>
         <n-space justify="end">
           <n-button @click="showCreateModal = false">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="handleCreate">创建</n-button>
+          <n-button type="primary" :loading="saving" @click="handleSave">{{ editingId != null ? '保存' : '创建' }}</n-button>
         </n-space>
       </template>
     </n-modal>
