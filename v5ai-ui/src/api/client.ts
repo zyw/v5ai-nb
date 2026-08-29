@@ -195,7 +195,7 @@ export interface ApiKeyRecord {
   enabled: boolean
 }
 
-const apiBase = import.meta.env.VITE_API_BASE ?? ''
+const apiBase = import.meta.env.VITE_APP_BASE_API ?? import.meta.env.VITE_API_BASE ?? ''
 
 /** 统一响应包装（后端 Controller 一律返回 R<T>） */
 export interface R<T> {
