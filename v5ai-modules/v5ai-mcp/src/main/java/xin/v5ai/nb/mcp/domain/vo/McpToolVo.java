@@ -6,7 +6,6 @@ import xin.v5ai.nb.mcp.domain.McpTool;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
@@ -45,7 +44,7 @@ public class McpToolVo implements Serializable {
      */
     private String permission;
 
-    private LocalDateTime lastDiscoveredAt;
+    private OffsetDateTime lastDiscoveredAt;
 
     private OffsetDateTime createdAt;
 

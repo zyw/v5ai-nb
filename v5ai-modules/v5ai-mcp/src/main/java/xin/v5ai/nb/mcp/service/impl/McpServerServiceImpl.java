@@ -35,7 +35,6 @@ import xin.v5ai.nb.mcp.mapper.McpToolCallAuditMapper;
 import xin.v5ai.nb.mcp.mapper.McpToolMapper;
 import xin.v5ai.nb.mcp.service.IMcpServerService;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -296,7 +295,7 @@ public class McpServerServiceImpl implements IMcpServerService {
             tool.setInputSchemaJson(McpJsonCodec.toJson(info.inputSchema()));
             tool.setReadOnly(info.readOnlyHint());
             tool.setPermission(McpToolPermissionPolicy.defaultPermission(info).name());
-            tool.setLastDiscoveredAt(LocalDateTime.now());
+            tool.setLastDiscoveredAt(OffsetDateTime.now());
             toolMapper.insert(tool);
         } else {
             var update = new McpTool();
@@ -304,7 +303,7 @@ public class McpServerServiceImpl implements IMcpServerService {
             update.setDescription(info.description());
             update.setInputSchemaJson(McpJsonCodec.toJson(info.inputSchema()));
             update.setReadOnly(info.readOnlyHint());
-            update.setLastDiscoveredAt(LocalDateTime.now());
+            update.setLastDiscoveredAt(OffsetDateTime.now());
             // 保留管理员已调整的权限
             toolMapper.updateById(update);
         }

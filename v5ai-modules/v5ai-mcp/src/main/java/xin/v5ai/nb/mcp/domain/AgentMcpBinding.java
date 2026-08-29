@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -30,5 +30,5 @@ public class AgentMcpBinding {
      */
     private Long mcpServerId;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 }

@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -47,5 +47,5 @@ public class SkillFile {
      */
     private String content;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 }

@@ -9,7 +9,7 @@ import lombok.Setter;
 import lombok.ToString;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -62,5 +62,5 @@ public class McpTool extends BaseEntity {
     /**
      * 最近一次发现时间
      */
-    private LocalDateTime lastDiscoveredAt;
+    private OffsetDateTime lastDiscoveredAt;
 }

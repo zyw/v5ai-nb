@@ -13,6 +13,8 @@ import xin.v5ai.nb.model.api.ModelUsageService;
 import xin.v5ai.nb.model.api.domain.ModelUsageDTO;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -181,7 +183,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账（Token 按字符数粗略估算）。
      */
     private void recordUsage(AgentRunRequest request, String runId, String modelName,
-                             java.time.Instant startedAt, String answer, boolean success) {
+                             Instant startedAt, String answer, boolean success) {
         if (usageRecorder == null && quotaService == null) {
             return;
         }
@@ -191,7 +193,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
             long completionChars = answer == null ? 0 : answer.length();
             long promptTokens = Math.max(1, promptChars / 4);
             long completionTokens = Math.max(1, completionChars / 4);
-            long durationMs = startedAt == null ? 0 : java.time.Duration.between(startedAt, java.time.Instant.now()).toMillis();
+            long durationMs = startedAt == null ? 0 : Duration.between(startedAt, Instant.now()).toMillis();
             if (usageRecorder != null) {
                 usageRecorder.record(new ModelUsageDTO(
                         null, runId, request.agentKey(),

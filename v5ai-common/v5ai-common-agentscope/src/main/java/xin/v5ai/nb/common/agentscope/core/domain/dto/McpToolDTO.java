@@ -6,7 +6,7 @@ import lombok.ToString;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -51,5 +51,5 @@ public class McpToolDTO implements Serializable {
     /**
      * 最近一次发现时间
      */
-    private LocalDateTime lastDiscoveredAt;
+    private OffsetDateTime lastDiscoveredAt;
 }

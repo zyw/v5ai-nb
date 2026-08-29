@@ -6,7 +6,7 @@ import lombok.ToString;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * <p>
@@ -47,5 +47,5 @@ public class SkillFileDTO implements Serializable {
      */
     private String content;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 }
