@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { NAlert, NButton, NIcon, NInput } from 'naive-ui'
 import { Bot, Lock, Moon, Sun, User } from 'lucide-vue-next'
 import { ApiError, login } from '../api/client'
-import { loadCurrentUser, setAdminToken } from '../stores/session'
+import { ensureSession, setAdminToken } from '../stores/session'
 import { isDark, toggleTheme } from '../stores/theme'
 import SliderCaptcha from '../components/SliderCaptcha.vue'
 
@@ -36,7 +36,8 @@ async function handleSubmit() {
       sliderVerified.value ? sliderUuid.value : undefined
     )
     setAdminToken(res.access_token)
-    await loadCurrentUser()
+    // 登录成功写入 token 后：getInfo 拉取用户/角色/权限，getRouters 拉取权限内菜单
+    await ensureSession()
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
     router.replace(redirect)
   } catch (e) {

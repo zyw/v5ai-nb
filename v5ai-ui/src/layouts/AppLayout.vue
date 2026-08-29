@@ -39,7 +39,7 @@ import {
 } from 'lucide-vue-next'
 import { isDark, toggleTheme } from '../stores/theme'
 import { clearAdminToken, currentMenus, displayName, ensureSession, isAdmin } from '../stores/session'
-import type { Menu } from '../api/client'
+import type { RouterVo } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,72 +77,65 @@ function iconFor(name?: string | null): Component {
   return (name && iconMap[name]) || LayoutDashboard
 }
 
-// 由当前用户可见菜单构建导航树（DIR -> submenu，MENU -> 叶子）
+// 由 getRouters 返回的路由菜单树构建导航（目录 -> submenu，叶子 -> 按 path 跳转）
+function normalizePath(path?: string): string {
+  if (!path) return ''
+  return path.startsWith('/') ? path : `/${path}`
+}
+
 const nav = computed<NavItem[]>(() => {
-  const visible = currentMenus.value.filter((m) => m.visible)
-  const byParent = new Map<number | null, Menu[]>()
-  for (const m of visible) {
-    const key = m.parentId ?? null
-    const list = byParent.get(key) ?? []
-    list.push(m)
-    byParent.set(key, list)
-  }
-  const build = (parentId: number | null): NavItem[] =>
-    (byParent.get(parentId) ?? [])
-      .slice()
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+  const build = (menus: RouterVo[]): NavItem[] =>
+    menus
+      .filter((m) => !m.hidden)
       .map((m) => {
-        if (m.type === 'DIR') {
+        if (m.children && m.children.length > 0) {
           return {
             type: 'submenu' as const,
-            label: m.name,
-            key: m.code,
-            icon: icon(iconFor(m.icon)),
-            children: build(m.id)
+            label: m.meta?.title ?? m.name,
+            key: m.path,
+            icon: icon(iconFor(m.meta?.icon)),
+            children: build(m.children)
           }
         }
         return {
-          label: m.name,
-          key: m.routeName ?? m.code,
-          icon: icon(iconFor(m.icon))
+          label: m.meta?.title ?? m.name,
+          key: normalizePath(m.path),
+          icon: icon(iconFor(m.meta?.icon))
         }
       })
-  return build(null)
+  return build(currentMenus.value)
 })
 
-const activeKey = computed(() => String(route.name ?? 'dashboard'))
+const activeKey = computed(() => String(route.path))
 const pageTitle = computed(() => String(route.meta.title ?? '总览'))
 
 // 分组默认全部展开，且导航到某页时自动展开其所属分组
 const expandedKeys = ref<string[]>([])
 
-const dirCodes = computed(() => currentMenus.value.filter((m) => m.type === 'DIR').map((m) => m.code))
-watch(dirCodes, (codes) => {
-  expandedKeys.value = [...new Set([...expandedKeys.value, ...codes])]
+const dirPaths = computed(() => {
+  const collect = (menus: RouterVo[]): string[] =>
+    menus.filter((m) => m.children && m.children.length > 0).flatMap((m) => [m.path, ...collect(m.children ?? [])])
+  return collect(currentMenus.value)
+})
+watch(dirPaths, (paths) => {
+  expandedKeys.value = [...new Set([...expandedKeys.value, ...paths])]
 }, { immediate: true })
 
-const sectionOf = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {}
-  for (const m of currentMenus.value) {
-    if (m.type === 'MENU' && m.routeName && m.parentId) {
-      const parent = currentMenus.value.find((p) => p.id === m.parentId)
-      if (parent) {
-        map[m.routeName] = parent.code
+watch(activeKey, (path) => {
+  const parts = path.split('/').filter(Boolean)
+  for (let i = parts.length - 1; i >= 1; i--) {
+    const parent = `/${parts.slice(0, i).join('/')}`
+    if (dirPaths.value.includes(parent)) {
+      if (!expandedKeys.value.includes(parent)) {
+        expandedKeys.value = [...expandedKeys.value, parent]
       }
+      return
     }
-  }
-  return map
-})
-
-watch(activeKey, (key) => {
-  const section = sectionOf.value[key]
-  if (section && !expandedKeys.value.includes(section)) {
-    expandedKeys.value = [...expandedKeys.value, section]
   }
 })
 
 function handleMenuUpdate(key: string) {
-  router.push({ name: key })
+  router.push(key)
 }
 
 const userOptions = [{ label: '退出登录', key: 'logout', icon: icon(LogOut) }]

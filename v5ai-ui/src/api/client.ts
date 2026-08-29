@@ -210,6 +210,7 @@ export interface ApiKeyRecord {
 }
 
 const apiBase = import.meta.env.VITE_APP_BASE_API ?? import.meta.env.VITE_API_BASE ?? ''
+const clientId = import.meta.env.VITE_APP_CLIENT_ID ?? ''
 
 /** 统一响应包装（后端 Controller 一律返回 R<T>） */
 export interface R<T> {
@@ -263,6 +264,8 @@ async function requestJson<T>(
   }
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    // 后端 SecurityConfig 校验 token 内 clientId 与请求头/参数 clientid 一致
+    ...(clientId ? { clientid: clientId } : {}),
     ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
     ...extraHeaders,
     ...(init.headers as Record<string, string> | undefined)
@@ -333,6 +336,51 @@ export async function verifySliderCaptcha(uuid: string, x: number): Promise<void
     method: 'POST',
     body: JSON.stringify({ uuid, x: Math.round(x) })
   })
+}
+
+/** 登录后用户信息（getInfo）：用户基本信息 + 角色 + 权限集合。 */
+export interface UserInfo {
+  user: {
+    id?: number
+    userName?: string
+    nickName?: string
+    userType?: string
+    email?: string
+    phoneNumber?: string
+    status?: string
+    loginIp?: string
+    loginDate?: string
+    remark?: string
+  }
+  permissions: string[]
+  roles: string[]
+}
+
+/** 权限内路由的 meta 信息。 */
+export interface RouterMeta {
+  title?: string
+  icon?: string
+}
+
+/** 权限内路由节点（getRouters 返回的菜单树）。 */
+export interface RouterVo {
+  name: string
+  path: string
+  hidden?: boolean
+  redirect?: string
+  component?: string
+  meta?: RouterMeta
+  children?: RouterVo[]
+}
+
+/** 获取当前登录用户信息、角色与权限集合。 */
+export function getInfo(adminToken: string): Promise<UserInfo> {
+  return requestJson<UserInfo>('/api/auth/getInfo', {}, adminToken)
+}
+
+/** 获取当前用户权限允许的路由菜单树。 */
+export function getRouters(adminToken: string): Promise<RouterVo[]> {
+  return requestJson<RouterVo[]>('/api/auth/getRouters', {}, adminToken)
 }
 
 function pageQueryString(query?: PageQuery): string {
@@ -967,16 +1015,6 @@ export interface OverviewResponse {
   todayTokens: number
 }
 
-export interface LoginResponseFull {
-  tokenType: string
-  token: string
-  userId?: number | null
-  username?: string | null
-  displayName?: string | null
-  tenantId?: number | null
-  roles?: string[]
-}
-
 export function listTenants(adminToken: string, query?: PageQuery): Promise<PageResult<Tenant>> {
   return requestJson<PageResult<Tenant>>(`/api/admin/tenants${pageQueryString(query)}`, {}, adminToken)
 }
@@ -1106,10 +1144,6 @@ export function updateRoleMenus(adminToken: string, roleKey: string, menuIds: nu
   }, adminToken)
 }
 
-export function fetchMyMenus(adminToken: string): Promise<Menu[]> {
-  return requestJson<Menu[]>('/api/auth/menus', {}, adminToken)
-}
-
 export function getAppQuota(adminToken: string, agentKey: string): Promise<AppQuota> {
   return requestJson<AppQuota>(`/api/admin/apps/${encodeURIComponent(agentKey)}/quota`, {}, adminToken)
 }
@@ -1148,10 +1182,6 @@ export function listAuditLogs(adminToken: string, params: { actor?: string; acti
 
 export function getStatsOverview(adminToken: string): Promise<OverviewResponse> {
   return requestJson<OverviewResponse>('/api/admin/stats/overview', {}, adminToken)
-}
-
-export function fetchMe(adminToken: string): Promise<LoginResponseFull> {
-  return requestJson<LoginResponseFull>('/api/auth/me', {}, adminToken)
 }
 
 // ---- Workflows ----

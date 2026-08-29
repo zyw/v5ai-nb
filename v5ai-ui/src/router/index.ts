@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import {
-  allowedRouteNames,
+  allowedPaths,
   clearAdminToken,
-  defaultRouteName,
+  defaultPath,
   ensureSession,
   isAdmin,
   isLoggedIn
@@ -60,14 +60,14 @@ router.beforeEach(async (to) => {
     return true
   }
 
-  const allowed = allowedRouteNames.value
-  const name = to.name ? String(to.name) : ''
-  if (name && !allowed.has(name)) {
-    if (allowed.size === 0) {
-      clearAdminToken()
-      return { name: 'login' }
-    }
-    return { name: defaultRouteName.value }
+  const allowed = allowedPaths.value
+  if (allowed.size === 0) {
+    clearAdminToken()
+    return { name: 'login' }
+  }
+  // getRouters 返回的菜单树决定可访问页面（按 path 匹配）
+  if (!allowed.has(to.path)) {
+    return { path: defaultPath.value }
   }
   return true
 })
