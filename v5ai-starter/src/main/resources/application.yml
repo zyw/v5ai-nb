@@ -112,6 +112,7 @@ v5ai:
   security:
     # 排除路径
     excludes:
+      - /api/v1/agents/**
 #      - /*.html
 #      - /**/*.html
 #      - /**/*.css

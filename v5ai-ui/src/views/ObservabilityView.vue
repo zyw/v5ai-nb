@@ -6,7 +6,6 @@ import {
   NDataTable,
   NGi,
   NGrid,
-  NInput,
   NInputNumber,
   NPagination,
   NSelect,
@@ -23,10 +22,8 @@ import {
   getAppQuota,
   getStatsOverview,
   listAgents,
-  listAuditLogs,
   listUsage,
   updateAppQuota,
-  type AuditLog,
   type OverviewResponse,
   type UsageRecord
 } from '../api/client'
@@ -35,14 +32,11 @@ import { adminToken } from '../stores/session'
 const message = useMessage()
 const overview = ref<OverviewResponse | null>(null)
 const usage = ref<UsageRecord[]>([])
-const audits = ref<AuditLog[]>([])
 const apps = ref<{ agentKey: string }[]>([])
 const filterAppKey = ref('')
-const filterAction = ref('')
 const savingQuota = ref(false)
 const dailyUsage = ref('')
 const usagePagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
-const auditPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 
 const quotaForm = reactive({
   agentKey: '',
@@ -61,20 +55,6 @@ const usageColumns: DataTableColumns<UsageRecord> = [
   { title: '耗时(ms)', key: 'durationMs', render: (row) => row.durationMs ?? '-' },
   { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
   { title: '时间', key: 'createdAt', width: 180, render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleString() : '-') }
-]
-
-const auditColumns: DataTableColumns<AuditLog> = [
-  { title: 'ID', key: 'id', width: 70 },
-  { title: '时间', key: 'createdAt', width: 180, render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleString() : '-') },
-  { title: '操作者', key: 'actor', render: (row) => row.actor ?? '-' },
-  {
-    title: '动作',
-    key: 'action',
-    width: 110,
-    render: (row) => h(NTag, { size: 'small', type: row.action === 'LOGIN' || row.action === 'CREATE' ? 'info' : 'warning', bordered: false }, { default: () => row.action })
-  },
-  { title: '目标', key: 'targetType', render: (row) => (row.targetType ? `${row.targetType}${row.targetId ? `#${row.targetId}` : ''}` : '-') },
-  { title: '详情', key: 'detail', ellipsis: { tooltip: true } }
 ]
 
 async function reloadOverview() {
@@ -124,36 +104,6 @@ function handleUsagePageSizeChange(pageSize: number) {
   void reloadUsage()
 }
 
-async function reloadAudits() {
-  try {
-    const rows = await listAuditLogs(adminToken.value, {
-      action: filterAction.value || undefined,
-      pageNum: auditPagination.page,
-      pageSize: auditPagination.pageSize
-    })
-    audits.value = rows.rows
-    auditPagination.itemCount = rows.total
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '加载审计失败')
-  }
-}
-
-function handleAuditFilterChange() {
-  auditPagination.page = 1
-  void reloadAudits()
-}
-
-function handleAuditPageChange(page: number) {
-  auditPagination.page = page
-  void reloadAudits()
-}
-
-function handleAuditPageSizeChange(pageSize: number) {
-  auditPagination.pageSize = pageSize
-  auditPagination.page = 1
-  void reloadAudits()
-}
-
 async function reloadQuota() {
   if (!quotaForm.agentKey) return
   try {
@@ -193,13 +143,12 @@ async function handleSaveQuota() {
 onMounted(async () => {
   await reloadOverview()
   await reloadUsage()
-  await reloadAudits()
 })
 </script>
 
 <template>
   <div class="page">
-    <PageHeader title="可观测性" description="查看平台运行统计、用量明细、审计日志，并配置应用配额。" />
+    <PageHeader title="可观测性" description="查看平台运行统计、用量明细，并配置应用配额。（审计日志已迁移至 系统管理 → 日志管理）" />
 
     <n-card title="平台总览" :bordered="true">
       <n-grid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
@@ -278,29 +227,6 @@ onMounted(async () => {
         style="justify-content: flex-end; margin-top: 12px"
         @update:page="handleUsagePageChange"
         @update:page-size="handleUsagePageSizeChange"
-      />
-    </n-card>
-
-    <n-card title="审计日志" :bordered="true">
-      <n-space style="margin-bottom: 12px" align="center">
-        <n-input
-          v-model:value="filterAction"
-          placeholder="按动作筛选（如 CREATE / LOGIN）"
-          style="width: 220px"
-          clearable
-          @update:value="handleAuditFilterChange"
-        />
-      </n-space>
-      <n-data-table :columns="auditColumns" :data="audits" :bordered="false" />
-      <n-pagination
-        :page="auditPagination.page"
-        :page-size="auditPagination.pageSize"
-        :item-count="auditPagination.itemCount"
-        :page-sizes="[10, 20, 50, 100]"
-        show-size-picker
-        style="justify-content: flex-end; margin-top: 12px"
-        @update:page="handleAuditPageChange"
-        @update:page-size="handleAuditPageSizeChange"
       />
     </n-card>
   </div>

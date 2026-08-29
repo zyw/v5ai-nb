@@ -470,6 +470,7 @@ export interface RouterVo {
   hidden?: boolean
   redirect?: string
   component?: string
+  alwaysShow?: boolean
   meta?: RouterMeta
   children?: RouterVo[]
 }
@@ -1150,18 +1151,6 @@ export interface UsageRecord {
   createdAt?: string | null
 }
 
-export interface AuditLog {
-  id: number
-  tenantId?: number | null
-  actor?: string | null
-  action: string
-  targetType?: string | null
-  targetId?: string | null
-  detail?: string | null
-  ip?: string | null
-  createdAt?: string | null
-}
-
 export interface OverviewResponse {
   agents: number
   models: number
@@ -1534,16 +1523,6 @@ export function listUsage(adminToken: string, params: { agentKey?: string; from?
   if (params.pageSize) query.set('pageSize', String(params.pageSize))
   const qs = query.toString()
   return requestJson<PageResult<UsageRecord>>(`/api/admin/usage${qs ? `?${qs}` : ''}`, {}, adminToken)
-}
-
-export function listAuditLogs(adminToken: string, params: { actor?: string; action?: string; pageNum?: number; pageSize?: number } = {}): Promise<PageResult<AuditLog>> {
-  const query = new URLSearchParams()
-  if (params.actor) query.set('actor', params.actor)
-  if (params.action) query.set('action', params.action)
-  if (params.pageNum) query.set('pageNum', String(params.pageNum))
-  if (params.pageSize) query.set('pageSize', String(params.pageSize))
-  const qs = query.toString()
-  return requestJson<PageResult<AuditLog>>(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`, {}, adminToken)
 }
 
 export function getStatsOverview(adminToken: string): Promise<OverviewResponse> {

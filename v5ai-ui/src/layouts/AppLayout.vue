@@ -93,12 +93,22 @@ const nav = computed<NavItem[]>(() => {
       .filter((m) => !m.hidden)
       .map((m) => {
         if (m.children && m.children.length > 0) {
+          // RuoYi 规则：仅 alwaysShow 或子节点多于 1 个才渲染为子菜单；
+          // 单子节点的框架包装（如顶级菜单被后端包一层）直接展示其唯一子节点，避免出现二级菜单
+          if (m.alwaysShow || m.children.length > 1) {
+            return {
+              type: 'submenu' as const,
+              label: m.meta?.title ?? m.name,
+              key: m.path,
+              icon: icon(iconFor(m.meta?.icon)),
+              children: build(m.children)
+            }
+          }
+          const only = m.children[0]
           return {
-            type: 'submenu' as const,
-            label: m.meta?.title ?? m.name,
-            key: m.path,
-            icon: icon(iconFor(m.meta?.icon)),
-            children: build(m.children)
+            label: only.meta?.title ?? only.name,
+            key: normalizePath(only.path),
+            icon: icon(iconFor(only.meta?.icon ?? m.meta?.icon))
           }
         }
         return {
@@ -118,7 +128,9 @@ const expandedKeys = ref<string[]>([])
 
 const dirPaths = computed(() => {
   const collect = (menus: RouterVo[]): string[] =>
-    menus.filter((m) => m.children && m.children.length > 0).flatMap((m) => [m.path, ...collect(m.children ?? [])])
+    menus
+      .filter((m) => m.children && m.children.length > 0 && (m.alwaysShow || m.children.length > 1))
+      .flatMap((m) => [m.path, ...collect(m.children ?? [])])
   return collect(currentMenus.value)
 })
 watch(dirPaths, (paths) => {
