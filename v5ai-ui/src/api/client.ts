@@ -896,8 +896,11 @@ export interface McpToolCallAuditResponse {
   createdAt?: string | null
 }
 
-export function listMcpServers(adminToken: string, query?: PageQuery): Promise<PageResult<McpServerResponse>> {
-  return requestJson<PageResult<McpServerResponse>>(`/api/admin/mcp-servers${pageQueryString(query)}`, {}, adminToken)
+export function listMcpServers(
+  adminToken: string,
+  query?: PageQuery & { name?: string; transportType?: string; status?: string }
+): Promise<PageResult<McpServerResponse>> {
+  return requestJson<PageResult<McpServerResponse>>(`/api/admin/mcp-servers${paramString(query)}`, {}, adminToken)
 }
 
 export function createMcpServer(adminToken: string, request: CreateMcpServerRequest): Promise<McpServerResponse> {

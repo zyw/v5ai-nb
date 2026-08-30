@@ -287,6 +287,8 @@ public class McpServerServiceImpl implements IMcpServerService {
     private LambdaQueryWrapper<McpServer> buildQueryWrapper(McpServerBo bo) {
         return QueryBuilder.lambda(McpServer.class)
                 .likeIfText(McpServer::getName, bo == null ? null : bo.getName())
+                .eqIfText(McpServer::getTransportType,
+                        bo == null || bo.getTransportType() == null ? null : bo.getTransportType().name())
                 .eqIfText(McpServer::getStatus, bo == null ? null : bo.getStatus())
                 .orderByAsc(McpServer::getId)
                 .build();

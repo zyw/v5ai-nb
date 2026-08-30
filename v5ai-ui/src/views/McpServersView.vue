@@ -19,7 +19,7 @@ import {
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
@@ -65,7 +65,7 @@ const form = reactive({
 })
 
 const transportOptions = [
-  { label: 'Streamable HTTP', value: 'STREAMABLE_HTTP' },
+  { label: 'HTTP', value: 'STREAMABLE_HTTP' },
   { label: 'SSE', value: 'SSE' },
   { label: 'Stdio', value: 'STDIO' }
 ]
@@ -75,6 +75,17 @@ const permissionOptions = [
   { label: 'APPROVE 审批', value: 'APPROVE' },
   { label: 'DENY 拒绝', value: 'DENY' }
 ]
+
+const statusOptions = [
+  { label: '启用', value: 'ACTIVE' },
+  { label: '禁用', value: 'DISABLED' }
+]
+
+const search = reactive({
+  name: '',
+  transportType: null as string | null,
+  status: null as string | null
+})
 
 const serverColumns: DataTableColumns<McpServerResponse> = [
   { title: 'ID', key: 'id', width: 64 },
@@ -146,7 +157,13 @@ const toolColumns: DataTableColumns<McpToolResponse> = [
 async function reload() {
   loading.value = true
   try {
-    const rows = await listMcpServers(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
+    const rows = await listMcpServers(adminToken.value, {
+      pageNum: pagination.page,
+      pageSize: pagination.pageSize,
+      name: search.name || undefined,
+      transportType: search.transportType ?? undefined,
+      status: search.status ?? undefined
+    })
     servers.value = rows.rows
     pagination.itemCount = rows.total
   } catch (e) {
@@ -154,6 +171,11 @@ async function reload() {
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  pagination.page = 1
+  void reload()
 }
 
 function handlePageChange(page: number) {
@@ -354,6 +376,32 @@ onMounted(reload)
     </PageHeader>
 
     <n-card :bordered="true">
+      <n-space style="margin-bottom: 12px" :size="8" align="center">
+        <n-input v-model:value="search.name" placeholder="名称" clearable style="width: 200px" @keyup.enter="handleSearch" />
+        <n-select
+          v-model:value="search.transportType"
+          placeholder="传输类型"
+          clearable
+          style="width: 150px"
+          :options="transportOptions"
+        />
+        <n-select
+          v-model:value="search.status"
+          placeholder="状态"
+          clearable
+          style="width: 130px"
+          :options="statusOptions"
+        />
+        <n-button size="small" type="primary" secondary @click="handleSearch">
+          <template #icon><n-icon :component="Search" /></template>
+          查询
+        </n-button>
+        <n-button size="small" quaternary @click="handleSearch">
+          <template #icon><n-icon :component="RefreshCw" /></template>
+          刷新
+        </n-button>
+      </n-space>
+
       <n-data-table :loading="loading" :columns="serverColumns" :data="servers" :bordered="false" />
       <n-pagination
         :page="pagination.page"
