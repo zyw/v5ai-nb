@@ -338,12 +338,26 @@ public class LoginServiceImpl implements ILoginService {
                 .voOne();
         if (ObjectUtil.isNull(user)) {
             log.info("登录用户：{} 不存在.", username);
+            increaseErrorCount(username);
             throw new UserException("user.not.exists", username);
         } else if (SystemConstants.DISABLE.equals(user.getStatus())) {
             log.info("登录用户：{} 已被停用.", username);
+            increaseErrorCount(username);
             throw new UserException("user.blocked", username);
         }
         return user;
+    }
+
+    /**
+     * 累计登录失败次数（与 {@link #checkLogin} 共用同一 Redis 计数键）。
+     * 用户不存在或账号被停用时同样计入失败次数，避免以不存在的用户名绕过滑块验证门控。
+     *
+     * @param username 登录用户名
+     */
+    private void increaseErrorCount(String username) {
+        String errorKey = CacheNames.PWD_ERR_CNT_KEY + username;
+        int errorNumber = ObjectUtil.defaultIfNull(RedisUtils.getCacheObject(errorKey), 0);
+        RedisUtils.setCacheObject(errorKey, errorNumber + 1, Duration.ofMinutes(lockTime));
     }
 
     /**
