@@ -13,6 +13,8 @@ import xin.v5ai.nb.platform.service.IPlmSliderCaptchaService;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -44,9 +46,10 @@ public class PlmSliderCaptchaServiceImpl implements IPlmSliderCaptchaService {
         String uuid = IdUtil.fastSimpleUUID();
 
         BufferedImage background = createBackground();
-        // 拼图块需取自未挖缺口的原图，保证与缺口区域图案一致
-        BufferedImage puzzle = cropPiece(background, gapX, gapY);
-        drawNotch(background, gapX, gapY);
+        // 每次随机一种拼图形状，拼图块与背景缺口共用同一路径保证完全吻合
+        Shape pieceShape = RandomUtil.randomEle(PieceShape.values()).path();
+        BufferedImage puzzle = cropPiece(background, gapX, gapY, pieceShape);
+        drawNotch(background, gapX, gapY, pieceShape);
 
         store.saveGap(uuid, gapX, Duration.ofMinutes(expireMinutes()));
         return new SliderCaptchaVO(uuid, toBase64(background), toBase64(puzzle), gapY);
@@ -122,14 +125,18 @@ public class PlmSliderCaptchaServiceImpl implements IPlmSliderCaptchaService {
     }
 
     /**
-     * 从背景图扣出圆角拼图块并描边。
+     * 从背景图扣出指定形状的拼图块并描边。
+     *
+     * @param source 未挖缺口的背景原图
+     * @param gapX   缺口横向位置
+     * @param gapY   缺口纵向位置
+     * @param shape  拼图形状（本地坐标，与 {@link #drawNotch} 共用）
      */
-    private BufferedImage cropPiece(BufferedImage source, int gapX, int gapY) {
+    private BufferedImage cropPiece(BufferedImage source, int gapX, int gapY, Shape shape) {
         BufferedImage piece = new BufferedImage(PIECE_SIZE, PIECE_SIZE, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = piece.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            Shape shape = new RoundRectangle2D.Float(0, 0, PIECE_SIZE, PIECE_SIZE, 8, 8);
             g.setClip(shape);
             g.drawImage(source, -gapX, -gapY, null);
             g.setClip(null);
@@ -143,21 +150,106 @@ public class PlmSliderCaptchaServiceImpl implements IPlmSliderCaptchaService {
     }
 
     /**
-     * 在背景图上绘制缺口（半透明遮罩 + 描边），指示拼图应放回的位置。
+     * 在背景图上绘制指定形状的缺口（半透明遮罩 + 描边），指示拼图应放回的位置。
+     *
+     * @param image 背景图
+     * @param gapX  缺口横向位置
+     * @param gapY  缺口纵向位置
+     * @param shape 拼图形状（本地坐标，与 {@link #cropPiece} 共用）
      */
-    private void drawNotch(BufferedImage image, int gapX, int gapY) {
+    private void drawNotch(BufferedImage image, int gapX, int gapY, Shape shape) {
         Graphics2D g = image.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            Shape shape = new RoundRectangle2D.Float(gapX, gapY, PIECE_SIZE, PIECE_SIZE, 8, 8);
+            Shape notch = AffineTransform.getTranslateInstance(gapX, gapY).createTransformedShape(shape);
             g.setColor(new Color(0, 0, 0, 90));
-            g.fill(shape);
+            g.fill(notch);
             g.setColor(new Color(255, 255, 255, 160));
             g.setStroke(new BasicStroke(2f));
-            g.draw(shape);
+            g.draw(notch);
         } finally {
             g.dispose();
         }
+    }
+
+    /**
+     * 拼图形状：圆角正方形、三角形、五角星、拼图式（四边凹凸榫卯）。
+     * 路径基于拼图块本地坐标（0 ~ {@link #PIECE_SIZE}），拼图块裁剪与背景缺口必须使用同一路径。
+     */
+    enum PieceShape {
+        ROUNDED_SQUARE {
+            @Override
+            Shape path() {
+                return new RoundRectangle2D.Float(0, 0, PIECE_SIZE, PIECE_SIZE, 8, 8);
+            }
+        },
+        TRIANGLE {
+            @Override
+            Shape path() {
+                Path2D path = new Path2D.Double();
+                path.moveTo(PIECE_SIZE / 2.0, 3);
+                path.lineTo(PIECE_SIZE - 3, PIECE_SIZE - 3);
+                path.lineTo(3, PIECE_SIZE - 3);
+                path.closePath();
+                return path;
+            }
+        },
+        STAR {
+            @Override
+            Shape path() {
+                Path2D path = new Path2D.Double();
+                double cx = PIECE_SIZE / 2.0;
+                double cy = PIECE_SIZE / 2.0;
+                double outer = PIECE_SIZE / 2.0 - 2;
+                double inner = outer * 0.45;
+                for (int i = 0; i < 10; i++) {
+                    double radius = i % 2 == 0 ? outer : inner;
+                    double angle = -Math.PI / 2 + i * Math.PI / 5;
+                    double x = cx + radius * Math.cos(angle);
+                    double y = cy + radius * Math.sin(angle);
+                    if (i == 0) {
+                        path.moveTo(x, y);
+                    } else {
+                        path.lineTo(x, y);
+                    }
+                }
+                path.closePath();
+                return path;
+            }
+        },
+        JIGSAW {
+            @Override
+            Shape path() {
+                double s = PIECE_SIZE;
+                double b = 6; // 主体内缩，为榫/槽留出边界
+                double r = 6; // 榫/槽半径
+                Path2D path = new Path2D.Double();
+                path.moveTo(b, b);
+                // 上边：凸榫（凸出到 y = b - r）
+                path.lineTo(s / 2 - r, b);
+                path.curveTo(s / 2 - r, b - r, s / 2 - r * 0.4, b - r, s / 2, b - r);
+                path.curveTo(s / 2 + r * 0.4, b - r, s / 2 + r, b - r, s / 2 + r, b);
+                // 右边：凹槽（内凹到 x = s - b - r）
+                path.lineTo(s - b, s / 2 - r);
+                path.curveTo(s - b - r, s / 2 - r, s - b - r, s / 2 - r * 0.4, s - b - r, s / 2);
+                path.curveTo(s - b - r, s / 2 + r * 0.4, s - b - r, s / 2 + r, s - b, s / 2 + r);
+                // 下边：凸榫（凸出到 y = s - b + r）
+                path.lineTo(s / 2 + r, s - b);
+                path.curveTo(s / 2 + r, s - b + r, s / 2 + r * 0.4, s - b + r, s / 2, s - b + r);
+                path.curveTo(s / 2 - r * 0.4, s - b + r, s / 2 - r, s - b + r, s / 2 - r, s - b);
+                // 左边：凹槽（内凹到 x = b + r）
+                path.lineTo(b, s / 2 + r);
+                path.curveTo(b + r, s / 2 + r, b + r, s / 2 + r * 0.4, b + r, s / 2);
+                path.curveTo(b + r, s / 2 - r * 0.4, b + r, s / 2 - r, b, s / 2 - r);
+                path.closePath();
+                return path;
+            }
+        };
+
+        /**
+         * 构建本地坐标下的拼图路径。
+         */
+        abstract Shape path();
     }
 
     private Color randomPastel(ThreadLocalRandom random) {

@@ -71,6 +71,9 @@ const skillColumns: DataTableColumns<SkillResponse> = [
         value: row.status === 'ACTIVE',
         loading: togglingId.value === row.id,
         onUpdateValue: () => handleToggleStatus(row)
+      },{
+        checked: () => h('span', '启'),   // 插槽返回 VNode
+        unchecked: () => h('span', '禁')
       })
   },
   { title: '当前版本', key: 'currentVersion', width: 100, render: (row) => (row.currentVersion ? `v${row.currentVersion}` : '-') },

@@ -95,6 +95,28 @@ class SliderCaptchaServiceTest {
         assertFalse(service.checkAndConsumeVerified(null));
     }
 
+    @Test
+    void allPieceShapesStayWithinPieceBounds() {
+        for (PlmSliderCaptchaServiceImpl.PieceShape shape : PlmSliderCaptchaServiceImpl.PieceShape.values()) {
+            java.awt.geom.Rectangle2D bounds = shape.path().getBounds2D();
+            assertTrue(bounds.getMinX() >= 0, shape + " 左越界: " + bounds);
+            assertTrue(bounds.getMinY() >= 0, shape + " 上越界: " + bounds);
+            assertTrue(bounds.getMaxX() <= IPlmSliderCaptchaService.PIECE_SIZE + 0.01, shape + " 右越界: " + bounds);
+            assertTrue(bounds.getMaxY() <= IPlmSliderCaptchaService.PIECE_SIZE + 0.01, shape + " 下越界: " + bounds);
+        }
+    }
+
+    @Test
+    void generateWorksRepeatedlyWithRandomShapes() {
+        for (int i = 0; i < 20; i++) {
+            SliderCaptchaVO vo = service.generate();
+            assertNotNull(vo.uuid());
+            assertNotNull(vo.background());
+            assertNotNull(vo.puzzle());
+            assertTrue(store.gap(vo.uuid()) >= IPlmSliderCaptchaService.PIECE_SIZE + 10);
+        }
+    }
+
     /**
      * 内存版存储，模拟 Redis 一次性令牌行为。
      */
