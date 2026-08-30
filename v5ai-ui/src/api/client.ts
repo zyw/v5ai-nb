@@ -51,6 +51,13 @@ export interface ModelResponse {
   endpoint?: string | null
   credentialsCiphertext?: string
   enabled: boolean
+  modelName?: string | null
+  description?: string | null
+  adapterKey?: string | null
+  config?: string | null
+  scope?: string | null
+  isDefault?: boolean
+  ownerId?: number | null
   createdAt?: string
   updatedAt?: string
 }
@@ -62,6 +69,13 @@ export interface CreateModelRequest {
   endpoint?: string
   enabled?: boolean
   credentials: string
+  modelName?: string
+  description?: string
+  adapterKey?: string
+  config?: string
+  scope?: string
+  isDefault?: boolean
+  ownerId?: number
 }
 
 export interface UpdateModelRequest {
@@ -72,6 +86,13 @@ export interface UpdateModelRequest {
   endpoint?: string
   enabled?: boolean
   credentials?: string
+  modelName?: string
+  description?: string
+  adapterKey?: string
+  config?: string
+  scope?: string
+  isDefault?: boolean
+  ownerId?: number
 }
 
 export interface TestConnectionResponse {

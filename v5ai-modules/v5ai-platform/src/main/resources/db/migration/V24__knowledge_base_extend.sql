@@ -221,3 +221,43 @@ comment on column v5ai_knowledge_chunk.updated_at is '更新时间';
 create index if not exists idx_knowledge_chunk_rag on v5ai_knowledge_chunk (knowledge_base_id);
 create index if not exists idx_chunk_knowledge_hash on v5ai_knowledge_chunk (knowledge_base_id, content_hash);
 create index if not exists idx_chunk_knowledge_source_type on v5ai_knowledge_chunk (knowledge_base_id, source_type);
+
+
+-- ============================================================
+-- V24-5：v5ai_model 扩展
+-- 说明：
+--   1) 新增 7 列：model_name（模型名称，存量行用 model_key 回填后
+--      置 NOT NULL）/ description（模型描述）/ adapter_key（底层
+--      协议适配器标识，如 openai-compatible/http）/ config（模型
+--      参数配置，JSONB，对应 ConfigExtAttrsDTO）/ scope（模型作用
+--      域：GLOBAL=全局 PERSONAL=个人）/ is_default（是否为默认模
+--      型）/ owner_id（所有者 ID，NULL=全局，具体值=用户 ID）；
+--   2) 更新 model_type 列注释（CHAT/EMBEDDING/RERANKER/IMAGE/SPEECH）；
+--   3) 幂等：add column / comment 均以防重写法实现。
+-- ============================================================
+
+alter table v5ai_model
+    add column if not exists model_name varchar(255),
+    add column if not exists description varchar(1000),
+    add column if not exists adapter_key varchar(100),
+    add column if not exists config jsonb,
+    add column if not exists scope varchar(20) not null default 'GLOBAL',
+    add column if not exists is_default boolean not null default false,
+    add column if not exists owner_id bigint;
+
+-- 存量模型没有名称列，回填 model_key 作为默认名称
+update v5ai_model
+set model_name = model_key
+where model_name is null or model_name = '';
+
+alter table v5ai_model
+    alter column model_name set not null;
+
+comment on column v5ai_model.model_name is '模型名称';
+comment on column v5ai_model.description is '模型描述';
+comment on column v5ai_model.adapter_key is '底层协议适配器标识(openai-compatible/http等)';
+comment on column v5ai_model.config is '模型参数配置(JSON格式)';
+comment on column v5ai_model.scope is '模型作用域: GLOBAL=全局 PERSONAL=个人';
+comment on column v5ai_model.is_default is '是否为默认模型';
+comment on column v5ai_model.owner_id is '所有者ID(NULL=全局,具体值=用户ID)';
+comment on column v5ai_model.model_type is '模型类型(CHAT/EMBEDDING/RERANKER/IMAGE/SPEECH)';

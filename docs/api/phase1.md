@@ -104,7 +104,7 @@ Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5a
 
 创建 Provider 请求体：`{ "providerKey": "openai", "name": "OpenAI", "providerType": "OPENAI", "enabled": true }`；更新通过 `PUT /api/admin/providers`（body 带 `id`），删除通过 `DELETE /api/admin/providers/{ids}`（逗号分隔的 id 列表）。
 
-创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "endpoint": "...(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\"}" }`；更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials` 为空时保留原密文），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 引用时返回 409）。
+创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "modelName": "GPT-4o Mini", "endpoint": "...(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\"}" }`；扩展字段（均可选）：`description`（模型描述）、`adapterKey`（协议适配器标识，如 openai-compatible/http）、`config`（模型参数配置 JSON，对应 `ConfigExtAttrsDTO`：通用 `timeoutMs`/`maxRetries`，CHAT `temperature`/`topP`/`topK`/`maxTokens`/`frequencyPenalty`/`presencePenalty`/`stopSequences`/`seed`/`responseFormat`/`stream`/`extraBody`，EMBEDDING `embeddingDimension`/`encodingFormat`，RERANKER `rerankPath`）、`scope`（`GLOBAL`=全局/`PERSONAL`=个人，缺省 GLOBAL）、`isDefault`（是否默认模型，缺省 false）、`ownerId`（所有者 ID，NULL=全局）。更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials`/`config` 为空时保留原值），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 引用时返回 409）。
 
 连通性测试 `POST /api/admin/models/{id}/test` 返回 `{ "modelId": <id>, "ok": true|false, "message": "..." }`。
 

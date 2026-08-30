@@ -6,12 +6,11 @@ import xin.v5ai.nb.model.domain.V5aiModel;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 /**
  * <p>
- * 
+ * 模型配置视图对象
  * </p>
  *
  * @author ZYW
@@ -37,6 +36,41 @@ public class V5aiModelVo implements Serializable {
     private String credentialsCiphertext;
 
     private Boolean enabled;
+
+    /**
+     * 模型名称
+     */
+    private String modelName;
+
+    /**
+     * 模型描述
+     */
+    private String description;
+
+    /**
+     * 底层协议适配器标识（openai-compatible/http 等）
+     */
+    private String adapterKey;
+
+    /**
+     * 模型参数配置（JSON 格式，对应 ConfigExtAttrsDTO）
+     */
+    private String config;
+
+    /**
+     * 模型作用域（GLOBAL=全局 / PERSONAL=个人）
+     */
+    private String scope;
+
+    /**
+     * 是否为默认模型
+     */
+    private Boolean isDefault;
+
+    /**
+     * 所有者 ID（NULL=全局，具体值=用户 ID）
+     */
+    private Long ownerId;
 
     private OffsetDateTime createdAt;
 

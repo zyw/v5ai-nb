@@ -22,6 +22,7 @@ import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
 import xin.v5ai.nb.model.core.ModelConnectionTester;
+import xin.v5ai.nb.model.core.config.ConfigExtAttrsDTO;
 import xin.v5ai.nb.model.service.IV5aiModelService;
 
 import java.util.List;
@@ -38,6 +39,16 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class V5aiModelServiceImpl implements IV5aiModelService {
+
+    /**
+     * 模型作用域: 全局
+     */
+    private static final String SCOPE_GLOBAL = "GLOBAL";
+
+    /**
+     * 模型作用域: 个人
+     */
+    private static final String SCOPE_PERSONAL = "PERSONAL";
 
     private final V5aiModelMapper mapper;
     private final V5aiModelProviderMapper providerMapper;
@@ -84,6 +95,10 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         add.setProviderId(provider.getId());
         add.setModelType(bo.getType().name());
         add.setEnabled(Boolean.TRUE.equals(bo.getEnabled()));
+        add.setModelName(StrUtil.isBlank(bo.getModelName()) ? bo.getModelKey() : bo.getModelName().trim());
+        add.setScope(normalizeScope(bo.getScope()));
+        add.setIsDefault(Boolean.TRUE.equals(bo.getIsDefault()));
+        add.setConfig(validateConfig(bo.getConfig()));
         add.setCredentialsCiphertext(credentialCipher.encrypt(bo.getCredentials()));
         boolean flag = mapper.insert(add) > 0;
         if (flag) {
@@ -102,6 +117,10 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         if (bo.getType() != null) {
             update.setModelType(bo.getType().name());
         }
+        // 名称留空不修改；作用域留空不修改；config 留空不修改，非空则校验 JSON
+        update.setModelName(StrUtil.isBlank(bo.getModelName()) ? null : bo.getModelName().trim());
+        update.setScope(StrUtil.isBlank(bo.getScope()) ? null : normalizeScope(bo.getScope()));
+        update.setConfig(validateConfig(bo.getConfig()));
         if (StrUtil.isNotBlank(bo.getCredentials())) {
             update.setCredentialsCiphertext(credentialCipher.encrypt(bo.getCredentials()));
         }
@@ -137,11 +156,42 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         Long providerId = StrUtil.isNotBlank(bo.getProviderKey()) ? resolveProviderId(bo.getProviderKey()) : null;
         return QueryBuilder.lambda(V5aiModel.class)
                 .likeIfText(V5aiModel::getModelKey, bo.getModelKey())
+                .likeIfText(V5aiModel::getModelName, bo.getModelName())
+                .eqIfText(V5aiModel::getScope, bo.getScope())
                 .eq(bo.getType() != null, V5aiModel::getModelType, bo.getType() == null ? null : bo.getType().name())
                 .eq(bo.getEnabled() != null, V5aiModel::getEnabled, bo.getEnabled())
                 .eq(providerId != null, V5aiModel::getProviderId, providerId)
                 .orderByAsc(V5aiModel::getId)
                 .build();
+    }
+
+    /**
+     * 校验并归一化模型作用域（GLOBAL / PERSONAL，缺省 GLOBAL）。
+     */
+    private static String normalizeScope(String scope) {
+        if (StrUtil.isBlank(scope)) {
+            return SCOPE_GLOBAL;
+        }
+        var normalized = scope.trim().toUpperCase();
+        if (!SCOPE_GLOBAL.equals(normalized) && !SCOPE_PERSONAL.equals(normalized)) {
+            throw new IllegalArgumentException("model scope must be GLOBAL or PERSONAL");
+        }
+        return normalized;
+    }
+
+    /**
+     * 校验模型 config 必须是合法 JSON；空白输入返回 {@code null}（不更新）。
+     */
+    private static String validateConfig(String config) {
+        if (StrUtil.isBlank(config)) {
+            return null;
+        }
+        try {
+            ConfigExtAttrsDTO.fromJson(config);
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("model config must be a valid JSON object");
+        }
+        return config;
     }
 
     /**

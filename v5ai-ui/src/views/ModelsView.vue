@@ -67,6 +67,12 @@ const modelForm = reactive({
   providerKey: '',
   modelKey: '',
   type: 'CHAT',
+  modelName: '',
+  description: '',
+  adapterKey: 'openai-compatible',
+  scope: 'GLOBAL',
+  isDefault: false,
+  configText: '',
   apiKey: '',
   baseUrl: '',
   temperature: 0.7,
@@ -84,6 +90,16 @@ const modelTypeOptions = [
   { label: 'Chat', value: 'CHAT' },
   { label: 'Embedding', value: 'EMBEDDING' },
   { label: 'Rerank', value: 'RERANK' }
+]
+
+const adapterKeyOptions = [
+  { label: 'openai-compatible', value: 'openai-compatible' },
+  { label: 'http', value: 'http' }
+]
+
+const scopeOptions = [
+  { label: '全局（GLOBAL）', value: 'GLOBAL' },
+  { label: '个人（PERSONAL）', value: 'PERSONAL' }
 ]
 
 const providerOptions = () =>
@@ -139,11 +155,28 @@ const modelColumns: DataTableColumns<ModelResponse> = [
     key: 'providerId',
     render: (row) => providerLabel(row.providerId)
   },
+  { title: '名称', key: 'modelName', render: (row) => row.modelName ?? row.modelKey },
   { title: 'Model Key', key: 'modelKey' },
   {
     title: '类型',
     key: 'modelType',
     render: (row) => h(NTag, { size: 'small', type: row.modelType === 'CHAT' ? 'info' : 'default', bordered: false }, { default: () => row.modelType })
+  },
+  {
+    title: '作用域',
+    key: 'scope',
+    width: 100,
+    render: (row) =>
+      h(NTag, { size: 'small', type: row.scope === 'PERSONAL' ? 'warning' : 'default', bordered: false }, { default: () => (row.scope === 'PERSONAL' ? '个人' : '全局') })
+  },
+  {
+    title: '默认',
+    key: 'isDefault',
+    width: 70,
+    render: (row) =>
+      row.isDefault
+        ? h(NTag, { size: 'small', type: 'success', bordered: false, round: true }, { default: () => '默认' })
+        : '—'
   },
   {
     title: '状态',
@@ -264,6 +297,12 @@ async function openModelModal() {
   modelForm.providerKey = allProviders.value[0]?.providerKey ?? ''
   modelForm.modelKey = ''
   modelForm.type = 'CHAT'
+  modelForm.modelName = ''
+  modelForm.description = ''
+  modelForm.adapterKey = 'openai-compatible'
+  modelForm.scope = 'GLOBAL'
+  modelForm.isDefault = false
+  modelForm.configText = ''
   modelForm.apiKey = ''
   modelForm.baseUrl = ''
   modelForm.temperature = 0.7
@@ -278,6 +317,12 @@ function openEditModel(row: ModelResponse) {
   modelForm.providerKey = provider?.providerKey ?? ''
   modelForm.modelKey = row.modelKey
   modelForm.type = row.modelType
+  modelForm.modelName = row.modelName ?? row.modelKey
+  modelForm.description = row.description ?? ''
+  modelForm.adapterKey = row.adapterKey ?? 'openai-compatible'
+  modelForm.scope = row.scope ?? 'GLOBAL'
+  modelForm.isDefault = !!row.isDefault
+  modelForm.configText = row.config ?? ''
   // 凭据加密存储不可回显：留空表示不修改
   modelForm.apiKey = ''
   modelForm.baseUrl = ''
@@ -285,6 +330,17 @@ function openEditModel(row: ModelResponse) {
   modelForm.maxTokens = 4096
   modelForm.enabled = row.enabled
   showModelModal.value = true
+}
+
+function modelExtras() {
+  return {
+    modelName: modelForm.modelName.trim() || undefined,
+    description: modelForm.description.trim() || undefined,
+    adapterKey: modelForm.adapterKey || undefined,
+    scope: modelForm.scope || undefined,
+    isDefault: modelForm.isDefault || undefined,
+    config: modelForm.configText.trim() ? modelForm.configText.trim() : undefined
+  }
 }
 
 async function handleSaveProvider() {
@@ -312,8 +368,13 @@ async function handleSaveProvider() {
 }
 
 async function handleSaveModel() {
+  if (!modelForm.modelName.trim()) {
+    message.warning('请输入模型名称')
+    return
+  }
   savingModel.value = true
   try {
+    const extras = modelExtras()
     if (editingModelId.value != null) {
       await updateModel(adminToken.value, {
         id: editingModelId.value,
@@ -321,6 +382,7 @@ async function handleSaveModel() {
         modelKey: modelForm.modelKey,
         type: modelForm.type,
         enabled: modelForm.enabled,
+        ...extras,
         // 编辑时凭据留空则保留原密文，仅在填写 API Key 时更新
         credentials: modelForm.apiKey ? modelCredentials() : undefined
       })
@@ -331,6 +393,7 @@ async function handleSaveModel() {
         modelKey: modelForm.modelKey,
         type: modelForm.type,
         enabled: modelForm.enabled,
+        ...extras,
         credentials: modelCredentials()
       })
       message.success('Model 已保存')
@@ -480,18 +543,33 @@ onMounted(reload)
       v-model:show="showModelModal"
       preset="card"
       :title="editingModelId != null ? '编辑 Model' : '新建 Model'"
-      style="width: 500px"
+      style="width: 560px"
       :bordered="false"
     >
       <n-form label-placement="top">
         <n-form-item label="Provider">
           <n-select v-model:value="modelForm.providerKey" filterable :options="providerOptions()" />
         </n-form-item>
+        <n-form-item label="模型名称">
+          <n-input v-model:value="modelForm.modelName" placeholder="如 GPT-4o Mini" />
+        </n-form-item>
         <n-form-item label="Model Key">
           <n-input v-model:value="modelForm.modelKey" placeholder="如 gpt-4o-mini" />
         </n-form-item>
+        <n-form-item label="模型描述">
+          <n-input v-model:value="modelForm.description" type="textarea" :autosize="{ minRows: 1, maxRows: 3 }" placeholder="可选" />
+        </n-form-item>
         <n-form-item label="Model Type">
           <n-select v-model:value="modelForm.type" :options="modelTypeOptions" />
+        </n-form-item>
+        <n-form-item label="协议适配器">
+          <n-select v-model:value="modelForm.adapterKey" filterable tag :options="adapterKeyOptions" />
+        </n-form-item>
+        <n-form-item label="作用域">
+          <n-select v-model:value="modelForm.scope" :options="scopeOptions" />
+        </n-form-item>
+        <n-form-item label="默认模型">
+          <n-switch v-model:value="modelForm.isDefault" />
         </n-form-item>
         <n-form-item :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
           <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
@@ -504,6 +582,14 @@ onMounted(reload)
         </n-form-item>
         <n-form-item label="Max Tokens">
           <n-input-number v-model:value="modelForm.maxTokens" :min="1" :max="32768" style="width: 100%" />
+        </n-form-item>
+        <n-form-item label="扩展配置（JSON，可选）">
+          <n-input
+            v-model:value="modelForm.configText"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 5 }"
+            placeholder='{"timeoutMs":30000,"maxRetries":3,"temperature":0.7}'
+          />
         </n-form-item>
         <n-form-item label="启用">
           <n-switch v-model:value="modelForm.enabled" />
