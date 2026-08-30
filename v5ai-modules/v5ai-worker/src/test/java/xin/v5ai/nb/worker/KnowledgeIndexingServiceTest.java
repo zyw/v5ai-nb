@@ -2,13 +2,18 @@ package xin.v5ai.nb.worker;
 
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.rag.core.store.VectorStore;
+import xin.v5ai.nb.rag.core.ChunkingOptions;
+import xin.v5ai.nb.rag.core.DocumentChunker;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
 import xin.v5ai.nb.rag.core.KnowledgeDocumentContentStore;
+import xin.v5ai.nb.rag.core.repository.KnowledgeBaseRepository;
 import xin.v5ai.nb.rag.core.repository.KnowledgeDocumentRepository;
 import xin.v5ai.nb.rag.core.repository.KnowledgeTaskRepository;
+import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,9 +27,9 @@ class KnowledgeIndexingServiceTest {
         var documentRepository = new RecordingDocumentRepository();
         documentRepository.stored = document(10L, 1L, "guide.md", "MARKDOWN", "PENDING");
         var vectorStore = new RecordingVectorStore();
-        var service = new KnowledgeIndexingService(taskRepository, documentRepository,
-                new FixedContentStore("hello world knowledge".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                (content, type) -> new String(content, java.nio.charset.StandardCharsets.UTF_8),
+        var service = new KnowledgeIndexingService(taskRepository, documentRepository, new RecordingKnowledgeBaseRepository(),
+                new FixedContentStore("hello world knowledge".getBytes(StandardCharsets.UTF_8)),
+                (content, type) -> new String(content, StandardCharsets.UTF_8),
                 text -> java.util.List.of("hello world", "knowledge"),
                 new FixedEmbeddingClient(java.util.List.of(1.0f, 2.0f)),
                 vectorStore);
@@ -40,12 +45,38 @@ class KnowledgeIndexingServiceTest {
     }
 
     @Test
+    void processTaskUsesKnowledgeBaseChunkConfig() {
+        var taskRepository = new RecordingTaskRepository();
+        taskRepository.stored = task(1L, 5L, 10L, "PENDING", 0);
+        var documentRepository = new RecordingDocumentRepository();
+        documentRepository.stored = document(10L, 5L, "guide.md", "MARKDOWN", "PENDING");
+        var kbRepository = new RecordingKnowledgeBaseRepository();
+        kbRepository.stored = knowledgeBase(5L,
+                "{\"chunkParams\":{\"mode\":\"delimiter\",\"maxChunkTokens\":300,\"customDelimiter\":\"\\n\\n\",\"mergeShortSegments\":true}}");
+        var chunker = new RecordingChunker();
+        var service = new KnowledgeIndexingService(taskRepository, documentRepository, kbRepository,
+                new FixedContentStore("a\n\nb".getBytes(StandardCharsets.UTF_8)),
+                (content, type) -> new String(content, StandardCharsets.UTF_8),
+                chunker,
+                new FixedEmbeddingClient(List.of(1.0f)),
+                new RecordingVectorStore());
+
+        service.processTask(1L);
+
+        assertThat(chunker.receivedOptions).hasSize(1);
+        assertThat(chunker.receivedOptions.get(0).mode()).isEqualTo("delimiter");
+        assertThat(chunker.receivedOptions.get(0).maxChunkTokens()).isEqualTo(300);
+        assertThat(chunker.receivedOptions.get(0).customDelimiter()).isEqualTo("\n\n");
+        assertThat(chunker.receivedOptions.get(0).mergeShortSegments()).isTrue();
+    }
+
+    @Test
     void processTaskMarksFailedAndRecordsErrorWhenParsingThrows() {
         var taskRepository = new RecordingTaskRepository();
         taskRepository.stored = task(1L, 1L, 10L, "PENDING", 0);
         var documentRepository = new RecordingDocumentRepository();
         documentRepository.stored = document(10L, 1L, "broken.pdf", "PDF", "PENDING");
-        var service = new KnowledgeIndexingService(taskRepository, documentRepository,
+        var service = new KnowledgeIndexingService(taskRepository, documentRepository, new RecordingKnowledgeBaseRepository(),
                 new FixedContentStore(new byte[0]),
                 (content, type) -> { throw new IllegalStateException("parse boom"); },
                 text -> List.of("x"),
@@ -64,7 +95,7 @@ class KnowledgeIndexingServiceTest {
     void processTaskIgnoresUnknownTaskOrDocument() {
         var taskRepository = new RecordingTaskRepository();
         var documentRepository = new RecordingDocumentRepository();
-        var service = new KnowledgeIndexingService(taskRepository, documentRepository,
+        var service = new KnowledgeIndexingService(taskRepository, documentRepository, new RecordingKnowledgeBaseRepository(),
                 new FixedContentStore(new byte[0]), (content, type) -> "", text -> List.of(),
                 new FixedEmbeddingClient(List.of(1.0f)),
                 new RecordingVectorStore());
@@ -95,6 +126,29 @@ class KnowledgeIndexingServiceTest {
         document.setSource(title);
         document.setStatus(status);
         return document;
+    }
+
+    private static KnowledgeBase knowledgeBase(Long id, String config) {
+        var base = new KnowledgeBase();
+        base.setId(id);
+        base.setName("kb-" + id);
+        base.setConfig(config);
+        return base;
+    }
+
+    private static final class RecordingChunker implements DocumentChunker {
+        private final List<ChunkingOptions> receivedOptions = new ArrayList<>();
+
+        @Override
+        public List<String> chunk(String text) {
+            return List.of(text);
+        }
+
+        @Override
+        public List<String> chunk(String text, ChunkingOptions options) {
+            receivedOptions.add(options);
+            return chunk(text);
+        }
     }
 
     private static final class FixedEmbeddingClient implements EmbeddingClient {
@@ -129,6 +183,15 @@ class KnowledgeIndexingServiceTest {
 
         @Override
         public void saveContent(Long documentId, byte[] content) {
+        }
+    }
+
+    private static final class RecordingKnowledgeBaseRepository implements KnowledgeBaseRepository {
+        private KnowledgeBase stored;
+
+        @Override
+        public KnowledgeBase findById(Long id) {
+            return stored;
         }
     }
 

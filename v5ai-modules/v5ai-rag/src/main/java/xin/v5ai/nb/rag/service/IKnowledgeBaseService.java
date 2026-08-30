@@ -35,6 +35,11 @@ public interface IKnowledgeBaseService {
     KnowledgeBaseVo createKnowledgeBase(KnowledgeBaseBo bo);
 
     /**
+     * 编辑知识库（覆盖写入配置类字段）。
+     */
+    KnowledgeBaseVo updateKnowledgeBase(KnowledgeBaseBo bo);
+
+    /**
      * 查询单个知识库。
      */
     KnowledgeBaseVo getKnowledgeBase(Long id);

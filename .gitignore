@@ -11,3 +11,4 @@ dist/
 .npm-cache/
 .tmp-ponytail/
 /logs/
+/v5ai-starter/logs/

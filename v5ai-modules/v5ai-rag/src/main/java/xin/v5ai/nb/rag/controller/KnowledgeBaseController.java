@@ -1,16 +1,20 @@
 package xin.v5ai.nb.rag.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.core.validate.EditGroup;
 import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
@@ -23,11 +27,12 @@ import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 import java.util.List;
 
 /**
- * 知识库管理 API：创建、分页查询、下拉选项、禁用与任务查询。
+ * 知识库管理 API：创建、编辑、分页查询、下拉选项、禁用与任务查询。
  *
  * @author ZYW
  * @since 2026-08-22
  */
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/knowledge-bases")
@@ -37,12 +42,14 @@ public class KnowledgeBaseController extends BaseController {
 
     @PostMapping
     @Log(title = "新建知识库", businessType = BusinessType.INSERT)
-    public R<KnowledgeBaseVo> createKnowledgeBase(@RequestBody CreateKnowledgeBaseRequest request) {
-        var bo = new KnowledgeBaseBo();
-        bo.setName(request == null ? null : request.name());
-        bo.setDescription(request == null ? null : request.description());
-        var created = knowledgeBaseService.createKnowledgeBase(bo);
-        return R.ok(created);
+    public R<KnowledgeBaseVo> createKnowledgeBase(@Validated(AddGroup.class) @RequestBody KnowledgeBaseBo bo) {
+        return R.ok(knowledgeBaseService.createKnowledgeBase(bo));
+    }
+
+    @PutMapping
+    @Log(title = "编辑知识库", businessType = BusinessType.UPDATE)
+    public R<KnowledgeBaseVo> updateKnowledgeBase(@Validated(EditGroup.class) @RequestBody KnowledgeBaseBo bo) {
+        return R.ok(knowledgeBaseService.updateKnowledgeBase(bo));
     }
 
     @GetMapping

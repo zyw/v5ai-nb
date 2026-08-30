@@ -1,5 +1,6 @@
 package xin.v5ai.nb.rag.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -9,8 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
 import xin.v5ai.nb.rag.core.store.VectorStore;
@@ -18,6 +21,7 @@ import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
+import xin.v5ai.nb.rag.domain.StoreInstance;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeBaseVo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
@@ -26,10 +30,14 @@ import xin.v5ai.nb.rag.mapper.AgentKnowledgeBindingMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeDocumentMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeTaskMapper;
+import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * 知识库管理服务实现类。
@@ -48,10 +56,38 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     private static final String STATUS_PENDING = "PENDING";
     private static final String TASK_TYPE_PARSE_AND_INDEX = "PARSE_AND_INDEX";
 
+    /**
+     * 分类: 向量库
+     */
+    private static final int CATEGORY_VECTOR = 1;
+
+    /**
+     * 分类: 搜索引擎
+     */
+    private static final int CATEGORY_SEARCH = 2;
+
+    /**
+     * 文档分割符默认值
+     */
+    private static final String DEFAULT_DELIMITER = "\n\n";
+
+    /**
+     * 去重策略默认值: 2=BY_CONTENT
+     */
+    private static final int DEFAULT_DEDUP_STRATEGY = 2;
+
+    /**
+     * 冲突动作默认值: 0=REJECT
+     */
+    private static final int DEFAULT_DEDUP_ACTION = 0;
+
+    private static final Set<String> CHUNK_MODES = Set.of("length", "delimiter", "regex", "smart");
+
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final KnowledgeDocumentMapper documentMapper;
     private final KnowledgeTaskMapper taskMapper;
     private final AgentKnowledgeBindingMapper bindingMapper;
+    private final StoreInstanceMapper storeInstanceMapper;
     private final VectorStore vectorStore;
     private final UrlContentFetcher urlContentFetcher;
 
@@ -81,12 +117,29 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("knowledge base name is required");
         }
+        validKnowledgeBaseBeforeSave(bo);
         var base = new KnowledgeBase();
         base.setName(name.trim());
         base.setDescription(bo.getDescription());
         base.setStatus(STATUS_ACTIVE);
+        applyConfig(base, bo);
         knowledgeBaseMapper.insert(base);
         return toVo(base);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public KnowledgeBaseVo updateKnowledgeBase(KnowledgeBaseBo bo) {
+        KnowledgeBase existing = requireKnowledgeBase(bo.getId());
+        validKnowledgeBaseBeforeSave(bo);
+        var update = new KnowledgeBase();
+        update.setId(existing.getId());
+        update.setName(bo.getName() == null || bo.getName().isBlank() ? existing.getName() : bo.getName().trim());
+        update.setDescription(bo.getDescription() == null ? existing.getDescription() : bo.getDescription());
+        update.setStatus(existing.getStatus());
+        applyConfig(update, bo);
+        knowledgeBaseMapper.updateById(update);
+        return toVo(update);
     }
 
     @Override
@@ -238,6 +291,101 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
                 .build();
     }
 
+    /**
+     * 创建/编辑前校验：向量库/搜索引擎实例分类、维度、切片参数、去重参数。
+     */
+    private void validKnowledgeBaseBeforeSave(KnowledgeBaseBo bo) {
+        if (bo.getDimensionOfVectorModel() == null || bo.getDimensionOfVectorModel() <= 0) {
+            throw new ServiceException("向量维度必须大于 0");
+        }
+        requireStoreInstance(bo.getVectorStoreInstanceId(), CATEGORY_VECTOR, "向量库");
+        if (Boolean.TRUE.equals(bo.getSearchEngineEnable())) {
+            requireStoreInstance(bo.getSearchEngineInstanceId(), CATEGORY_SEARCH, "搜索引擎");
+        }
+        if (StrUtil.isNotBlank(bo.getDelimiter()) && bo.getDelimiter().length() > 32) {
+            throw new ServiceException("文档分割符长度不能超过 32 字符");
+        }
+        if (bo.getConfig() != null && bo.getConfig().getChunkParams() != null) {
+            validateChunkParams(bo.getConfig().getChunkParams());
+        }
+        validateDedup(bo.getDedupStrategy(), bo.getDedupAction());
+    }
+
+    /**
+     * 校验切片参数：模式取值、必填项与正则合法性。
+     */
+    private void validateChunkParams(RagConfigDO.ChunkParams chunkParams) {
+        if (chunkParams.getMaxChunkTokens() != null && chunkParams.getMaxChunkTokens() <= 0) {
+            throw new ServiceException("切片最大长度必须大于 0");
+        }
+        if (chunkParams.getChunkOverlap() != null && chunkParams.getChunkOverlap() < 0) {
+            throw new ServiceException("片段重叠不能为负数");
+        }
+        String mode = chunkParams.getMode() == null ? "" : chunkParams.getMode().trim().toLowerCase();
+        if (!CHUNK_MODES.contains(mode)) {
+            throw new ServiceException("切片模式不合法: length/delimiter/regex/smart");
+        }
+        if ("delimiter".equals(mode) && StrUtil.isEmpty(chunkParams.getCustomDelimiter())) {
+            throw new ServiceException("按分隔符切片必须配置分隔符");
+        }
+        if ("regex".equals(mode)) {
+            if (StrUtil.isBlank(chunkParams.getChunkRegex())) {
+                throw new ServiceException("正则切片必须配置一级切分正则");
+            }
+            try {
+                Pattern.compile(chunkParams.getChunkRegex());
+            } catch (PatternSyntaxException e) {
+                throw new ServiceException("切片正则不合法: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 校验去重策略与冲突动作取值。
+     */
+    private void validateDedup(Integer strategy, Integer action) {
+        if (strategy != null && (strategy < 0 || strategy > 3)) {
+            throw new ServiceException("去重策略不合法: 0=NONE 1=BY_NAME 2=BY_CONTENT 3=BY_NAME_OR_CONTENT");
+        }
+        if (action != null && (action < 0 || action > 2)) {
+            throw new ServiceException("冲突动作不合法: 0=REJECT 1=SKIP 2=OVERWRITE");
+        }
+    }
+
+    /**
+     * 校验存储实例存在、启用且分类匹配。
+     */
+    private void requireStoreInstance(Long instanceId, int expectedCategory, String label) {
+        if (instanceId == null) {
+            throw new ServiceException(label + "不能为空");
+        }
+        StoreInstance store = storeInstanceMapper.selectById(instanceId);
+        if (store == null || store.getCategory() == null || expectedCategory != store.getCategory()) {
+            throw new ServiceException(label + "实例不存在或分类不匹配");
+        }
+        if (store.getStatus() != null && store.getStatus() == 0) {
+            throw new ServiceException(label + "实例已停用");
+        }
+    }
+
+    /**
+     * 把 BO 的配置字段写入实体（含默认值）。
+     */
+    private void applyConfig(KnowledgeBase base, KnowledgeBaseBo bo) {
+        base.setIcon(bo.getIcon());
+        base.setEmbeddingModelId(bo.getEmbeddingModelId());
+        base.setVectorStoreInstanceId(bo.getVectorStoreInstanceId());
+        base.setDimensionOfVectorModel(bo.getDimensionOfVectorModel());
+        base.setRerankModelId(bo.getRerankModelId());
+        base.setSearchEngineEnable(Boolean.TRUE.equals(bo.getSearchEngineEnable()));
+        base.setSearchEngineInstanceId(bo.getSearchEngineInstanceId());
+        base.setDelimiter(StrUtil.isBlank(bo.getDelimiter()) ? DEFAULT_DELIMITER : bo.getDelimiter().trim());
+        base.setRagEnhancement(bo.getRagEnhancement());
+        base.setConfig(RagConfigDO.toJson(bo.getConfig()));
+        base.setDedupStrategy(bo.getDedupStrategy() == null ? DEFAULT_DEDUP_STRATEGY : bo.getDedupStrategy());
+        base.setDedupAction(bo.getDedupAction() == null ? DEFAULT_DEDUP_ACTION : bo.getDedupAction());
+    }
+
     private void submitIndexTask(KnowledgeDocument document) {
         var task = new KnowledgeTask();
         task.setKnowledgeBaseId(document.getKnowledgeBaseId());
@@ -275,6 +423,18 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         vo.setName(base.getName());
         vo.setDescription(base.getDescription());
         vo.setStatus(base.getStatus());
+        vo.setIcon(base.getIcon());
+        vo.setEmbeddingModelId(base.getEmbeddingModelId());
+        vo.setVectorStoreInstanceId(base.getVectorStoreInstanceId());
+        vo.setDimensionOfVectorModel(base.getDimensionOfVectorModel());
+        vo.setRerankModelId(base.getRerankModelId());
+        vo.setSearchEngineEnable(base.getSearchEngineEnable());
+        vo.setSearchEngineInstanceId(base.getSearchEngineInstanceId());
+        vo.setDelimiter(base.getDelimiter());
+        vo.setRagEnhancement(base.getRagEnhancement());
+        vo.setConfig(RagConfigDO.fromJson(base.getConfig()));
+        vo.setDedupStrategy(base.getDedupStrategy());
+        vo.setDedupAction(base.getDedupAction());
         vo.setCreatedAt(base.getCreatedAt());
         vo.setUpdatedAt(base.getUpdatedAt());
         return vo;

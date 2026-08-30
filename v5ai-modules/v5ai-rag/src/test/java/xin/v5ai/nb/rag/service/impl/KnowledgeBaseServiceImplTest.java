@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
 import xin.v5ai.nb.rag.core.store.VectorStore;
@@ -13,11 +15,13 @@ import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
+import xin.v5ai.nb.rag.domain.StoreInstance;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.mapper.AgentKnowledgeBindingMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeDocumentMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeTaskMapper;
+import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +45,7 @@ class KnowledgeBaseServiceImplTest {
     private final List<KnowledgeDocument> documents = new ArrayList<>();
     private final List<KnowledgeTask> tasks = new ArrayList<>();
     private final List<AgentKnowledgeBinding> bindings = new ArrayList<>();
+    private final List<StoreInstance> stores = new ArrayList<>();
 
     private KnowledgeBaseServiceImpl service;
 
@@ -54,11 +59,13 @@ class KnowledgeBaseServiceImplTest {
         TableInfoHelper.initTableInfo(assistant, KnowledgeDocument.class);
         TableInfoHelper.initTableInfo(assistant, KnowledgeTask.class);
         TableInfoHelper.initTableInfo(assistant, AgentKnowledgeBinding.class);
+        TableInfoHelper.initTableInfo(assistant, StoreInstance.class);
 
         KnowledgeBaseMapper knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
         KnowledgeDocumentMapper documentMapper = mock(KnowledgeDocumentMapper.class);
         KnowledgeTaskMapper taskMapper = mock(KnowledgeTaskMapper.class);
         AgentKnowledgeBindingMapper bindingMapper = mock(AgentKnowledgeBindingMapper.class);
+        StoreInstanceMapper storeInstanceMapper = mock(StoreInstanceMapper.class);
         VectorStore vectorStore = mock(VectorStore.class);
         UrlContentFetcher urlFetcher = mock(UrlContentFetcher.class);
 
@@ -76,9 +83,23 @@ class KnowledgeBaseServiceImplTest {
                 if (update.getStatus() != null) {
                     b.setStatus(update.getStatus());
                 }
+                if (update.getName() != null) {
+                    b.setName(update.getName());
+                }
+                if (update.getConfig() != null) {
+                    b.setConfig(update.getConfig());
+                }
+                if (update.getDelimiter() != null) {
+                    b.setDelimiter(update.getDelimiter());
+                }
+                if (update.getDimensionOfVectorModel() != null) {
+                    b.setDimensionOfVectorModel(update.getDimensionOfVectorModel());
+                }
             });
             return 1;
         }).when(knowledgeBaseMapper).updateById(any(KnowledgeBase.class));
+
+        when(storeInstanceMapper.selectById(any())).thenAnswer(inv -> findById(stores, inv.getArgument(0)));
 
         doAnswer(inv -> {
             var document = inv.getArgument(0, KnowledgeDocument.class);
@@ -119,13 +140,13 @@ class KnowledgeBaseServiceImplTest {
         when(urlFetcher.fetch("https://example.com/doc")).thenReturn("hello world");
 
         service = new KnowledgeBaseServiceImpl(knowledgeBaseMapper, documentMapper, taskMapper,
-                bindingMapper, vectorStore, urlFetcher);
+                bindingMapper, storeInstanceMapper, vectorStore, urlFetcher);
     }
 
     @Test
     void createKnowledgeBaseAssignsIdAndActiveStatus() {
-        var bo = new KnowledgeBaseBo();
-        bo.setName("Docs");
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 1536);
         bo.setDescription("product docs");
 
         var created = service.createKnowledgeBase(bo);
@@ -133,7 +154,42 @@ class KnowledgeBaseServiceImplTest {
         assertThat(created.getId()).isEqualTo(1L);
         assertThat(created.getName()).isEqualTo("Docs");
         assertThat(created.getStatus()).isEqualTo("ACTIVE");
+        assertThat(created.getEmbeddingModelId()).isEqualTo(11L);
+        assertThat(created.getDimensionOfVectorModel()).isEqualTo(1536);
         assertThat(knowledgeBases).hasSize(1);
+    }
+
+    @Test
+    void createKnowledgeBaseAppliesDefaults() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 1536);
+
+        var created = service.createKnowledgeBase(bo);
+
+        assertThat(created.getDelimiter()).isEqualTo("\n\n");
+        assertThat(created.getDedupStrategy()).isEqualTo(2);
+        assertThat(created.getDedupAction()).isEqualTo(0);
+        assertThat(created.getSearchEngineEnable()).isFalse();
+    }
+
+    @Test
+    void createKnowledgeBaseRoundTripsConfigJson() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 1536);
+        var chunkParams = RagConfigDO.ChunkParams.builder()
+                .mode("delimiter").maxChunkTokens(2000).chunkOverlap(100)
+                .customDelimiter("\n\n").mergeShortSegments(true).build();
+        bo.setConfig(RagConfigDO.builder()
+                .chunkParams(chunkParams)
+                .parseParams(RagConfigDO.ParseParams.builder().engine("docling").build())
+                .build());
+
+        var created = service.createKnowledgeBase(bo);
+
+        assertThat(created.getConfig()).isNotNull();
+        assertThat(created.getConfig().getChunkParams().getMode()).isEqualTo("delimiter");
+        assertThat(created.getConfig().getChunkParams().getMaxChunkTokens()).isEqualTo(2000);
+        assertThat(created.getConfig().getParseParams().getEngine()).isEqualTo("docling");
     }
 
     @Test
@@ -144,6 +200,89 @@ class KnowledgeBaseServiceImplTest {
         assertThatThrownBy(() -> service.createKnowledgeBase(bo))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("knowledge base name is required");
+    }
+
+    @Test
+    void createKnowledgeBaseRejectsMissingVectorStore() {
+        var bo = validBo("Docs", 11L, 99L, 1536);
+
+        assertThatThrownBy(() -> service.createKnowledgeBase(bo))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("向量库实例不存在");
+    }
+
+    @Test
+    void createKnowledgeBaseRejectsWrongStoreCategory() {
+        seedStore(1L, "es", 2, 3);
+        var bo = validBo("Docs", 11L, 1L, 1536);
+
+        assertThatThrownBy(() -> service.createKnowledgeBase(bo))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("分类不匹配");
+    }
+
+    @Test
+    void createKnowledgeBaseRejectsInvalidDimension() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 0);
+
+        assertThatThrownBy(() -> service.createKnowledgeBase(bo))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("向量维度必须大于 0");
+    }
+
+    @Test
+    void createKnowledgeBaseWithSearchEngineRequiresEngineInstance() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 1536);
+        bo.setSearchEngineEnable(true);
+
+        assertThatThrownBy(() -> service.createKnowledgeBase(bo))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("搜索引擎不能为空");
+    }
+
+    @Test
+    void createKnowledgeBaseRejectsBadChunkMode() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 1536);
+        bo.setConfig(RagConfigDO.builder()
+                .chunkParams(RagConfigDO.ChunkParams.builder().mode("bogus").build())
+                .build());
+
+        assertThatThrownBy(() -> service.createKnowledgeBase(bo))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("切片模式不合法");
+    }
+
+    @Test
+    void updateKnowledgeBaseOverwritesConfigFields() {
+        seedStore(1L, "pg", 1, 1);
+        seedKnowledgeBase(1L, "docs", "ACTIVE");
+        var bo = validBo("renamed", 12L, 1L, 768);
+        bo.setId(1L);
+        bo.setConfig(RagConfigDO.builder()
+                .chunkParams(RagConfigDO.ChunkParams.builder().mode("length").maxChunkTokens(600).build())
+                .build());
+
+        var updated = service.updateKnowledgeBase(bo);
+
+        assertThat(updated.getName()).isEqualTo("renamed");
+        assertThat(updated.getEmbeddingModelId()).isEqualTo(12L);
+        assertThat(updated.getDimensionOfVectorModel()).isEqualTo(768);
+        assertThat(updated.getConfig().getChunkParams().getMaxChunkTokens()).isEqualTo(600);
+        assertThat(updated.getStatus()).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void updateKnowledgeBaseRejectsUnknown() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("x", 11L, 1L, 1536);
+        bo.setId(99L);
+
+        assertThatThrownBy(() -> service.updateKnowledgeBase(bo))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("knowledge base does not exist");
     }
 
     @Test
@@ -273,12 +412,31 @@ class KnowledgeBaseServiceImplTest {
         assertThat(service.getKnowledgeBindings("demo")).containsExactly(1L);
     }
 
+    private static KnowledgeBaseBo validBo(String name, Long embeddingModelId, Long storeId, int dimension) {
+        var bo = new KnowledgeBaseBo();
+        bo.setName(name);
+        bo.setEmbeddingModelId(embeddingModelId);
+        bo.setVectorStoreInstanceId(storeId);
+        bo.setDimensionOfVectorModel(dimension);
+        return bo;
+    }
+
     private void seedKnowledgeBase(Long id, String name, String status) {
         var base = new KnowledgeBase();
         base.setId(id);
         base.setName(name);
         base.setStatus(status);
         knowledgeBases.add(base);
+    }
+
+    private void seedStore(Long id, String name, int category, int type) {
+        var store = new StoreInstance();
+        store.setId(id);
+        store.setName(name);
+        store.setCategory(category);
+        store.setType(type);
+        store.setStatus(1);
+        stores.add(store);
     }
 
     private static <T> T findById(List<T> list, Object id) {
@@ -293,6 +451,9 @@ class KnowledgeBaseServiceImplTest {
         }
         if (list.get(0) instanceof KnowledgeTask task) {
             return (T) list.stream().filter(t -> ((KnowledgeTask) t).getId().equals(id)).findFirst().orElse(null);
+        }
+        if (list.get(0) instanceof StoreInstance store) {
+            return (T) list.stream().filter(s -> ((StoreInstance) s).getId().equals(id)).findFirst().orElse(null);
         }
         return null;
     }

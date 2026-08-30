@@ -7,12 +7,39 @@ POST /api/admin/knowledge-bases
 Content-Type: application/json
 Authorization: Bearer <admin-token>
 
-{ "name": "产品文档", "description": "可选" }
-
+PUT /api/admin/knowledge-bases          # 编辑（body 同创建，带 id）
 GET /api/admin/knowledge-bases
 GET /api/admin/knowledge-bases/options      # 下拉选项 [{ value, label: "name (#id)" }]
 DELETE /api/admin/knowledge-bases/{id}        # 禁用
 ```
+
+创建/编辑请求体（`KnowledgeBaseBo`，创建必填 `embeddingModelId`/`vectorStoreInstanceId`/`dimensionOfVectorModel`）：
+
+```json
+{
+  "id": 1,
+  "name": "产品文档",
+  "description": "可选",
+  "embeddingModelId": 11,
+  "vectorStoreInstanceId": 1,
+  "dimensionOfVectorModel": 1536,
+  "rerankModelId": null,
+  "searchEngineEnable": false,
+  "searchEngineInstanceId": null,
+  "delimiter": "\n\n",
+  "dedupStrategy": 2,
+  "dedupAction": 0,
+  "config": {
+    "chunkParams": { "mode": "length", "maxChunkTokens": 2000, "chunkOverlap": null, "mergeShortSegments": false },
+    "parseParams": { "engine": "default" }
+  }
+}
+```
+
+- 向量库实例 `category=1`、搜索引擎实例 `category=2`（启用混合检索时必填），由后端校验分类；
+- `config` 为 `RagConfigDO`（searchParams/modelParams/chunkParams/parseParams），切片模式
+  length/delimiter/regex/smart；`delimiter` 列缺省 `\n\n`，去重策略/冲突动作缺省 2/0；
+- Worker 索引时按知识库 `config.chunkParams` 与 `delimiter` 执行切片（智能切片未接入对话模型时回退段落切分）。
 
 `/options` 仅查 id/name 列（不加载描述），供 Agent 编辑/绑定弹窗按需加载。
 

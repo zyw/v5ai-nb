@@ -169,11 +169,91 @@ export interface KnowledgeBaseResponse {
   name: string
   description?: string | null
   status: string
+  icon?: string | null
+  embeddingModelId: number
+  vectorStoreInstanceId?: number | null
+  dimensionOfVectorModel: number
+  rerankModelId?: number | null
+  searchEngineEnable?: boolean
+  searchEngineInstanceId?: number | null
+  delimiter?: string | null
+  ragEnhancement?: string | null
+  config?: RagConfig | null
+  dedupStrategy?: number
+  dedupAction?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface RagChunkParams {
+  mode?: 'length' | 'delimiter' | 'regex' | 'smart'
+  maxChunkTokens?: number
+  chunkOverlap?: number
+  customDelimiter?: string
+  chunkRegex?: string
+  chunkModelId?: number
+  mergeShortSegments?: boolean
+  imageOcr?: boolean
+}
+
+export interface RagDoclingParams {
+  doOcr?: boolean
+  doTableStructure?: boolean
+  imageExportMode?: string
+  ocrLang?: string[]
+  pdfBackend?: string
+  saveImages?: boolean
+  maxImageCount?: number
+  maxImageBytes?: number
+}
+
+export interface RagParseParams {
+  engine?: 'default' | 'docling'
+  docling?: RagDoclingParams
+}
+
+export interface RagSearchParams {
+  resultCount?: number
+  rerankEnabled?: boolean
+  rerankModelId?: number
+  enterRerankCount?: number
+  thresholdEnabled?: boolean
+  threshold?: number
+  denseWeight?: number
+  fusionStrategy?: string
+  rrfK?: number
+  questionRewrite?: boolean
+}
+
+export interface RagModelParams {
+  modelId?: number
+  nearbySliceCount?: number
+  prompt?: string
+}
+
+export interface RagConfig {
+  searchParams?: RagSearchParams
+  modelParams?: RagModelParams
+  chunkParams?: RagChunkParams
+  parseParams?: RagParseParams
 }
 
 export interface CreateKnowledgeBaseRequest {
+  id?: number
   name: string
   description?: string
+  icon?: string
+  embeddingModelId: number
+  vectorStoreInstanceId: number
+  dimensionOfVectorModel: number
+  rerankModelId?: number
+  searchEngineEnable?: boolean
+  searchEngineInstanceId?: number
+  delimiter?: string
+  ragEnhancement?: string
+  config?: RagConfig
+  dedupStrategy?: number
+  dedupAction?: number
 }
 
 export interface StoreInstanceResponse {
@@ -776,6 +856,13 @@ export function createKnowledgeBase(adminToken: string, request: CreateKnowledge
   }, adminToken)
 }
 
+export function updateKnowledgeBase(adminToken: string, request: CreateKnowledgeBaseRequest): Promise<KnowledgeBaseResponse> {
+  return requestJson<KnowledgeBaseResponse>('/api/admin/knowledge-bases', {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
 export function disableKnowledgeBase(adminToken: string, id: number): Promise<void> {
   return requestJson<void>(`/api/admin/knowledge-bases/${id}`, { method: 'DELETE' }, adminToken)
 }
@@ -1101,8 +1188,8 @@ export interface OptionResponse {
   label: string
 }
 
-export function listModelOptions(adminToken: string): Promise<OptionResponse[]> {
-  return requestJson<OptionResponse[]>('/api/admin/models/options', {}, adminToken)
+export function listModelOptions(adminToken: string, type?: 'CHAT' | 'EMBEDDING' | 'RERANK'): Promise<OptionResponse[]> {
+  return requestJson<OptionResponse[]>(`/api/admin/models/options${type ? `?type=${type}` : ''}`, {}, adminToken)
 }
 
 export function listKnowledgeBaseOptions(adminToken: string): Promise<OptionResponse[]> {
