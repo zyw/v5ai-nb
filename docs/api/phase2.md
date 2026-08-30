@@ -16,6 +16,36 @@ DELETE /api/admin/knowledge-bases/{id}        # 禁用
 
 `/options` 仅查 id/name 列（不加载描述），供 Agent 编辑/绑定弹窗按需加载。
 
+## 存储实例管理（向量库 / 搜索引擎）
+
+```http
+GET    /api/admin/store-instances                 # 分页列表（name 模糊，category/type/status 精确）
+GET    /api/admin/store-instances/{id}            # 详情
+POST   /api/admin/store-instances                 # 新增
+PUT    /api/admin/store-instances                 # 修改
+DELETE /api/admin/store-instances/{ids}           # 批量删除（逗号分隔）
+```
+
+请求体（`StoreInstanceBo`）：
+
+```json
+{
+  "id": 1,
+  "name": "pg-vector-main",
+  "category": 1,
+  "type": 1,
+  "config": "{\"url\":\"http://localhost:5432\",\"database\":\"v5ai_nb\",\"dimension\":1536}",
+  "status": 1,
+  "isDefault": true
+}
+```
+
+- `category`：1-向量库 2-搜索引擎；`type`：1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT；
+  向量库仅允许 PG_VECTOR/MILVUS，搜索引擎仅允许 ELASTICSEARCH/PG_FULLTEXT，`config` 必须为合法 JSON；
+- `status`：0-停用 1-启用（新增缺省为 1）；
+- `isDefault`：为 `true` 时同分类下其它实例自动取消默认（事务内保证每分类至多一个默认实例）；
+- 权限标识：`rag:store:list/query/add/edit/remove`，写操作记录操作日志。
+
 ## 文档管理
 
 ```http

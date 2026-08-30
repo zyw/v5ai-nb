@@ -176,6 +176,28 @@ export interface CreateKnowledgeBaseRequest {
   description?: string
 }
 
+export interface StoreInstanceResponse {
+  id: number
+  name: string
+  category: number
+  type: number
+  config?: string | null
+  status?: number
+  isDefault?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface StoreInstanceRequest {
+  id?: number
+  name: string
+  category: number
+  type: number
+  config?: string
+  status?: number
+  isDefault?: boolean
+}
+
 export interface DocumentResponse {
   id: number
   knowledgeBaseId: number
@@ -802,6 +824,37 @@ export function bindKnowledgeBases(adminToken: string, agentKey: string, knowled
 
 export function getKnowledgeBindings(adminToken: string, agentKey: string): Promise<number[]> {
   return requestJson<number[]>(`/api/admin/agents/${encodeURIComponent(agentKey)}/knowledge-bindings`, {}, adminToken)
+}
+
+// ---- Store instances ----
+
+export function listStoreInstances(
+  adminToken: string,
+  query?: PageQuery & { name?: string; category?: number; type?: number; status?: number }
+): Promise<PageResult<StoreInstanceResponse>> {
+  return requestJson<PageResult<StoreInstanceResponse>>(`/api/admin/store-instances${paramString(query)}`, {}, adminToken)
+}
+
+export function getStoreInstance(adminToken: string, id: number): Promise<StoreInstanceResponse> {
+  return requestJson<StoreInstanceResponse>(`/api/admin/store-instances/${id}`, {}, adminToken)
+}
+
+export function createStoreInstance(adminToken: string, request: StoreInstanceRequest): Promise<void> {
+  return requestJson<void>('/api/admin/store-instances', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function updateStoreInstance(adminToken: string, request: StoreInstanceRequest): Promise<void> {
+  return requestJson<void>('/api/admin/store-instances', {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function deleteStoreInstances(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/store-instances/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
 }
 
 // ---- API keys ----
