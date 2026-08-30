@@ -13,6 +13,7 @@ import {
   NPagination,
   NSelect,
   NSpace,
+  NSwitch,
   NUpload,
   useDialog,
   useMessage,
@@ -24,6 +25,7 @@ import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   disableSkill,
+  enableSkill,
   listSkills,
   listSkillVersions,
   publishSkillVersion,
@@ -52,6 +54,7 @@ const statusOptions = [
 const showUploadModal = ref(false)
 const showVersionsModal = ref(false)
 const saving = ref(false)
+const togglingId = ref<number | null>(null)
 const uploadFile = ref<File | null>(null)
 const uploadForm = reactive({ description: '' })
 
@@ -59,19 +62,26 @@ const skillColumns: DataTableColumns<SkillResponse> = [
   { title: 'ID', key: 'id', width: 64 },
   { title: '名称', key: 'name', width: 220 },
   { title: '描述', key: 'description', width: 'auto', ellipsis: { tooltip: true } },
-  { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    render: (row) =>
+      h(NSwitch, {
+        value: row.status === 'ACTIVE',
+        loading: togglingId.value === row.id,
+        onUpdateValue: () => handleToggleStatus(row)
+      })
+  },
   { title: '当前版本', key: 'currentVersion', width: 100, render: (row) => (row.currentVersion ? `v${row.currentVersion}` : '-') },
   { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
-    width: 160,
+    width: 110,
     render: (row) =>
-      h(NSpace, { size: 6 }, { default: () => [
-        h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => handleShowVersions(row) }, { default: () => '版本' }),
-        h(NButton, { size: 'small', secondary: true, type: 'error', disabled: row.status !== 'ACTIVE', onClick: () => handleDisable(row) }, { default: () => '禁用' })
-      ] })
+      h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => handleShowVersions(row) }, { default: () => '版本' })
   }
 ]
 
@@ -186,19 +196,27 @@ async function handleRollback(version: SkillVersionResponse) {
   }
 }
 
-async function handleDisable(skill: SkillResponse) {
+async function handleToggleStatus(skill: SkillResponse) {
+  const next = skill.status === 'ACTIVE' ? '禁用' : '启用'
   dialog.warning({
-    title: '禁用确认',
-    content: `确认禁用 Skill「${skill.name}」？`,
-    positiveText: '禁用',
+    title: `${next}确认`,
+    content: `确认${next} Skill「${skill.name}」？`,
+    positiveText: next,
     negativeText: '取消',
     onPositiveClick: async () => {
+      togglingId.value = skill.id
       try {
-        await disableSkill(adminToken.value, skill.id)
-        message.success(`${skill.name} 已禁用`)
+        if (skill.status === 'ACTIVE') {
+          await disableSkill(adminToken.value, skill.id)
+        } else {
+          await enableSkill(adminToken.value, skill.id)
+        }
+        message.success(`${skill.name} 已${next}`)
         await reload()
       } catch (e) {
-        message.error(e instanceof Error ? e.message : '禁用失败')
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        togglingId.value = null
       }
     }
   })

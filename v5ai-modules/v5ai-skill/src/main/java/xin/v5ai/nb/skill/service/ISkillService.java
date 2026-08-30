@@ -1,7 +1,7 @@
 package xin.v5ai.nb.skill.service;
 
-import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.skill.domain.bo.SkillBo;
 import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
@@ -49,7 +49,12 @@ public interface ISkillService {
     /**
      * 禁用 Skill。
      */
-    void disableSkill(Long id);
+    boolean disableSkill(Long id);
+
+    /**
+     * 启用 Skill。
+     */
+    boolean enableSkill(Long id);
 
     /**
      * 查询某 Skill 的版本列表（新版本在前）。

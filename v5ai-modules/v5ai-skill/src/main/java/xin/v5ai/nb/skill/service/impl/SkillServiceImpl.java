@@ -6,8 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.skill.core.SkillPackageParser;
@@ -124,12 +124,21 @@ public class SkillServiceImpl implements ISkillService {
     }
 
     @Override
-    public void disableSkill(Long id) {
+    public boolean disableSkill(Long id) {
         requireSkill(id);
         var update = new Skill();
         update.setId(id);
         update.setStatus(STATUS_DISABLED);
-        skillMapper.updateById(update);
+        return skillMapper.updateById(update) > 0;
+    }
+
+    @Override
+    public boolean enableSkill(Long id) {
+        requireSkill(id);
+        var update = new Skill();
+        update.setId(id);
+        update.setStatus(STATUS_ACTIVE);
+        return skillMapper.updateById(update) > 0;
     }
 
     @Override

@@ -1,19 +1,11 @@
 package xin.v5ai.nb.skill.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
-import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.domain.R;
+import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
@@ -64,11 +56,16 @@ public class SkillController extends BaseController {
         return R.ok(skillService.queryOptionList());
     }
 
-    @DeleteMapping("/{id}")
+    @PutMapping("/{id}/disable")
     @Log(title = "禁用技能", businessType = BusinessType.DISABLE)
     public R<Void> disableSkill(@PathVariable("id") Long id) {
-        skillService.disableSkill(id);
-        return R.ok();
+        return toAjax(skillService.disableSkill(id));
+    }
+
+    @PutMapping("/{id}/enable")
+    @Log(title = "启用技能", businessType = BusinessType.ENABLE)
+    public R<Void> enableSkill(@PathVariable("id") Long id) {
+        return toAjax(skillService.enableSkill(id));
     }
 
     @GetMapping("/{id}/versions")
