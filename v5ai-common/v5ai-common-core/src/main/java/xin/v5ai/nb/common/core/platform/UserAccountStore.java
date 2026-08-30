@@ -13,7 +13,7 @@
 //
 //    List<UserAccount> list();
 //
-//    UserAccount create(String username, String passwordHash, String displayName, Long tenantId, List<String> roles);
+//    UserAccount create(String username, String passwordHash, String displayName, List<String> roles);
 //
 //    void updateRoles(Long userId, List<String> roles);
 //

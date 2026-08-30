@@ -31,8 +31,6 @@
 //    private String username;
 //    @TableField("password_hash")
 //    private String passwordHash;
-//    @TableField("tenant_id")
-//    private Long tenantId;
 //    @TableField("display_name")
 //    private String displayName;
 //    private String email;

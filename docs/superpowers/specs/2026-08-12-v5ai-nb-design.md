@@ -214,7 +214,7 @@ AgentScopeRuntime
 每次运行的步骤：
 
 1. 根据 `agentKey` 加载 Agent 发布版本；
-2. 根据 `userId`、`conversationId` 和 `tenantId` 加载上下文；
+2. 根据 `userId`、`conversationId` 加载上下文；
 3. 解析 Chat Model；
 4. 执行知识检索并构造引用上下文；
 5. 加载 Skill Workspace；
@@ -224,7 +224,7 @@ AgentScopeRuntime
 9. 转换为平台 `RuntimeEvent`；
 10. 持久化消息、运行状态和事件摘要。
 
-AgentScope 的事件、Middleware、Tool、Permission、Workspace 和 AgentState 是底层运行能力；平台负责配置解析、凭据治理、租户隔离、审计和 API 协议转换。
+AgentScope 的事件、Middleware、Tool、Permission、Workspace 和 AgentState 是底层运行能力；平台负责配置解析、凭据治理、审计和 API 协议转换。
 
 ## 7. RAG 流程
 
@@ -295,7 +295,6 @@ AgentScope 事件映射为平台事件，不向客户端暴露 AgentScope 内部
 表名统一使用 `v5ai_` 前缀：
 
 ```text
-v5ai_tenant
 v5ai_user
 v5ai_api_key
 

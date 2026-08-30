@@ -1052,15 +1052,6 @@ export function listSkillOptions(adminToken: string): Promise<OptionResponse[]> 
 
 // ---- Platform (Phase 5) ----
 
-export interface Tenant {
-  id: number
-  tenantKey: string
-  name: string
-  status: string
-  createdAt?: string | null
-  updatedAt?: string | null
-}
-
 export interface Role {
   id: number
   roleName: string
@@ -1161,21 +1152,6 @@ export interface OverviewResponse {
   todayRuns: number
   todayModelCalls: number
   todayTokens: number
-}
-
-export function listTenants(adminToken: string, query?: PageQuery): Promise<PageResult<Tenant>> {
-  return requestJson<PageResult<Tenant>>(`/api/admin/tenants${pageQueryString(query)}`, {}, adminToken)
-}
-
-export function createTenant(adminToken: string, tenantKey: string, name: string): Promise<Tenant> {
-  return requestJson<Tenant>('/api/admin/tenants', {
-    method: 'POST',
-    body: JSON.stringify({ tenantKey, name })
-  }, adminToken)
-}
-
-export function disableTenant(adminToken: string, id: number): Promise<void> {
-  return requestJson<void>(`/api/admin/tenants/${id}`, { method: 'DELETE' }, adminToken)
 }
 
 // ---- 用户管理（Plm 契约） ----

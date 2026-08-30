@@ -40,12 +40,11 @@
 //
 //    @Override
 //    public UserAccount create(String username, String passwordHash, String displayName,
-//                              Long tenantId, List<String> roles) {
+//                              List<String> roles) {
 //        var entity = new User();
 //        entity.setUsername(username);
 //        entity.setPasswordHash(passwordHash);
 //        entity.setStatus("0");
-//        entity.setTenantId(tenantId);
 //        entity.setDisplayName(displayName);
 //        userMapper.insert(entity);
 //        if (roles != null && !roles.isEmpty()) {
@@ -84,6 +83,6 @@
 //        }
 //        List<String> roles = roleMapper.selectRolesByUser(entity.getId());
 //        return new UserAccount(entity.getId(), entity.getUsername(), entity.getDisplayName(),
-//                entity.getTenantId(), roles, entity.getStatus());
+//                roles, entity.getStatus());
 //    }
 //}

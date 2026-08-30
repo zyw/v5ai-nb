@@ -13,7 +13,6 @@
 //    /**
 //     * 记录一条审计。
 //     *
-//     * @param tenantId   租户（可为 null）
 //     * @param actor      操作者（可为 null）
 //     * @param action     动作
 //     * @param targetType 目标类型（可为 null）
@@ -21,7 +20,7 @@
 //     * @param detail     详情（可为 null）
 //     * @param ip         来源 IP（可为 null）
 //     */
-//    void record(Long tenantId, String actor, String action,
+//    void record(String actor, String action,
 //                String targetType, String targetId, String detail, String ip);
 //
 ////    List<AuditLogDTO> search(String actor, String action, int limit);

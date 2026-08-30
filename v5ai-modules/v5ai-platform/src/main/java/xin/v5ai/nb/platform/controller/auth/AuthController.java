@@ -63,7 +63,7 @@ public class AuthController extends BaseController {
         }
         var roles = account.roles() == null ? java.util.List.<String>of() : account.roles();
         return R.ok(new LoginResponse("Bearer", StpUtil.getTokenValue(), account.id(), account.username(),
-                account.displayName(), account.tenantId(), roles));
+                account.displayName(), roles));
     }*/
 
     /**

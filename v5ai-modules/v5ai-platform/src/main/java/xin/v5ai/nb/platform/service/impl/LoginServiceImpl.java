@@ -175,7 +175,7 @@ public class LoginServiceImpl implements ILoginService {
 //        // 登录成功：回写最后登录 IP 与时间（失败不阻断登录）
 ////        recordLoginInfo(account.id());
 ////        return new LoginResponse("Bearer", StpUtil.getTokenValue(), userInfo.getId(), userInfo.getUsername(),
-////                userInfo.getDisplayName(), userInfo.getTenantId(), loginUser.getRolePermission());
+////                userInfo.getDisplayName(), loginUser.getRolePermission());
 //        // 生成token
 //        LoginHelper.login(loginUser, model);
 //

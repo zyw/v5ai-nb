@@ -67,19 +67,11 @@ POST /api/auth/captcha/verify
 
 启动时若无任何用户，会自动创建默认管理员 `admin/admin`（生产环境务必修改密码）。
 
-## 租户管理
-
-```http
-POST /api/admin/tenants          { "tenantKey": "acme", "name": "Acme Corp" }
-GET  /api/admin/tenants
-DELETE /api/admin/tenants/{id}   # 禁用
-```
-
 ## 用户管理（RBAC）
 
 ```http
 GET  /api/admin/users
-POST /api/admin/users            # { username, password(≥4), displayName?, tenantId?, roles? } 默认 roles=["USER"]
+POST /api/admin/users            # { username, password(≥4), displayName?, roles? } 默认 roles=["USER"]
 PUT  /api/admin/users/{id}/roles # { roles: ["ADMIN","USER"] }
 PUT  /api/admin/users/{id}/enabled # { enabled: true|false }
 ```
@@ -107,7 +99,7 @@ Token 按字符数粗略估算（`字符数/4`），后续可对接真实 usage 
 
 ## 审计日志
 
-管理面关键操作自动记录（登录/登出、应用创建/禁用/发布、API Key 生成/删除、知识库/MCP/Skill 创建禁用发布回滚、租户/用户/配额变更）：
+管理面关键操作自动记录（登录/登出、应用创建/禁用/发布、API Key 生成/删除、知识库/MCP/Skill 创建禁用发布回滚、用户/配额变更）：
 
 ```http
 GET /api/admin/audit-logs?actor=&action=&limit=100
@@ -117,7 +109,6 @@ GET /api/admin/audit-logs?actor=&action=&limit=100
 [
   {
     "id": 1,
-    "tenantId": null,
     "actor": "admin",
     "action": "CREATE",
     "targetType": "application",

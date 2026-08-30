@@ -24,7 +24,7 @@
 //    private final PasswordEncoder passwordEncoder;
 //
 //    public record CreateUserRequest(String username, String password, String displayName,
-//                                    Long tenantId, List<String> roles) {
+//                                    List<String> roles) {
 //    }
 //
 //    public record UpdateRolesRequest(List<String> roles) {
@@ -52,7 +52,7 @@
 //        var roles = request.roles() == null || request.roles().isEmpty()
 //                ? List.of("USER") : request.roles();
 //        var account = userAccountStore.create(request.username().trim(),
-//                passwordEncoder.encode(request.password()), request.displayName(), request.tenantId(), roles);
+//                passwordEncoder.encode(request.password()), request.displayName(), roles);
 //        return R.ok(account);
 //    }
 //

@@ -35,7 +35,6 @@ export const router = createRouter({
         { path: 'system/menus', name: 'system-menus', component: () => import('../views/MenuManagementView.vue'), meta: { title: '菜单管理' } },
         { path: 'system/clients', name: 'system-clients', component: () => import('../views/ClientManagementView.vue'), meta: { title: '客户端管理' } },
         { path: 'system/logs', name: 'system-logs', component: () => import('../views/LogManagementView.vue'), meta: { title: '日志管理' } },
-        { path: 'system/tenants', name: 'system-tenants', component: () => import('../views/TenantManagementView.vue'), meta: { title: '租户管理' } },
         { path: 'observability', name: 'observability', component: () => import('../views/ObservabilityView.vue'), meta: { title: '可观测性' } },
         { path: 'chat', name: 'chat', component: () => import('../views/ChatDebugView.vue'), meta: { title: '调试工具' } },
         { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { title: '系统信息' } }

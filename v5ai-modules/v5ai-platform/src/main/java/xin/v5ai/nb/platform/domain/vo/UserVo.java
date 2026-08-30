@@ -16,8 +16,6 @@
 //
 //    private String passwordHash;
 //
-//    private Long tenantId;
-//
 //    private String displayName;
 //    private String email;
 //
