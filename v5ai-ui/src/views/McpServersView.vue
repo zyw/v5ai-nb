@@ -37,6 +37,7 @@ import {
   type McpTransportType
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { formatDateTime } from '../utils/dateUtils'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -75,7 +76,7 @@ const permissionOptions = [
 
 const serverColumns: DataTableColumns<McpServerResponse> = [
   { title: 'ID', key: 'id', width: 64 },
-  { title: '名称', key: 'name' },
+  { title: '名称', key: 'name', width: 160 },
   {
     title: '传输',
     key: 'transportType',
@@ -84,6 +85,10 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
   },
   { title: 'Endpoint / 命令', key: 'endpoint', render: (row) => row.endpoint ?? '-' },
   { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
+  { title: '测试状态', key: 'lastTestStatus', width: 100, render: (row) => h(StatusTag, { status: row.lastTestStatus }) },
+  { title: '测试时间', key: 'lastTestedAt', width: 182, render: (row) => fmtTime(row.lastTestedAt) },
+  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -174,6 +179,10 @@ function openEditModal(row: McpServerResponse) {
   form.envVars = mapToText(row.envVars)
   form.timeoutSeconds = row.timeoutSeconds ?? 30
   showCreateModal.value = true
+}
+
+function fmtTime(value?: string | null): string {
+  return value ? (formatDateTime(value) ?? '—') : '—'
 }
 
 async function handleSave() {
@@ -329,7 +338,7 @@ onMounted(reload)
       v-model:show="showCreateModal"
       preset="card"
       :title="editingId != null ? '编辑 MCP Server' : '新建 MCP Server'"
-      style="width: 540px"
+      style="width: 50%"
       :bordered="false"
     >
       <n-form label-placement="top">
@@ -367,7 +376,7 @@ onMounted(reload)
       v-model:show="showToolsModal"
       preset="card"
       :title="`工具列表（${activeServer?.name ?? ''}）`"
-      style="width: 640px"
+      style="width: 50%"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
