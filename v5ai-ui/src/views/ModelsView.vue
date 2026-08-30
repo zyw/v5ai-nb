@@ -3,6 +3,8 @@ import { h, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NCard,
+  NCollapse,
+  NCollapseItem,
   NDataTable,
   NForm,
   NFormItem,
@@ -12,6 +14,7 @@ import {
   NModal,
   NPagination,
   NSelect,
+  NSlider,
   NSpace,
   NSwitch,
   NTag,
@@ -72,12 +75,22 @@ const modelForm = reactive({
   adapterKey: 'openai-compatible',
   scope: 'GLOBAL',
   isDefault: false,
-  configText: '',
   apiKey: '',
   baseUrl: '',
+  enabled: true,
+  // 对话模型参数
   temperature: 0.7,
+  topP: 1,
+  topK: 1,
   maxTokens: 4096,
-  enabled: true
+  frequencyPenalty: 0,
+  imageInput: false,
+  ocrFallback: false,
+  // 向量模型参数
+  embeddingDimension: null as number | null,
+  timeoutMs: null as number | null,
+  // 重排模型参数
+  rerankPath: ''
 })
 
 const providerTypeOptions = [
@@ -87,14 +100,15 @@ const providerTypeOptions = [
 ]
 
 const modelTypeOptions = [
-  { label: 'Chat', value: 'CHAT' },
-  { label: 'Embedding', value: 'EMBEDDING' },
-  { label: 'Rerank', value: 'RERANK' }
+  { label: '对话模型', value: 'CHAT' },
+  { label: '向量模型', value: 'EMBEDDING' },
+  { label: '重排模型', value: 'RERANK' }
 ]
 
 const adapterKeyOptions = [
-  { label: 'openai-compatible', value: 'openai-compatible' },
-  { label: 'http', value: 'http' }
+  { label: 'OpenAI 兼容', value: 'openai-compatible' },
+  { label: 'HTTP', value: 'http' },
+  { label: 'Qwen Rerank', value: 'qwen-rerank' }
 ]
 
 const scopeOptions = [
@@ -109,9 +123,65 @@ function modelCredentials(): string {
   return JSON.stringify({
     apiKey: modelForm.apiKey,
     baseUrl: modelForm.baseUrl || undefined,
-    temperature: modelForm.temperature,
-    maxTokens: modelForm.maxTokens
+    temperature: modelForm.temperature ?? undefined,
+    maxTokens: modelForm.maxTokens ?? undefined
   })
+}
+
+/** 按模型类型构建 config（ConfigExtAttrsDTO JSON）；无参数时返回 undefined。 */
+function buildConfig(): string | undefined {
+  const cfg: Record<string, unknown> = {}
+  if (modelForm.type === 'CHAT') {
+    if (modelForm.temperature != null) cfg.temperature = modelForm.temperature
+    if (modelForm.topP != null) cfg.topP = modelForm.topP
+    if (modelForm.topK != null) cfg.topK = modelForm.topK
+    if (modelForm.maxTokens != null) cfg.maxTokens = modelForm.maxTokens
+    if (modelForm.frequencyPenalty != null) cfg.frequencyPenalty = modelForm.frequencyPenalty
+    if (modelForm.imageInput) cfg.capabilities = ['image']
+    if (modelForm.ocrFallback) cfg.defaultVisionModel = true
+  } else if (modelForm.type === 'EMBEDDING') {
+    if (modelForm.embeddingDimension != null) cfg.embeddingDimension = modelForm.embeddingDimension
+    if (modelForm.timeoutMs != null) cfg.timeoutMs = modelForm.timeoutMs
+  } else if (modelForm.type === 'RERANK') {
+    if (modelForm.rerankPath.trim()) cfg.rerankPath = modelForm.rerankPath.trim()
+  }
+  const text = JSON.stringify(cfg)
+  return text === '{}' ? undefined : text
+}
+
+/** 重置各类型配置参数为默认值。 */
+function resetConfigParams() {
+  modelForm.temperature = 0.7
+  modelForm.topP = 1
+  modelForm.topK = 1
+  modelForm.maxTokens = 4096
+  modelForm.frequencyPenalty = 0
+  modelForm.imageInput = false
+  modelForm.ocrFallback = false
+  modelForm.embeddingDimension = null
+  modelForm.timeoutMs = null
+  modelForm.rerankPath = ''
+}
+
+/** 从已有 config JSON 回填各类型配置参数。 */
+function applyConfig(configJson?: string | null) {
+  resetConfigParams()
+  if (!configJson) return
+  try {
+    const cfg = JSON.parse(configJson) as Record<string, unknown>
+    if (typeof cfg.temperature === 'number') modelForm.temperature = cfg.temperature
+    if (typeof cfg.topP === 'number') modelForm.topP = cfg.topP
+    if (typeof cfg.topK === 'number') modelForm.topK = cfg.topK
+    if (typeof cfg.maxTokens === 'number') modelForm.maxTokens = cfg.maxTokens
+    if (typeof cfg.frequencyPenalty === 'number') modelForm.frequencyPenalty = cfg.frequencyPenalty
+    modelForm.imageInput = Array.isArray(cfg.capabilities) && (cfg.capabilities as string[]).includes('image')
+    modelForm.ocrFallback = cfg.defaultVisionModel === true
+    if (typeof cfg.embeddingDimension === 'number') modelForm.embeddingDimension = cfg.embeddingDimension
+    if (typeof cfg.timeoutMs === 'number') modelForm.timeoutMs = cfg.timeoutMs
+    if (typeof cfg.rerankPath === 'string') modelForm.rerankPath = cfg.rerankPath
+  } catch {
+    // 非法 JSON 忽略，保持默认值
+  }
 }
 
 const providerColumns: DataTableColumns<ProviderResponse> = [
@@ -302,11 +372,9 @@ async function openModelModal() {
   modelForm.adapterKey = 'openai-compatible'
   modelForm.scope = 'GLOBAL'
   modelForm.isDefault = false
-  modelForm.configText = ''
+  resetConfigParams()
   modelForm.apiKey = ''
   modelForm.baseUrl = ''
-  modelForm.temperature = 0.7
-  modelForm.maxTokens = 4096
   modelForm.enabled = true
   showModelModal.value = true
 }
@@ -322,12 +390,10 @@ function openEditModel(row: ModelResponse) {
   modelForm.adapterKey = row.adapterKey ?? 'openai-compatible'
   modelForm.scope = row.scope ?? 'GLOBAL'
   modelForm.isDefault = !!row.isDefault
-  modelForm.configText = row.config ?? ''
+  applyConfig(row.config)
   // 凭据加密存储不可回显：留空表示不修改
   modelForm.apiKey = ''
   modelForm.baseUrl = ''
-  modelForm.temperature = 0.7
-  modelForm.maxTokens = 4096
   modelForm.enabled = row.enabled
   showModelModal.value = true
 }
@@ -339,7 +405,8 @@ function modelExtras() {
     adapterKey: modelForm.adapterKey || undefined,
     scope: modelForm.scope || undefined,
     isDefault: modelForm.isDefault || undefined,
-    config: modelForm.configText.trim() ? modelForm.configText.trim() : undefined
+    endpoint: modelForm.baseUrl.trim() || undefined,
+    config: buildConfig()
   }
 }
 
@@ -543,53 +610,92 @@ onMounted(reload)
       v-model:show="showModelModal"
       preset="card"
       :title="editingModelId != null ? '编辑 Model' : '新建 Model'"
-      style="width: 560px"
+      style="width: 600px"
       :bordered="false"
     >
       <n-form label-placement="top">
-        <n-form-item label="Provider">
+        <n-form-item label="请选择提供商 *">
           <n-select v-model:value="modelForm.providerKey" filterable :options="providerOptions()" />
         </n-form-item>
-        <n-form-item label="模型名称">
-          <n-input v-model:value="modelForm.modelName" placeholder="如 GPT-4o Mini" />
+        <n-form-item label="模型名称 *">
+          <n-input v-model:value="modelForm.modelName" :maxlength="255" show-count placeholder="如 GPT-4o Mini" />
         </n-form-item>
-        <n-form-item label="Model Key">
-          <n-input v-model:value="modelForm.modelKey" placeholder="如 gpt-4o-mini" />
+        <n-form-item label="模型Key *">
+          <n-input v-model:value="modelForm.modelKey" :maxlength="100" show-count placeholder="如 gpt-4o-mini" />
         </n-form-item>
-        <n-form-item label="模型描述">
-          <n-input v-model:value="modelForm.description" type="textarea" :autosize="{ minRows: 1, maxRows: 3 }" placeholder="可选" />
-        </n-form-item>
-        <n-form-item label="Model Type">
+        <n-form-item label="类型 *">
           <n-select v-model:value="modelForm.type" :options="modelTypeOptions" />
         </n-form-item>
-        <n-form-item label="协议适配器">
+        <n-form-item label="适配器 *">
           <n-select v-model:value="modelForm.adapterKey" filterable tag :options="adapterKeyOptions" />
         </n-form-item>
+        <n-form-item label="描述">
+          <n-input v-model:value="modelForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 1, maxRows: 3 }" placeholder="请输入模型描述" />
+        </n-form-item>
+        <n-form-item :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
+          <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
+        </n-form-item>
+        <n-form-item label="API端点 *">
+          <n-input v-model:value="modelForm.baseUrl" placeholder="https://api.deepseek.com" />
+        </n-form-item>
+
+        <n-collapse :default-expanded-names="['params']" :bordered="false" arrow-placement="right">
+          <n-collapse-item title="配置参数" name="params">
+            <n-form label-placement="top">
+              <!-- 对话模型参数 -->
+              <template v-if="modelForm.type === 'CHAT'">
+                <n-form-item label="支持图片输入">
+                  <n-switch v-model:value="modelForm.imageInput" />
+                  <span class="param-hint">开启后该模型可接收图片消息</span>
+                </n-form-item>
+                <n-form-item label="作为 OCR 视觉兜底模型">
+                  <n-switch v-model:value="modelForm.ocrFallback" />
+                  <span class="param-hint">开启后作为 OCR 视觉兜底模型使用</span>
+                </n-form-item>
+                <n-form-item label="Temperature">
+                  <n-slider v-model:value="modelForm.temperature" :min="0" :max="2" :step="0.1" :format-tooltip="(v: number) => v.toFixed(1)" style="flex: 1" />
+                  <span class="param-value">{{ modelForm.temperature.toFixed(1) }}</span>
+                </n-form-item>
+                <n-form-item label="Top P">
+                  <n-slider v-model:value="modelForm.topP" :min="0" :max="1" :step="0.05" :format-tooltip="(v: number) => v.toFixed(2)" style="flex: 1" />
+                  <span class="param-value">{{ modelForm.topP.toFixed(2) }}</span>
+                </n-form-item>
+                <n-form-item label="Top K">
+                  <n-slider v-model:value="modelForm.topK" :min="0" :max="100" :step="1" style="flex: 1" />
+                  <span class="param-value">{{ modelForm.topK }}</span>
+                </n-form-item>
+                <n-form-item label="最大Token数">
+                  <n-input-number v-model:value="modelForm.maxTokens" :min="1" :max="1048576" style="width: 160px" />
+                </n-form-item>
+                <n-form-item label="频率惩罚">
+                  <n-slider v-model:value="modelForm.frequencyPenalty" :min="0" :max="2" :step="0.1" :format-tooltip="(v: number) => v.toFixed(1)" style="flex: 1" />
+                  <span class="param-value">{{ modelForm.frequencyPenalty.toFixed(1) }}</span>
+                </n-form-item>
+              </template>
+              <!-- 向量模型参数 -->
+              <template v-else-if="modelForm.type === 'EMBEDDING'">
+                <n-form-item label="嵌入维度">
+                  <n-input-number v-model:value="modelForm.embeddingDimension" :min="1" :max="65536" style="width: 160px" placeholder="请输入" />
+                </n-form-item>
+                <n-form-item label="超时时间(ms)">
+                  <n-input-number v-model:value="modelForm.timeoutMs" :min="0" :step="1000" style="width: 160px" placeholder="默认" />
+                </n-form-item>
+              </template>
+              <!-- 重排模型参数 -->
+              <template v-else-if="modelForm.type === 'RERANK'">
+                <n-form-item label="重排端点路径">
+                  <n-input v-model:value="modelForm.rerankPath" placeholder="e.g., /v1/rerank" />
+                </n-form-item>
+              </template>
+            </n-form>
+          </n-collapse-item>
+        </n-collapse>
+
         <n-form-item label="作用域">
           <n-select v-model:value="modelForm.scope" :options="scopeOptions" />
         </n-form-item>
         <n-form-item label="默认模型">
           <n-switch v-model:value="modelForm.isDefault" />
-        </n-form-item>
-        <n-form-item :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
-          <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
-        </n-form-item>
-        <n-form-item label="Base URL（可选，OpenAI Compatible）">
-          <n-input v-model:value="modelForm.baseUrl" placeholder="https://api.openai.com/v1" />
-        </n-form-item>
-        <n-form-item label="Temperature">
-          <n-input-number v-model:value="modelForm.temperature" :min="0" :max="2" :step="0.1" style="width: 100%" />
-        </n-form-item>
-        <n-form-item label="Max Tokens">
-          <n-input-number v-model:value="modelForm.maxTokens" :min="1" :max="32768" style="width: 100%" />
-        </n-form-item>
-        <n-form-item label="扩展配置（JSON，可选）">
-          <n-input
-            v-model:value="modelForm.configText"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 5 }"
-            placeholder='{"timeoutMs":30000,"maxRetries":3,"temperature":0.7}'
-          />
         </n-form-item>
         <n-form-item label="启用">
           <n-switch v-model:value="modelForm.enabled" />
@@ -604,3 +710,20 @@ onMounted(reload)
     </n-modal>
   </div>
 </template>
+
+<style scoped>
+.param-hint {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-left: 10px;
+}
+
+.param-value {
+  min-width: 44px;
+  margin-left: 12px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  opacity: 0.85;
+}
+</style>
