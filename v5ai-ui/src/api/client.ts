@@ -999,11 +999,11 @@ export async function uploadSkill(adminToken: string, file: File, description?: 
 }
 
 export function disableSkill(adminToken: string, id: number): Promise<void> {
-  return requestJson<void>(`/api/admin/skills/${id}/disable`, { method: 'DELETE' }, adminToken)
+  return requestJson<void>(`/api/admin/skills/${id}/disable`, { method: 'PUT' }, adminToken)
 }
 
 export function enableSkill(adminToken: string, id: number): Promise<void> {
-  return requestJson<void>(`/api/admin/skills/${id}/enable`, { method: 'POST' }, adminToken)
+  return requestJson<void>(`/api/admin/skills/${id}/enable`, { method: 'PUT' }, adminToken)
 }
 
 export function listSkillVersions(adminToken: string, id: number): Promise<PageResult<SkillVersionResponse>> {
