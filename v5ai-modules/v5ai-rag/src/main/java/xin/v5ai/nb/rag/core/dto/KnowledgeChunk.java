@@ -6,9 +6,14 @@ public record KnowledgeChunk(
         Long documentId,
         int chunkIndex,
         String content,
-        String metadata
+        String metadata,
+        Integer paragraphIndex,
+        Integer tokenCount,
+        String vectorId,
+        String contentHash,
+        String sourceType
 ) {
     public KnowledgeChunk(Long knowledgeBaseId, Long documentId, int chunkIndex, String content, String metadata) {
-        this(null, knowledgeBaseId, documentId, chunkIndex, content, metadata);
+        this(null, knowledgeBaseId, documentId, chunkIndex, content, metadata, null, null, null, null, "TEXT");
     }
 }

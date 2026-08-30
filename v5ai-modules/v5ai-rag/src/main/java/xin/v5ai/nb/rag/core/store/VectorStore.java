@@ -17,9 +17,13 @@ public interface VectorStore {
      * @param content         切片原文
      * @param embedding       该切片的向量
      * @param metadata        检索元数据（JSON，如标题/页码/文件名）
+     * @param tokenCount      分片 token 数量（空白切分估算，可为 null）
+     * @param contentHash     切片内容 SHA-256（用于向量去重，可为 null）
+     * @param sourceType      chunk 来源类型（TEXT=文本 / IMAGE=图片）
      */
     record VectorChunk(Long knowledgeBaseId, Long documentId, int chunkIndex, String content,
-                       List<Float> embedding, String metadata) {
+                       List<Float> embedding, String metadata, Integer tokenCount, String contentHash,
+                       String sourceType) {
     }
 
     /**

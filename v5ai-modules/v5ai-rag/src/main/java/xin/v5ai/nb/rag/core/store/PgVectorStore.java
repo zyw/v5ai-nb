@@ -23,15 +23,19 @@ public class PgVectorStore implements VectorStore {
         for (var chunk : chunks) {
             jdbcTemplate.update("""
                             INSERT INTO v5ai_knowledge_chunk
-                                (knowledge_base_id, document_id, chunk_index, content, embedding, metadata)
-                            VALUES (?, ?, ?, ?, ?::vector, ?::jsonb)
+                                (knowledge_base_id, document_id, chunk_index, content, embedding, metadata,
+                                 token_count, content_hash, source_type)
+                            VALUES (?, ?, ?, ?, ?::vector, ?::jsonb, ?, ?, ?)
                             """,
                     chunk.knowledgeBaseId(),
                     chunk.documentId(),
                     chunk.chunkIndex(),
                     chunk.content(),
                     toVectorLiteral(chunk.embedding()),
-                    chunk.metadata() == null ? "{}" : chunk.metadata());
+                    chunk.metadata() == null ? "{}" : chunk.metadata(),
+                    chunk.tokenCount(),
+                    chunk.contentHash(),
+                    chunk.sourceType() == null ? "TEXT" : chunk.sourceType());
         }
     }
 

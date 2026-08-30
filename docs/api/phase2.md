@@ -96,6 +96,11 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 `sourceType` 标识来源（`UPLOAD`=上传 / `URL`=网络），另含存储元数据列
 （`storageType`/`storagePath`/`fileSize`/`chunkCount`/`parseTime`/`contentHash`）与资源库关联列 `resourceId`（见迁移 V25）。
 
+分片表 `v5ai_knowledge_chunk`（迁移 V26 扩展）：新增 `paragraph_index`（段落索引）、`token_count`（分片 token 数量）、
+`vector_id`（向量 id）、`content_hash`（chunk 内容 SHA-256，用于向量去重）、`source_type`（TEXT=文本 / IMAGE=图片）、
+`updated_at`（更新时间），并新增 `(knowledge_base_id)`、`(knowledge_base_id, content_hash)`、
+`(knowledge_base_id, source_type)` 组合索引；Worker 写入时按空白切分估算 `token_count` 并计算 `content_hash`。
+
 ## Agent 绑定知识库
 
 ```http

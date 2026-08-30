@@ -190,3 +190,34 @@ comment on column v5ai_knowledge_document.parse_time is '解析耗时（毫秒�
 comment on column v5ai_knowledge_document.content_hash is '文件内容SHA-256哈希，用于去重';
 comment on column v5ai_knowledge_document.resource_id is '关联资源库 plm_resource.id';
 
+-- ============================================================
+-- V24-4：v5ai_knowledge_chunk 扩展
+-- 说明：
+--   1) 新增 6 列：paragraph_index（段落索引）/ token_count（分片
+--      token 数量）/ vector_id（向量 id）/ content_hash（chunk 内容
+--      SHA-256，用于向量去重）/ source_type（chunk 来源：TEXT=文本
+--      IMAGE=图片）/ updated_at（更新时间）；
+--   2) 新增组合索引（knowledge_base_id 上的 rag / hash / source_type），
+--      document_id 已由既有索引 idx_v5ai_knowledge_chunk_document 覆盖，
+--      不再重复创建；
+--   3) 幂等：add column / create index 均以防重写法实现。
+-- ============================================================
+
+alter table v5ai_knowledge_chunk
+    add column if not exists paragraph_index int,
+    add column if not exists token_count int,
+    add column if not exists vector_id varchar(128),
+    add column if not exists content_hash varchar(64),
+    add column if not exists source_type varchar(20) not null default 'TEXT',
+    add column if not exists updated_at timestamptz not null default current_timestamp;
+
+comment on column v5ai_knowledge_chunk.paragraph_index is '段落索引';
+comment on column v5ai_knowledge_chunk.token_count is '分片token数量';
+comment on column v5ai_knowledge_chunk.vector_id is '向量id';
+comment on column v5ai_knowledge_chunk.content_hash is 'chunk内容SHA-256，用于向量去重';
+comment on column v5ai_knowledge_chunk.source_type is 'chunk来源类型: TEXT=文本 IMAGE=图片';
+comment on column v5ai_knowledge_chunk.updated_at is '更新时间';
+
+create index if not exists idx_knowledge_chunk_rag on v5ai_knowledge_chunk (knowledge_base_id);
+create index if not exists idx_chunk_knowledge_hash on v5ai_knowledge_chunk (knowledge_base_id, content_hash);
+create index if not exists idx_chunk_knowledge_source_type on v5ai_knowledge_chunk (knowledge_base_id, source_type);

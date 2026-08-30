@@ -39,6 +39,10 @@ class KnowledgeIndexingServiceTest {
         assertThat(vectorStore.stored).hasSize(2);
         assertThat(vectorStore.stored.getFirst().content()).isEqualTo("hello world");
         assertThat(vectorStore.stored.getFirst().embedding()).containsExactly(1.0f, 2.0f);
+        assertThat(vectorStore.stored.getFirst().tokenCount()).isEqualTo(2);
+        assertThat(vectorStore.stored.getFirst().contentHash()).isEqualTo(
+                "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+        assertThat(vectorStore.stored.getFirst().sourceType()).isEqualTo("TEXT");
         assertThat(documentRepository.saved.getLast().getStatus()).isEqualTo(3);
         assertThat(documentRepository.saved.getLast().getChunkCount()).isEqualTo(2);
         assertThat(taskRepository.saved.getLast().getStatus()).isEqualTo("COMPLETED");

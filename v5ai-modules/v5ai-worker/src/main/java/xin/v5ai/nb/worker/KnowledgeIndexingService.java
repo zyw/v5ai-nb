@@ -53,6 +53,11 @@ public class KnowledgeIndexingService {
      */
     private static final int DOC_STATUS_FAILED = 4;
 
+    /**
+     * chunk 来源类型: 文本
+     */
+    private static final String SOURCE_TYPE_TEXT = "TEXT";
+
     private final KnowledgeTaskRepository taskRepository;
     private final KnowledgeDocumentRepository documentRepository;
     private final KnowledgeBaseRepository knowledgeBaseRepository;
@@ -94,7 +99,10 @@ public class KnowledgeIndexingService {
                         i,
                         chunks.get(i),
                         embeddingClient.embed(chunks.get(i)),
-                        metadata(document, i)));
+                        metadata(document, i),
+                        tokenCount(chunks.get(i)),
+                        sha256Hex(chunks.get(i)),
+                        SOURCE_TYPE_TEXT));
             }
             vectorStore.deleteByDocumentId(document.getId());
             vectorStore.store(vectors);
@@ -138,6 +146,28 @@ public class KnowledgeIndexingService {
     private String metadata(KnowledgeDocument document, int chunkIndex) {
         return "{\"documentId\":%d,\"chunkIndex\":%d,\"title\":\"%s\"}".formatted(
                 document.getId(), chunkIndex, escape(document.getTitle()));
+    }
+
+    /**
+     * 按空白切分估算 chunk 的 token 数量。
+     */
+    private static int tokenCount(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+        return text.split("\\s+").length;
+    }
+
+    /**
+     * 计算 chunk 内容 SHA-256 十六进制摘要（用于向量去重）。
+     */
+    private static String sha256Hex(String text) {
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            return java.util.HexFormat.of().formatHex(digest.digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 not available", exception);
+        }
     }
 
     private String escape(String value) {
