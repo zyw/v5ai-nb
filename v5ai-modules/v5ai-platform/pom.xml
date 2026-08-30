@@ -22,6 +22,10 @@
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-storage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-common-encrypt</artifactId>
         </dependency>
         <dependency>

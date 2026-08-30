@@ -25,7 +25,7 @@ class KnowledgeIndexingServiceTest {
         var taskRepository = new RecordingTaskRepository();
         taskRepository.stored = task(1L, 1L, 10L, "PENDING", 0);
         var documentRepository = new RecordingDocumentRepository();
-        documentRepository.stored = document(10L, 1L, "guide.md", "MARKDOWN", "PENDING");
+        documentRepository.stored = document(10L, 1L, "guide.md", "MARKDOWN", 0);
         var vectorStore = new RecordingVectorStore();
         var service = new KnowledgeIndexingService(taskRepository, documentRepository, new RecordingKnowledgeBaseRepository(),
                 new FixedContentStore("hello world knowledge".getBytes(StandardCharsets.UTF_8)),
@@ -39,7 +39,8 @@ class KnowledgeIndexingServiceTest {
         assertThat(vectorStore.stored).hasSize(2);
         assertThat(vectorStore.stored.getFirst().content()).isEqualTo("hello world");
         assertThat(vectorStore.stored.getFirst().embedding()).containsExactly(1.0f, 2.0f);
-        assertThat(documentRepository.saved.getLast().getStatus()).isEqualTo("COMPLETED");
+        assertThat(documentRepository.saved.getLast().getStatus()).isEqualTo(3);
+        assertThat(documentRepository.saved.getLast().getChunkCount()).isEqualTo(2);
         assertThat(taskRepository.saved.getLast().getStatus()).isEqualTo("COMPLETED");
         assertThat(taskRepository.saved.getLast().getAttemptCount()).isEqualTo(1);
     }
@@ -49,7 +50,7 @@ class KnowledgeIndexingServiceTest {
         var taskRepository = new RecordingTaskRepository();
         taskRepository.stored = task(1L, 5L, 10L, "PENDING", 0);
         var documentRepository = new RecordingDocumentRepository();
-        documentRepository.stored = document(10L, 5L, "guide.md", "MARKDOWN", "PENDING");
+        documentRepository.stored = document(10L, 5L, "guide.md", "MARKDOWN", 0);
         var kbRepository = new RecordingKnowledgeBaseRepository();
         kbRepository.stored = knowledgeBase(5L,
                 "{\"chunkParams\":{\"mode\":\"delimiter\",\"maxChunkTokens\":300,\"customDelimiter\":\"\\n\\n\",\"mergeShortSegments\":true}}");
@@ -75,7 +76,7 @@ class KnowledgeIndexingServiceTest {
         var taskRepository = new RecordingTaskRepository();
         taskRepository.stored = task(1L, 1L, 10L, "PENDING", 0);
         var documentRepository = new RecordingDocumentRepository();
-        documentRepository.stored = document(10L, 1L, "broken.pdf", "PDF", "PENDING");
+        documentRepository.stored = document(10L, 1L, "broken.pdf", "PDF", 0);
         var service = new KnowledgeIndexingService(taskRepository, documentRepository, new RecordingKnowledgeBaseRepository(),
                 new FixedContentStore(new byte[0]),
                 (content, type) -> { throw new IllegalStateException("parse boom"); },
@@ -88,7 +89,7 @@ class KnowledgeIndexingServiceTest {
         assertThat(taskRepository.saved.getLast().getStatus()).isEqualTo("FAILED");
         assertThat(taskRepository.saved.getLast().getErrorMessage()).contains("parse boom");
         assertThat(taskRepository.saved.getLast().getAttemptCount()).isEqualTo(1);
-        assertThat(documentRepository.saved.getLast().getStatus()).isEqualTo("FAILED");
+        assertThat(documentRepository.saved.getLast().getStatus()).isEqualTo(4);
     }
 
     @Test
@@ -117,13 +118,13 @@ class KnowledgeIndexingServiceTest {
         return task;
     }
 
-    private static KnowledgeDocument document(Long id, Long knowledgeBaseId, String title, String fileType, String status) {
+    private static KnowledgeDocument document(Long id, Long knowledgeBaseId, String title, String fileType, int status) {
         var document = new KnowledgeDocument();
         document.setId(id);
         document.setKnowledgeBaseId(knowledgeBaseId);
         document.setTitle(title);
         document.setFileType(fileType);
-        document.setSource(title);
+        document.setSourceType("UPLOAD");
         document.setStatus(status);
         return document;
     }

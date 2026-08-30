@@ -317,11 +317,15 @@ class KnowledgeBaseServiceImplTest {
         seedKnowledgeBase(1L, "docs", "ACTIVE");
 
         var document = service.uploadDocument(1L, "guide.md", DocumentFileType.MARKDOWN,
-                "hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8), "guide.md");
+                "hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
         assertThat(document.getId()).isEqualTo(10L);
-        assertThat(document.getStatus()).isEqualTo("PENDING");
+        assertThat(document.getStatus()).isEqualTo(0);
+        assertThat(document.getSourceType()).isEqualTo("UPLOAD");
         assertThat(document.getFileType()).isEqualTo("MARKDOWN");
+        assertThat(document.getFileSize()).isEqualTo("hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+        assertThat(document.getContentHash()).isEqualTo(
+                "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
         assertThat(documents.get(0).getContent()).isEqualTo("hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8));
         assertThat(tasks).hasSize(1);
         assertThat(tasks.get(0).getStatus()).isEqualTo("PENDING");
@@ -333,7 +337,7 @@ class KnowledgeBaseServiceImplTest {
     @Test
     void uploadDocumentRejectsUnknownKnowledgeBase() {
         assertThatThrownBy(() -> service.uploadDocument(99L, "a.txt", DocumentFileType.TXT,
-                new byte[]{1}, "a.txt"))
+                new byte[]{1}))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("knowledge base does not exist");
     }
@@ -341,7 +345,7 @@ class KnowledgeBaseServiceImplTest {
     @Test
     void uploadDocumentWithLegacySnowflakeIdIncludesMigrationHint() {
         assertThatThrownBy(() -> service.uploadDocument(2088154694704398300L, "a.txt", DocumentFileType.TXT,
-                new byte[]{1}, "a.txt"))
+                new byte[]{1}))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("knowledge base does not exist")
                 .hasMessageContaining("JavaScript 安全整数");
@@ -355,7 +359,7 @@ class KnowledgeBaseServiceImplTest {
 
         assertThat(document.getTitle()).isEqualTo("https://example.com/doc");
         assertThat(document.getFileType()).isEqualTo("URL");
-        assertThat(document.getSource()).isEqualTo("https://example.com/doc");
+        assertThat(document.getSourceType()).isEqualTo("URL");
         assertThat(documents.get(0).getContent()).isEqualTo("hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 

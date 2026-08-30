@@ -72,8 +72,8 @@ class RetrievalContextBuilderTest {
             document.setKnowledgeBaseId(1L);
             document.setTitle("guide.md");
             document.setFileType("MARKDOWN");
-            document.setSource("guide.md");
-            document.setStatus("COMPLETED");
+            document.setSourceType("UPLOAD");
+            document.setStatus(3);
             return document;
         }
 

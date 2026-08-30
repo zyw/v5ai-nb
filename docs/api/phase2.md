@@ -92,7 +92,9 @@ POST  /api/admin/documents/{id}/retry          # 重置任务为 PENDING
 GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试次数/错误）
 ```
 
-文档状态：`PENDING → PROCESSING → COMPLETED | FAILED`（Worker 异步处理，最多重试 3 次）。
+文档状态：`0-待处理 → 1-解析中 → 2-处理中 → 3-处理完成 | 4-处理失败`（Worker 异步处理，最多重试 3 次）；
+`sourceType` 标识来源（`UPLOAD`=上传 / `URL`=网络），另含存储元数据列
+（`storageType`/`storagePath`/`fileSize`/`chunkCount`/`parseTime`/`contentHash`）与资源库关联列 `resourceId`（见迁移 V25）。
 
 ## Agent 绑定知识库
 

@@ -27,6 +27,7 @@ export const router = createRouter({
         { path: 'agents', name: 'agents', component: () => import('../views/AgentsView.vue'), meta: { title: 'Agent 管理' } },
         { path: 'knowledge-bases', name: 'knowledge-bases', component: () => import('../views/KnowledgeBasesView.vue'), meta: { title: '知识库管理' } },
         { path: 'store-instances', name: 'store-instances', component: () => import('../views/StoreInstancesView.vue'), meta: { title: '存储实例' } },
+        { path: 'resources', name: 'resources', component: () => import('../views/ResourcesView.vue'), meta: { title: '资源存储' } },
         { path: 'mcp-servers', name: 'mcp-servers', component: () => import('../views/McpServersView.vue'), meta: { title: 'MCP 管理' } },
         { path: 'skills', name: 'skills', component: () => import('../views/SkillsView.vue'), meta: { title: 'Skill 管理' } },
         { path: 'workflows', name: 'workflows', component: () => import('../views/WorkflowsView.vue'), meta: { title: '工作流' } },

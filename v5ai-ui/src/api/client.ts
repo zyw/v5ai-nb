@@ -283,9 +283,16 @@ export interface DocumentResponse {
   knowledgeBaseId: number
   title: string
   fileType: string
-  source?: string | null
-  status: string
+  sourceType?: string | null
+  status: number
   errorMessage?: string | null
+  storageType?: string | null
+  storagePath?: string | null
+  fileSize?: number
+  chunkCount?: number
+  parseTime?: number
+  contentHash?: string | null
+  resourceId?: number | null
 }
 
 export interface ImportUrlRequest {
@@ -944,6 +951,99 @@ export function deleteStoreInstances(adminToken: string, ids: number[]): Promise
   return requestJson<void>(`/api/admin/store-instances/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
 }
 
+// ---- 资源存储（通用资源存储 plm_resource） ----
+
+export type ResourceBizType = 'GENERAL' | 'AVATAR' | 'ATTACHMENT' | 'DOCUMENT'
+
+export interface ResourceResponse {
+  id: number
+  storageKey: string
+  originalName: string
+  fileSize: number
+  mimeType?: string | null
+  storageType?: string
+  accessUrl?: string | null
+  bizType?: string
+  bizId?: number | null
+  createdBy?: number | null
+  createDt?: string | null
+  updateDt?: string | null
+}
+
+export interface ResourceRequest {
+  id: number
+  bizType?: string
+  bizId?: number
+}
+
+/** 分页查询资源列表：文件名模糊 + 业务类型 + 创建时间区间（params[beginTime/endTime]）。 */
+export function listResources(
+  adminToken: string,
+  query?: PageQuery & { originalName?: string; bizType?: string; beginTime?: string; endTime?: string }
+): Promise<PageResult<ResourceResponse>> {
+  const usp = new URLSearchParams()
+  if (query) {
+    for (const [k, v] of Object.entries(query)) {
+      if (v === undefined || v === null || v === '' || k === 'beginTime' || k === 'endTime') continue
+      usp.set(k, String(v))
+    }
+    if (query.beginTime) usp.set('params[beginTime]', query.beginTime)
+    if (query.endTime) usp.set('params[endTime]', query.endTime)
+  }
+  const qs = usp.toString()
+  return requestJson<PageResult<ResourceResponse>>(`/api/admin/resources${qs ? `?${qs}` : ''}`, {}, adminToken)
+}
+
+/** 上传文件（multipart：file + 可选 bizType/bizId）。 */
+export async function uploadResource(
+  adminToken: string,
+  file: File,
+  options?: { bizType?: ResourceBizType; bizId?: number }
+): Promise<ResourceResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (options?.bizType) formData.append('bizType', options.bizType)
+  if (options?.bizId !== undefined) formData.append('bizId', String(options.bizId))
+  return requestJson<ResourceResponse>('/api/admin/resources/upload', {
+    method: 'POST',
+    body: formData
+  }, adminToken)
+}
+
+/** 修改资源元数据（业务类型 / 关联业务ID）。 */
+export function updateResource(adminToken: string, request: ResourceRequest): Promise<void> {
+  return requestJson<void>('/api/admin/resources', {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+/** 批量删除资源（物理删除文件与记录）。 */
+export function deleteResources(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/resources/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+/** 带鉴权头拉取资源文件内容（预览/下载共用），返回 Blob。 */
+async function fetchResourceBlob(adminToken: string, path: string): Promise<Blob> {
+  const response = await fetch(`${apiBase}${path}`, {
+    headers: { Authorization: normalizeBearer(adminToken) }
+  })
+  if (!response.ok) {
+    throw new Error(await readError(response))
+  }
+  return response.blob()
+}
+
+/** 预览文件（inline 内容）。 */
+export function previewResource(adminToken: string, id: number): Promise<Blob> {
+  return fetchResourceBlob(adminToken, `/api/admin/resources/${id}/preview`)
+}
+
+/** 下载文件（attachment 内容）。 */
+export function downloadResource(adminToken: string, id: number): Promise<Blob> {
+  return fetchResourceBlob(adminToken, `/api/admin/resources/${id}/download`)
+}
+
 // ---- API keys ----
 
 export function createApiKey(adminToken: string, agentKey: string): Promise<CreateApiKeyResult> {
@@ -979,6 +1079,8 @@ export interface McpServerResponse {
   lastTestStatus?: string | null
   lastTestMessage?: string | null
   lastTestedAt?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export interface CreateMcpServerRequest {

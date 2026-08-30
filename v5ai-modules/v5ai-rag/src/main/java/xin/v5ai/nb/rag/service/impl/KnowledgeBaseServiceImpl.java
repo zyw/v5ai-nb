@@ -57,6 +57,26 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     private static final String TASK_TYPE_PARSE_AND_INDEX = "PARSE_AND_INDEX";
 
     /**
+     * 文档来源类型: 上传
+     */
+    private static final String SOURCE_TYPE_UPLOAD = "UPLOAD";
+
+    /**
+     * 文档来源类型: 网络
+     */
+    private static final String SOURCE_TYPE_URL = "URL";
+
+    /**
+     * 文档存储类型: 本地
+     */
+    private static final String STORAGE_TYPE_LOCAL = "LOCAL";
+
+    /**
+     * 文档索引状态: 0-待处理
+     */
+    private static final int DOC_STATUS_PENDING = 0;
+
+    /**
      * 分类: 向量库
      */
     private static final int CATEGORY_VECTOR = 1;
@@ -159,21 +179,8 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KnowledgeDocumentVo uploadDocument(Long knowledgeBaseId, String title, DocumentFileType fileType,
-                                              byte[] content, String source) {
-        requireKnowledgeBase(knowledgeBaseId);
-        if (title == null || title.isBlank() || content == null || content.length == 0) {
-            throw new IllegalArgumentException("document title and content are required");
-        }
-        var document = new KnowledgeDocument();
-        document.setKnowledgeBaseId(knowledgeBaseId);
-        document.setTitle(title);
-        document.setFileType(fileType.name());
-        document.setSource(source);
-        document.setStatus(STATUS_PENDING);
-        document.setContent(content);
-        documentMapper.insert(document);
-        submitIndexTask(document);
-        return toDocumentVo(document);
+                                              byte[] content) {
+        return createDocument(knowledgeBaseId, title, fileType, content, SOURCE_TYPE_UPLOAD);
     }
 
     @Override
@@ -184,9 +191,45 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
             throw new IllegalArgumentException("url is required");
         }
         var content = urlContentFetcher.fetch(url);
-        return uploadDocument(knowledgeBaseId,
+        return createDocument(knowledgeBaseId,
                 title == null || title.isBlank() ? url : title,
-                DocumentFileType.URL, content.getBytes(StandardCharsets.UTF_8), url);
+                DocumentFileType.URL, content.getBytes(StandardCharsets.UTF_8), SOURCE_TYPE_URL);
+    }
+
+    /**
+     * 落库文档行（含原始内容/大小/SHA-256）并提交一个 PENDING 索引任务。
+     */
+    private KnowledgeDocumentVo createDocument(Long knowledgeBaseId, String title, DocumentFileType fileType,
+                                               byte[] content, String sourceType) {
+        requireKnowledgeBase(knowledgeBaseId);
+        if (title == null || title.isBlank() || content == null || content.length == 0) {
+            throw new IllegalArgumentException("document title and content are required");
+        }
+        var document = new KnowledgeDocument();
+        document.setKnowledgeBaseId(knowledgeBaseId);
+        document.setTitle(title);
+        document.setFileType(fileType.name());
+        document.setSourceType(sourceType);
+        document.setStatus(DOC_STATUS_PENDING);
+        document.setContent(content);
+        document.setStorageType(STORAGE_TYPE_LOCAL);
+        document.setFileSize((long) content.length);
+        document.setContentHash(sha256Hex(content));
+        documentMapper.insert(document);
+        submitIndexTask(document);
+        return toDocumentVo(document);
+    }
+
+    /**
+     * 计算文件内容 SHA-256 十六进制摘要（用于去重）。
+     */
+    private static String sha256Hex(byte[] content) {
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            return java.util.HexFormat.of().formatHex(digest.digest(content));
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 not available", exception);
+        }
     }
 
     @Override
@@ -446,9 +489,16 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         vo.setKnowledgeBaseId(document.getKnowledgeBaseId());
         vo.setTitle(document.getTitle());
         vo.setFileType(document.getFileType());
-        vo.setSource(document.getSource());
+        vo.setSourceType(document.getSourceType());
         vo.setStatus(document.getStatus());
         vo.setErrorMessage(document.getErrorMessage());
+        vo.setStorageType(document.getStorageType());
+        vo.setStoragePath(document.getStoragePath());
+        vo.setFileSize(document.getFileSize());
+        vo.setChunkCount(document.getChunkCount());
+        vo.setParseTime(document.getParseTime());
+        vo.setContentHash(document.getContentHash());
+        vo.setResourceId(document.getResourceId());
         vo.setCreatedAt(document.getCreatedAt());
         vo.setUpdatedAt(document.getUpdatedAt());
         return vo;

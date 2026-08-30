@@ -348,11 +348,41 @@ async function handleSaveStore() {
 
 // ---- 列表与文档管理 ----
 
+/** 文档索引状态映射（后端 SMALLINT） */
+const DOC_STATUS_MAP: Record<number, { type: 'default' | 'success' | 'info' | 'warning' | 'error'; label: string }> = {
+  0: { type: 'warning', label: '待处理' },
+  1: { type: 'info', label: '解析中' },
+  2: { type: 'info', label: '处理中' },
+  3: { type: 'success', label: '处理完成' },
+  4: { type: 'error', label: '处理失败' }
+}
+
+function renderDocStatus(status: number) {
+  const entry = DOC_STATUS_MAP[status]
+  return h(NTag, { size: 'small', type: entry?.type ?? 'default', bordered: false, round: true }, { default: () => entry?.label ?? String(status) })
+}
+
+function renderSourceType(sourceType?: string | null) {
+  const isUrl = sourceType === 'URL'
+  return h(NTag, { size: 'small', type: isUrl ? 'info' : 'default', bordered: false, round: true }, { default: () => (isUrl ? '网络' : '上传') })
+}
+
+function formatFileSize(bytes?: number): string {
+  if (bytes == null || bytes <= 0) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
 const documentColumns: DataTableColumns<DocumentResponse> = [
   { title: 'ID', key: 'id', width: 70 },
-  { title: '标题', key: 'title' },
+  { title: '标题', key: 'title', ellipsis: { tooltip: true } },
   { title: '类型', key: 'fileType', width: 90 },
-  { title: '状态', key: 'status', width: 110, render: (row) => h(StatusTag, { status: row.status }) },
+  { title: '来源', key: 'sourceType', width: 80, render: (row) => renderSourceType(row.sourceType) },
+  { title: '状态', key: 'status', width: 100, render: (row) => renderDocStatus(row.status) },
+  { title: '大小', key: 'fileSize', width: 90, render: (row) => formatFileSize(row.fileSize ?? 0) },
+  { title: '分片', key: 'chunkCount', width: 70, render: (row) => row.chunkCount ?? 0 },
+  { title: '解析耗时', key: 'parseTime', width: 90, render: (row) => `${row.parseTime ?? 0} ms` },
   { title: '错误', key: 'errorMessage', ellipsis: { tooltip: true } },
   {
     title: '操作',
@@ -490,7 +520,7 @@ async function handleImportUrl() {
 async function handleRetry(documentId: number) {
   try {
     await retryDocument(adminToken.value, documentId)
-    message.success('已重置任务为 PENDING')
+    message.success('已重置任务为待处理')
     if (selectedKb.value) await reloadDocuments(selectedKb.value.id)
   } catch (e) {
     message.error(e instanceof Error ? e.message : '重试失败')

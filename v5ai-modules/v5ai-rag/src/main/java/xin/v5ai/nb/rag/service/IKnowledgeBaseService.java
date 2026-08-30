@@ -50,10 +50,10 @@ public interface IKnowledgeBaseService {
     void disableKnowledgeBase(Long id);
 
     /**
-     * 上传文档：落库文档行（含原始内容）并提交一个 PENDING 索引任务。
+     * 上传文档：落库文档行（来源 UPLOAD，含原始内容/大小/SHA-256）并提交一个 PENDING 索引任务。
      */
     KnowledgeDocumentVo uploadDocument(Long knowledgeBaseId, String title, DocumentFileType fileType,
-                                       byte[] content, String source);
+                                       byte[] content);
 
     /**
      * URL 导入：抓取网页内容后按 URL 类型文档处理。

@@ -131,3 +131,82 @@ GET /api/admin/stats/overview      # 应用/模型/知识库/Skill/运行总数/
 
 会话级 Agent 状态已持久化到 `v5ai_agent_state`（每次运行完成保存 agentKey + 最后回答），
 会话历史可通过 `GET /api/v1/agents/{agentKey}/chat/conversations/{conversationId}` 查询。
+
+## 资源存储（通用资源存储）
+
+`plm_resource` 通用资源存储（迁移 V24）：上传文件的元数据（存储键/原始文件名/大小/MIME/存储类型/访问 URL/业务类型/关联业务ID/创建者）。存储后端支持本地磁盘（默认，配置 `v5ai.storage.local-dir`，默认 `./v5ai-upload`）与 MinIO（`v5ai.minio.*`，storageType=MINIO）。删除会物理删除文件与记录；预览/下载均需登录，带 `platform:resource:query` 权限。
+
+### 分页列表
+
+文件名模糊、业务类型、创建时间区间（`params[beginTime]`/`params[endTime]`）：
+
+```http
+GET /api/admin/resources?pageNum=1&pageSize=10&originalName=报告&bizType=DOCUMENT&params[beginTime]=2026-08-01%2000:00:00&params[endTime]=2026-08-31%2023:59:59
+Authorization: Bearer <token>
+```
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "total": 1,
+    "rows": [
+      {
+        "id": 1,
+        "storageKey": "202608/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d.pdf",
+        "originalName": "产品报告.pdf",
+        "fileSize": 20480,
+        "mimeType": "application/pdf",
+        "storageType": "LOCAL",
+        "accessUrl": "/api/admin/resources/1/download",
+        "bizType": "DOCUMENT",
+        "bizId": null,
+        "createdBy": 1,
+        "createDt": "2026-08-30 22:40:00",
+        "updateDt": "2026-08-30 22:40:00"
+      }
+    ]
+  }
+}
+```
+
+### 详情
+
+```http
+GET /api/admin/resources/{id}
+```
+
+### 上传
+
+```http
+POST /api/admin/resources/upload        # multipart/form-data，需 platform:resource:add
+file: <文件>
+bizType: DOCUMENT        # 可选：GENERAL/AVATAR/ATTACHMENT/DOCUMENT，默认 GENERAL
+bizId: 42                # 可选
+storageType: LOCAL       # 可选：LOCAL/MINIO，默认 LOCAL
+```
+
+响应为资源 VO（`data` 同上），包含生成的 `id`、`storageKey`、`accessUrl`。
+
+### 修改元数据
+
+```http
+PUT /api/admin/resources                 # 需 platform:resource:edit
+{ "id": 1, "bizType": "ATTACHMENT", "bizId": 7 }
+```
+
+### 批量删除
+
+```http
+DELETE /api/admin/resources/1,2,3        # 需 platform:resource:remove；物理删除文件与记录
+```
+
+### 预览 / 下载
+
+```http
+GET /api/admin/resources/{id}/preview    # inline 内容（图片/PDF 浏览器可直接查看）
+GET /api/admin/resources/{id}/download   # attachment，Content-Disposition 携带原始文件名
+```
+
+浏览器无法为 `<img src>` 携带 `Authorization` 头，前端请使用 `fetch` + Blob 方式访问。

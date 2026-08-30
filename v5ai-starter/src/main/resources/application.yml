@@ -170,6 +170,9 @@ v5ai:
   agentscope:
     workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
     state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}
+  storage:
+    # 通用资源存储（plm_resource）本地存储根目录
+    local-dir: ${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}
   mcp:
     # Stdio MCP 命令白名单（逗号分隔）；为空表示开发模式不限制，生产环境必须配置
     stdio-command-whitelist: ${V5AI_MCP_STDIO_COMMAND_WHITELIST:}

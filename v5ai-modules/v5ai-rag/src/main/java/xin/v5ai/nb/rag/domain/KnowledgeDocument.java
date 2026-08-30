@@ -12,7 +12,8 @@ import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 /**
  * <p>
  * 知识库文档实体（v5ai_knowledge_document）：原始内容以 BYTEA 存储在 content 列，
- * parsed_text 保存解析后的纯文本，status 为 PENDING/PROCESSING/COMPLETED/FAILED。
+ * parsed_text 保存解析后的纯文本；source_type 标识来源（UPLOAD/URL），
+ * status 为 SMALLINT 索引状态（0-待处理 1-解析中 2-处理中 3-处理完成 4-处理失败）。
  * </p>
  *
  * @author ZYW
@@ -44,14 +45,14 @@ public class KnowledgeDocument extends BaseEntity {
     private String fileType;
 
     /**
-     * 来源（原始文件名或 URL）
+     * 来源类型（UPLOAD=上传 / URL=网络）
      */
-    private String source;
+    private String sourceType;
 
     /**
-     * 索引状态（PENDING / PROCESSING / COMPLETED / FAILED）
+     * 索引状态（0-待处理 1-解析中 2-处理中 3-处理完成 4-处理失败）
      */
-    private String status;
+    private Integer status;
 
     /**
      * 原始内容（BYTEA）
@@ -67,4 +68,39 @@ public class KnowledgeDocument extends BaseEntity {
      * 失败时的错误信息
      */
     private String errorMessage;
+
+    /**
+     * 存储类型（LOCAL=本地 / MINIO=minio）
+     */
+    private String storageType;
+
+    /**
+     * 存储路径
+     */
+    private String storagePath;
+
+    /**
+     * 文件大小（字节）
+     */
+    private Long fileSize;
+
+    /**
+     * 分片数量
+     */
+    private Integer chunkCount;
+
+    /**
+     * 解析耗时（毫秒）
+     */
+    private Integer parseTime;
+
+    /**
+     * 文件内容 SHA-256 哈希，用于去重
+     */
+    private String contentHash;
+
+    /**
+     * 关联资源库 plm_resource.id
+     */
+    private Long resourceId;
 }

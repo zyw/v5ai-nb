@@ -20,16 +20,38 @@ import java.util.ArrayList;
 
 /**
  * Executes the document indexing pipeline for one task:
- * parse → chunk → embed → store vectors, with PENDING/PROCESSING/COMPLETED/FAILED
- * state transitions and retry accounting. 切片按知识库 config.chunkParams 与
- * delimiter 列执行；未配置时回退到全局默认参数。
+ * parse → chunk → embed → store vectors, with 0-待处理/1-解析中/2-处理中/3-处理完成/4-处理失败
+ * document state transitions and retry accounting (任务表状态仍为 PENDING/PROCESSING/
+ * COMPLETED/FAILED 字符串)。切片按知识库 config.chunkParams 与 delimiter 列执行；
+ * 未配置时回退到全局默认参数。
  */
 @Service
 @RequiredArgsConstructor
 public class KnowledgeIndexingService {
+
     private static final String STATUS_PROCESSING = "PROCESSING";
     private static final String STATUS_COMPLETED = "COMPLETED";
     private static final String STATUS_FAILED = "FAILED";
+
+    /**
+     * 文档状态: 1-解析中
+     */
+    private static final int DOC_STATUS_PARSING = 1;
+
+    /**
+     * 文档状态: 2-处理中
+     */
+    private static final int DOC_STATUS_PROCESSING = 2;
+
+    /**
+     * 文档状态: 3-处理完成
+     */
+    private static final int DOC_STATUS_COMPLETED = 3;
+
+    /**
+     * 文档状态: 4-处理失败
+     */
+    private static final int DOC_STATUS_FAILED = 4;
 
     private final KnowledgeTaskRepository taskRepository;
     private final KnowledgeDocumentRepository documentRepository;
@@ -53,12 +75,17 @@ public class KnowledgeIndexingService {
         task.setStatus(STATUS_PROCESSING);
         task.setErrorMessage(null);
         taskRepository.save(task);
-        document.setStatus(STATUS_PROCESSING);
+        document.setStatus(DOC_STATUS_PARSING);
         documentRepository.save(document);
         try {
             var content = contentStore.loadContent(document.getId());
+            var parseStart = System.currentTimeMillis();
             var text = documentParser.parse(content, DocumentFileType.valueOf(document.getFileType()));
+            var parseTime = (int) (System.currentTimeMillis() - parseStart);
             var chunks = documentChunker.chunk(text, chunkingOptions(document.getKnowledgeBaseId()));
+            document.setStatus(DOC_STATUS_PROCESSING);
+            document.setChunkCount(chunks.size());
+            documentRepository.save(document);
             var vectors = new ArrayList<VectorStore.VectorChunk>(chunks.size());
             for (int i = 0; i < chunks.size(); i++) {
                 vectors.add(new VectorStore.VectorChunk(
@@ -71,7 +98,8 @@ public class KnowledgeIndexingService {
             }
             vectorStore.deleteByDocumentId(document.getId());
             vectorStore.store(vectors);
-            document.setStatus(STATUS_COMPLETED);
+            document.setParseTime(parseTime);
+            document.setStatus(DOC_STATUS_COMPLETED);
             documentRepository.save(document);
             task.setStatus(STATUS_COMPLETED);
             taskRepository.save(task);
@@ -80,7 +108,7 @@ public class KnowledgeIndexingService {
             task.setStatus(STATUS_FAILED);
             task.setErrorMessage(errorMessage);
             taskRepository.save(task);
-            document.setStatus(STATUS_FAILED);
+            document.setStatus(DOC_STATUS_FAILED);
             document.setErrorMessage(errorMessage);
             documentRepository.save(document);
         }

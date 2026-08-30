@@ -27,6 +27,7 @@ import {
   createMcpServer,
   disableMcpServer,
   discoverMcpTools,
+  enableMcpServer,
   listMcpServers,
   listMcpTools,
   testMcpServerConnection,

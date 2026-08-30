@@ -47,7 +47,7 @@ public class KnowledgeDocumentController extends BaseController {
         var fileType = detectFileType(filename);
         try {
             return R.ok(knowledgeBaseService.uploadDocument(
-                    kbId, resolvedTitle, fileType, file.getBytes(), filename));
+                    kbId, resolvedTitle, fileType, file.getBytes()));
         } catch (IOException exception) {
             throw new UncheckedIOException("failed to read uploaded file", exception);
         }
