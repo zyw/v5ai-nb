@@ -83,7 +83,7 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
     title: '传输',
     key: 'transportType',
     width: 150,
-    render: (row) => h(NTag, { size: 'small', type: row.transportType === 'STDIO' ? 'warning' : 'info', bordered: false }, { default: () => row.transportType })
+    render: (row) => h(NTag, { size: 'small', type: transportTypeFormat(row), bordered: false }, { default: () => row.transportType === 'STREAMABLE_HTTP' ? "HTTP" : row.transportType })
   },
   { title: 'Endpoint / 命令', key: 'endpoint', render: (row) => row.endpoint ?? '-' },
   {
@@ -193,6 +193,17 @@ function openEditModal(row: McpServerResponse) {
   form.envVars = mapToText(row.envVars)
   form.timeoutSeconds = row.timeoutSeconds ?? 30
   showCreateModal.value = true
+}
+
+function transportTypeFormat(row: McpServerResponse) {
+  switch (row.transportType) {
+    case 'STREAMABLE_HTTP':
+      return 'info'
+    case 'SSE':
+      return 'success'
+    case 'STDIO':
+      return 'warning'
+  }
 }
 
 function fmtTime(value?: string | null): string {
