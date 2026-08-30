@@ -21,6 +21,7 @@ GET  /api/admin/mcp-servers
 GET  /api/admin/mcp-servers/options           # 下拉选项 [{ value, label: "name (#id)" }]
 PUT  /api/admin/mcp-servers/{id}
 DELETE /api/admin/mcp-servers/{id}       # 禁用（逻辑删除）
+PUT  /api/admin/mcp-servers/{id}/enable  # 启用（与禁用互逆）
 ```
 
 `/options` 仅查 id/name 列（不解密加载请求头/环境变量密文），供 Agent 编辑/绑定弹窗按需加载。

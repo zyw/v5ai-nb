@@ -915,7 +915,11 @@ export function updateMcpServer(adminToken: string, request: UpdateMcpServerRequ
 }
 
 export function disableMcpServer(adminToken: string, id: number): Promise<void> {
-  return requestJson<void>(`/api/admin/mcp-servers/${id}`, { method: 'DELETE' }, adminToken)
+  return requestJson<void>(`/api/admin/mcp-servers/${id}/disable`, { method: 'PUT' }, adminToken)
+}
+
+export function enableMcpServer(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/mcp-servers/${id}/enable`, { method: 'PUT' }, adminToken)
 }
 
 export function testMcpServerConnection(adminToken: string, id: number): Promise<McpConnectionTestResponse> {

@@ -64,11 +64,16 @@ public class McpServerController extends BaseController {
         return R.ok(mcpServerService.updateServer(bo));
     }
 
-    @DeleteMapping("/{id}")
+    @PutMapping("/{id}/disable")
     @Log(title = "禁用MCP服务", businessType = BusinessType.DISABLE)
     public R<Void> disableServer(@PathVariable("id") Long id) {
-        mcpServerService.disableServer(id);
-        return R.ok();
+        return toAjax(mcpServerService.disableServer(id));
+    }
+
+    @PutMapping("/{id}/enable")
+    @Log(title = "启用MCP服务", businessType = BusinessType.ENABLE)
+    public R<Void> enableServer(@PathVariable("id") Long id) {
+        return toAjax(mcpServerService.enableServer(id));
     }
 
     @PostMapping("/{id}/test-connection")

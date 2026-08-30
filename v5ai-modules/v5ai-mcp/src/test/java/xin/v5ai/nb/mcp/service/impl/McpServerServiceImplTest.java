@@ -211,6 +211,20 @@ class McpServerServiceImplTest {
     }
 
     @Test
+    void enableServerRestoresActiveAfterDisable() {
+        var created = service.createServer(serverBo("s", McpTransportType.SSE, "https://s"));
+        service.disableServer(created.getId());
+        // 禁用期间不可绑定
+        assertThatThrownBy(() -> service.bindServers("demo", List.of(created.getId())))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("disabled");
+
+        service.enableServer(created.getId());
+        service.bindServers("demo", List.of(created.getId()));
+        assertThat(service.getServerBindings("demo")).containsExactly(created.getId());
+    }
+
+    @Test
     void listToolCallsByRunAndServer() {
         audits.add(audit("run-1", 1L));
 

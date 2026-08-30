@@ -13,6 +13,7 @@ import {
   NModal,
   NPagination,
   NSelect,
+  NSwitch,
   NTag,
   useDialog,
   useMessage,
@@ -51,6 +52,7 @@ const showCreateModal = ref(false)
 const showToolsModal = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
+const togglingId = ref<number | null>(null)
 
 const form = reactive({
   name: '',
@@ -84,7 +86,20 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
     render: (row) => h(NTag, { size: 'small', type: row.transportType === 'STDIO' ? 'warning' : 'info', bordered: false }, { default: () => row.transportType })
   },
   { title: 'Endpoint / 命令', key: 'endpoint', render: (row) => row.endpoint ?? '-' },
-  { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    render: (row) =>
+      h(NSwitch, {
+        value: row.status === 'ACTIVE',
+        loading: togglingId.value === row.id,
+        onUpdateValue: () => handleToggleStatus(row)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '禁')
+      })
+  },
   { title: '测试状态', key: 'lastTestStatus', width: 100, render: (row) => h(StatusTag, { status: row.lastTestStatus }) },
   { title: '测试时间', key: 'lastTestedAt', width: 182, render: (row) => fmtTime(row.lastTestedAt) },
   { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
@@ -92,15 +107,14 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 220,
+    width: 180,
     render: (row) =>
       h(RowActions, {
         actions: [
           { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEditModal(row) },
           { key: 'test', label: '测试连接', secondary: true, type: 'primary', onClick: () => handleTestConnection(row) },
           { key: 'discover', label: '发现工具', secondary: true, type: 'info', disabled: row.status !== 'ACTIVE', onClick: () => handleDiscover(row) },
-          { key: 'tools', label: '工具', secondary: true, type: 'warning', onClick: () => handleShowTools(row) },
-          { key: 'disable', label: '禁用', secondary: true, type: 'error', disabled: row.status !== 'ACTIVE', onClick: () => handleDisable(row) }
+          { key: 'tools', label: '工具', secondary: true, type: 'warning', onClick: () => handleShowTools(row) }
         ]
       })
   }
@@ -269,19 +283,27 @@ async function handlePermissionChange(row: McpToolResponse, permission: McpToolP
   }
 }
 
-async function handleDisable(row: McpServerResponse) {
+async function handleToggleStatus(row: McpServerResponse) {
+  const next = row.status === 'ACTIVE' ? '禁用' : '启用'
   dialog.warning({
-    title: '禁用确认',
-    content: `确认禁用 MCP Server「${row.name}」？`,
-    positiveText: '禁用',
+    title: `${next}确认`,
+    content: `确认${next} MCP Server「${row.name}」？`,
+    positiveText: next,
     negativeText: '取消',
     onPositiveClick: async () => {
+      togglingId.value = row.id
       try {
-        await disableMcpServer(adminToken.value, row.id)
-        message.success(`${row.name} 已禁用`)
+        if (row.status === 'ACTIVE') {
+          await disableMcpServer(adminToken.value, row.id)
+        } else {
+          await enableMcpServer(adminToken.value, row.id)
+        }
+        message.success(`${row.name} 已${next}`)
         await reload()
       } catch (e) {
-        message.error(e instanceof Error ? e.message : '禁用失败')
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        togglingId.value = null
       }
     }
   })

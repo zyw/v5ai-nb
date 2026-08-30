@@ -50,7 +50,12 @@ public interface IMcpServerService {
     /**
      * 禁用 MCP Server。
      */
-    void disableServer(Long id);
+    boolean disableServer(Long id);
+
+    /**
+     * 启用 MCP Server（与 {@link #disableServer} 互逆）。
+     */
+    boolean enableServer(Long id);
 
     /**
      * 查询单个 MCP Server。

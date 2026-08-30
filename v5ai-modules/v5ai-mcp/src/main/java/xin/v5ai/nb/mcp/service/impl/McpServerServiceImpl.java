@@ -141,12 +141,21 @@ public class McpServerServiceImpl implements IMcpServerService {
     }
 
     @Override
-    public void disableServer(Long id) {
+    public boolean disableServer(Long id) {
         requireServer(id);
         var update = new McpServer();
         update.setId(id);
         update.setStatus(STATUS_DISABLED);
-        serverMapper.updateById(update);
+        return serverMapper.updateById(update) > 0;
+    }
+
+    @Override
+    public boolean enableServer(Long id) {
+        requireServer(id);
+        var update = new McpServer();
+        update.setId(id);
+        update.setStatus(STATUS_ACTIVE);
+        return serverMapper.updateById(update) > 0;
     }
 
     @Override
