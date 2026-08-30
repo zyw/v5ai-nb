@@ -183,7 +183,7 @@ onMounted(() => {
       :native-scrollbar="false"
       class="sider"
     >
-      <div class="sider-brand">
+      <div class="sider-brand" :class="{ collapsed }">
         <div class="brand-mark"><n-icon :component="Bot" :size="20" /></div>
         <div v-if="!collapsed" class="brand-text">
           <div class="brand-name">v5ai-nb</div>
@@ -193,6 +193,7 @@ onMounted(() => {
 
       <n-menu
         class="sider-menu"
+        :class="{ collapsed }"
         :value="activeKey"
         :options="nav"
         :collapsed="collapsed"
@@ -203,7 +204,7 @@ onMounted(() => {
         @update:expanded-keys="(keys: string[]) => (expandedKeys = keys)"
       />
 
-      <div class="sider-footer">
+      <div class="sider-footer" :class="{ collapsed }">
         <n-button quaternary block :title="collapsed ? '展开菜单' : '收起菜单'" @click="collapsed = !collapsed">
           <template #icon>
             <n-icon :component="collapsed ? PanelLeftOpen : PanelLeftClose" />
@@ -270,6 +271,11 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.sider-brand.collapsed {
+  justify-content: center;
+  padding: 0;
+}
+
 .brand-text {
   display: flex;
   flex-direction: column;
@@ -294,10 +300,21 @@ onMounted(() => {
   padding: 4px 8px;
 }
 
+/* 收起时去掉左右留白，让菜单项图标与悬停背景在 64px 内居中 */
+.sider-menu.collapsed {
+  padding: 4px 0;
+}
+
 .sider-footer {
   flex-shrink: 0;
   padding: 8px;
   border-top: 1px solid var(--n-border-color, rgba(128, 128, 128, 0.16));
+}
+
+.sider-footer.collapsed {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
 }
 
 .main {

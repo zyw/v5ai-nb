@@ -11,13 +11,13 @@ import {
   NInput,
   NModal,
   NPagination,
-  NSpace,
   useDialog,
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
 import { Plus } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
+import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createWorkflow,
@@ -71,20 +71,16 @@ const workflowColumns: DataTableColumns<WorkflowResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 360,
+    width: 220,
     render: (row) =>
-      h(
-        NSpace,
-        { size: 6 },
-        {
-          default: () => [
-            h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => handleEdit(row) }, { default: () => '编排' }),
-            h(NButton, { size: 'small', secondary: true, type: 'info', disabled: row.status === 'DISABLED', onClick: () => handlePublish(row) }, { default: () => '发布' }),
-            h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => openRuns(row) }, { default: () => '运行记录' }),
-            h(NButton, { size: 'small', secondary: true, type: 'error', disabled: row.status === 'DISABLED', onClick: () => handleDisable(row) }, { default: () => '禁用' })
-          ]
-        }
-      )
+      h(RowActions, {
+        actions: [
+          { key: 'edit', label: '编排', secondary: true, type: 'primary', onClick: () => handleEdit(row) },
+          { key: 'publish', label: '发布', secondary: true, type: 'info', disabled: row.status === 'DISABLED', onClick: () => handlePublish(row) },
+          { key: 'runs', label: '运行记录', secondary: true, type: 'warning', onClick: () => openRuns(row) },
+          { key: 'disable', label: '禁用', secondary: true, type: 'error', disabled: row.status === 'DISABLED', onClick: () => handleDisable(row) }
+        ]
+      })
   }
 ]
 

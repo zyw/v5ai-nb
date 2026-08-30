@@ -66,8 +66,12 @@ router.beforeEach(async (to) => {
     clearAdminToken()
     return { name: 'login' }
   }
-  // getRouters 返回的菜单树决定可访问页面（按 path 匹配）
-  if (!allowed.has(to.path)) {
+  // getRouters 返回的菜单树决定可访问页面（按 path 匹配）。
+  // 动态子页面（如 /workflows/{key}/editor）不在菜单树中，按其父级路径前缀放行。
+  const isReachable = [...allowed].some(
+    (path) => to.path === path || to.path.startsWith(path.endsWith('/') ? path : `${path}/`)
+  )
+  if (!isReachable) {
     return { path: defaultPath.value }
   }
   return true

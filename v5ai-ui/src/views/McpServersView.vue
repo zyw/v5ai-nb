@@ -13,7 +13,6 @@ import {
   NModal,
   NPagination,
   NSelect,
-  NSpace,
   NTag,
   useDialog,
   useMessage,
@@ -21,6 +20,7 @@ import {
 } from 'naive-ui'
 import { Plus } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
+import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createMcpServer,
@@ -87,21 +87,17 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 280,
+    width: 220,
     render: (row) =>
-      h(
-        NSpace,
-        { size: 6 },
-        {
-          default: () => [
-            h(NButton, { size: 'small', quaternary: true, onClick: () => openEditModal(row) }, { default: () => '编辑' }),
-            h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => handleTestConnection(row) }, { default: () => '测试连接' }),
-            h(NButton, { size: 'small', secondary: true, type: 'info', disabled: row.status !== 'ACTIVE', onClick: () => handleDiscover(row) }, { default: () => '发现工具' }),
-            h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => handleShowTools(row) }, { default: () => '工具' }),
-            h(NButton, { size: 'small', secondary: true, type: 'error', disabled: row.status !== 'ACTIVE', onClick: () => handleDisable(row) }, { default: () => '禁用' })
-          ]
-        }
-      )
+      h(RowActions, {
+        actions: [
+          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEditModal(row) },
+          { key: 'test', label: '测试连接', secondary: true, type: 'primary', onClick: () => handleTestConnection(row) },
+          { key: 'discover', label: '发现工具', secondary: true, type: 'info', disabled: row.status !== 'ACTIVE', onClick: () => handleDiscover(row) },
+          { key: 'tools', label: '工具', secondary: true, type: 'warning', onClick: () => handleShowTools(row) },
+          { key: 'disable', label: '禁用', secondary: true, type: 'error', disabled: row.status !== 'ACTIVE', onClick: () => handleDisable(row) }
+        ]
+      })
   }
 ]
 

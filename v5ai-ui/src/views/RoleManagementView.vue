@@ -10,10 +10,8 @@ import {
   NInput,
   NInputNumber,
   NModal,
-  NPopconfirm,
   NPagination,
   NSelect,
-  NSpace,
   NTag,
   NTree,
   useDialog,
@@ -23,6 +21,7 @@ import {
 } from 'naive-ui'
 import { Plus, RefreshCw, Search, ShieldCheck } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
+import RowActions from '../components/RowActions.vue'
 import {
   changeRoleStatus,
   createRole,
@@ -70,25 +69,21 @@ const columns: DataTableColumns<Role> = [
   {
     title: '操作',
     key: 'actions',
-    width: 260,
+    width: 220,
     render: (r) =>
-      h(NSpace, { size: 4 }, {
-        default: () => [
-          h(NButton, { size: 'small', quaternary: true, onClick: () => openEdit(r) }, { default: () => '编辑' }),
-          h(
-            NButton,
-            { size: 'small', quaternary: true, onClick: () => openPermission(r) },
-            { default: () => '菜单权限' }
-          ),
-          h(NButton, { size: 'small', quaternary: true, onClick: () => toggleStatus(r) }, { default: () => (r.status === '0' ? '停用' : '启用') }),
-          h(
-            NPopconfirm,
-            { onPositiveClick: () => handleDelete([r]) },
-            {
-              trigger: () => h(NButton, { size: 'small', quaternary: true, type: 'error' }, { default: () => '删除' }),
-              default: () => `确认删除角色「${r.roleName}」？`
-            }
-          )
+      h(RowActions, {
+        actions: [
+          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
+          { key: 'permission', label: '菜单权限', quaternary: true, onClick: () => openPermission(r) },
+          { key: 'toggle', label: r.status === '0' ? '停用' : '启用', quaternary: true, onClick: () => toggleStatus(r) },
+          {
+            key: 'delete',
+            label: '删除',
+            quaternary: true,
+            type: 'error',
+            confirm: `确认删除角色「${r.roleName}」？`,
+            onClick: () => handleDelete([r])
+          }
         ]
       })
   }

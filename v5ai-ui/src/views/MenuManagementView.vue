@@ -10,9 +10,7 @@ import {
   NInput,
   NInputNumber,
   NModal,
-  NPopconfirm,
   NSelect,
-  NSpace,
   NSwitch,
   NTag,
   useDialog,
@@ -21,6 +19,7 @@ import {
 } from 'naive-ui'
 import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
+import RowActions from '../components/RowActions.vue'
 import {
   createMenu,
   deleteMenu,
@@ -104,20 +103,20 @@ const columns: DataTableColumns<MenuRow> = [
   {
     title: '操作',
     key: 'actions',
-    width: 200,
+    width: 180,
     render: (r) =>
-      h(NSpace, { size: 4 }, {
-        default: () => [
-          h(NButton, { size: 'small', quaternary: true, onClick: () => openCreate(r) }, { default: () => '新增' }),
-          h(NButton, { size: 'small', quaternary: true, onClick: () => openEdit(r) }, { default: () => '编辑' }),
-          h(
-            NPopconfirm,
-            { onPositiveClick: () => handleDelete(r) },
-            {
-              trigger: () => h(NButton, { size: 'small', quaternary: true, type: 'error' }, { default: () => '删除' }),
-              default: () => `确认删除菜单「${r.menuName}」？`
-            }
-          )
+      h(RowActions, {
+        actions: [
+          { key: 'add', label: '新增', quaternary: true, onClick: () => openCreate(r) },
+          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
+          {
+            key: 'delete',
+            label: '删除',
+            quaternary: true,
+            type: 'error',
+            confirm: `确认删除菜单「${r.menuName}」？`,
+            onClick: () => handleDelete(r)
+          }
         ]
       })
   }

@@ -9,7 +9,6 @@ import {
   NIcon,
   NInput,
   NModal,
-  NPopconfirm,
   NPagination,
   NSelect,
   NSpace,
@@ -20,6 +19,7 @@ import {
 } from 'naive-ui'
 import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
+import RowActions from '../components/RowActions.vue'
 import {
   changeUserStatus,
   createUser,
@@ -72,24 +72,24 @@ const columns: DataTableColumns<UserAccount> = [
   {
     title: '操作',
     key: 'actions',
-    width: 300,
+    width: 240,
     render: (r) =>
-      h(NSpace, { size: 4 }, {
-        default: () => [
-          h(NButton, { size: 'small', quaternary: true, onClick: () => openEdit(r) }, { default: () => '编辑' }),
-          h(NButton, { size: 'small', quaternary: true, onClick: () => openResetPwd(r) }, { default: () => '重置密码' }),
-          h(NButton, { size: 'small', quaternary: true, onClick: () => toggleStatus(r) }, { default: () => (r.status === '0' ? '停用' : '启用') }),
-          r.status === '1'
-            ? h(NButton, { size: 'small', quaternary: true, onClick: () => handleUnlock(r) }, { default: () => '解锁' })
-            : null,
-          h(
-            NPopconfirm,
-            { onPositiveClick: () => handleDelete([r]) },
-            {
-              trigger: () => h(NButton, { size: 'small', quaternary: true, type: 'error' }, { default: () => '删除' }),
-              default: () => `确认删除用户「${r.userName}」？`
-            }
-          )
+      h(RowActions, {
+        actions: [
+          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
+          { key: 'resetPwd', label: '重置密码', quaternary: true, onClick: () => openResetPwd(r) },
+          { key: 'toggle', label: r.status === '0' ? '停用' : '启用', quaternary: true, onClick: () => toggleStatus(r) },
+          ...(r.status === '1'
+            ? [{ key: 'unlock', label: '解锁', quaternary: true, onClick: () => handleUnlock(r) }]
+            : []),
+          {
+            key: 'delete',
+            label: '删除',
+            quaternary: true,
+            type: 'error',
+            confirm: `确认删除用户「${r.userName}」？`,
+            onClick: () => handleDelete([r])
+          }
         ]
       })
   }

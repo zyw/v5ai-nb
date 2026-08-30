@@ -14,7 +14,7 @@ export const currentMenus = ref<RouterVo[]>([])
 
 export const isLoggedIn = computed(() => adminToken.value.length > 0)
 export const isAdmin = computed(
-  () => currentUser.value?.roles?.includes('ADMIN') ?? currentUser.value?.roles?.includes('superadmin') ?? false
+  () => (currentUser.value?.roles?.includes('ADMIN') ?? false) || (currentUser.value?.roles?.includes('superadmin') ?? false)
 )
 export const displayName = computed(
   () => currentUser.value?.user?.nickName || currentUser.value?.user?.userName || '管理员'

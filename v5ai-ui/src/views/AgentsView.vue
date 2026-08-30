@@ -12,7 +12,6 @@ import {
   NModal,
   NPagination,
   NSelect,
-  NSpace,
   NStep,
   NSteps,
   NSwitch,
@@ -23,6 +22,7 @@ import {
 } from 'naive-ui'
 import { Plus } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
+import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   adminDebugStream,
@@ -140,22 +140,18 @@ const columns: DataTableColumns<AgentResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 420,
+    width: 220,
     render: (row) =>
-      h(
-        NSpace,
-        { size: 6 },
-        {
-          default: () => [
-            h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => openEdit(row) }, { default: () => '编辑' }),
-            h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => openBind(row) }, { default: () => '绑定' }),
-            h(NButton, { size: 'small', type: 'primary', onClick: () => openPublish(row) }, { default: () => '发布' }),
-            h(NButton, { size: 'small', secondary: true, onClick: () => handleCreateKey(row.agentKey) }, { default: () => 'Key' }),
-            h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDisable(row) }, { default: () => '禁用' }),
-            h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDelete(row) }, { default: () => '删除' })
-          ]
-        }
-      )
+      h(RowActions, {
+        actions: [
+          { key: 'edit', label: '编辑', secondary: true, type: 'info', onClick: () => openEdit(row) },
+          { key: 'bind', label: '绑定', secondary: true, type: 'warning', onClick: () => openBind(row) },
+          { key: 'publish', label: '发布', type: 'primary', onClick: () => openPublish(row) },
+          { key: 'key', label: 'Key', secondary: true, onClick: () => handleCreateKey(row.agentKey) },
+          { key: 'disable', label: '禁用', secondary: true, type: 'error', onClick: () => handleDisable(row) },
+          { key: 'delete', label: '删除', secondary: true, type: 'error', onClick: () => handleDelete(row) }
+        ]
+      })
   }
 ]
 
