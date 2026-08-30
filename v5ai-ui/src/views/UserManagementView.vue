@@ -35,6 +35,7 @@ import {
   type UserForm
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { formatDateTime } from '../utils/dateUtils'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -68,7 +69,7 @@ const columns: DataTableColumns<UserAccount> = [
       ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '正常' })
       : h(NTag, { type: 'default', size: 'small', bordered: false, round: true }, { default: () => '停用' }))
   },
-  { title: '最后登录', key: 'loginDate', width: 170, render: (r) => (r.loginDate ? new Date(r.loginDate).toLocaleString() : '-') },
+  { title: '最后登录', key: 'loginDate', width: 170, render: (r) => (r.loginDate ? (formatDateTime(r.loginDate) ?? '-') : '-') },
   {
     title: '操作',
     key: 'actions',

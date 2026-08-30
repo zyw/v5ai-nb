@@ -11,11 +11,12 @@ import {
   NInput,
   NModal,
   NPagination,
+  NSelect,
   useDialog,
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
@@ -31,6 +32,7 @@ import {
   type WorkflowRunResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { formatDateTime } from '../utils/dateUtils'
 
 const router = useRouter()
 const message = useMessage()
@@ -38,6 +40,13 @@ const dialog = useDialog()
 const loading = ref(false)
 const workflows = ref<WorkflowResponse[]>([])
 const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+const search = reactive({ name: '', workflowKey: '', status: null as string | null })
+
+const statusOptions = [
+  { label: '草稿', value: 'DRAFT' },
+  { label: '已发布', value: 'PUBLISHED' },
+  { label: '已禁用', value: 'DISABLED' }
+]
 
 const showCreateModal = ref(false)
 const showRunsModal = ref(false)
@@ -54,8 +63,9 @@ const form = reactive({
 })
 
 const workflowColumns: DataTableColumns<WorkflowResponse> = [
-  { title: '名称', key: 'name' },
-  { title: 'Key', key: 'workflowKey' },
+  { title: '名称', key: 'name', width: 200 },
+  { title: 'Key', key: 'workflowKey', width: 200 },
+  { title: '简介', key: 'description', width: 'auto', ellipsis: { tooltip: true }, render: (row) => row.description || '—' },
   {
     title: '状态',
     key: 'status',
@@ -63,11 +73,14 @@ const workflowColumns: DataTableColumns<WorkflowResponse> = [
     render: (row) => h(StatusTag, { status: row.status })
   },
   {
-    title: '已发布版本',
+    title: '发布版本',
     key: 'publishedVersion',
-    width: 110,
+    width: 80,
     render: (row) => (row.publishedVersion ? `v${row.publishedVersion}` : '—')
   },
+  { title: '发布时间', key: 'publishedAt', width: 182, render: (row) => fmtTime(row.publishedAt) },
+  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -105,7 +118,7 @@ const runColumns: DataTableColumns<WorkflowRunResponse> = [
 ]
 
 const nodeRunColumns: DataTableColumns<WorkflowNodeRunResponse> = [
-  { title: '节点', key: 'nodeId', width: 130 },
+  { title: '节点', key: 'nodeId', width: 150 },
   { title: '类型', key: 'nodeType', width: 90 },
   { title: '状态', key: 'status', width: 90, render: (row) => h(StatusTag, { status: row.status }) },
   {
@@ -123,13 +136,19 @@ const nodeRunColumns: DataTableColumns<WorkflowNodeRunResponse> = [
 ]
 
 function fmtTime(value?: string | null): string {
-  return value ? new Date(value).toLocaleString() : '—'
+  return value ? (formatDateTime(value) ?? '—') : '—'
 }
 
 async function reload() {
   loading.value = true
   try {
-    const rows = await listWorkflows(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
+    const rows = await listWorkflows(adminToken.value, {
+      pageNum: pagination.page,
+      pageSize: pagination.pageSize,
+      name: search.name || undefined,
+      workflowKey: search.workflowKey || undefined,
+      status: search.status ?? undefined
+    })
     workflows.value = rows.rows
     pagination.itemCount = rows.total
   } catch (e) {
@@ -137,6 +156,11 @@ async function reload() {
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  pagination.page = 1
+  void reload()
 }
 
 function handlePageChange(page: number) {
@@ -244,6 +268,26 @@ onMounted(reload)
     </PageHeader>
 
     <n-card :bordered="true">
+      <n-space style="margin-bottom: 12px" :size="8" align="center">
+        <n-input v-model:value="search.name" placeholder="名称" clearable style="width: 180px" @keyup.enter="handleSearch" />
+        <n-input v-model:value="search.workflowKey" placeholder="Key" clearable style="width: 180px" @keyup.enter="handleSearch" />
+        <n-select
+          v-model:value="search.status"
+          placeholder="状态"
+          clearable
+          style="width: 130px"
+          :options="statusOptions"
+        />
+        <n-button size="small" type="primary" secondary @click="handleSearch">
+          <template #icon><n-icon :component="Search" /></template>
+          查询
+        </n-button>
+        <n-button size="small" quaternary @click="handleSearch">
+          <template #icon><n-icon :component="RefreshCw" /></template>
+          刷新
+        </n-button>
+      </n-space>
+
       <n-data-table :loading="loading" :columns="workflowColumns" :data="workflows" :bordered="false" />
       <n-pagination
         :page="pagination.page"
@@ -277,11 +321,11 @@ onMounted(reload)
       </template>
     </n-modal>
 
-    <n-modal v-model:show="showRunsModal" preset="card" :title="`运行记录（${activeWorkflow?.name ?? ''}）`" style="width: 760px" :bordered="false">
+    <n-modal v-model:show="showRunsModal" preset="card" :title="`运行记录（${activeWorkflow?.name ?? ''}）`" style="width: 50%" :bordered="false">
       <n-data-table :columns="runColumns" :data="runs" :bordered="false" />
     </n-modal>
 
-    <n-modal v-model:show="showRunDetailModal" preset="card" :title="`运行详情（${runDetail?.run.runId.slice(0, 8) ?? ''}）`" style="width: 780px" :bordered="false">
+    <n-modal v-model:show="showRunDetailModal" preset="card" :title="`运行详情（${runDetail?.run.runId.slice(0, 8) ?? ''}）`" style="width: 50%" :bordered="false">
       <n-data-table v-if="runDetail" :columns="nodeRunColumns" :data="runDetail.nodeRuns" :bordered="false" />
     </n-modal>
   </div>

@@ -170,9 +170,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
 
     private LambdaQueryWrapper<xin.v5ai.nb.workflow.domain.Workflow> buildQueryWrapper(WorkflowBo bo) {
         return QueryBuilder.lambda(xin.v5ai.nb.workflow.domain.Workflow.class)
-                .eqIfText(xin.v5ai.nb.workflow.domain.Workflow::getWorkflowKey,
+                .likeIfText(xin.v5ai.nb.workflow.domain.Workflow::getWorkflowKey,
                         bo == null ? null : bo.getWorkflowKey())
                 .likeIfText(xin.v5ai.nb.workflow.domain.Workflow::getName, bo == null ? null : bo.getName())
+                .eqIfText(xin.v5ai.nb.workflow.domain.Workflow::getStatus, bo == null ? null : bo.getStatus())
                 .orderByAsc(xin.v5ai.nb.workflow.domain.Workflow::getId)
                 .build();
     }

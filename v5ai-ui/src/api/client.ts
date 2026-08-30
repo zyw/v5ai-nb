@@ -979,8 +979,11 @@ export interface SkillVersionResponse {
   createdAt?: string | null
 }
 
-export function listSkills(adminToken: string, query?: PageQuery): Promise<PageResult<SkillResponse>> {
-  return requestJson<PageResult<SkillResponse>>(`/api/admin/skills${pageQueryString(query)}`, {}, adminToken)
+export function listSkills(
+  adminToken: string,
+  query?: PageQuery & { name?: string; status?: string }
+): Promise<PageResult<SkillResponse>> {
+  return requestJson<PageResult<SkillResponse>>(`/api/admin/skills${paramString(query)}`, {}, adminToken)
 }
 
 export async function uploadSkill(adminToken: string, file: File, description?: string): Promise<SkillResponse> {
@@ -1586,8 +1589,11 @@ export interface WorkflowRunDetailResponse {
   nodeRuns: WorkflowNodeRunResponse[]
 }
 
-export function listWorkflows(adminToken: string, query?: PageQuery): Promise<PageResult<WorkflowResponse>> {
-  return requestJson<PageResult<WorkflowResponse>>(`/api/admin/workflows${pageQueryString(query)}`, {}, adminToken)
+export function listWorkflows(
+  adminToken: string,
+  query?: PageQuery & { name?: string; workflowKey?: string; status?: string }
+): Promise<PageResult<WorkflowResponse>> {
+  return requestJson<PageResult<WorkflowResponse>>(`/api/admin/workflows${paramString(query)}`, {}, adminToken)
 }
 
 export function getWorkflow(adminToken: string, workflowKey: string): Promise<WorkflowResponse> {

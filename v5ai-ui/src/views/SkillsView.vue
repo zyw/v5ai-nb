@@ -11,6 +11,7 @@ import {
   NInput,
   NModal,
   NPagination,
+  NSelect,
   NSpace,
   NUpload,
   useDialog,
@@ -18,7 +19,7 @@ import {
   type DataTableColumns,
   type UploadFileInfo
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
@@ -32,6 +33,7 @@ import {
   type SkillVersionResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { formatDateTime } from '../utils/dateUtils'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -40,6 +42,12 @@ const skills = ref<SkillResponse[]>([])
 const selectedSkill = ref<SkillResponse | null>(null)
 const versions = ref<SkillVersionResponse[]>([])
 const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+const search = reactive({ name: '', status: null as string | null })
+
+const statusOptions = [
+  { label: '启用', value: 'ACTIVE' },
+  { label: '禁用', value: 'DISABLED' }
+]
 
 const showUploadModal = ref(false)
 const showVersionsModal = ref(false)
@@ -49,10 +57,12 @@ const uploadForm = reactive({ description: '' })
 
 const skillColumns: DataTableColumns<SkillResponse> = [
   { title: 'ID', key: 'id', width: 64 },
-  { title: '名称', key: 'name' },
-  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
+  { title: '名称', key: 'name', width: 220 },
+  { title: '描述', key: 'description', width: 'auto', ellipsis: { tooltip: true } },
   { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
   { title: '当前版本', key: 'currentVersion', width: 100, render: (row) => (row.currentVersion ? `v${row.currentVersion}` : '-') },
+  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -69,7 +79,7 @@ const versionColumns: DataTableColumns<SkillVersionResponse> = [
   { title: '版本', key: 'version', width: 80, render: (row) => `v${row.version}` },
   { title: '状态', key: 'status', width: 110, render: (row) => h(StatusTag, { status: row.status }) },
   { title: '描述', key: 'description', ellipsis: { tooltip: true } },
-  { title: '发布时间', key: 'publishedAt', width: 180, render: (row) => (row.publishedAt ? new Date(row.publishedAt).toLocaleString() : '-') },
+  { title: '发布时间', key: 'publishedAt', width: 182, render: (row) => fmtTime(row.publishedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -86,7 +96,12 @@ const versionColumns: DataTableColumns<SkillVersionResponse> = [
 async function reload() {
   loading.value = true
   try {
-    const rows = await listSkills(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
+    const rows = await listSkills(adminToken.value, {
+      pageNum: pagination.page,
+      pageSize: pagination.pageSize,
+      name: search.name || undefined,
+      status: search.status ?? undefined
+    })
     skills.value = rows.rows
     pagination.itemCount = rows.total
   } catch (e) {
@@ -94,6 +109,11 @@ async function reload() {
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  pagination.page = 1
+  void reload()
 }
 
 function handlePageChange(page: number) {
@@ -110,6 +130,10 @@ function handlePageSizeChange(pageSize: number) {
 function handleFileChange(options: { file: UploadFileInfo }) {
   const raw = options.file.file
   if (raw instanceof File) uploadFile.value = raw
+}
+
+function fmtTime(value?: string | null): string {
+  return value ? (formatDateTime(value) ?? '—') : '—'
 }
 
 async function handleUpload() {
@@ -195,6 +219,25 @@ onMounted(reload)
     </PageHeader>
 
     <n-card :bordered="true">
+      <n-space style="margin-bottom: 12px" :size="8" align="center">
+        <n-input v-model:value="search.name" placeholder="名称" clearable style="width: 200px" @keyup.enter="handleSearch" />
+        <n-select
+          v-model:value="search.status"
+          placeholder="状态"
+          clearable
+          style="width: 130px"
+          :options="statusOptions"
+        />
+        <n-button size="small" type="primary" secondary @click="handleSearch">
+          <template #icon><n-icon :component="Search" /></template>
+          查询
+        </n-button>
+        <n-button size="small" quaternary @click="handleSearch">
+          <template #icon><n-icon :component="RefreshCw" /></template>
+          刷新
+        </n-button>
+      </n-space>
+
       <n-data-table :loading="loading" :columns="skillColumns" :data="skills" :bordered="false" />
       <n-pagination
         :page="pagination.page"
@@ -212,7 +255,7 @@ onMounted(reload)
       v-model:show="showUploadModal"
       preset="card"
       title="上传 Skill 包"
-      style="width: 500px"
+      style="width: 50%"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
@@ -241,7 +284,7 @@ onMounted(reload)
       v-model:show="showVersionsModal"
       preset="card"
       :title="`版本列表（${selectedSkill?.name ?? ''}）`"
-      style="width: 640px"
+      style="width: 50%"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">

@@ -32,6 +32,11 @@ public class WorkflowBo {
     private String description;
 
     /**
+     * 状态（DRAFT / PUBLISHED / DISABLED），列表查询筛选条件
+     */
+    private String status;
+
+    /**
      * 草稿定义（nodes/edges），更新时提交
      */
     private WorkflowDefinition definition;

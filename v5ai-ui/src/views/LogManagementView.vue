@@ -33,6 +33,7 @@ import {
   type OperLog
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { formatDateTime } from '../utils/dateUtils'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -73,7 +74,7 @@ const loginColumns: DataTableColumns<LoginLog> = [
       : h(NTag, { type: 'error', size: 'small', bordered: false, round: true }, { default: () => '失败' }))
   },
   { title: '信息', key: 'msg', render: (r) => r.msg ?? '-' },
-  { title: '登录时间', key: 'loginTime', width: 170, render: (r) => (r.loginTime ? new Date(r.loginTime).toLocaleString() : '-') },
+  { title: '登录时间', key: 'loginTime', width: 170, render: (r) => (r.loginTime ? (formatDateTime(r.loginTime) ?? '-') : '-') },
   {
     title: '操作',
     key: 'actions',
@@ -184,7 +185,7 @@ const operColumns: DataTableColumns<OperLog> = [
       : h(NTag, { type: 'error', size: 'small', bordered: false, round: true }, { default: () => '失败' }))
   },
   { title: '耗时(ms)', key: 'costTime', width: 90, render: (r) => r.costTime ?? '-' },
-  { title: '操作时间', key: 'operTime', width: 170, render: (r) => (r.operTime ? new Date(r.operTime).toLocaleString() : '-') },
+  { title: '操作时间', key: 'operTime', width: 170, render: (r) => (r.operTime ? (formatDateTime(r.operTime) ?? '-') : '-') },
   {
     title: '操作',
     key: 'actions',
@@ -405,7 +406,7 @@ onMounted(reloadLogin)
         </n-descriptions-item>
         <n-descriptions-item label="IP">{{ detailOper.operIp ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="耗时(ms)">{{ detailOper.costTime ?? '-' }}</n-descriptions-item>
-        <n-descriptions-item label="操作时间" :span="2">{{ detailOper.operTime ? new Date(detailOper.operTime).toLocaleString() : '-' }}</n-descriptions-item>
+        <n-descriptions-item label="操作时间" :span="2">{{ detailOper.operTime ? (formatDateTime(detailOper.operTime) ?? '-') : '-' }}</n-descriptions-item>
       </n-descriptions>
       <template #footer>
         <n-space justify="end">

@@ -28,6 +28,7 @@ import {
   type UsageRecord
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { formatDateTime } from '../utils/dateUtils'
 
 const message = useMessage()
 const overview = ref<OverviewResponse | null>(null)
@@ -54,7 +55,7 @@ const usageColumns: DataTableColumns<UsageRecord> = [
   { title: '合计', key: 'totalTokens' },
   { title: '耗时(ms)', key: 'durationMs', render: (row) => row.durationMs ?? '-' },
   { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
-  { title: '时间', key: 'createdAt', width: 180, render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleString() : '-') }
+  { title: '时间', key: 'createdAt', width: 180, render: (row) => (row.createdAt ? (formatDateTime(row.createdAt) ?? '-') : '-') }
 ]
 
 async function reloadOverview() {
