@@ -157,6 +157,12 @@ set source_type = case
 
 -- ---------- 2. status 改为 SMALLINT ----------
 
+-- 先移除旧默认值（'PENDING' 无法自动转 smallint，否则报 42804：
+-- "default for column status cannot be cast automatically to type smallint"），
+-- 改完类型后再重新设置 smallint 默认值。
+alter table v5ai_knowledge_document
+    alter column status drop default;
+
 alter table v5ai_knowledge_document
 alter column status type smallint using (
         case status

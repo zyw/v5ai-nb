@@ -168,3 +168,17 @@ cd v5ai-ui && npm install && npm run build
 - **MCP/Skill 运行时集成**：接口在 `v5ai-runtime`（`McpToolResolver`、`ResolvedSkillAgentSkillService`），实现与 AgentScope 适配在 `v5ai-infrastructure/runtime`、`infrastructure/mcp`、`infrastructure/skill`。
 - **继续 Workflow 阶段**：先读 `v5ai-workflow` 模块与 `docs/api/phase5.md`/迁移 V12，当前只有领域与基础 API，可视化编辑器与完整执行闭环待完成。
 - **注意历史遗留命名**：代码/文档中可能残留 `Application` 字样（V8 迁移前概念），新代码一律用 `Agent`。
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as GitHub Issues, operated via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical triage roles + five wayfinder labels, default vocabulary (`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`, plus `wayfinder:map` / `wayfinder:research` / `wayfinder:prototype` / `wayfinder:grilling` / `wayfinder:task`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
