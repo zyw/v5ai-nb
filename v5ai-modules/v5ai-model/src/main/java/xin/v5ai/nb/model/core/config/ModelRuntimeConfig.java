@@ -1,6 +1,6 @@
 //package xin.v5ai.nb.model.runtime.config;
 //
-//public record ModelRuntimeConfig(
+//public record ModelRuntimeConfigDTO(
 //        Long modelId,
 //        String modelKey,
 //        String modelType,

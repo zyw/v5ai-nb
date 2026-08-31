@@ -13,7 +13,7 @@ import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
  * <p>
  * 模型配置实体（v5ai_model）：providerId/modelKey/modelType 为唯一组合，
  * 凭据加密存储；modelName 为展示名称，config 保存模型扩展参数（JSON，
- * 对应 {@link xin.v5ai.nb.model.core.config.ConfigExtAttrsDTO}），
+ * 对应 {@link ModelExtConfigAttrs}），
  * scope 区分全局/个人模型，ownerId 为个人模型的所有者。
  * </p>
  *
@@ -30,16 +30,34 @@ public class V5aiModel extends BaseEntity {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
+    /**
+     * 提供商 ID
+     */
     private Long providerId;
 
+    /**
+     * 模型密钥
+     */
     private String modelKey;
 
+    /**
+     * 模型类型
+     */
     private String modelType;
 
+    /**
+     * 模型端点
+     */
     private String endpoint;
 
+    /**
+     * 凭据加密存储
+     */
     private String credentialsCiphertext;
 
+    /**
+     * 是否启用
+     */
     private Boolean enabled;
 
     /**
@@ -58,7 +76,7 @@ public class V5aiModel extends BaseEntity {
     private String adapterKey;
 
     /**
-     * 模型参数配置（JSON 格式，对应 ConfigExtAttrsDTO）
+     * 模型参数配置（JSON 格式，对应 ModelExtConfigAttrs）
      */
     private String config;
 

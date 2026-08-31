@@ -1,14 +1,14 @@
 package xin.v5ai.nb.model.mapper;
 
 import org.junit.jupiter.api.Test;
-import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ModelRuntimeConfigGatewayTest {
     @Test
     void runtimeConfigContainsModelAndProviderFields() {
-        var config = new ModelRuntimeConfig(
+        var config = new ModelRuntimeConfigDTO(
                 7L,
                 "gpt-4o",
                 "CHAT",

@@ -1,10 +1,10 @@
-package xin.v5ai.nb.model.core;
+package xin.v5ai.nb.model.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
@@ -17,15 +17,15 @@ import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
  * @author ZYW
  * @since 2026-08-20
  */
-@Component
+@Service
 @RequiredArgsConstructor
-public class MyBatisModelRuntimeConfigGateway implements ModelRuntimeConfigGateway {
+public class ModelRuntimeConfigGatewayImpl implements ModelRuntimeConfigGateway {
 
     private final V5aiModelMapper modelMapper;
     private final V5aiModelProviderMapper providerMapper;
 
     @Override
-    public ModelRuntimeConfig findRuntimeConfigByModelId(Long modelId) {
+    public ModelRuntimeConfigDTO findRuntimeConfigByModelId(Long modelId) {
         var model = modelMapper.selectById(modelId);
         if (model == null) {
             return null;
@@ -38,7 +38,7 @@ public class MyBatisModelRuntimeConfigGateway implements ModelRuntimeConfigGatew
     }
 
     @Override
-    public ModelRuntimeConfig findFirstEmbeddingModel() {
+    public ModelRuntimeConfigDTO findFirstEmbeddingModel() {
         var model = modelMapper.selectOne(new LambdaQueryWrapper<V5aiModel>()
                 .eq(V5aiModel::getModelType, "EMBEDDING")
                 .eq(V5aiModel::getEnabled, true)
@@ -54,8 +54,8 @@ public class MyBatisModelRuntimeConfigGateway implements ModelRuntimeConfigGatew
         return toRuntimeConfig(model, provider);
     }
 
-    private static ModelRuntimeConfig toRuntimeConfig(V5aiModel model, V5aiModelProvider provider) {
-        return new ModelRuntimeConfig(
+    private static ModelRuntimeConfigDTO toRuntimeConfig(V5aiModel model, V5aiModelProvider provider) {
+        return new ModelRuntimeConfigDTO(
                 model.getId(),
                 model.getModelKey(),
                 model.getModelType(),

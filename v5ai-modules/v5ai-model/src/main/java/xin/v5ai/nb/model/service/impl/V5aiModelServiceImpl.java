@@ -14,6 +14,7 @@ import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.model.domain.ModelExtConfigAttrs;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
 import xin.v5ai.nb.model.domain.bo.ModelBo;
@@ -22,7 +23,6 @@ import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
 import xin.v5ai.nb.model.core.ModelConnectionTester;
-import xin.v5ai.nb.model.core.config.ConfigExtAttrsDTO;
 import xin.v5ai.nb.model.service.IV5aiModelService;
 
 import java.util.List;
@@ -187,7 +187,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
             return null;
         }
         try {
-            ConfigExtAttrsDTO.fromJson(config);
+            ModelExtConfigAttrs.fromJson(config);
         } catch (Exception exception) {
             throw new IllegalArgumentException("model config must be a valid JSON object");
         }

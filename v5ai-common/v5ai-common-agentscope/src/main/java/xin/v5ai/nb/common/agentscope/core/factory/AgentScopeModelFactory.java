@@ -5,12 +5,12 @@ import io.agentscope.core.model.Model;
 import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import org.springframework.stereotype.Component;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.factory.config.AgentModelCredentialConfig;
-import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
 
 @Component
 public class AgentScopeModelFactory {
-    public Model create(ModelRuntimeConfig config, String plaintextCredentials) {
+    public Model create(ModelRuntimeConfigDTO config, String plaintextCredentials) {
         if (!"CHAT".equals(config.modelType())) {
             throw new IllegalArgumentException("only CHAT models can be used by agent runtime");
         }
@@ -22,7 +22,7 @@ public class AgentScopeModelFactory {
         };
     }
 
-    private Model openAiModel(ModelRuntimeConfig config, AgentModelCredentialConfig credentials) {
+    private Model openAiModel(ModelRuntimeConfigDTO config, AgentModelCredentialConfig credentials) {
         var builder = OpenAIChatModel.builder()
                 .apiKey(credentials.apiKey())
                 .modelName(config.modelKey())
@@ -34,7 +34,7 @@ public class AgentScopeModelFactory {
         return builder.build();
     }
 
-    private Model dashScopeModel(ModelRuntimeConfig config, AgentModelCredentialConfig credentials) {
+    private Model dashScopeModel(ModelRuntimeConfigDTO config, AgentModelCredentialConfig credentials) {
         var builder = DashScopeChatModel.builder()
                 .apiKey(credentials.apiKey())
                 .modelName(config.modelKey())

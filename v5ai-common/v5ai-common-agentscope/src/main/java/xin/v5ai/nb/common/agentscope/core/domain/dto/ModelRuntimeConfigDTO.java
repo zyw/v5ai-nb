@@ -1,6 +1,6 @@
-package xin.v5ai.nb.common.agentscope.core.factory.config;
+package xin.v5ai.nb.common.agentscope.core.domain.dto;
 
-public record ModelRuntimeConfig(
+public record ModelRuntimeConfigDTO(
         Long modelId,
         String modelKey,
         String modelType,

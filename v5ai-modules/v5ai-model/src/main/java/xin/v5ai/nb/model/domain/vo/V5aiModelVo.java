@@ -53,7 +53,7 @@ public class V5aiModelVo implements Serializable {
     private String adapterKey;
 
     /**
-     * 模型参数配置（JSON 格式，对应 ConfigExtAttrsDTO）
+     * 模型参数配置（JSON 格式，对应 ModelExtConfigAttrs）
      */
     private String config;
 

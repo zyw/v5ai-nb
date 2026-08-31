@@ -1,6 +1,6 @@
 //package xin.v5ai.nb.model.mapper;
 //
-//import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
+//import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 //
 ///**
 // * 模型运行时配置网关：为运行时提供"按模型 ID 查找配置"与"查找嵌入模型"的能力。
@@ -13,12 +13,12 @@
 //     * @param modelId 模型 ID
 //     * @return 模型运行时配置；不存在时返回 {@code null}
 //     */
-//    ModelRuntimeConfig findRuntimeConfigByModelId(Long modelId);
+//    ModelRuntimeConfigDTO findRuntimeConfigByModelId(Long modelId);
 //
 //    /**
 //     * 查找第一个已启用的 EMBEDDING 模型。
 //     *
 //     * @return 嵌入模型运行时配置；未配置任何启用的嵌入模型时返回 {@code null}
 //     */
-//    ModelRuntimeConfig findFirstEmbeddingModel();
+//    ModelRuntimeConfigDTO findFirstEmbeddingModel();
 //}

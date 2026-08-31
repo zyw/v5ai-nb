@@ -1,4 +1,4 @@
-package xin.v5ai.nb.model.core.config;
+package xin.v5ai.nb.model.domain;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -20,7 +20,7 @@ import java.util.Map;
  * @since 2026-09-03
  */
 @Data
-public class ConfigExtAttrsDTO {
+public class ModelExtConfigAttrs {
 
     // ==================== 通用配置 ====================
 
@@ -123,14 +123,14 @@ public class ConfigExtAttrsDTO {
     /**
      * 将 JSON 字符串解析为配置对象；空白输入返回 {@code null}。
      */
-    public static ConfigExtAttrsDTO fromJson(String json) {
-        return StrUtil.isBlank(json) ? null : JSONUtil.toBean(json, ConfigExtAttrsDTO.class);
+    public static ModelExtConfigAttrs fromJson(String json) {
+        return StrUtil.isBlank(json) ? null : JSONUtil.toBean(json, ModelExtConfigAttrs.class);
     }
 
     /**
      * 序列化为 JSON 字符串；{@code null} 输入返回 {@code null}。
      */
-    public static String toJson(ConfigExtAttrsDTO config) {
+    public static String toJson(ModelExtConfigAttrs config) {
         return config == null ? null : JSONUtil.toJsonStr(config);
     }
 }

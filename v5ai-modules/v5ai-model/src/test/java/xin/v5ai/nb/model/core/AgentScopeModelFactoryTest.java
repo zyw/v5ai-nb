@@ -3,8 +3,8 @@ package xin.v5ai.nb.model.core;
 import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
-import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,7 +52,7 @@ class AgentScopeModelFactoryTest {
                 .hasMessage("unsupported provider type: UNKNOWN");
     }
 
-    private static ModelRuntimeConfig config(String modelType, String providerType) {
-        return new ModelRuntimeConfig(7L, "gpt-4o", modelType, 3L, "provider", providerType, "ciphertext");
+    private static ModelRuntimeConfigDTO config(String modelType, String providerType) {
+        return new ModelRuntimeConfigDTO(7L, "gpt-4o", modelType, 3L, "provider", providerType, "ciphertext");
     }
 }

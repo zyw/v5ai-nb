@@ -3,8 +3,8 @@ package xin.v5ai.nb.rag.core;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.factory.config.AgentModelCredentialConfig;
-import xin.v5ai.nb.common.agentscope.core.factory.config.ModelRuntimeConfig;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 import java.net.URI;
@@ -75,7 +75,7 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
         }
     }
 
-    private ModelRuntimeConfig findEmbeddingModel() {
+    private ModelRuntimeConfigDTO findEmbeddingModel() {
         return runtimeConfigGateway.findFirstEmbeddingModel();
     }
 
