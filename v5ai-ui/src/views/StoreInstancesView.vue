@@ -51,10 +51,10 @@ const categoryOptions = [
 ]
 
 const typeOptions = [
-  { label: 'PG_VECTOR', value: 1 },
-  { label: 'MILVUS', value: 2 },
-  { label: 'ELASTICSEARCH', value: 3 },
-  { label: 'PG_FULLTEXT', value: 4 }
+  { label: 'PGVector', value: 1 },
+  { label: 'Milvus', value: 2 },
+  { label: 'ElasticSearch', value: 3 },
+  { label: 'PGFullText', value: 4 }
 ]
 
 const statusOptions = [

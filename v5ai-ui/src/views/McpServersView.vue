@@ -94,14 +94,14 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
   {
     title: '传输',
     key: 'transportType',
-    width: 150,
+    width: 80,
     render: (row) => h(NTag, { size: 'small', type: transportTypeFormat(row), bordered: false }, { default: () => row.transportType === 'STREAMABLE_HTTP' ? "HTTP" : row.transportType })
   },
-  { title: 'Endpoint / 命令', key: 'endpoint', render: (row) => row.endpoint ?? '-' },
+  { title: 'Endpoint / 命令', width: '260', key: 'endpoint', render: (row) => row.endpoint ?? '-' },
   {
     title: '状态',
     key: 'status',
-    width: 100,
+    width: 80,
     render: (row) =>
       h(NSwitch, {
         value: row.status === 'ACTIVE',
