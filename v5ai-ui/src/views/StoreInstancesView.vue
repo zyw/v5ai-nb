@@ -8,6 +8,7 @@ import {
   NFormItem,
   NIcon,
   NInput,
+  NInputNumber,
   NModal,
   NPagination,
   NSelect,
@@ -171,19 +172,147 @@ const form = reactive<StoreInstanceRequest>({
   name: '',
   category: 1,
   type: 1,
-  config: '',
   status: 1,
   isDefault: false
 })
 
-/** 类型选项随分类联动：向量库仅 PG_VECTOR/MILVUS，搜索引擎仅 ELASTICSEARCH/PG_FULLTEXT */
+/** 类型选项随分类联动：向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎支持 ELASTICSEARCH/PG_FULLTEXT */
 const formTypeOptions = computed(() =>
   form.category === 1
-    ? typeOptions.filter((o) => o.value === 1 || o.value === 2)
+    ? typeOptions.filter((o) => o.value === 1 || o.value === 2 || o.value === 3)
     : form.category === 2
       ? typeOptions.filter((o) => o.value === 3 || o.value === 4)
       : typeOptions
 )
+
+/** 连接参数表单字段：键名与后端 XxxVectorConfigDO 字段一一对应 */
+interface ConfigForm {
+  host: string
+  port: number | null
+  database: string
+  username: string
+  password: string
+  token: string
+  scheme: 'http' | 'https'
+  sslEnabled: boolean
+  sslVerificationDisabled: boolean
+}
+
+/** 各类型连接参数默认值（与后端 DO 默认值一致） */
+const CONFIG_DEFAULTS: Record<number, ConfigForm> = {
+  // PG_VECTOR / PG_FULLTEXT → PgVectorConfigDO
+  1: { host: 'localhost', port: 5432, database: 'snail_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
+  // MILVUS → MilvusVectorConfigDO
+  2: { host: 'localhost', port: 19530, database: 'default', username: '', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
+  // ELASTICSEARCH → ElasticsearchVectorConfigDO
+  3: { host: 'localhost', port: 9200, database: '', username: '', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
+  4: { host: 'localhost', port: 5432, database: 'snail_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false }
+}
+
+const configForm = reactive<ConfigForm>({ ...CONFIG_DEFAULTS[1] })
+
+/** 编辑时解析出的、表单不认识的 config 字段（indexPrefix、similarity 等），保存时保留避免丢数据 */
+const preservedConfig = ref<Record<string, unknown>>({})
+
+/** 表单已覆盖的字段：生成 JSON 时以表单为准，避免旧值残留 */
+const KNOWN_CONFIG_KEYS = new Set([
+  'host', 'port', 'database', 'username', 'password', 'token',
+  'scheme', 'sslEnabled', 'sslMode', 'sslVerificationDisabled'
+])
+
+function resetConfigForType(type: number) {
+  Object.assign(configForm, CONFIG_DEFAULTS[type] ?? CONFIG_DEFAULTS[1])
+  preservedConfig.value = {}
+}
+
+function asStr(v: unknown, fallback: string): string {
+  return typeof v === 'string' ? v : fallback
+}
+
+function asNum(v: unknown, fallback: number | null): number | null {
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback
+}
+
+function asBool(v: unknown, fallback: boolean): boolean {
+  return typeof v === 'boolean' ? v : fallback
+}
+
+function parseConfig(json?: string | null): Record<string, unknown> {
+  if (!json) return {}
+  try {
+    const parsed: unknown = JSON.parse(json)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function fillConfigFromParsed(parsed: Record<string, unknown>) {
+  const d = CONFIG_DEFAULTS[form.type] ?? CONFIG_DEFAULTS[1]
+  configForm.host = asStr(parsed.host, d.host)
+  configForm.port = asNum(parsed.port, d.port)
+  configForm.database = asStr(parsed.database, d.database)
+  configForm.username = asStr(parsed.username, d.username)
+  configForm.password = asStr(parsed.password, d.password)
+  configForm.token = asStr(parsed.token, d.token)
+  configForm.scheme = parsed.scheme === 'https' ? 'https' : 'http'
+  configForm.sslEnabled = asBool(parsed.sslEnabled, false)
+  configForm.sslVerificationDisabled = asBool(parsed.sslVerificationDisabled, false)
+  preservedConfig.value = Object.fromEntries(
+    Object.entries(parsed).filter(([key]) => !KNOWN_CONFIG_KEYS.has(key))
+  )
+}
+
+/** 按类型生成与对应 DO 字段名一致的 config JSON */
+function buildConfigJson(type: number): string {
+  const text = (v: string): string | undefined => {
+    const t = v.trim()
+    return t || undefined
+  }
+  const defaults = CONFIG_DEFAULTS[type] ?? CONFIG_DEFAULTS[1]
+  const base = { host: text(configForm.host) ?? 'localhost', port: configForm.port ?? defaults.port }
+  let cfg: Record<string, unknown>
+  if (type === 1 || type === 4) {
+    // PgVectorConfigDO（PGFullText 同结构）
+    cfg = {
+      ...base,
+      database: text(configForm.database),
+      username: text(configForm.username),
+      password: text(configForm.password),
+      sslEnabled: configForm.sslEnabled,
+      sslMode: configForm.sslEnabled ? 'require' : 'disable'
+    }
+  } else if (type === 2) {
+    // MilvusVectorConfigDO
+    cfg = {
+      ...base,
+      token: text(configForm.token),
+      database: text(configForm.database) ?? 'default'
+    }
+  } else {
+    // ElasticsearchVectorConfigDO
+    cfg = {
+      ...base,
+      scheme: configForm.scheme,
+      username: text(configForm.username),
+      password: text(configForm.password),
+      sslVerificationDisabled: configForm.sslVerificationDisabled
+    }
+  }
+  const generated = Object.fromEntries(Object.entries(cfg).filter(([, v]) => v !== undefined))
+  return JSON.stringify({ ...preservedConfig.value, ...generated })
+}
+
+function handleCategoryChange() {
+  form.type = form.category === 1 ? 1 : 3
+  resetConfigForType(form.type)
+}
+
+function handleTypeChange() {
+  resetConfigForType(form.type)
+}
 
 function resetForm() {
   editingId.value = null
@@ -191,9 +320,9 @@ function resetForm() {
   form.name = ''
   form.category = 1
   form.type = 1
-  form.config = ''
   form.status = 1
   form.isDefault = false
+  resetConfigForType(form.type)
 }
 
 function openCreate() {
@@ -207,9 +336,10 @@ function openEdit(row: StoreInstanceResponse) {
   form.name = row.name
   form.category = row.category
   form.type = row.type
-  form.config = row.config ?? ''
   form.status = row.status ?? 1
   form.isDefault = !!row.isDefault
+  resetConfigForType(form.type)
+  fillConfigFromParsed(parseConfig(row.config))
   showModal.value = true
 }
 
@@ -223,7 +353,7 @@ async function handleSave() {
     const payload: StoreInstanceRequest = {
       ...form,
       name: form.name.trim(),
-      config: form.config?.trim() || undefined
+      config: buildConfigJson(form.type)
     }
     if (editingId.value != null) {
       await updateStoreInstance(adminToken.value, payload)
@@ -335,19 +465,66 @@ onMounted(reload)
           <n-input v-model:value="form.name" placeholder="实例显示名称" />
         </n-form-item>
         <n-form-item label="分类">
-          <n-select v-model:value="form.category" :options="categoryOptions" @update:value="form.type = form.category === 1 ? 1 : 3" />
+          <n-select v-model:value="form.category" :options="categoryOptions" @update:value="handleCategoryChange" />
         </n-form-item>
         <n-form-item label="类型">
-          <n-select v-model:value="form.type" :options="formTypeOptions" />
+          <n-select v-model:value="form.type" :options="formTypeOptions" @update:value="handleTypeChange" />
         </n-form-item>
-        <n-form-item label="连接参数（JSON）">
-          <n-input
-            v-model:value="form.config"
-            type="textarea"
-            :autosize="{ minRows: 4, maxRows: 10 }"
-            placeholder='{"url":"http://localhost:5432","database":"v5ai_nb","dimension":1536}'
-          />
-        </n-form-item>
+        <!-- 连接参数：按类型动态渲染，保存时自动生成对应 DO 的 JSON -->
+        <template v-if="form.type === 1 || form.type === 4">
+          <n-form-item label="主机地址">
+            <n-input v-model:value="configForm.host" placeholder="localhost" />
+          </n-form-item>
+          <n-form-item label="端口">
+            <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="数据库名">
+            <n-input v-model:value="configForm.database" placeholder="snail_ai" />
+          </n-form-item>
+          <n-form-item label="用户名">
+            <n-input v-model:value="configForm.username" placeholder="postgres" />
+          </n-form-item>
+          <n-form-item label="密码">
+            <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用密码认证" />
+          </n-form-item>
+          <n-form-item label="启用 SSL">
+            <n-switch v-model:value="configForm.sslEnabled" />
+          </n-form-item>
+        </template>
+        <template v-else-if="form.type === 2">
+          <n-form-item label="主机地址">
+            <n-input v-model:value="configForm.host" placeholder="localhost" />
+          </n-form-item>
+          <n-form-item label="端口">
+            <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="Token">
+            <n-input v-model:value="configForm.token" type="password" show-password-on="mousedown" placeholder="留空表示不启用鉴权" />
+          </n-form-item>
+          <n-form-item label="数据库名">
+            <n-input v-model:value="configForm.database" placeholder="default" />
+          </n-form-item>
+        </template>
+        <template v-else>
+          <n-form-item label="主机地址">
+            <n-input v-model:value="configForm.host" placeholder="localhost" />
+          </n-form-item>
+          <n-form-item label="端口">
+            <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="协议">
+            <n-select v-model:value="configForm.scheme" :options="[{ label: 'http', value: 'http' }, { label: 'https', value: 'https' }]" />
+          </n-form-item>
+          <n-form-item label="用户名">
+            <n-input v-model:value="configForm.username" placeholder="留空表示不启用 Basic 认证" />
+          </n-form-item>
+          <n-form-item label="密码">
+            <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用 Basic 认证" />
+          </n-form-item>
+          <n-form-item label="关闭 SSL 证书校验">
+            <n-switch v-model:value="configForm.sslVerificationDisabled" />
+          </n-form-item>
+        </template>
         <n-form-item label="状态">
           <n-select v-model:value="form.status" :options="statusOptions" />
         </n-form-item>

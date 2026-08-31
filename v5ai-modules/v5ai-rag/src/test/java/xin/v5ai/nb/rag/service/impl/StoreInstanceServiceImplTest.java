@@ -152,11 +152,23 @@ class StoreInstanceServiceImplTest {
 
     @Test
     void insertByBoRejectsMismatchedCategoryAndType() {
-        var bo = bo("bad", 1, 3, null, 1, false);
+        var bo = bo("bad", 1, 4, null, 1, false);
 
         assertThatThrownBy(() -> service.insertByBo(bo))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("类型与分类不匹配");
+    }
+
+    @Test
+    void insertByBoAcceptsVectorCategoryWithElasticsearchType() {
+        var bo = bo("es-vector", 1, 3, "{\"scheme\":\"https\"}", 1, false);
+
+        var flag = service.insertByBo(bo);
+
+        assertThat(flag).isTrue();
+        assertThat(instances.get(0).getCategory()).isEqualTo(1);
+        assertThat(instances.get(0).getType()).isEqualTo(3);
+        assertThat(instances.get(0).getConfig()).isEqualTo("{\"scheme\":\"https\"}");
     }
 
     @Test

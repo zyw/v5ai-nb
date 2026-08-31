@@ -155,10 +155,10 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
             throw new ServiceException("类型不合法: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT");
         }
         boolean categoryMatch = category == CATEGORY_VECTOR
-                ? (type == TYPE_PG_VECTOR || type == TYPE_MILVUS)
+                ? (type == TYPE_PG_VECTOR || type == TYPE_MILVUS || type == TYPE_ELASTICSEARCH)
                 : (type == TYPE_ELASTICSEARCH || type == TYPE_PG_FULLTEXT);
         if (!categoryMatch) {
-            throw new ServiceException("类型与分类不匹配: 向量库仅支持 PG_VECTOR/MILVUS，搜索引擎仅支持 ELASTICSEARCH/PG_FULLTEXT");
+            throw new ServiceException("类型与分类不匹配: 向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎仅支持 ELASTICSEARCH/PG_FULLTEXT");
         }
         if (StrUtil.isNotBlank(bo.getConfig()) && !JSONUtil.isTypeJSON(bo.getConfig())) {
             throw new ServiceException("连接参数必须为合法 JSON");
