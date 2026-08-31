@@ -75,7 +75,7 @@ public class ModelBo {
      * 模型类型（CHAT / EMBEDDING / RERANK）
      */
     @NotNull(message = "模型类型不能为空")
-    private ModelType type;
+    private ModelType modelType;
 
     /**
      * 可选的自定义端点

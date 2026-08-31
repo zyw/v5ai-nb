@@ -6,14 +6,16 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.exception.V5aiException;
-import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.model.core.ModelConnectionTester;
 import xin.v5ai.nb.model.domain.ModelExtConfigAttrs;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
@@ -22,7 +24,6 @@ import xin.v5ai.nb.model.domain.vo.TestModelConnectionVo;
 import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
-import xin.v5ai.nb.model.core.ModelConnectionTester;
 import xin.v5ai.nb.model.service.IV5aiModelService;
 
 import java.util.List;
@@ -73,7 +74,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
     public List<OptionDTO> queryOptionList(ModelBo bo) {
         List<V5aiModelVo> models = mapper.selectVoList(QueryBuilder.lambda(V5aiModel.class)
                 .eq(V5aiModel::getEnabled, true)
-                .eq(bo.getType() != null, V5aiModel::getModelType, bo.getType() == null ? null : bo.getType().name())
+                .eq(bo.getModelType() != null, V5aiModel::getModelType, bo.getModelType() == null ? null : bo.getModelType().name())
                 .orderByAsc(V5aiModel::getId)
                 .build());
         return models.stream()
@@ -87,17 +88,17 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         var provider = providerMapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
                 .eq(V5aiModelProvider::getProviderKey, bo.getProviderKey()));
         if (provider == null || !Boolean.TRUE.equals(provider.getEnabled())) {
-            throw new IllegalArgumentException("provider is not enabled");
+            throw new ServiceException("provider is not enabled");
         }
         V5aiModel add = MapstructUtils.convert(bo, V5aiModel.class);
         assert add != null;
         add.setId(null);
         add.setProviderId(provider.getId());
-        add.setModelType(bo.getType().name());
-        add.setEnabled(Boolean.TRUE.equals(bo.getEnabled()));
+//        add.setModelType(bo.getType().name());
+//        add.setEnabled(Boolean.TRUE.equals(bo.getEnabled()));
         add.setModelName(StrUtil.isBlank(bo.getModelName()) ? bo.getModelKey() : bo.getModelName().trim());
         add.setScope(normalizeScope(bo.getScope()));
-        add.setIsDefault(Boolean.TRUE.equals(bo.getIsDefault()));
+//        add.setIsDefault(Boolean.TRUE.equals(bo.getIsDefault()));
         add.setConfig(validateConfig(bo.getConfig()));
         add.setCredentialsCiphertext(credentialCipher.encrypt(bo.getCredentials()));
         boolean flag = mapper.insert(add) > 0;
@@ -114,8 +115,8 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         assert update != null;
         update.setId(bo.getId());
         update.setProviderId(existing.getProviderId());
-        if (bo.getType() != null) {
-            update.setModelType(bo.getType().name());
+        if (bo.getModelType() != null) {
+            update.setModelType(bo.getModelType().name());
         }
         // 名称留空不修改；作用域留空不修改；config 留空不修改，非空则校验 JSON
         update.setModelName(StrUtil.isBlank(bo.getModelName()) ? null : bo.getModelName().trim());
@@ -158,7 +159,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
                 .likeIfText(V5aiModel::getModelKey, bo.getModelKey())
                 .likeIfText(V5aiModel::getModelName, bo.getModelName())
                 .eqIfText(V5aiModel::getScope, bo.getScope())
-                .eq(bo.getType() != null, V5aiModel::getModelType, bo.getType() == null ? null : bo.getType().name())
+                .eq(bo.getModelType() != null, V5aiModel::getModelType, bo.getModelType() == null ? null : bo.getModelType().name())
                 .eq(bo.getEnabled() != null, V5aiModel::getEnabled, bo.getEnabled())
                 .eq(providerId != null, V5aiModel::getProviderId, providerId)
                 .orderByAsc(V5aiModel::getId)
