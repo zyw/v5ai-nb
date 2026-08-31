@@ -201,12 +201,12 @@ interface ConfigForm {
 /** 各类型连接参数默认值（与后端 DO 默认值一致） */
 const CONFIG_DEFAULTS: Record<number, ConfigForm> = {
   // PG_VECTOR / PG_FULLTEXT → PgVectorConfigDO
-  1: { host: 'localhost', port: 5432, database: 'snail_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
+  1: { host: 'localhost', port: 5432, database: 'v5ai_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
   // MILVUS → MilvusVectorConfigDO
   2: { host: 'localhost', port: 19530, database: 'default', username: '', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
   // ELASTICSEARCH → ElasticsearchVectorConfigDO
   3: { host: 'localhost', port: 9200, database: '', username: '', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
-  4: { host: 'localhost', port: 5432, database: 'snail_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false }
+  4: { host: 'localhost', port: 5432, database: 'v5ai_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false }
 }
 
 const configForm = reactive<ConfigForm>({ ...CONFIG_DEFAULTS[1] })
@@ -479,7 +479,7 @@ onMounted(reload)
             <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
           </n-form-item>
           <n-form-item label="数据库名">
-            <n-input v-model:value="configForm.database" placeholder="snail_ai" />
+            <n-input v-model:value="configForm.database" placeholder="v5ai_ai" />
           </n-form-item>
           <n-form-item label="用户名">
             <n-input v-model:value="configForm.username" placeholder="postgres" />

@@ -33,7 +33,7 @@ public class ElasticsearchVectorConfigDO {
     private boolean sslVerificationDisabled = false;
 
     /** 实际索引名：{indexPrefix}_{ragId} */
-    private String indexPrefix = "snail_ai_vector";
+    private String indexPrefix = "v5ai_ai_vector";
 
     /** cosine | dot_product | l2_norm */
     private String similarity = "cosine";

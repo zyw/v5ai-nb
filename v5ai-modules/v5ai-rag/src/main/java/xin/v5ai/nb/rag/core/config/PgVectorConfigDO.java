@@ -21,7 +21,7 @@ public class PgVectorConfigDO {
     private int port = 5432;
 
     /** 数据库名 */
-    private String database = "snail_ai";
+    private String database = "v5ai_ai";
 
     /** 登录用户名 */
     private String username = "postgres";
