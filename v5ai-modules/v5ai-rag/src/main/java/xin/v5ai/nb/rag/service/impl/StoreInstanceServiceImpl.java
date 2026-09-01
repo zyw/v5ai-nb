@@ -1,6 +1,7 @@
 package xin.v5ai.nb.rag.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -22,6 +23,7 @@ import xin.v5ai.nb.rag.service.IStoreInstanceService;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -71,19 +73,27 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
      */
     private static final int TYPE_PG_FULLTEXT = 4;
 
+    /**
+     * config JSON 中的敏感字段：查询时脱敏移除，编辑提交为空时保留库中原值。
+     */
+    private static final Set<String> SENSITIVE_CONFIG_KEYS = Set.of("password", "token");
+
     private final StoreInstanceMapper storeInstanceMapper;
 
     @Override
     public PageResult<StoreInstanceVo> queryPageList(StoreInstanceBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<StoreInstance> lqw = buildQueryWrapper(bo);
         Page<StoreInstanceVo> result = storeInstanceMapper.selectVoPage(pageQuery.build(), lqw);
+        result.getRecords().forEach(vo -> vo.setConfig(maskSensitiveConfig(vo.getConfig())));
         return PageResult.build(result.getRecords(), result.getTotal());
     }
 
     @Override
     public List<StoreInstanceVo> queryList(StoreInstanceBo bo) {
         LambdaQueryWrapper<StoreInstance> lqw = buildQueryWrapper(bo);
-        return storeInstanceMapper.selectVoList(lqw);
+        List<StoreInstanceVo> list = storeInstanceMapper.selectVoList(lqw);
+        list.forEach(vo -> vo.setConfig(maskSensitiveConfig(vo.getConfig())));
+        return list;
     }
 
     @Override
@@ -92,7 +102,10 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
         if (entity == null) {
             throw new ServiceException("存储实例不存在: " + id);
         }
-        return MapstructUtils.convert(entity, StoreInstanceVo.class);
+        StoreInstanceVo vo = MapstructUtils.convert(entity, StoreInstanceVo.class);
+        assert vo != null;
+        vo.setConfig(maskSensitiveConfig(vo.getConfig()));
+        return vo;
     }
 
     @Override
@@ -117,11 +130,14 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean updateByBo(StoreInstanceBo bo) {
-        exist(bo.getId());
+        StoreInstance existing = exist(bo.getId());
         validEntityBeforeSave(bo);
         StoreInstance update = MapstructUtils.convert(bo, StoreInstance.class);
         assert update != null;
         update.setId(bo.getId());
+        // 敏感字段（password/token 等）提交为空时保留库中原值，非空时替换
+        String mergedConfig = mergeSensitiveConfig(bo.getConfig(), existing.getConfig());
+        update.setConfig(StrUtil.isBlank(mergedConfig) ? null : mergedConfig);
         boolean flag = storeInstanceMapper.updateById(update) > 0;
         if (flag && Boolean.TRUE.equals(update.getIsDefault())) {
             clearDefault(update.getCategory(), update.getId());
@@ -139,6 +155,58 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
             throw new ServiceException("存储实例不存在或已被删除");
         }
         return storeInstanceMapper.deleteByIds(ids) > 0;
+    }
+
+    /**
+     * 查询脱敏：移除 config JSON 中的敏感字段（password/token 等）。
+     *
+     * @param configJson 存储的 config JSON
+     * @return 脱敏后的 JSON 字符串；无敏感字段时原样返回
+     */
+    private String maskSensitiveConfig(String configJson) {
+        if (StrUtil.isBlank(configJson)) {
+            return configJson;
+        }
+        try {
+            JSONObject obj = JSONUtil.parseObj(configJson);
+            if (SENSITIVE_CONFIG_KEYS.stream().noneMatch(obj::containsKey)) {
+                return configJson;
+            }
+            SENSITIVE_CONFIG_KEYS.forEach(obj::remove);
+            return obj.toString();
+        } catch (Exception e) {
+            log.warn("存储实例 config 脱敏失败，原样返回: {}", e.getMessage());
+            return configJson;
+        }
+    }
+
+    /**
+     * 编辑时合并敏感字段：提交 JSON 中敏感字段为空（缺失/空串）时沿用库中原值，非空时替换。
+     *
+     * @param submittedJson 提交的 config JSON
+     * @param existingJson  库中已有 config JSON
+     * @return 合并后的 JSON 字符串；任一为空时按提交值处理
+     */
+    private String mergeSensitiveConfig(String submittedJson, String existingJson) {
+        if (StrUtil.isBlank(submittedJson) || StrUtil.isBlank(existingJson)) {
+            return submittedJson;
+        }
+        try {
+            JSONObject submitted = JSONUtil.parseObj(submittedJson);
+            JSONObject existing = JSONUtil.parseObj(existingJson);
+            for (String key : SENSITIVE_CONFIG_KEYS) {
+                Object submittedValue = submitted.get(key);
+                boolean submittedBlank = submittedValue == null
+                        || (submittedValue instanceof String str && StrUtil.isBlank(str));
+                if (submittedBlank && existing.get(key) != null) {
+                    submitted.set(key, existing.get(key));
+                }
+            }
+            return submitted.toString();
+        } catch (Exception e) {
+            log.warn("存储实例 config 敏感字段合并失败，按提交值保存: {}", e.getMessage());
+            return submittedJson;
+        }
     }
 
     /**

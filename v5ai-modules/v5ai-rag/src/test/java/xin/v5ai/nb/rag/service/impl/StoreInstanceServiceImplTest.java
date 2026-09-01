@@ -216,6 +216,45 @@ class StoreInstanceServiceImplTest {
     }
 
     @Test
+    void updateByBoKeepsExistingSensitiveWhenBlank() {
+        seed(1L, "pg", 1, 1, false);
+        findById(instances, 1L).setConfig("{\"host\":\"h\",\"password\":\"old-pwd\",\"token\":\"old-tk\",\"indexPrefix\":\"x\"}");
+        var bo = bo("pg", 1, 1, "{\"host\":\"h2\",\"password\":\"\"}", 1, false);
+        bo.setId(1L);
+
+        service.updateByBo(bo);
+
+        StoreInstance updated = findById(instances, 1L);
+        assertThat(updated.getConfig()).contains("old-pwd", "old-tk", "\"host\":\"h2\"");
+    }
+
+    @Test
+    void updateByBoReplacesSensitiveWhenNotEmpty() {
+        seed(1L, "pg", 1, 1, false);
+        findById(instances, 1L).setConfig("{\"host\":\"h\",\"password\":\"old-pwd\"}");
+        var bo = bo("pg", 1, 1, "{\"host\":\"h\",\"password\":\"new-pwd\"}", 1, false);
+        bo.setId(1L);
+
+        service.updateByBo(bo);
+
+        StoreInstance updated = findById(instances, 1L);
+        assertThat(updated.getConfig()).contains("new-pwd");
+        assertThat(updated.getConfig()).doesNotContain("old-pwd");
+    }
+
+    @Test
+    void updateByBoBlankConfigKeepsExistingConfig() {
+        seed(1L, "pg", 1, 1, false);
+        findById(instances, 1L).setConfig("{\"host\":\"h\",\"password\":\"old-pwd\"}");
+        var bo = bo("pg", 1, 1, null, 1, false);
+        bo.setId(1L);
+
+        service.updateByBo(bo);
+
+        assertThat(findById(instances, 1L).getConfig()).isEqualTo("{\"host\":\"h\",\"password\":\"old-pwd\"}");
+    }
+
+    @Test
     void queryByIdReturnsVo() {
         seed(1L, "pg", 1, 1, false);
 
@@ -247,6 +286,34 @@ class StoreInstanceServiceImplTest {
 
         assertThat(result.getRows()).hasSize(1);
         assertThat(result.getTotal()).isEqualTo(1);
+    }
+
+    @Test
+    void queryByIdMasksSensitiveConfig() {
+        seed(1L, "pg", 1, 1, false);
+        findById(instances, 1L).setConfig("{\"host\":\"http://localhost\",\"port\":5432,\"password\":\"secret\",\"token\":\"tk\",\"indexPrefix\":\"x\"}");
+
+        StoreInstanceVo vo = service.queryById(1L);
+
+        assertThat(vo.getConfig()).doesNotContain("secret", "tk", "password", "token");
+        assertThat(vo.getConfig()).contains("http://localhost", "indexPrefix");
+    }
+
+    @Test
+    void queryPageListMasksSensitiveConfig() {
+        var vo = new StoreInstanceVo();
+        vo.setId(1L);
+        vo.setConfig("{\"host\":\"h\",\"password\":\"secret\",\"token\":\"tk\"}");
+        var page = new Page<StoreInstanceVo>(1, 10, 1);
+        page.setRecords(List.of(vo));
+        when(storeInstanceMapper.selectVoPage(any(), any())).thenReturn(page);
+
+        var result = service.queryPageList(new StoreInstanceBo(), new PageQuery(10, 1));
+
+        assertThat(result.getRows()).hasSize(1);
+        String masked = result.getRows().stream().findFirst().orElseThrow().getConfig();
+        assertThat(masked).doesNotContain("secret", "tk");
+        assertThat(masked).contains("\"host\":\"h\"");
     }
 
     @Test

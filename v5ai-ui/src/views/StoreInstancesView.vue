@@ -72,6 +72,8 @@ function typeLabel(type?: number): string {
 }
 
 const columns: DataTableColumns<StoreInstanceResponse> = [
+  { type: 'selection' },
+  { title: 'ID', key: 'id', width: 64 },
   {
     title: '名称',
     key: 'name',
@@ -85,7 +87,7 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
   {
     title: '分类',
     key: 'category',
-    width: 100,
+    width: 90,
     render: (row) => h(NTag, { size: 'small', type: row.category === 1 ? 'success' : 'info', bordered: false }, { default: () => categoryLabel(row.category) })
   },
   {
@@ -459,7 +461,7 @@ onMounted(reload)
       />
     </n-card>
 
-    <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 560px" :bordered="false">
+    <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 50%" :bordered="false">
       <n-form label-placement="top">
         <n-form-item label="实例名称">
           <n-input v-model:value="form.name" placeholder="实例显示名称" />
