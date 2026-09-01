@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   NAlert,
   NButton,
@@ -20,10 +21,11 @@ import {
   type DataTableColumns,
   type UploadFileInfo
 } from 'naive-ui'
-import { Plus, RefreshCw, Search } from 'lucide-vue-next'
+import { FilePlus2, Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
+  createSkillOnline,
   disableSkill,
   enableSkill,
   listSkills,
@@ -39,6 +41,7 @@ import { formatDateTime } from '../utils/dateUtils'
 
 const message = useMessage()
 const dialog = useDialog()
+const router = useRouter()
 const loading = ref(false)
 const skills = ref<SkillResponse[]>([])
 const selectedSkill = ref<SkillResponse | null>(null)
@@ -51,6 +54,9 @@ const statusOptions = [
   { label: '禁用', value: 'DISABLED' }
 ]
 
+const showCreateModal = ref(false)
+const createForm = reactive({ name: '', description: '' })
+const creating = ref(false)
 const showUploadModal = ref(false)
 const showVersionsModal = ref(false)
 const saving = ref(false)
@@ -82,9 +88,12 @@ const skillColumns: DataTableColumns<SkillResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 110,
+    width: 150,
     render: (row) =>
-      h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => handleShowVersions(row) }, { default: () => '版本' })
+      h(NSpace, { size: 6 }, { default: () => [
+        h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => handleShowVersions(row) }, { default: () => '版本' }),
+        h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => handleEdit(row) }, { default: () => '编辑' })
+      ] })
   }
 ]
 
@@ -147,6 +156,35 @@ function handleFileChange(options: { file: UploadFileInfo }) {
 
 function fmtTime(value?: string | null): string {
   return value ? (formatDateTime(value) ?? '—') : '—'
+}
+
+async function handleCreateOnline() {
+  const name = createForm.name.trim()
+  if (!name) {
+    message.warning('请输入 Skill 名称')
+    return
+  }
+  if (!createForm.description.trim()) {
+    message.warning('请输入 Skill 描述')
+    return
+  }
+  creating.value = true
+  try {
+    const created = await createSkillOnline(adminToken.value, name, createForm.description)
+    message.success(`Skill「${created.name}」已创建，请编辑文件后发布`)
+    showCreateModal.value = false
+    createForm.name = ''
+    createForm.description = ''
+    await router.push({ name: 'skill-editor', params: { id: created.id } })
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '创建失败')
+  } finally {
+    creating.value = false
+  }
+}
+
+function handleEdit(skill: SkillResponse) {
+  void router.push({ name: 'skill-editor', params: { id: skill.id } })
 }
 
 async function handleUpload() {
@@ -232,6 +270,10 @@ onMounted(reload)
   <div class="page">
     <PageHeader title="Skill 管理" description="上传技能包、管理版本，发布后可在 Agent 运行时注入。">
       <template #actions>
+        <n-button size="small" type="primary" secondary @click="showCreateModal = true">
+          <template #icon><n-icon :component="FilePlus2" /></template>
+          在线新建
+        </n-button>
         <n-button size="small" type="primary" @click="showUploadModal = true">
           <template #icon><n-icon :component="Plus" /></template>
           上传 Skill 包
@@ -273,6 +315,32 @@ onMounted(reload)
     </n-card>
 
     <n-modal
+      v-model:show="showCreateModal"
+      preset="card"
+      title="在线新建 Skill"
+      style="width: 480px"
+      :bordered="false"
+    >
+      <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
+        创建后将自动生成 DRAFT 版本与 SKILL.md 骨架，并跳转到文件编辑页在线编辑。
+      </n-alert>
+      <n-form label-placement="top">
+        <n-form-item label="Skill 名称">
+          <n-input v-model:value="createForm.name" placeholder="如 weather（全局唯一）" @keyup.enter="handleCreateOnline" />
+        </n-form-item>
+        <n-form-item label="Skill 描述">
+          <n-input v-model:value="createForm.description" type="textarea" :rows="3" placeholder="技能用途描述" />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showCreateModal = false">取消</n-button>
+          <n-button type="primary" :loading="creating" @click="handleCreateOnline">创建</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <n-modal
       v-model:show="showUploadModal"
       preset="card"
       title="上传 Skill 包"
@@ -289,8 +357,8 @@ onMounted(reload)
             <n-button secondary>选择文件</n-button>
           </n-upload>
         </n-form-item>
-        <n-form-item label="版本描述">
-          <n-input v-model:value="uploadForm.description" placeholder="例如：v1 支持天气查询" />
+        <n-form-item label="Skill 描述">
+          <n-input v-model:value="uploadForm.description" type="textarea" :rows="3" placeholder="技能用途描述" />
         </n-form-item>
       </n-form>
       <template #footer>

@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type * as Monaco from 'monaco-editor/editor/editor.api'
 
-const props = defineProps<{ content: string; fileName?: string }>()
+const props = withDefaults(
+  defineProps<{ content: string; fileName?: string; readOnly?: boolean; height?: string }>(),
+  { readOnly: true, height: '70vh' }
+)
 
 const emit = defineEmits<{
   /** 编辑器创建完成 */
   rendered: []
   /** 加载 / 创建失败 */
   error: [message?: string]
+  /** 非只读模式下用户编辑产生的新内容（程序化 setValue 不触发） */
+  change: [value: string]
 }>()
 
 const container = ref<HTMLDivElement | null>(null)
-let editor: { dispose(): void } | null = null
+let editor: Monaco.editor.IStandaloneCodeEditor | null = null
+let lastEmitted = props.content
 
 onMounted(async () => {
   try {
@@ -24,18 +30,34 @@ onMounted(async () => {
     editor = monaco.editor.create(container.value, {
       value: props.content,
       language: languageOf(monaco, props.fileName ?? ''),
-      readOnly: true,
+      readOnly: props.readOnly,
       automaticLayout: true,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       fontSize: 13,
       wordWrap: 'on'
     })
+    editor.onDidChangeModelContent(() => {
+      if (props.readOnly || !editor) return
+      const value = editor.getValue()
+      if (value !== lastEmitted) {
+        lastEmitted = value
+        emit('change', value)
+      }
+    })
     emit('rendered')
   } catch (e) {
     emit('error', e instanceof Error ? e.message : '渲染失败')
   }
 })
+
+watch(
+  () => props.content,
+  (value) => {
+    lastEmitted = value
+    editor?.setValue(value)
+  }
+)
 
 onBeforeUnmount(() => {
   editor?.dispose()
@@ -86,5 +108,5 @@ function languageOf(monaco: typeof Monaco, fileName: string): string {
 </script>
 
 <template>
-  <div ref="container" style="height: 70vh" />
+  <div ref="container" :style="{ height }" />
 </template>

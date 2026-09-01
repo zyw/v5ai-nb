@@ -11,6 +11,8 @@ import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.skill.domain.bo.SkillBo;
+import xin.v5ai.nb.skill.domain.vo.SkillEditorVo;
+import xin.v5ai.nb.skill.domain.vo.SkillUsageVo;
 import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
 import xin.v5ai.nb.skill.domain.vo.SkillVo;
 import xin.v5ai.nb.skill.service.ISkillService;
@@ -20,7 +22,7 @@ import java.io.UncheckedIOException;
 import java.util.List;
 
 /**
- * Skill 管理 API：上传（zip 包）、版本发布、回滚、禁用与版本列表。
+ * Skill 管理 API：上传（zip 包）、在线新建、文件在线编辑、版本发布、回滚、禁用与版本列表。
  *
  * @author ZYW
  * @since 2026-08-22
@@ -43,6 +45,49 @@ public class SkillController extends BaseController {
             return R.ok(created);
         } catch (IOException exception) {
             throw new UncheckedIOException("failed to read uploaded skill package", exception);
+        }
+    }
+
+    @PostMapping("/online")
+    @Log(title = "在线新建技能", businessType = BusinessType.INSERT)
+    public R<SkillVo> createOnline(@RequestBody CreateSkillRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+        return R.ok(skillService.createSkillOnline(request.name(), request.description()));
+    }
+
+    @GetMapping("/{id}/editor")
+    public R<SkillEditorVo> getEditor(@PathVariable("id") Long id) {
+        return R.ok(skillService.getSkillEditor(id));
+    }
+
+    @PostMapping("/{id}/files")
+    @Log(title = "新建技能文件", businessType = BusinessType.INSERT)
+    public R<Void> createFile(@PathVariable("id") Long id, @RequestBody SkillFileRequest request) {
+        requireFileRequest(request);
+        skillService.createSkillFile(id, request.filePath(), request.content());
+        return R.ok();
+    }
+
+    @PutMapping("/{id}/files")
+    @Log(title = "更新技能文件", businessType = BusinessType.UPDATE)
+    public R<Void> updateFile(@PathVariable("id") Long id, @RequestBody SkillFileRequest request) {
+        requireFileRequest(request);
+        skillService.updateSkillFile(id, request.filePath(), request.content());
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}/files")
+    @Log(title = "删除技能文件", businessType = BusinessType.DELETE)
+    public R<Void> deleteFile(@PathVariable("id") Long id, @RequestParam("path") String path) {
+        skillService.deleteSkillFile(id, path);
+        return R.ok();
+    }
+
+    private static void requireFileRequest(SkillFileRequest request) {
+        if (request == null || request.filePath() == null || request.filePath().isBlank()) {
+            throw new IllegalArgumentException("filePath is required");
         }
     }
 
@@ -79,6 +124,18 @@ public class SkillController extends BaseController {
     public R<SkillVo> publishVersion(@PathVariable("id") Long id,
                                      @PathVariable("versionId") Long versionId) {
         return R.ok(skillService.publishVersion(id, versionId));
+    }
+
+    @PostMapping("/{id}/versions/{versionId}/offline")
+    @Log(title = "下线技能版本", businessType = BusinessType.UPDATE)
+    public R<SkillVo> offlineVersion(@PathVariable("id") Long id,
+                                     @PathVariable("versionId") Long versionId) {
+        return R.ok(skillService.offlineVersion(id, versionId));
+    }
+
+    @GetMapping("/{id}/usage")
+    public R<SkillUsageVo> getUsage(@PathVariable("id") Long id) {
+        return R.ok(skillService.getSkillUsage(id));
     }
 
     @PostMapping("/{id}/rollback")

@@ -34,7 +34,8 @@ public class SkillPackageParser {
     private static final int MAX_PACKAGE_BYTES = 10 * 1024 * 1024;      // 压缩包 10MB
     private static final int MAX_UNCOMPRESSED_TOTAL = 20 * 1024 * 1024; // 解压总量 20MB（防 zip bomb）
     private static final int MAX_FILE_COUNT = 200;
-    private static final int MAX_FILE_BYTES = 512 * 1024;               // 单文件 512KB
+    /** 单文件大小上限（512KB），上传解析与在线编辑器共用。 */
+    public static final int MAX_FILE_BYTES = 512 * 1024;
 
     public SkillPackage parse(byte[] packageBytes) {
         if (packageBytes == null || packageBytes.length == 0) {
@@ -122,8 +123,9 @@ public class SkillPackageParser {
 
     /**
      * zip 路径规整：统一反斜杠、去掉前导 ./，返回包内相对路径。
+     * 供在线编辑器复用（文件路径以包内相对路径存储）。
      */
-    static String normalizePath(String rawName) {
+    public static String normalizePath(String rawName) {
         String name = rawName == null ? "" : rawName.replace('\\', '/');
         while (name.startsWith("./")) {
             name = name.substring(2);
@@ -131,7 +133,11 @@ public class SkillPackageParser {
         return name;
     }
 
-    private static void validatePath(String path) {
+    /**
+     * 包内路径安全校验：禁止绝对路径与路径穿越。
+     * 供在线编辑器复用。
+     */
+    public static void validatePath(String path) {
         if (path.startsWith("/") || path.matches("^[A-Za-z]:.*")) {
             throw new IllegalArgumentException("absolute paths are not allowed in skill package: " + path);
         }

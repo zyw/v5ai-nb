@@ -37,6 +37,36 @@ GET    /api/admin/skills/{id}/versions     # 版本列表（按版本号降序�
 
 `/options` 返回 `[{ value, label: "name (v<currentVersion>)" }]`，仅查 id/name/status/current_version 列，供 Agent 编辑/绑定弹窗按需加载。
 
+## 在线新建与文件编辑
+
+不依赖 zip 包，在线创建 Skill 并在文件编辑页直接维护文件（等价于包内文本文件，路径按 `SKILL.md`、`prompts/guide.md` 这种包内相对路径存储）。
+
+```http
+POST /api/admin/skills/online
+Content-Type: application/json
+
+{ "name": "weather", "description": "查询天气" }
+# → 新建 Skill（ACTIVE）+ DRAFT v1 + SKILL.md 骨架（frontmatter 含 name/description）
+
+GET /api/admin/skills/{id}/editor
+# → { skill, versionId, version, files: [{ filePath, content }] }
+#   自动确保存在一个 DRAFT 版本：已有则复用，否则新建并从当前已发布版本拷贝文件
+
+POST /api/admin/skills/{id}/files
+Content-Type: application/json
+
+{ "filePath": "prompts/guide.md", "content": "# 指南" }   # 在 DRAFT 中新建文件（重名报错）
+
+PUT /api/admin/skills/{id}/files
+# 同请求体：更新 DRAFT 中已有文件（不存在报错）
+
+DELETE /api/admin/skills/{id}/files?path=prompts/guide.md   # 从 DRAFT 删除（SKILL.md 禁止删除）
+```
+
+- 文件路径校验与上传包一致（禁止绝对路径/路径穿越，统一反斜杠与 `./` 前缀）；单文件上限 512KB；
+- 文件编辑只作用于 DRAFT 版本，发布/回滚仍在版本弹窗中操作；
+- 编辑的 Skill 必须 ACTIVE，已禁用的 Skill 只读不可写。
+
 ## 版本发布与回滚
 
 ```http

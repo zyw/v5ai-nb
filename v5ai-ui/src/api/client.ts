@@ -1320,6 +1320,47 @@ export function rollbackSkill(adminToken: string, id: number, versionId: number)
   }, adminToken)
 }
 
+export interface SkillFileResponse {
+  filePath: string
+  content: string
+}
+
+export interface SkillEditorResponse {
+  skill: SkillResponse
+  versionId: number
+  version: number
+  files: SkillFileResponse[]
+}
+
+export function createSkillOnline(adminToken: string, name: string, description: string): Promise<SkillResponse> {
+  return requestJson<SkillResponse>('/api/admin/skills/online', {
+    method: 'POST',
+    body: JSON.stringify({ name, description })
+  }, adminToken)
+}
+
+export function getSkillEditor(adminToken: string, id: number): Promise<SkillEditorResponse> {
+  return requestJson<SkillEditorResponse>(`/api/admin/skills/${id}/editor`, {}, adminToken)
+}
+
+export function createSkillFile(adminToken: string, id: number, filePath: string, content: string): Promise<void> {
+  return requestJson<void>(`/api/admin/skills/${id}/files`, {
+    method: 'POST',
+    body: JSON.stringify({ filePath, content })
+  }, adminToken)
+}
+
+export function updateSkillFile(adminToken: string, id: number, filePath: string, content: string): Promise<void> {
+  return requestJson<void>(`/api/admin/skills/${id}/files`, {
+    method: 'PUT',
+    body: JSON.stringify({ filePath, content })
+  }, adminToken)
+}
+
+export function deleteSkillFile(adminToken: string, id: number, filePath: string): Promise<void> {
+  return requestJson<void>(`/api/admin/skills/${id}/files?path=${encodeURIComponent(filePath)}`, { method: 'DELETE' }, adminToken)
+}
+
 export function bindSkills(adminToken: string, agentKey: string, skillIds: number[]): Promise<void> {
   return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/skill-bindings`, {
     method: 'POST',

@@ -30,6 +30,7 @@ export const router = createRouter({
         { path: 'resources', name: 'resources', component: () => import('../views/ResourcesView.vue'), meta: { title: '资源存储' } },
         { path: 'mcp-servers', name: 'mcp-servers', component: () => import('../views/McpServersView.vue'), meta: { title: 'MCP 管理' } },
         { path: 'skills', name: 'skills', component: () => import('../views/SkillsView.vue'), meta: { title: 'Skill 管理' } },
+        { path: 'skills/:id/editor', name: 'skill-editor', component: () => import('../views/SkillEditorView.vue'), meta: { title: 'Skill 文件编辑' } },
         { path: 'workflows', name: 'workflows', component: () => import('../views/WorkflowsView.vue'), meta: { title: '工作流' } },
         { path: 'workflows/:key/editor', name: 'workflow-editor', component: () => import('../views/WorkflowEditorView.vue'), meta: { title: '工作流编排' } },
         { path: 'system/users', name: 'system-users', component: () => import('../views/UserManagementView.vue'), meta: { title: '用户管理' } },

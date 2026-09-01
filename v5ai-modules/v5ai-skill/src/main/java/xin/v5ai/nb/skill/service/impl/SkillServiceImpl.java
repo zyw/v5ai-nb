@@ -1,6 +1,7 @@
 package xin.v5ai.nb.skill.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,9 @@ import xin.v5ai.nb.skill.domain.Skill;
 import xin.v5ai.nb.skill.domain.SkillFile;
 import xin.v5ai.nb.skill.domain.SkillVersion;
 import xin.v5ai.nb.skill.domain.bo.SkillBo;
+import xin.v5ai.nb.skill.domain.vo.SkillEditorVo;
+import xin.v5ai.nb.skill.domain.vo.SkillFileVo;
+import xin.v5ai.nb.skill.domain.vo.SkillUsageVo;
 import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
 import xin.v5ai.nb.skill.domain.vo.SkillVo;
 import xin.v5ai.nb.skill.mapper.AgentSkillBindingMapper;
@@ -24,6 +28,7 @@ import xin.v5ai.nb.skill.mapper.SkillMapper;
 import xin.v5ai.nb.skill.mapper.SkillVersionMapper;
 import xin.v5ai.nb.skill.service.ISkillService;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +49,7 @@ public class SkillServiceImpl implements ISkillService {
     private static final String STATUS_DISABLED = "DISABLED";
     private static final String VERSION_DRAFT = "DRAFT";
     private static final String VERSION_PUBLISHED = "PUBLISHED";
+    private static final String SKILL_MD = "SKILL.md";
 
     private final SkillMapper skillMapper;
     private final SkillVersionMapper versionMapper;
@@ -119,13 +125,112 @@ public class SkillServiceImpl implements ISkillService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SkillVo createSkillOnline(String name, String description) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("skill name is required");
+        }
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("skill description is required");
+        }
+        name = name.trim();
+        if (name.contains("/") || name.contains("\\") || name.equals(".") || name.equals("..")) {
+            throw new IllegalArgumentException("skill name must not contain path separators: " + name);
+        }
+        var existing = skillMapper.selectOne(new LambdaQueryWrapper<Skill>().eq(Skill::getName, name));
+        if (existing != null) {
+            throw new IllegalArgumentException("skill name already exists: " + name);
+        }
+        var skill = new Skill();
+        skill.setName(name);
+        skill.setDescription(description.trim());
+        skill.setStatus(STATUS_ACTIVE);
+        skillMapper.insert(skill);
+        var version = newDraftVersion(skill.getId());
+        var file = new SkillFile();
+        file.setSkillId(skill.getId());
+        file.setVersionId(version.getId());
+        file.setFilePath(SKILL_MD);
+        file.setContent(skillMdSkeleton(name, description.trim()));
+        fileMapper.insert(file);
+        return toVo(skill);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SkillEditorVo getSkillEditor(Long skillId) {
+        var skill = requireSkill(skillId);
+        var version = ensureDraftVersion(skill);
+        var files = fileMapper.selectList(QueryBuilder.lambda(SkillFile.class)
+                        .eq(SkillFile::getVersionId, version.getId())
+                        .orderByAsc(SkillFile::getFilePath)
+                        .build())
+                .stream()
+                .map(file -> new SkillFileVo(file.getFilePath(), file.getContent()))
+                .toList();
+        return new SkillEditorVo(toVo(skill), version.getId(), version.getVersion(), files);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createSkillFile(Long skillId, String filePath, String content) {
+        var skill = requireActiveSkill(skillId);
+        var version = ensureDraftVersion(skill);
+        var path = normalizeAndValidatePath(filePath);
+        requireContentSize(path, content);
+        if (fileMapper.selectCount(new LambdaQueryWrapper<SkillFile>()
+                .eq(SkillFile::getVersionId, version.getId())
+                .eq(SkillFile::getFilePath, path)) > 0) {
+            throw new IllegalArgumentException("skill file already exists: " + path);
+        }
+        var file = new SkillFile();
+        file.setSkillId(skillId);
+        file.setVersionId(version.getId());
+        file.setFilePath(path);
+        file.setContent(content);
+        fileMapper.insert(file);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSkillFile(Long skillId, String filePath, String content) {
+        var skill = requireActiveSkill(skillId);
+        var version = ensureDraftVersion(skill);
+        var path = normalizeAndValidatePath(filePath);
+        requireContentSize(path, content);
+        var file = requireDraftFile(version, path);
+        file.setContent(content);
+        fileMapper.updateById(file);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteSkillFile(Long skillId, String filePath) {
+        var skill = requireActiveSkill(skillId);
+        var version = ensureDraftVersion(skill);
+        var path = normalizeAndValidatePath(filePath);
+        if (SKILL_MD.equals(path)) {
+            throw new IllegalArgumentException("SKILL.md is the skill entry and cannot be deleted");
+        }
+        requireDraftFile(version, path);
+        fileMapper.delete(new LambdaQueryWrapper<SkillFile>()
+                .eq(SkillFile::getVersionId, version.getId())
+                .eq(SkillFile::getFilePath, path));
+    }
+
+    @Override
     public SkillVo getSkill(Long id) {
         return toVo(requireSkill(id));
     }
 
     @Override
     public boolean disableSkill(Long id) {
-        requireSkill(id);
+        var skill = requireSkill(id);
+        if (skill.getCurrentVersionId() != null) {
+            throw new IllegalArgumentException(
+                    "skill has a published version and cannot be disabled, take versions offline first: "
+                            + skill.getName());
+        }
         var update = new Skill();
         update.setId(id);
         update.setStatus(STATUS_DISABLED);
@@ -173,6 +278,36 @@ public class SkillServiceImpl implements ISkillService {
         skillMapper.updateById(skillUpdate);
         skill.setCurrentVersionId(version.getId());
         return toVo(skill);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SkillVo offlineVersion(Long skillId, Long versionId) {
+        var skill = requireSkill(skillId);
+        var version = requireVersion(skillId, versionId);
+        if (!VERSION_PUBLISHED.equals(version.getStatus())) {
+            throw new IllegalArgumentException("only published versions can be taken offline: " + versionId);
+        }
+        var versionUpdate = new SkillVersion();
+        versionUpdate.setId(version.getId());
+        versionUpdate.setStatus(VERSION_DRAFT);
+        versionMapper.updateById(versionUpdate);
+        if (version.getId().equals(skill.getCurrentVersionId())) {
+            // updateById 忽略 null 字段，清除当前版本指针需显式 set
+            skillMapper.update(null, new LambdaUpdateWrapper<Skill>()
+                    .eq(Skill::getId, skill.getId())
+                    .set(Skill::getCurrentVersionId, null));
+            skill.setCurrentVersionId(null);
+        }
+        return toVo(skill);
+    }
+
+    @Override
+    public SkillUsageVo getSkillUsage(Long skillId) {
+        requireSkill(skillId);
+        long count = bindingMapper.selectCount(new LambdaQueryWrapper<AgentSkillBinding>()
+                .eq(AgentSkillBinding::getSkillId, skillId));
+        return new SkillUsageVo(count);
     }
 
     @Override
@@ -255,6 +390,95 @@ public class SkillServiceImpl implements ISkillService {
             throw new IllegalArgumentException("skill version does not exist: " + versionId);
         }
         return version;
+    }
+
+    /**
+     * 获取（或新建）该 Skill 的当前 DRAFT 版本：已有 DRAFT 直接复用；
+     * 没有则新建一个 DRAFT，并从当前已发布版本拷贝文件作为编辑起点。
+     */
+    private SkillVersion ensureDraftVersion(Skill skill) {
+        var draft = versionMapper.selectOne(new LambdaQueryWrapper<SkillVersion>()
+                .eq(SkillVersion::getSkillId, skill.getId())
+                .eq(SkillVersion::getStatus, VERSION_DRAFT)
+                .orderByDesc(SkillVersion::getVersion)
+                .last("LIMIT 1"));
+        if (draft != null) {
+            return draft;
+        }
+        var version = newDraftVersion(skill.getId());
+        if (skill.getCurrentVersionId() != null) {
+            var current = versionMapper.selectById(skill.getCurrentVersionId());
+            if (current != null) {
+                fileMapper.selectList(new LambdaQueryWrapper<SkillFile>()
+                                .eq(SkillFile::getVersionId, current.getId()))
+                        .forEach(source -> {
+                            var file = new SkillFile();
+                            file.setSkillId(source.getSkillId());
+                            file.setVersionId(version.getId());
+                            file.setFilePath(source.getFilePath());
+                            file.setContent(source.getContent());
+                            fileMapper.insert(file);
+                        });
+            }
+        }
+        return version;
+    }
+
+    private SkillVersion newDraftVersion(Long skillId) {
+        var version = new SkillVersion();
+        version.setSkillId(skillId);
+        version.setVersion(versionMapper.nextVersion(skillId));
+        version.setStatus(VERSION_DRAFT);
+        versionMapper.insert(version);
+        return version;
+    }
+
+    private SkillFile requireDraftFile(SkillVersion version, String path) {
+        var file = fileMapper.selectOne(new LambdaQueryWrapper<SkillFile>()
+                .eq(SkillFile::getVersionId, version.getId())
+                .eq(SkillFile::getFilePath, path));
+        if (file == null) {
+            throw new IllegalArgumentException("skill file does not exist: " + path);
+        }
+        return file;
+    }
+
+    private static String normalizeAndValidatePath(String filePath) {
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("skill file path is required");
+        }
+        String path = SkillPackageParser.normalizePath(filePath);
+        SkillPackageParser.validatePath(path);
+        if (path.isEmpty()) {
+            throw new IllegalArgumentException("skill file path is required");
+        }
+        return path;
+    }
+
+    private static void requireContentSize(String path, String content) {
+        if (content == null) {
+            throw new IllegalArgumentException("skill file content is required: " + path);
+        }
+        if (content.getBytes(StandardCharsets.UTF_8).length > SkillPackageParser.MAX_FILE_BYTES) {
+            throw new IllegalArgumentException("skill file too large (max "
+                    + (SkillPackageParser.MAX_FILE_BYTES / 1024) + "KB): " + path);
+        }
+    }
+
+    /**
+     * 在线新建 Skill 的 SKILL.md 骨架（含合法 frontmatter：name/description 必填非空）。
+     */
+    private static String skillMdSkeleton(String name, String description) {
+        return "---\n"
+                + "name: " + toSingleLine(name) + "\n"
+                + "description: " + toSingleLine(description) + "\n"
+                + "---\n"
+                + "\n"
+                + "（在此编写该技能的作用与使用说明；可补充 prompts/ 与 resources/ 目录下的辅助文件。）\n";
+    }
+
+    private static String toSingleLine(String text) {
+        return text.replace("\r", " ").replace("\n", " ");
     }
 
     private void requireBindableSkill(Long skillId) {
