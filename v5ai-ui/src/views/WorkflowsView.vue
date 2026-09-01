@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NButton,
@@ -96,6 +96,11 @@ const workflowColumns: DataTableColumns<WorkflowResponse> = [
       })
   }
 ]
+
+/** 表格横向滚动：列宽总和（auto 列按 240px 估算），窄屏时与 MCP 列表一样出现横向滚动条 */
+const workflowScrollX = computed(() =>
+  workflowColumns.reduce((sum, col) => sum + (typeof col.width === 'number' ? col.width : 240), 0)
+)
 
 const runColumns: DataTableColumns<WorkflowRunResponse> = [
   {
@@ -288,7 +293,7 @@ onMounted(reload)
         </n-button>
       </n-space>
 
-      <n-data-table :loading="loading" :columns="workflowColumns" :data="workflows" :bordered="false" />
+      <n-data-table :loading="loading" :columns="workflowColumns" :data="workflows" :bordered="false" :scroll-x="workflowScrollX" />
       <n-pagination
         :page="pagination.page"
         :page-size="pagination.pageSize"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NAlert,
@@ -97,6 +97,11 @@ const skillColumns: DataTableColumns<SkillResponse> = [
       ] })
   }
 ]
+
+/** 表格横向滚动：列宽总和（auto 列按 240px 估算），窄屏时与 MCP 列表一样出现横向滚动条 */
+const skillScrollX = computed(() =>
+  skillColumns.reduce((sum, col) => sum + (typeof col.width === 'number' ? col.width : 240), 0)
+)
 
 const versionColumns: DataTableColumns<SkillVersionResponse> = [
   { title: '版本', key: 'version', width: 80, render: (row) => `v${row.version}` },
@@ -325,7 +330,7 @@ onMounted(reload)
         </n-button>
       </n-space>
 
-      <n-data-table :loading="loading" :columns="skillColumns" :data="skills" :bordered="false" />
+      <n-data-table :loading="loading" :columns="skillColumns" :data="skills" :bordered="false" :scroll-x="skillScrollX" />
       <n-pagination
         :page="pagination.page"
         :page-size="pagination.pageSize"
