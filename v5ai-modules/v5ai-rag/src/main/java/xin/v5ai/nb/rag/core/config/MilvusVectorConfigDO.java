@@ -4,9 +4,6 @@ import lombok.Data;
 
 /**
  * Milvus 连接与集合/索引参数，来自存储实例 {@code config} JSON。
- *
- * @author opensnail
- * @since 2026-06-14
  */
 @Data
 public class MilvusVectorConfigDO {
