@@ -4,7 +4,9 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
@@ -35,11 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * <p>
@@ -109,6 +107,12 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
     @Value("${v5ai.storage.local-dir:./v5ai-upload}")
     private String localDir;
 
+    /**
+     * 上传存储类型（由配置文件 v5ai.storage.type 决定，LOCAL=本地磁盘 MINIO=MinIO）
+     */
+    @Value("${v5ai.storage.type:LOCAL}")
+    private String storageType;
+
     @Override
     public PageResult<PlmResourceVo> queryPageList(PlmResourceBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<PlmResource> lqw = buildQueryWrapper(bo);
@@ -124,7 +128,7 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public PlmResourceVo upload(String originalFilename, byte[] content, String contentType,
-                                String storageType, String bizType, Long bizId) {
+                                String bizType, Long bizId) {
         if (content == null || content.length == 0) {
             throw new ServiceException("上传文件内容不能为空");
         }
@@ -134,7 +138,7 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
         }
         String type = StrUtil.isBlank(storageType) ? STORAGE_LOCAL : storageType.toUpperCase(Locale.ROOT);
         if (!STORAGE_LOCAL.equals(type) && !STORAGE_MINIO.equals(type)) {
-            throw new ServiceException("存储类型不合法: 仅支持 LOCAL/MINIO");
+            throw new ServiceException("存储类型配置不合法: v5ai.storage.type 仅支持 LOCAL/MINIO");
         }
         String biz = StrUtil.isBlank(bizType) ? "GENERAL" : bizType.toUpperCase(Locale.ROOT);
         if (!BIZ_TYPES.contains(biz)) {
@@ -288,6 +292,7 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
     }
 
     private void storeMinio(String objectKey, byte[] content, String mime) {
+        ensureBucket();
         try (InputStream in = new ByteArrayInputStream(content)) {
             minioClient.putObject(PutObjectArgs.builder()
                     .bucket(minioProperties.getBucket())
@@ -296,7 +301,25 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
                     .contentType(mime)
                     .build());
         } catch (Exception e) {
+            log.error("写入 MinIO Key: {} 失败: {}", objectKey,e.getMessage(), e);
             throw new ServiceException("写入 MinIO 失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 确保 MinIO bucket 存在：不存在时自动创建（首次上传自愈，避免 NoSuchBucket）。
+     */
+    private void ensureBucket() {
+        String bucket = minioProperties.getBucket();
+        try {
+            boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
+            if (!exists) {
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
+                log.info("已自动创建 MinIO bucket: {}", bucket);
+            }
+        } catch (Exception e) {
+            log.error("检查/创建 MinIO bucket 失败: {}， {}", bucket, e.getMessage(), e);
+            throw new ServiceException("检查/创建 MinIO bucket 失败: " + e.getMessage());
         }
     }
 

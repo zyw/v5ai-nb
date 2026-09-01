@@ -171,6 +171,8 @@ v5ai:
     workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
     state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}
   storage:
+    # 通用资源存储（plm_resource）存储类型：LOCAL=本地磁盘 MINIO=MinIO
+    type: ${V5AI_STORAGE_TYPE:LOCAL}
     # 通用资源存储（plm_resource）本地存储根目录
     local-dir: ${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}
   mcp:

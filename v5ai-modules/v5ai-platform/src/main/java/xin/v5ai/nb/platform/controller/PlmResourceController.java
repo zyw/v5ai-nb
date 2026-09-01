@@ -71,19 +71,18 @@ public class PlmResourceController extends BaseController {
     }
 
     /**
-     * 上传文件（multipart/form-data：file + 可选 bizType/bizId/storageType）
+     * 上传文件（multipart/form-data：file + 可选 bizType/bizId；存储类型由配置 v5ai.storage.type 决定）
      */
     @SaCheckPermission("platform:resource:add")
     @Log(title = "上传资源", businessType = BusinessType.INSERT)
     @PostMapping("/upload")
     public R<PlmResourceVo> upload(@RequestPart("file") MultipartFile file,
                                    @RequestParam(value = "bizType", required = false) String bizType,
-                                   @RequestParam(value = "bizId", required = false) Long bizId,
-                                   @RequestParam(value = "storageType", required = false) String storageType) {
+                                   @RequestParam(value = "bizId", required = false) Long bizId) {
         try {
             return R.ok(resourceService.upload(
                     file.getOriginalFilename(), file.getBytes(), file.getContentType(),
-                    storageType, bizType, bizId));
+                    bizType, bizId));
         } catch (IOException exception) {
             throw new UncheckedIOException("读取上传文件失败", exception);
         }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { defineAsyncComponent, h, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NCard,
@@ -14,6 +14,7 @@ import {
   NPagination,
   NSelect,
   NSpace,
+  NSpin,
   NTag,
   NUpload,
   useDialog,
@@ -24,6 +25,8 @@ import {
 import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
+import MarkdownPreview from '../components/MarkdownPreview.vue'
+import MonacoTextView from '../components/MonacoTextView.vue'
 import {
   deleteResources,
   downloadResource,
@@ -36,6 +39,13 @@ import {
 } from '../api/client'
 import { adminToken } from '../stores/session'
 import { formatDateTime, parseTime } from '../utils/dateUtils'
+// vue-office：docx / excel / pdf / pptx 在线预览组件（懒加载，仅在预览对应类型时拉取解析库）
+import '@vue-office/docx/lib/index.css'
+import '@vue-office/excel/lib/index.css'
+const VueOfficeDocx = defineAsyncComponent(() => import('@vue-office/docx'))
+const VueOfficeExcel = defineAsyncComponent(() => import('@vue-office/excel'))
+const VueOfficePdf = defineAsyncComponent(() => import('@vue-office/pdf'))
+const VueOfficePptx = defineAsyncComponent(() => import('@vue-office/pptx'))
 
 const message = useMessage()
 const dialog = useDialog()
@@ -79,12 +89,20 @@ function formatSize(size?: number | null): string {
 }
 
 const columns: DataTableColumns<ResourceResponse> = [
+  { type: 'selection' },
+  { title: 'ID', key: 'id', width: 64 },
   {
     title: '文件名',
     key: 'originalName',
-    minWidth: 220,
+    minWidth: 180,
     ellipsis: { tooltip: true },
     render: (row) => row.originalName
+  },
+  {
+    title: '业务类型',
+    key: 'bizType',
+    width: 100,
+    render: (row) => h(NTag, { size: 'small', bordered: false, type: 'info' }, { default: () => bizTypeLabel(row.bizType) })
   },
   {
     title: '大小',
@@ -92,31 +110,26 @@ const columns: DataTableColumns<ResourceResponse> = [
     width: 110,
     render: (row) => formatSize(row.fileSize)
   },
-  {
-    title: '业务类型',
-    key: 'bizType',
-    width: 110,
-    render: (row) => h(NTag, { size: 'small', bordered: false, type: 'info' }, { default: () => bizTypeLabel(row.bizType) })
-  },
+
   {
     title: '存储类型',
     key: 'storageType',
     width: 110,
     render: (row) => h(NTag, { size: 'small', bordered: false, type: row.storageType === 'MINIO' ? 'warning' : 'default' }, { default: () => storageTypeLabel(row.storageType) })
   },
-  { title: '创建时间', key: 'createDt', width: 182, render: (row) => fmtTime(row.createDt) },
+  { title: '上传时间', key: 'createDt', width: 182, render: (row) => fmtTime(row.createDt) },
   {
     title: '操作',
     key: 'actions',
     width: 210,
     render: (row) =>
       h(RowActions, {
-        maxInline: 3,
+        maxInline: 2,
         actions: [
           { key: 'preview', label: '预览', secondary: true, type: 'primary', onClick: () => handlePreview(row) },
           { key: 'download', label: '下载', secondary: true, onClick: () => handleDownload(row) },
           { key: 'edit', label: '编辑', secondary: true, onClick: () => openEdit(row) },
-          { key: 'delete', label: '删除', secondary: true, type: 'error', confirm: `确认删除「${row.originalName}」？`, onClick: () => handleDelete(row) }
+          { key: 'delete', label: '删除', secondary: true, type: "error", confirm: `确认删除「${row.originalName}」？`, onClick: () => handleDelete(row) }
         ]
       })
   }
@@ -229,36 +242,75 @@ async function handleSaveEdit() {
 // ---- 预览 / 下载 / 删除 ----
 
 const showPreviewModal = ref(false)
-const previewUrl = ref('')
 const previewName = ref('')
+/** 预览加载中：拉取文件 + 文档渲染（office/vditor 渲染完成或出错后置 false） */
+const previewLoading = ref(false)
+/** 预览类型：image 用原生 img，docx/excel/pdf/pptx 用 vue-office，markdown 用 vditor，text 用 pre */
+const previewKind = ref<'image' | 'pdf' | 'docx' | 'excel' | 'pptx' | 'markdown' | 'text' | null>(null)
+const previewUrl = ref('')
+const previewBlob = ref<Blob | null>(null)
+const previewText = ref('')
+
+/** 可纯文本预览的常见扩展名（语言 / 代码 / 配置文件） */
+const TEXT_EXTENSIONS = new Set([
+  '.txt', '.log', '.csv', '.tsv', '.ini', '.conf', '.cfg', '.properties', '.env',
+  '.html', '.htm', '.css', '.scss', '.less',
+  '.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.vue',
+  '.json', '.json5', '.xml', '.yaml', '.yml', '.toml', '.conf','.cnf',
+  '.sh', '.bash', '.zsh', '.bat', '.cmd', '.ps1',
+  '.java', '.kt', '.kts', '.py', '.rb', '.go', '.rs', '.c', '.h', '.cpp', '.hpp', '.cs', '.php', '.sql', '.proto', '.graphql'
+])
+
+/** 按 MIME + 文件名后缀判定预览类型；不支持的返回 null（转下载）。 */
+function previewKindOf(row: ResourceResponse): 'image' | 'pdf' | 'docx' | 'excel' | 'pptx' | 'markdown' | 'text' | null {
+  const mime = (row.mimeType ?? '').toLowerCase()
+  const name = (row.originalName ?? '').toLowerCase()
+  if (mime.startsWith('image/')) return 'image'
+  if (mime === 'application/pdf') return 'pdf'
+  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx'
+  if (mime === 'application/vnd.ms-excel' || mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'excel'
+  if (mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') return 'pptx'
+  // 部分浏览器/服务会把 .md 报成 text/plain，先按扩展名识别 markdown
+  if (mime === 'text/markdown' || mime === 'text/x-markdown' || name.endsWith('.md') || name.endsWith('.markdown')) return 'markdown'
+  // 纯文本/代码文件：text/* MIME 或常见语言扩展名（避免把二进制当文本显示）
+  const dot = name.lastIndexOf('.')
+  const ext = dot >= 0 ? name.slice(dot) : ''
+  if (mime.startsWith('text/') || TEXT_EXTENSIONS.has(ext)) return 'text'
+  return null
+}
 
 async function handlePreview(row: ResourceResponse) {
-  const mime = (row.mimeType ?? '').toLowerCase()
-  const isImage = mime.startsWith('image/')
-  const isPdf = mime === 'application/pdf'
-  if (!isImage && !isPdf) {
+  const kind = previewKindOf(row)
+  if (!kind) {
     message.info('该类型不支持在线预览，已转为下载')
     await handleDownload(row)
     return
   }
+  previewLoading.value = true
   try {
     const blob = await previewResource(adminToken.value, row.id)
-    const url = URL.createObjectURL(blob)
-    if (isImage) {
-      previewName.value = row.originalName
-      previewUrl.value = url
-      showPreviewModal.value = true
-    } else {
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    previewName.value = row.originalName
+    previewKind.value = kind
+    previewBlob.value = blob
+    previewUrl.value = kind === 'image' ? URL.createObjectURL(blob) : ''
+    previewText.value = kind === 'markdown' || kind === 'text' ? await blob.text() : ''
+    // 图片内容即时可用，无需等待渲染事件；office/vditor/monaco 由组件的 rendered/error 事件关闭 loading
+    if (kind === 'image') {
+      previewLoading.value = false
     }
+    showPreviewModal.value = true
   } catch (e) {
+    previewLoading.value = false
     message.error(e instanceof Error ? e.message : '预览失败')
   }
 }
 
 function closePreview() {
   showPreviewModal.value = false
+  previewLoading.value = false
+  previewKind.value = null
+  previewBlob.value = null
+  previewText.value = ''
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value)
     previewUrl.value = ''
@@ -412,11 +464,19 @@ onMounted(reload)</script>
       </template>
     </n-modal>
 
-    <!-- 图片预览弹窗 -->
-    <n-modal v-model:show="showPreviewModal" preset="card" :title="previewName" style="width: 720px" :bordered="false" @after-leave="closePreview">
-      <div style="display: flex; justify-content: center; max-height: 70vh; overflow: auto">
-        <img :src="previewUrl" alt="预览" style="max-width: 100%" />
-      </div>
+    <!-- 预览弹窗：图片原生 img，docx/excel/pdf/pptx 用 vue-office，markdown 用 vditor，text 用 pre -->
+    <n-modal v-model:show="showPreviewModal" preset="card" :title="previewName" style="width: 80%" :bordered="false" @after-leave="closePreview">
+      <n-spin :show="previewLoading" description="文档加载中...">
+        <div v-if="previewKind === 'image'" style="display: flex; justify-content: center; max-height: 70vh; overflow: auto">
+          <img :src="previewUrl" alt="预览" style="max-width: 100%" />
+        </div>
+        <vue-office-pdf v-else-if="previewKind === 'pdf'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <vue-office-docx v-else-if="previewKind === 'docx'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <vue-office-excel v-else-if="previewKind === 'excel'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <vue-office-pptx v-else-if="previewKind === 'pptx'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <markdown-preview v-else-if="previewKind === 'markdown'" :content="previewText" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <monaco-text-view v-else-if="previewKind === 'text'" :content="previewText" :file-name="previewName" @rendered="previewLoading = false" @error="previewLoading = false" />
+      </n-spin>
       <template #footer>
         <n-space justify="end">
           <n-button @click="closePreview">关闭</n-button>

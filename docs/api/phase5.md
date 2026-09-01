@@ -134,7 +134,7 @@ GET /api/admin/stats/overview      # 应用/模型/知识库/Skill/运行总数/
 
 ## 资源存储（通用资源存储）
 
-`plm_resource` 通用资源存储（迁移 V24）：上传文件的元数据（存储键/原始文件名/大小/MIME/存储类型/访问 URL/业务类型/关联业务ID/创建者）。存储后端支持本地磁盘（默认，配置 `v5ai.storage.local-dir`，默认 `./v5ai-upload`）与 MinIO（`v5ai.minio.*`，storageType=MINIO）。删除会物理删除文件与记录；预览/下载均需登录，带 `platform:resource:query` 权限。
+`plm_resource` 通用资源存储（迁移 V24）：上传文件的元数据（存储键/原始文件名/大小/MIME/存储类型/访问 URL/业务类型/关联业务ID/创建者）。存储后端由配置 `v5ai.storage.type` 决定（LOCAL=本地磁盘，默认；MINIO=MinIO），本地根目录 `v5ai.storage.local-dir`（默认 `./v5ai-upload`），MinIO 连接参数 `v5ai.minio.*`。删除会物理删除文件与记录；预览/下载均需登录，带 `platform:resource:query` 权限。
 
 ### 分页列表
 
@@ -184,8 +184,9 @@ POST /api/admin/resources/upload        # multipart/form-data，需 platform:res
 file: <文件>
 bizType: DOCUMENT        # 可选：GENERAL/AVATAR/ATTACHMENT/DOCUMENT，默认 GENERAL
 bizId: 42                # 可选
-storageType: LOCAL       # 可选：LOCAL/MINIO，默认 LOCAL
 ```
+
+存储类型不再由接口提供，由配置 `v5ai.storage.type`（`V5AI_STORAGE_TYPE` 环境变量，LOCAL/MINIO，默认 LOCAL）统一决定。
 
 响应为资源 VO（`data` 同上），包含生成的 `id`、`storageKey`、`accessUrl`。
 

@@ -14,8 +14,8 @@ export interface RowAction {
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { NButton, NDropdown, NIcon, NPopconfirm, NSpace, useDialog, type DropdownOption } from 'naive-ui'
+import { computed, h } from 'vue'
+import { NButton, NDropdown, NIcon, NPopconfirm, NSpace, useDialog, useThemeVars, type DropdownOption } from 'naive-ui'
 import { ChevronDown } from 'lucide-vue-next'
 
 const props = withDefaults(
@@ -28,16 +28,30 @@ const props = withDefaults(
 )
 
 const dialog = useDialog()
+const themeVars = useThemeVars()
+
+/** NButton type -> naive 主题变量名：下拉项按 type 渲染同色文本 */
+const TYPE_THEME_KEYS: Partial<Record<NonNullable<RowAction['type']>, string>> = {
+  primary: 'primaryColor',
+  info: 'infoColor',
+  success: 'successColor',
+  warning: 'warningColor',
+  error: 'errorColor'
+}
 
 const inlineActions = computed(() => props.actions.slice(0, props.maxInline))
 const moreActions = computed(() => props.actions.slice(props.maxInline))
 
 const moreOptions = computed<DropdownOption[]>(() =>
-  moreActions.value.map((action) => ({
-    key: action.key,
-    label: action.label,
-    disabled: action.disabled
-  }))
+  moreActions.value.map((action) => {
+    const themeKey = action.type ? TYPE_THEME_KEYS[action.type] : undefined
+    const color = themeKey ? (themeVars.value as unknown as Record<string, string>)[themeKey] : undefined
+    return {
+      key: action.key,
+      label: color ? () => h('span', { style: { color } }, action.label) : action.label,
+      disabled: action.disabled
+    }
+  })
 )
 
 function runAction(action: RowAction) {

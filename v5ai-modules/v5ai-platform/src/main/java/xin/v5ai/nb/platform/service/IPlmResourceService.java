@@ -38,13 +38,12 @@ public interface IPlmResourceService {
      * @param originalFilename 原始文件名
      * @param content          文件内容
      * @param contentType      文件 MIME 类型
-     * @param storageType      存储类型（LOCAL/MINIO，空则 LOCAL）
      * @param bizType          业务类型（AVATAR/ATTACHMENT/DOCUMENT/GENERAL）
      * @param bizId            关联业务ID，可为空
      * @return 上传后的资源信息
      */
     PlmResourceVo upload(String originalFilename, byte[] content, String contentType,
-                         String storageType, String bizType, Long bizId);
+                         String bizType, Long bizId);
 
     /**
      * 修改资源元数据（业务类型 / 关联业务ID）。

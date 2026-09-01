@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.github.linpeilie.Converter;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
@@ -35,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -109,13 +112,15 @@ class PlmResourceServiceImplTest {
         props.setBucket("v5ai");
         service = new PlmResourceServiceImpl(resourceMapper, minioClient, props);
         ReflectionTestUtils.setField(service, "localDir", uploadRoot.toString());
+        // 存储类型由配置 v5ai.storage.type 决定，单测默认 LOCAL
+        ReflectionTestUtils.setField(service, "storageType", "LOCAL");
     }
 
     @Test
     void uploadStoresFileLocallyAndRegistersRecord() throws Exception {
         byte[] content = "hello v5ai".getBytes(StandardCharsets.UTF_8);
 
-        var vo = service.upload("测试报告.txt", content, "text/plain", null, "DOCUMENT", 42L);
+        var vo = service.upload("测试报告.txt", content, "text/plain", "DOCUMENT", 42L);
 
         assertThat(vo.getId()).isEqualTo(1L);
         assertThat(vo.getOriginalName()).isEqualTo("测试报告.txt");
@@ -135,13 +140,10 @@ class PlmResourceServiceImplTest {
     void uploadRejectsInvalidParameters() {
         byte[] content = "x".getBytes(StandardCharsets.UTF_8);
 
-        assertThatThrownBy(() -> service.upload("a.txt", content, null, null, "INVALID", null))
+        assertThatThrownBy(() -> service.upload("a.txt", content, null, "INVALID", null))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("业务类型不合法");
-        assertThatThrownBy(() -> service.upload("a.txt", content, null, "S3", "GENERAL", null))
-                .isInstanceOf(ServiceException.class)
-                .hasMessageContaining("存储类型不合法");
-        assertThatThrownBy(() -> service.upload("a.txt", new byte[0], null, null, "GENERAL", null))
+        assertThatThrownBy(() -> service.upload("a.txt", new byte[0], null, "GENERAL", null))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("不能为空");
         // 失败路径不落库
@@ -149,15 +151,42 @@ class PlmResourceServiceImplTest {
     }
 
     @Test
+    void uploadRejectsInvalidConfiguredStorageType() {
+        // 存储类型来自配置，配置不合法时上传直接失败
+        ReflectionTestUtils.setField(service, "storageType", "S3");
+        byte[] content = "x".getBytes(StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> service.upload("a.txt", content, null, "GENERAL", null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("存储类型配置不合法");
+        assertThat(resources).isEmpty();
+    }
+
+    @Test
     void uploadWithMinioUsesObjectStore() throws Exception {
+        ReflectionTestUtils.setField(service, "storageType", "MINIO");
+        // bucket 不存在时自动创建后写入（makeBucket 为 void，mock 默认 no-op）
+        when(minioClient.bucketExists(any(BucketExistsArgs.class))).thenReturn(false);
         when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(mock(ObjectWriteResponse.class));
         byte[] content = "png".getBytes(StandardCharsets.UTF_8);
 
-        var vo = service.upload("avatar.png", content, "image/png", "MINIO", "AVATAR", null);
+        var vo = service.upload("avatar.png", content, "image/png", "AVATAR", null);
 
         assertThat(vo.getStorageType()).isEqualTo("MINIO");
         assertThat(vo.getAccessUrl()).isEqualTo("http://localhost:9000/v5ai/" + vo.getStorageKey());
+        verify(minioClient).makeBucket(any(MakeBucketArgs.class));
         verify(minioClient).putObject(any(PutObjectArgs.class));
+    }
+
+    @Test
+    void uploadWithMinioReusesExistingBucket() throws Exception {
+        ReflectionTestUtils.setField(service, "storageType", "MINIO");
+        when(minioClient.bucketExists(any(BucketExistsArgs.class))).thenReturn(true);
+        when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(mock(ObjectWriteResponse.class));
+
+        service.upload("a.png", "x".getBytes(StandardCharsets.UTF_8), "image/png", "AVATAR", null);
+
+        verify(minioClient, never()).makeBucket(any(MakeBucketArgs.class));
     }
 
     @Test
@@ -185,7 +214,7 @@ class PlmResourceServiceImplTest {
     @Test
     void loadContentReadsLocalFile() {
         byte[] content = "hello".getBytes(StandardCharsets.UTF_8);
-        var vo = service.upload("a.txt", content, "text/plain", null, "GENERAL", null);
+        var vo = service.upload("a.txt", content, "text/plain", "GENERAL", null);
 
         var loaded = service.loadContent(vo.getId());
 
@@ -210,7 +239,7 @@ class PlmResourceServiceImplTest {
     @Test
     void deleteWithValidByIdsRemovesFileAndRecord() {
         byte[] content = "bye".getBytes(StandardCharsets.UTF_8);
-        var vo = service.upload("b.txt", content, "text/plain", null, "ATTACHMENT", null);
+        var vo = service.upload("b.txt", content, "text/plain", "ATTACHMENT", null);
         Path file = uploadRoot.resolve(vo.getStorageKey());
         assertThat(file).exists();
 

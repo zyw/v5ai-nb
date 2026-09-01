@@ -1048,11 +1048,36 @@ export function deleteResources(adminToken: string, ids: number[]): Promise<void
 
 /** 带鉴权头拉取资源文件内容（预览/下载共用），返回 Blob。 */
 async function fetchResourceBlob(adminToken: string, path: string): Promise<Blob> {
-  const response = await fetch(`${apiBase}${path}`, {
-    headers: { Authorization: normalizeBearer(adminToken) }
-  })
+  const headers: Record<string, string> = {
+    // 后端 SecurityConfig 校验 token 内 clientId 与请求头/参数 clientid 一致
+    ...(clientId ? { clientid: clientId } : {}),
+    Authorization: normalizeBearer(adminToken)
+  }
+  const response = await fetch(`${apiBase}${path}`, { headers })
+  // 访问令牌过期：尝试刷新令牌后重试一次
+  if (response.status === 401 && adminToken) {
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      return fetchResourceBlob(newToken, path)
+    }
+  }
   if (!response.ok) {
     throw new Error(await readError(response))
+  }
+  // 后端业务异常（登录失效/权限不足等）以 R JSON + HTTP 200 返回，
+  // 识别后抛出，避免把错误体当作文件内容（预览新标签页/下载得到 JSON）
+  if ((response.headers.get('content-type') ?? '').includes('application/json')) {
+    const text = await response.text()
+    let r: R<unknown> | null = null
+    try {
+      r = JSON.parse(text) as R<unknown>
+    } catch {
+      r = null
+    }
+    if (r && typeof r.code === 'number' && r.code !== 200) {
+      throw new ApiError(r.msg || '请求失败', r.code)
+    }
+    return new Blob([text], { type: response.headers.get('content-type') ?? 'application/json' })
   }
   return response.blob()
 }

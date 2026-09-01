@@ -77,14 +77,14 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
   {
     title: '名称',
     key: 'name',
-    width: 200,
+    width: 160,
     render: (row) =>
       h('div', [
         row.name,
         row.isDefault ? h(NTag, { size: 'small', type: 'warning', bordered: false, style: 'margin-left: 6px' }, { default: () => '默认' }) : null
       ])
   },
-  { title: '描述', key: 'description', width: '200' },
+  { title: '描述', key: 'description', width: 200 },
   {
     title: '分类',
     key: 'category',

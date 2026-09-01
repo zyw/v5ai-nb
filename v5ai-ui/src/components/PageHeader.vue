@@ -33,7 +33,7 @@ defineProps<{ title: string; description?: string }>()
 .page-header-text p {
   margin: 4px 0 0;
   font-size: 13px;
-  max-width: 60ch;
+  max-width: 62ch;
 }
 
 .page-header-actions {
