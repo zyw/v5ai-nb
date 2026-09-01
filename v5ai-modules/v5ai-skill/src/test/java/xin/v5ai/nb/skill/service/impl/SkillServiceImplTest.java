@@ -44,6 +44,7 @@ class SkillServiceImplTest {
         TableInfoHelper.initTableInfo(assistant, Skill.class);
         TableInfoHelper.initTableInfo(assistant, SkillVersion.class);
         TableInfoHelper.initTableInfo(assistant, SkillFile.class);
+        TableInfoHelper.initTableInfo(assistant, AgentSkillBinding.class);
     }
 
     private final List<Skill> skills = new ArrayList<>();

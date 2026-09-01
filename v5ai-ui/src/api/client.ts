@@ -1313,6 +1313,20 @@ export function publishSkillVersion(adminToken: string, id: number, versionId: n
   }, adminToken)
 }
 
+export function offlineSkillVersion(adminToken: string, id: number, versionId: number): Promise<SkillResponse> {
+  return requestJson<SkillResponse>(`/api/admin/skills/${id}/versions/${versionId}/offline`, {
+    method: 'POST'
+  }, adminToken)
+}
+
+export interface SkillUsageResponse {
+  count: number
+}
+
+export function getSkillUsage(adminToken: string, id: number): Promise<SkillUsageResponse> {
+  return requestJson<SkillUsageResponse>(`/api/admin/skills/${id}/usage`, {}, adminToken)
+}
+
 export function rollbackSkill(adminToken: string, id: number, versionId: number): Promise<SkillResponse> {
   return requestJson<SkillResponse>(`/api/admin/skills/${id}/rollback`, {
     method: 'POST',

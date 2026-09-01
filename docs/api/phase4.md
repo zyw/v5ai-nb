@@ -64,22 +64,26 @@ DELETE /api/admin/skills/{id}/files?path=prompts/guide.md   # 从 DRAFT 删除�
 ```
 
 - 文件路径校验与上传包一致（禁止绝对路径/路径穿越，统一反斜杠与 `./` 前缀）；单文件上限 512KB；
-- 文件编辑只作用于 DRAFT 版本，发布/回滚仍在版本弹窗中操作；
+- 文件编辑只作用于 DRAFT 版本，发布/下线在版本弹窗中操作；
 - 编辑的 Skill 必须 ACTIVE，已禁用的 Skill 只读不可写。
 
-## 版本发布与回滚
+## 版本发布、下线与 Skill 禁用
 
 ```http
-POST /api/admin/skills/{id}/versions/{versionId}/publish   # DRAFT → PUBLISHED，并设为当前版本
-POST /api/admin/skills/{id}/rollback
+POST /api/admin/skills/{id}/versions/{versionId}/publish    # DRAFT → PUBLISHED，并设为当前版本
+POST /api/admin/skills/{id}/versions/{versionId}/offline    # PUBLISHED → DRAFT；若是当前版本则清除当前版本指针
+GET  /api/admin/skills/{id}/usage                           # → { count: <绑定该 Skill 的 Agent 数> }
+POST /api/admin/skills/{id}/rollback                        # 兼容保留：把当前版本指针指回旧版本
 Content-Type: application/json
 
-{ "versionId": <已发布的旧版本 id> }        # 把当前版本指针回滚到该版本
+{ "versionId": <已发布的旧版本 id> }
 ```
 
-- 上传 → DRAFT；发布 → 成为「当前版本」；回滚 → 改变当前版本指针；
-- 运行时只注入「当前版本」的不可变文件内容；
-- 只能发布 DRAFT 版本、只能回滚到已发布的版本。
+- 上传 → DRAFT；发布 → 成为「当前版本」；下线 → 撤下该版本（状态回 DRAFT，可再次编辑/发布）；
+- **下线当前版本会清除当前版本指针**：运行时停止注入，`/options` 不再可选，此时 Skill 才允许被禁用；
+- **禁用校验**：Skill 存在已发布版本（`current_version_id` 非空）时禁止禁用，需先下线版本；
+- 下线提示：前端先查 `/{id}/usage`，若已被 Agent 绑定（count > 0）提示「有使用，是否下线」，确认后仍可执行；
+- 运行时只注入「当前版本」的文件内容；只能发布 DRAFT 版本、只能下线已发布的版本。
 
 ## Agent 绑定
 

@@ -28,10 +28,11 @@ import {
   createSkillOnline,
   disableSkill,
   enableSkill,
+  getSkillUsage,
   listSkills,
   listSkillVersions,
+  offlineSkillVersion,
   publishSkillVersion,
-  rollbackSkill,
   uploadSkill,
   type SkillResponse,
   type SkillVersionResponse
@@ -66,8 +67,8 @@ const uploadForm = reactive({ description: '' })
 
 const skillColumns: DataTableColumns<SkillResponse> = [
   { title: 'ID', key: 'id', width: 64 },
-  { title: '名称', key: 'name', width: 220 },
-  { title: '描述', key: 'description', width: 'auto', ellipsis: { tooltip: true } },
+  { title: '名称', key: 'name', width: 180 },
+  { title: '描述', key: 'description', width: 300, ellipsis: { tooltip: true } },
   {
     title: '状态',
     key: 'status',
@@ -105,13 +106,11 @@ const versionColumns: DataTableColumns<SkillVersionResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 150,
+    width: 100,
     render: (row) =>
-      h(NSpace, { size: 6 }, { default: () => [
-        row.status === 'DRAFT'
-          ? h(NButton, { size: 'small', type: 'primary', onClick: () => handlePublish(row) }, { default: () => '发布' })
-          : h(NButton, { size: 'small', secondary: true, type: 'warning', disabled: selectedSkill.value?.currentVersionId === row.id, onClick: () => handleRollback(row) }, { default: () => '回滚' })
-      ] })
+      row.status === 'DRAFT'
+        ? h(NButton, { size: 'small', type: 'primary', onClick: () => handlePublish(row) }, { default: () => '发布' })
+        : h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => handleOffline(row) }, { default: () => '下线' })
   }
 ]
 
@@ -225,20 +224,45 @@ async function handlePublish(version: SkillVersionResponse) {
   }
 }
 
-async function handleRollback(version: SkillVersionResponse) {
-  if (!selectedSkill.value) return
+async function handleOffline(version: SkillVersionResponse) {
+  const skill = selectedSkill.value
+  if (!skill) return
+  let usageCount = 0
   try {
-    await rollbackSkill(adminToken.value, selectedSkill.value.id, version.id)
-    message.success(`已回滚到 v${version.version}`)
-    await reload()
-    await handleShowVersions(selectedSkill.value)
+    usageCount = (await getSkillUsage(adminToken.value, skill.id)).count
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '回滚失败')
+    message.error(e instanceof Error ? e.message : '查询使用情况失败')
+    return
+  }
+  const doOffline = async () => {
+    try {
+      await offlineSkillVersion(adminToken.value, skill.id, version.id)
+      message.success(`v${version.version} 已下线`)
+      await reload()
+      await handleShowVersions(skill)
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '下线失败')
+    }
+  }
+  if (usageCount > 0) {
+    dialog.warning({
+      title: '下线确认',
+      content: `该 Skill 已被 ${usageCount} 个 Agent 使用，下线后将不再注入到这些 Agent，是否确认下线？`,
+      positiveText: '下线',
+      negativeText: '取消',
+      onPositiveClick: doOffline
+    })
+  } else {
+    await doOffline()
   }
 }
 
 async function handleToggleStatus(skill: SkillResponse) {
   const next = skill.status === 'ACTIVE' ? '禁用' : '启用'
+  if (next === '禁用' && skill.currentVersionId != null) {
+    message.warning('该 Skill 有已发布的版本，请先在「版本」中下线后再禁用')
+    return
+  }
   dialog.warning({
     title: `${next}确认`,
     content: `确认${next} Skill「${skill.name}」？`,
@@ -373,11 +397,11 @@ onMounted(reload)
       v-model:show="showVersionsModal"
       preset="card"
       :title="`版本列表（${selectedSkill?.name ?? ''}）`"
-      style="width: 50%"
+      style="width: 80%"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
-        运行时注入的是「当前版本」（回滚会改变当前版本）；发布的新版本不会影响历史版本。
+        运行时注入的是「当前版本」；发布新版本会切换当前版本，「下线」可撤下已发布版本（当前版本下线后停止注入，且 Skill 才可被禁用）。
       </n-alert>
       <n-data-table :columns="versionColumns" :data="versions" :bordered="false" />
     </n-modal>
