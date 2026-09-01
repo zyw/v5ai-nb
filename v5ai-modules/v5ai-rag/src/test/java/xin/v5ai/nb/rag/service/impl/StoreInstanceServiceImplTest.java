@@ -78,6 +78,9 @@ class StoreInstanceServiceImplTest {
                 if (update.getName() != null) {
                     i.setName(update.getName());
                 }
+                if (update.getDescription() != null) {
+                    i.setDescription(update.getDescription());
+                }
                 if (update.getCategory() != null) {
                     i.setCategory(update.getCategory());
                 }
@@ -127,6 +130,7 @@ class StoreInstanceServiceImplTest {
     @Test
     void insertByBoAssignsIdAndDefaultStatus() {
         var bo = bo("pg", 1, 1, null, null, false);
+        bo.setDescription("生产主库");
 
         var flag = service.insertByBo(bo);
 
@@ -135,6 +139,7 @@ class StoreInstanceServiceImplTest {
         assertThat(instances).hasSize(1);
         assertThat(instances.get(0).getStatus()).isEqualTo(1);
         assertThat(instances.get(0).getIsDefault()).isFalse();
+        assertThat(instances.get(0).getDescription()).isEqualTo("生产主库");
     }
 
     @Test
@@ -195,6 +200,7 @@ class StoreInstanceServiceImplTest {
 
         var bo = bo("pg-renamed", 1, 2, "{}", 0, false);
         bo.setId(1L);
+        bo.setDescription("测试描述");
 
         service.updateByBo(bo);
 
@@ -203,6 +209,7 @@ class StoreInstanceServiceImplTest {
         assertThat(updated.getType()).isEqualTo(2);
         assertThat(updated.getStatus()).isZero();
         assertThat(updated.getIsDefault()).isFalse();
+        assertThat(updated.getDescription()).isEqualTo("测试描述");
     }
 
     @Test

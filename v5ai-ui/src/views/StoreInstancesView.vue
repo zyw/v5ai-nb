@@ -84,6 +84,7 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
         row.isDefault ? h(NTag, { size: 'small', type: 'warning', bordered: false, style: 'margin-left: 6px' }, { default: () => '默认' }) : null
       ])
   },
+  { title: '描述', key: 'description', width: '200' },
   {
     title: '分类',
     key: 'category',
@@ -97,16 +98,18 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
     render: (row) => h(NTag, { size: 'small', type: 'info', bordered: false }, { default: () => typeLabel(row.type) })
   },
   {
-    title: '连接参数',
-    key: 'config',
-    ellipsis: { tooltip: true },
-    render: (row) => row.config || '—'
-  },
-  {
     title: '状态',
     key: 'status',
     width: 90,
-    render: (row) => h(NTag, { size: 'small', type: row.status === 1 ? 'success' : 'default', bordered: false }, { default: () => (row.status === 1 ? '启用' : '停用') })
+    render: (row) =>
+      h(NSwitch, {
+        value: row.status === 1,
+        loading: togglingId.value === row.id,
+        onUpdateValue: () => handleToggleStatus(row)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '停')
+      })
   },
   { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
@@ -169,9 +172,11 @@ function handlePageSizeChange(pageSize: number) {
 const showModal = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
+const togglingId = ref<number | null>(null)
 
 const form = reactive<StoreInstanceRequest>({
   name: '',
+  description: '',
   category: 1,
   type: 1,
   status: 1,
@@ -320,6 +325,7 @@ function resetForm() {
   editingId.value = null
   form.id = undefined
   form.name = ''
+  form.description = ''
   form.category = 1
   form.type = 1
   form.status = 1
@@ -336,6 +342,7 @@ function openEdit(row: StoreInstanceResponse) {
   editingId.value = row.id
   form.id = row.id
   form.name = row.name
+  form.description = row.description ?? ''
   form.category = row.category
   form.type = row.type
   form.status = row.status ?? 1
@@ -371,6 +378,35 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function handleToggleStatus(row: StoreInstanceResponse) {
+  const next = row.status === 1 ? '停用' : '启用'
+  dialog.warning({
+    title: `${next}确认`,
+    content: `确认${next}存储实例「${row.name}」？`,
+    positiveText: next,
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      togglingId.value = row.id
+      try {
+        const payload: StoreInstanceRequest = {
+          id: row.id,
+          name: row.name,
+          category: row.category,
+          type: row.type,
+          status: row.status === 1 ? 0 : 1
+        }
+        await updateStoreInstance(adminToken.value, payload)
+        message.success(`${row.name} 已${next}`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        togglingId.value = null
+      }
+    }
+  })
 }
 
 function handleDelete(row: StoreInstanceResponse) {
@@ -465,6 +501,9 @@ onMounted(reload)
       <n-form label-placement="top">
         <n-form-item label="实例名称">
           <n-input v-model:value="form.name" placeholder="实例显示名称" />
+        </n-form-item>
+        <n-form-item label="实例描述">
+          <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="实例用途 / 备注（可选）" />
         </n-form-item>
         <n-form-item label="分类">
           <n-select v-model:value="form.category" :options="categoryOptions" @update:value="handleCategoryChange" />

@@ -280,6 +280,7 @@ export interface CreateKnowledgeBaseRequest {
 export interface StoreInstanceResponse {
   id: number
   name: string
+  description?: string | null
   category: number
   type: number
   config?: string | null
@@ -292,6 +293,7 @@ export interface StoreInstanceResponse {
 export interface StoreInstanceRequest {
   id?: number
   name: string
+  description?: string
   category: number
   type: number
   config?: string

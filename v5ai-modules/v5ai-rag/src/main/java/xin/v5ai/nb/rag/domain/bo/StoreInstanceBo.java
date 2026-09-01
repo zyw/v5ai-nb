@@ -30,6 +30,11 @@ public class StoreInstanceBo {
     private String name;
 
     /**
+     * 实例描述
+     */
+    private String description;
+
+    /**
      * 分类: 1-向量库 2-搜索引擎
      */
     @NotNull(message = "分类不能为空")

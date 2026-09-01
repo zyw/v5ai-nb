@@ -28,6 +28,11 @@ public class StoreInstanceVo implements Serializable {
     private String name;
 
     /**
+     * 实例描述
+     */
+    private String description;
+
+    /**
      * 分类: 1-向量库 2-搜索引擎
      */
     private Integer category;

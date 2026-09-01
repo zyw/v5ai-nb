@@ -59,16 +59,18 @@ DELETE /api/admin/store-instances/{ids}           # 批量删除（逗号分隔�
 {
   "id": 1,
   "name": "pg-vector-main",
+  "description": "生产环境主向量库",
   "category": 1,
   "type": 1,
-  "config": "{\"url\":\"http://localhost:5432\",\"database\":\"v5ai_nb\",\"dimension\":1536}",
+  "config": "{\"host\":\"localhost\",\"port\":5432,\"database\":\"v5ai_ai\",\"username\":\"postgres\",\"sslEnabled\":false}",
   "status": 1,
   "isDefault": true
 }
 ```
 
+- `description`：实例描述（可选）；查询接口返回时 `config` 中的敏感字段（`password`/`token`）会被移除，编辑提交时敏感字段为空则保留库中原值、非空则替换；
 - `category`：1-向量库 2-搜索引擎；`type`：1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT；
-  向量库仅允许 PG_VECTOR/MILVUS，搜索引擎仅允许 ELASTICSEARCH/PG_FULLTEXT，`config` 必须为合法 JSON；
+  向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎支持 ELASTICSEARCH/PG_FULLTEXT，`config` 必须为合法 JSON；
 - `status`：0-停用 1-启用（新增缺省为 1）；
 - `isDefault`：为 `true` 时同分类下其它实例自动取消默认（事务内保证每分类至多一个默认实例）；
 - 权限标识：`rag:store:list/query/add/edit/remove`，写操作记录操作日志。
