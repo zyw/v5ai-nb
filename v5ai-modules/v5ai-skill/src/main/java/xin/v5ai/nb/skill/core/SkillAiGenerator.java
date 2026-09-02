@@ -2,24 +2,19 @@ package xin.v5ai.nb.skill.core;
 
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
-import io.agentscope.core.message.TextBlock;
-import io.agentscope.core.model.ChatResponse;
-import io.agentscope.core.model.GenerateOptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
-import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
-import xin.v5ai.nb.common.encrypt.utils.CipherUtils;
-import xin.v5ai.nb.skill.core.SkillPackageParser;
+import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
+import xin.v5ai.nb.common.agentscope.core.exception.ModelChatException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
 /**
- * Skill 编辑器 AI 能力：按模型 ID 调用平台已配置的 Chat 模型，
+ * Skill 编辑器 AI 能力：经 {@link ModelChatClient} 调用平台已配置的 Chat 模型，
  * 生成 / 优化 Skill 文件内容（非流式，返回完整文本）。
  * 系统提示词为中文，并强制 Skill 包规范（SKILL.md frontmatter 合法、单文件大小上限）。
  */
@@ -31,8 +26,7 @@ public class SkillAiGenerator {
     @Value("${skill.ai.timeout-seconds:90}")
     private long timeoutSeconds;
 
-    private final ModelRuntimeConfigGateway runtimeConfigGateway;
-    private final AgentScopeModelFactory modelFactory;
+    private final ModelChatClient modelChatClient;
 
     /**
      * 生成完整的 SKILL.md 内容：保留技能名，需求说明作为 frontmatter description。
@@ -93,47 +87,18 @@ public class SkillAiGenerator {
      * 调用模型生成文本：非流式拼接全部响应分片后返回。
      */
     private String chat(Long modelId, String systemPrompt, String userPrompt) {
-        var config = runtimeConfigGateway.findRuntimeConfigByModelId(modelId);
-        if (config == null) {
-            throw new IllegalArgumentException("model runtime config not found: " + modelId);
-        }
-        var plaintextCredentials = CipherUtils.decrypt(config.credentialsCiphertext());
-        var model = modelFactory.create(config, plaintextCredentials);
         var messages = List.of(
                 Msg.builder().role(MsgRole.SYSTEM).textContent(systemPrompt).build(),
                 Msg.builder().role(MsgRole.USER).textContent(userPrompt).build()
         );
         try {
-            var responses = model.stream(messages, List.of(), GenerateOptions.builder().stream(true).build())
-                    .collectList()
-                    .block(Duration.ofSeconds(timeoutSeconds));
-            if (responses == null || responses.isEmpty()) {
-                throw new IllegalArgumentException("AI model returned no response");
-            }
-            StringBuilder text = new StringBuilder();
-            for (ChatResponse response : responses) {
-                if (response.getContent() == null) {
-                    continue;
-                }
-                for (var block : response.getContent()) {
-                    if (block instanceof TextBlock textBlock && textBlock.getText() != null) {
-                        text.append(textBlock.getText());
-                    }
-                }
-            }
-            String content = text.toString();
-            if (content.isBlank()) {
-                throw new IllegalArgumentException("AI model returned empty content");
-            }
-            return content;
-        } catch (IllegalArgumentException exception) {
-            throw exception;
-        } catch (Exception exception) {
-            String detail = exception.getMessage() == null
-                    ? exception.getClass().getSimpleName()
-                    : exception.getMessage();
-            log.warn("skill ai call failed for model {}: {}", modelId, detail);
-            throw new IllegalArgumentException("AI model call failed: " + detail, exception);
+            return modelChatClient.chatText(modelId, messages, Duration.ofSeconds(timeoutSeconds));
+        } catch (ModelChatException exception) {
+            // 模型对话契约：配置缺失 IAE / 运行期失败 ModelChatException。
+            // 此处把运行期失败转成带中文文案的 IAE（与 AgentConfigGenerator 一致，
+            // 且 IAE 由全局 handler 透出消息；ModelChatException 会落入通用兜底）。
+            log.warn("skill ai call failed for model {}: {}", modelId, exception.getMessage());
+            throw new IllegalArgumentException("AI 模型调用失败：" + exception.getMessage(), exception);
         }
     }
 
