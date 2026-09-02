@@ -46,8 +46,9 @@ GET    /api/admin/skills/{id}/versions        # 版本列表（按版本号降�
 POST /api/admin/skills/online
 Content-Type: application/json
 
-{ "name": "weather", "description": "查询天气" }
+{ "name": "weather", "description": "查询天气", "versionDescription": "v1 初版" }
 # → 新建 Skill（ACTIVE）+ DRAFT v1 + SKILL.md 骨架（frontmatter 含 name/description）
+#   description 写入 skill.description 与 SKILL.md frontmatter；versionDescription（可选）写入 DRAFT v1 的版本描述
 
 GET /api/admin/skills/{id}/editor
 # → { skill, versionId, version, files: [{ filePath, content }] }

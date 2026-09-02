@@ -46,11 +46,12 @@ public interface ISkillService {
     /**
      * 在线新建 Skill：创建 Skill（ACTIVE）+ DRAFT v1 + SKILL.md 骨架。
      *
-     * @param name        技能名称（全局唯一，不能包含路径分隔符）
-     * @param description 技能描述
+     * @param name               技能名称（全局唯一，不能包含路径分隔符）
+     * @param description        技能描述（skill.description + SKILL.md frontmatter）
+     * @param versionDescription 版本描述（可选，DRAFT v1 的 version.description）
      * @return 新建的 Skill
      */
-    SkillVo createSkillOnline(String name, String description);
+    SkillVo createSkillOnline(String name, String description, String versionDescription);
 
     /**
      * 打开在线编辑器：返回待编辑的 DRAFT 版本及全部文件。

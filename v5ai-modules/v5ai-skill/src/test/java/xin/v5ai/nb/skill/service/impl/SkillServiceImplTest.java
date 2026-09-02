@@ -387,7 +387,7 @@ class SkillServiceImplTest {
 
     @Test
     void cannotOfflineNonPublishedVersion() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
         assertThatThrownBy(() -> service.offlineVersion(vo.getId(), versions.get(0).getId()))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -479,7 +479,7 @@ class SkillServiceImplTest {
 
     @Test
     void createSkillOnlineCreatesSkillDraftAndSkillMdSkeleton() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", "v1 初版");
 
         assertThat(vo.getName()).isEqualTo("weather");
         assertThat(vo.getStatus()).isEqualTo("ACTIVE");
@@ -487,23 +487,32 @@ class SkillServiceImplTest {
         assertThat(versions).hasSize(1);
         assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.DRAFT);
         assertThat(versions.get(0).getVersion()).isEqualTo(1L);
+        // 版本描述可选：传入则写入 DRAFT v1（与上传弹窗语义一致）；技能描述只进 skill.description/SKILL.md
+        assertThat(versions.get(0).getDescription()).isEqualTo("v1 初版");
         assertThat(files).hasSize(1);
         assertThat(files.get(0).getFilePath()).isEqualTo("SKILL.md");
         assertThat(files.get(0).getContent()).contains("name: weather").contains("description: 查询天气");
     }
 
     @Test
-    void createSkillOnlineRejectsDuplicateName() {
-        service.createSkillOnline("weather", "查询天气");
+    void createSkillOnlineLeavesVersionDescriptionEmptyWhenOmitted() {
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
-        assertThatThrownBy(() -> service.createSkillOnline("weather", "again"))
+        assertThat(versions.get(0).getDescription()).isNull();
+    }
+
+    @Test
+    void createSkillOnlineRejectsDuplicateName() {
+        service.createSkillOnline("weather", "查询天气", null);
+
+        assertThatThrownBy(() -> service.createSkillOnline("weather", "again", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("already exists");
     }
 
     @Test
     void getSkillEditorReusesExistingDraft() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
         var editor = service.getSkillEditor(vo.getId());
 
@@ -528,7 +537,7 @@ class SkillServiceImplTest {
 
     @Test
     void createSkillFileAddsToDraftAndRejectsDuplicate() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
         service.createSkillFile(vo.getId(), "prompts/guide.md", "# 指南");
 
@@ -540,7 +549,7 @@ class SkillServiceImplTest {
 
     @Test
     void updateSkillFileChangesContentAndRejectsMissing() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
         service.updateSkillFile(vo.getId(), "SKILL.md", "---\nname: weather\ndescription: 查询天气\n---\n新内容");
 
@@ -553,7 +562,7 @@ class SkillServiceImplTest {
 
     @Test
     void savingSkillMdSyncsDescriptionToEntity() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
         service.updateSkillFile(vo.getId(), "SKILL.md",
                 "---\nname: weather\ndescription: 新的描述\n---\n正文");
@@ -563,7 +572,7 @@ class SkillServiceImplTest {
 
     @Test
     void generateSkillMdDelegatesToAiGenerator() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
         when(skillAiGenerator.generateSkillMd("weather", "查询 5 天天气预报", 1L))
                 .thenReturn("---\nname: weather\ndescription: 查询 5 天天气预报\n---\n正文");
 
@@ -574,7 +583,7 @@ class SkillServiceImplTest {
 
     @Test
     void optimizeSkillFileReadsDraftFileAndPassesContext() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
         service.createSkillFile(vo.getId(), "prompts/guide.md", "# 指南");
         when(skillAiGenerator.optimizeFile(eq("prompts/guide.md"), eq("# 指南"), eq("更简洁"),
                 eq("中文"), eq("weather"), eq(1L)))
@@ -587,7 +596,7 @@ class SkillServiceImplTest {
 
     @Test
     void optimizeSkillFileRejectsMissingFile() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
         assertThatThrownBy(() -> service.optimizeSkillFile(vo.getId(), 1L, "prompts/nope.md", "x", null))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -596,7 +605,7 @@ class SkillServiceImplTest {
 
     @Test
     void deleteSkillFileRemovesFileButProtectsSkillMd() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
         service.createSkillFile(vo.getId(), "prompts/guide.md", "# 指南");
 
         assertThatThrownBy(() -> service.deleteSkillFile(vo.getId(), "SKILL.md"))
@@ -610,7 +619,7 @@ class SkillServiceImplTest {
 
     @Test
     void fileOpsRejectPathTraversalAndMissingArgs() {
-        var vo = service.createSkillOnline("weather", "查询天气");
+        var vo = service.createSkillOnline("weather", "查询天气", null);
 
         assertThatThrownBy(() -> service.createSkillFile(vo.getId(), "../evil.md", "x"))
                 .isInstanceOf(IllegalArgumentException.class)

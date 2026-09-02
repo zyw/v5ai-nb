@@ -130,7 +130,7 @@ public class SkillServiceImpl implements ISkillService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SkillVo createSkillOnline(String name, String description) {
+    public SkillVo createSkillOnline(String name, String description, String versionDescription) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("skill name is required");
         }
@@ -150,7 +150,7 @@ public class SkillServiceImpl implements ISkillService {
         skill.setDescription(description.trim());
         skill.setStatus(SkillStatus.ACTIVE);
         skillMapper.insert(skill);
-        var version = newDraftVersion(skill.getId());
+        var version = newDraftVersion(skill.getId(), trimToNull(versionDescription));
         var file = new SkillFile();
         file.setSkillId(skill.getId());
         file.setVersionId(version.getId());
@@ -477,7 +477,7 @@ public class SkillServiceImpl implements ISkillService {
         if (draft.isPresent()) {
             return draft.get();
         }
-        var version = newDraftVersion(skill.getId());
+        var version = newDraftVersion(skill.getId(), null);
         if (skill.getCurrentVersionId() != null) {
             versions.stream()
                     .filter(v -> v.getId().equals(skill.getCurrentVersionId()))
@@ -496,13 +496,21 @@ public class SkillServiceImpl implements ISkillService {
         return version;
     }
 
-    private SkillVersion newDraftVersion(Long skillId) {
+    private SkillVersion newDraftVersion(Long skillId, String description) {
         var version = new SkillVersion();
         version.setSkillId(skillId);
         version.setVersion(versionMapper.nextVersion(skillId));
         version.setStatus(SkillVersionStatus.DRAFT);
+        version.setDescription(description);
         versionMapper.insert(version);
         return version;
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private SkillFile requireDraftFile(SkillVersion version, String path) {

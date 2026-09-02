@@ -58,7 +58,7 @@ const statusOptions = [
 ]
 
 const showCreateModal = ref(false)
-const createForm = reactive({ name: '', description: '' })
+const createForm = reactive({ name: '', description: '', versionDescription: '' })
 const creating = ref(false)
 const showUploadModal = ref(false)
 const showVersionsModal = ref(false)
@@ -181,11 +181,17 @@ async function handleCreateOnline() {
   }
   creating.value = true
   try {
-    const created = await createSkillOnline(adminToken.value, name, createForm.description)
+    const created = await createSkillOnline(
+      adminToken.value,
+      name,
+      createForm.description,
+      createForm.versionDescription.trim() || undefined
+    )
     message.success(`Skill「${created.name}」已创建，请编辑文件后发布`)
     showCreateModal.value = false
     createForm.name = ''
     createForm.description = ''
+    createForm.versionDescription = ''
     await router.push({ name: 'skill-editor', params: { id: created.id } })
   } catch (e) {
     message.error(e instanceof Error ? e.message : '创建失败')
@@ -396,7 +402,7 @@ onMounted(reload)
       v-model:show="showCreateModal"
       preset="card"
       title="在线新建 Skill"
-      style="width: 480px"
+      style="width: 50%"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
@@ -408,6 +414,9 @@ onMounted(reload)
         </n-form-item>
         <n-form-item label="Skill 描述">
           <n-input v-model:value="createForm.description" type="textarea" :rows="3" placeholder="技能用途描述" />
+        </n-form-item>
+        <n-form-item label="版本描述（可选）">
+          <n-input v-model:value="createForm.versionDescription" type="textarea" :rows="3" placeholder="如 v1 初版（写入该草稿版本的版本描述）" />
         </n-form-item>
       </n-form>
       <template #footer>
@@ -435,8 +444,8 @@ onMounted(reload)
             <n-button secondary>选择文件</n-button>
           </n-upload>
         </n-form-item>
-        <n-form-item label="Skill 描述">
-          <n-input v-model:value="uploadForm.description" type="textarea" :rows="3" placeholder="技能用途描述" />
+        <n-form-item label="版本描述（可选）">
+          <n-input v-model:value="uploadForm.description" type="textarea" :rows="3" placeholder="如 v1 支持天气查询（可选）" />
         </n-form-item>
       </n-form>
       <template #footer>

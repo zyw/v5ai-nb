@@ -1354,10 +1354,15 @@ export interface SkillEditorResponse {
   files: SkillFileResponse[]
 }
 
-export function createSkillOnline(adminToken: string, name: string, description: string): Promise<SkillResponse> {
+export function createSkillOnline(
+  adminToken: string,
+  name: string,
+  description: string,
+  versionDescription?: string
+): Promise<SkillResponse> {
   return requestJson<SkillResponse>('/api/admin/skills/online', {
     method: 'POST',
-    body: JSON.stringify({ name, description })
+    body: JSON.stringify({ name, description, versionDescription })
   }, adminToken)
 }
 

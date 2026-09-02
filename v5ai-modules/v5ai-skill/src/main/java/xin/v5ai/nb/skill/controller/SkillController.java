@@ -54,7 +54,7 @@ public class SkillController extends BaseController {
         if (request == null) {
             throw new IllegalArgumentException("request body is required");
         }
-        return R.ok(skillService.createSkillOnline(request.name(), request.description()));
+        return R.ok(skillService.createSkillOnline(request.name(), request.description(), request.versionDescription()));
     }
 
     @GetMapping("/{id}/editor")

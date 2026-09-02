@@ -18,7 +18,7 @@ import {
   useMessage,
   type TreeOption
 } from 'naive-ui'
-import { ArrowLeft, FilePlus2, FolderOpen, Save, Sparkles, Trash2, Wand2 } from 'lucide-vue-next'
+  import { ArrowLeft, FilePlus2, FolderOpen, Save, Sparkles, Trash2, Wand2,CircleQuestionMark } from 'lucide-vue-next'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MonacoTextView from '../components/MonacoTextView.vue'
 import {
@@ -344,6 +344,14 @@ function buildTree(paths: string[]): TreeOption[] {
           <template #icon><n-icon :component="ArrowLeft" /></template>
         </n-button>
         <span class="title-text">{{ editorData?.skill.name ?? 'Skill 编辑器' }}</span>
+        <n-popover trigger="hover">
+          <template #trigger>
+            <n-icon :component="CircleQuestionMark" />
+          </template>
+          <n-alert v-if="editorData" type="info" :bordered="false" class="publish-hint">
+            编辑内容保存到草稿版本，发布请在 Skill 管理的「版本」中操作
+          </n-alert>
+        </n-popover>
         <n-tag v-if="editorData" size="small" type="warning">v{{ editorData.version }} 草稿</n-tag>
         <span v-if="editorData?.skill.description" class="desc">{{ editorData.skill.description }}</span>
       </div>
@@ -363,7 +371,7 @@ function buildTree(paths: string[]): TreeOption[] {
           </n-button>
           <n-button
             size="small"
-            type="primary"
+            type="info"
             secondary
             :disabled="!currentPath || generating || optimizing"
             :loading="optimizing"
@@ -373,9 +381,6 @@ function buildTree(paths: string[]): TreeOption[] {
             AI优化
           </n-button>
         </n-space>
-        <n-alert v-if="editorData" type="info" :bordered="false" class="publish-hint">
-          编辑内容保存到草稿版本，发布请在 Skill 管理的「版本」中操作
-        </n-alert>
       </div>
     </div>
 
