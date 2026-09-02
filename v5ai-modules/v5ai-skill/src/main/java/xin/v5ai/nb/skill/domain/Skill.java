@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
+import xin.v5ai.nb.skill.domain.enums.SkillStatus;
 
 /**
  * <p>
@@ -40,7 +41,7 @@ public class Skill extends BaseEntity {
     /**
      * 启用状态（ACTIVE / DISABLED）
      */
-    private String status;
+    private SkillStatus status;
 
     /**
      * 当前生效（注入运行时）的已发布版本 ID

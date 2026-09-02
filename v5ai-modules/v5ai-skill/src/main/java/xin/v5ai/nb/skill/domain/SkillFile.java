@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 
 /**
@@ -22,7 +24,10 @@ import java.time.OffsetDateTime;
 @Setter
 @ToString
 @TableName("v5ai_skill_file")
-public class SkillFile {
+public class SkillFile implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;

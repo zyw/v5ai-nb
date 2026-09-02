@@ -23,7 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SkillAiGenerator {
 
-    @Value("${skill.ai.timeout-seconds:90}")
+    @Value("${v5ai.skill.ai.timeout-seconds:90}")
     private long timeoutSeconds;
 
     private final ModelChatClient modelChatClient;

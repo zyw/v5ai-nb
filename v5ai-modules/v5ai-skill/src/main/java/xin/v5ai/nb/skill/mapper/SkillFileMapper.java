@@ -1,8 +1,9 @@
 package xin.v5ai.nb.skill.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
+import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
 import xin.v5ai.nb.skill.domain.SkillFile;
+import xin.v5ai.nb.skill.domain.vo.SkillFileVo;
 
 /**
  * <p>
@@ -13,5 +14,5 @@ import xin.v5ai.nb.skill.domain.SkillFile;
  * @since 2026-08-22
  */
 @Mapper
-public interface SkillFileMapper extends BaseMapper<SkillFile> {
+public interface SkillFileMapper extends BaseMapperPlus<SkillFile, SkillFileVo> {
 }

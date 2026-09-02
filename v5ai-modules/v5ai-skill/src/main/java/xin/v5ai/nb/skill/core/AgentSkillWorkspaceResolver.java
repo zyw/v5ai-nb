@@ -3,12 +3,13 @@ package xin.v5ai.nb.skill.core;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
-import xin.v5ai.nb.common.agentscope.core.service.AgentSkillBindingService;
-import xin.v5ai.nb.common.agentscope.core.service.SkillFileService;
-import xin.v5ai.nb.common.agentscope.core.service.SkillService;
+import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
+import xin.v5ai.nb.skill.domain.enums.SkillStatus;
+import xin.v5ai.nb.skill.service.IAgentSkillBindingService;
+import xin.v5ai.nb.skill.service.ISkillFileService;
+import xin.v5ai.nb.skill.service.ISkillService;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,9 +24,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AgentSkillWorkspaceResolver implements SkillWorkspaceResolver {
 
-    private final AgentSkillBindingService bindingService;
-    private final SkillService skillService;
-    private final SkillFileService fileService;
+    private final IAgentSkillBindingService bindingService;
+    private final ISkillService skillService;
+    private final ISkillFileService fileService;
 
     @Override
     public List<ResolvedSkill> resolveSkills(Agent agent) {
@@ -41,8 +42,8 @@ public class AgentSkillWorkspaceResolver implements SkillWorkspaceResolver {
     }
 
     private void resolveOne(Agent agent, Long skillId, List<ResolvedSkill> resolved) {
-        var skill = skillService.selectById(skillId);
-        if (skill == null || !"ACTIVE".equals(skill.getStatus()) || skill.getCurrentVersionId() == null) {
+        var skill = skillService.getSkill(skillId);
+        if (skill == null || !SkillStatus.ACTIVE.name().equals(skill.getStatus()) || skill.getCurrentVersionId() == null) {
             log.debug("skill {} missing/disabled/unpublished, skipped for app {}", skillId, agent.agentKey());
             return;
         }

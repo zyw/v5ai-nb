@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.skill.core.SkillAiGenerator;
 import xin.v5ai.nb.skill.core.SkillPackageParser;
+import xin.v5ai.nb.skill.domain.enums.SkillStatus;
+import xin.v5ai.nb.skill.domain.enums.SkillVersionStatus;
 import xin.v5ai.nb.skill.domain.AgentSkillBinding;
 import xin.v5ai.nb.skill.domain.Skill;
 import xin.v5ai.nb.skill.domain.SkillFile;
@@ -90,7 +92,7 @@ class SkillServiceImplTest {
             List<Object> values = orderedWrapperParams(inv.getArgument(0));
             Long skillId = (Long) values.get(0);
             return versions.stream()
-                    .filter(v -> v.getSkillId().equals(skillId) && "DRAFT".equals(v.getStatus()))
+                    .filter(v -> v.getSkillId().equals(skillId) && SkillVersionStatus.DRAFT.equals(v.getStatus()))
                     .max(Comparator.comparing(SkillVersion::getVersion))
                     .orElse(null);
         });
@@ -226,7 +228,7 @@ class SkillServiceImplTest {
         assertThat(vo.getStatus()).isEqualTo("ACTIVE");
         assertThat(skills).hasSize(1);
         assertThat(versions).hasSize(1);
-        assertThat(versions.get(0).getStatus()).isEqualTo("DRAFT");
+        assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.DRAFT);
         assertThat(versions.get(0).getVersion()).isEqualTo(1L);
         assertThat(files).extracting(SkillFile::getFilePath).contains("SKILL.md");
     }
@@ -238,7 +240,7 @@ class SkillServiceImplTest {
 
         var published = service.publishVersion(vo.getId(), versionId);
 
-        assertThat(versions.get(0).getStatus()).isEqualTo("PUBLISHED");
+        assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.PUBLISHED);
         assertThat(versions.get(0).getPublishedAt()).isNotNull();
         assertThat(published.getCurrentVersion()).isEqualTo(1L);
     }
@@ -251,7 +253,7 @@ class SkillServiceImplTest {
 
         assertThatThrownBy(() -> service.publishVersion(vo.getId(), versionId))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("only draft versions can be published");
+                .hasMessageContaining("only draft or offline versions can be published");
     }
 
     @Test
@@ -316,7 +318,7 @@ class SkillServiceImplTest {
         // 下线当前版本后可禁用
         service.offlineVersion(vo.getId(), versions.get(0).getId());
         assertThat(service.disableSkill(vo.getId())).isTrue();
-        assertThat(skills.get(0).getStatus()).isEqualTo("DISABLED");
+        assertThat(skills.get(0).getStatus()).isEqualTo(SkillStatus.DISABLED);
     }
 
     @Test
@@ -329,7 +331,7 @@ class SkillServiceImplTest {
 
         assertThat(result.getCurrentVersionId()).isNull();
         assertThat(service.getSkill(vo.getId()).getCurrentVersion()).isNull();
-        assertThat(versions.get(0).getStatus()).isEqualTo("DRAFT");
+        assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.OFFLINE);
     }
 
     @Test
@@ -341,7 +343,7 @@ class SkillServiceImplTest {
 
         service.offlineVersion(vo.getId(), versions.get(0).getId());
 
-        assertThat(versions.get(0).getStatus()).isEqualTo("DRAFT");
+        assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.OFFLINE);
         assertThat(service.getSkill(vo.getId()).getCurrentVersionId()).isEqualTo(versions.get(1).getId());
     }
 
@@ -352,6 +354,34 @@ class SkillServiceImplTest {
         assertThatThrownBy(() -> service.offlineVersion(vo.getId(), versions.get(0).getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("only published versions");
+    }
+
+    @Test
+    void disableStillRejectedWhileLegacyPublishedVersionExists() {
+        var vo = service.uploadSkill(packageBytes("weather"), "v1");
+        service.publishVersion(vo.getId(), versions.get(0).getId());
+        service.uploadSkill(packageBytes("weather"), "v2");
+        service.publishVersion(vo.getId(), versions.get(1).getId());
+        // 下线当前版本 v2：current 指针清空，但 v1 仍是 PUBLISHED
+        service.offlineVersion(vo.getId(), versions.get(1).getId());
+        assertThat(service.getSkill(vo.getId()).getCurrentVersionId()).isNull();
+
+        assertThatThrownBy(() -> service.disableSkill(vo.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be disabled");
+    }
+
+    @Test
+    void offlineVersionCanBePublishedAgain() {
+        var vo = service.uploadSkill(packageBytes("weather"), "v1");
+        service.publishVersion(vo.getId(), versions.get(0).getId());
+        service.offlineVersion(vo.getId(), versions.get(0).getId());
+        assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.OFFLINE);
+
+        var republished = service.publishVersion(vo.getId(), versions.get(0).getId());
+
+        assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.PUBLISHED);
+        assertThat(republished.getCurrentVersion()).isEqualTo(1L);
     }
 
     @Test
@@ -417,7 +447,7 @@ class SkillServiceImplTest {
         assertThat(vo.getStatus()).isEqualTo("ACTIVE");
         assertThat(skills).hasSize(1);
         assertThat(versions).hasSize(1);
-        assertThat(versions.get(0).getStatus()).isEqualTo("DRAFT");
+        assertThat(versions.get(0).getStatus()).isEqualTo(SkillVersionStatus.DRAFT);
         assertThat(versions.get(0).getVersion()).isEqualTo(1L);
         assertThat(files).hasSize(1);
         assertThat(files.get(0).getFilePath()).isEqualTo("SKILL.md");
@@ -441,7 +471,7 @@ class SkillServiceImplTest {
 
         assertThat(editor.versionId()).isEqualTo(versions.get(0).getId());
         assertThat(editor.version()).isEqualTo(1L);
-        assertThat(editor.files()).extracting(SkillFileVo::filePath).containsExactly("SKILL.md");
+        assertThat(editor.files()).extracting(SkillFileVo::getFilePath).containsExactly("SKILL.md");
         assertThat(versions).hasSize(1); // 复用已有 DRAFT，不新建
     }
 
@@ -453,9 +483,9 @@ class SkillServiceImplTest {
         var editor = service.getSkillEditor(vo.getId());
 
         assertThat(versions).hasSize(2);
-        assertThat(versions.get(1).getStatus()).isEqualTo("DRAFT");
+        assertThat(versions.get(1).getStatus()).isEqualTo(SkillVersionStatus.DRAFT);
         assertThat(editor.version()).isEqualTo(2L);
-        assertThat(editor.files()).extracting(SkillFileVo::filePath).containsOnly("SKILL.md");
+        assertThat(editor.files()).extracting(SkillFileVo::getFilePath).containsOnly("SKILL.md");
     }
 
     @Test

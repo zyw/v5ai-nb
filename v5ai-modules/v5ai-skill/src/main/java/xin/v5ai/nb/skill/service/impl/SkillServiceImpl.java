@@ -15,12 +15,18 @@ import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.skill.core.SkillAiGenerator;
 import xin.v5ai.nb.skill.core.SkillFrontmatterParser;
 import xin.v5ai.nb.skill.core.SkillPackageParser;
+import xin.v5ai.nb.skill.core.SkillVersionLifecycle;
 import xin.v5ai.nb.skill.domain.AgentSkillBinding;
 import xin.v5ai.nb.skill.domain.Skill;
 import xin.v5ai.nb.skill.domain.SkillFile;
 import xin.v5ai.nb.skill.domain.SkillVersion;
 import xin.v5ai.nb.skill.domain.bo.SkillBo;
-import xin.v5ai.nb.skill.domain.vo.*;
+import xin.v5ai.nb.skill.domain.enums.SkillStatus;
+import xin.v5ai.nb.skill.domain.enums.SkillVersionStatus;
+import xin.v5ai.nb.skill.domain.vo.SkillEditorVo;
+import xin.v5ai.nb.skill.domain.vo.SkillUsageVo;
+import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
+import xin.v5ai.nb.skill.domain.vo.SkillVo;
 import xin.v5ai.nb.skill.mapper.AgentSkillBindingMapper;
 import xin.v5ai.nb.skill.mapper.SkillFileMapper;
 import xin.v5ai.nb.skill.mapper.SkillMapper;
@@ -44,10 +50,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SkillServiceImpl implements ISkillService {
 
-    private static final String STATUS_ACTIVE = "ACTIVE";
-    private static final String STATUS_DISABLED = "DISABLED";
-    private static final String VERSION_DRAFT = "DRAFT";
-    private static final String VERSION_PUBLISHED = "PUBLISHED";
     private static final String SKILL_MD = "SKILL.md";
 
     private final SkillMapper skillMapper;
@@ -62,19 +64,19 @@ public class SkillServiceImpl implements ISkillService {
         LambdaQueryWrapper<Skill> lqw = buildQueryWrapper(bo);
         Page<Skill> page = pageQuery.build();
         List<Skill> list = skillMapper.selectList(page, lqw);
-        List<SkillVo> vos = list.stream().map(this::toVo).toList();
+        List<SkillVo> vos = toVos(list);
         return PageResult.build(vos, page.getTotal());
     }
 
     @Override
     public List<SkillVo> queryList(SkillBo bo) {
-        return skillMapper.selectList(buildQueryWrapper(bo)).stream().map(this::toVo).toList();
+        return toVos(skillMapper.selectList(buildQueryWrapper(bo)));
     }
 
     @Override
     public List<OptionDTO> queryOptionList() {
         List<Skill> skills = skillMapper.selectList(QueryBuilder.lambda(Skill.class)
-                .eq(Skill::getStatus, STATUS_ACTIVE)
+                .eq(Skill::getStatus, SkillStatus.ACTIVE)
                 .isNotNull(Skill::getCurrentVersionId)
                 .orderByAsc(Skill::getId)
                 .build());
@@ -95,21 +97,21 @@ public class SkillServiceImpl implements ISkillService {
         var skillPackage = packageParser.parse(packageBytes);
         var skill = skillMapper.selectOne(new LambdaQueryWrapper<Skill>()
                 .eq(Skill::getName, skillPackage.name()));
-        if (skill != null && !STATUS_ACTIVE.equals(skill.getStatus())) {
+        if (skill != null && skill.getStatus() != SkillStatus.ACTIVE) {
             throw new IllegalArgumentException("skill is disabled and cannot accept new versions: " + skill.getName());
         }
         if (skill == null) {
             skill = new Skill();
             skill.setName(skillPackage.name());
             skill.setDescription(skillPackage.description());
-            skill.setStatus(STATUS_ACTIVE);
+            skill.setStatus(SkillStatus.ACTIVE);
             skillMapper.insert(skill);
         }
         long nextVersion = versionMapper.nextVersion(skill.getId());
         var version = new SkillVersion();
         version.setSkillId(skill.getId());
         version.setVersion(nextVersion);
-        version.setStatus(VERSION_DRAFT);
+        version.setStatus(SkillVersionStatus.DRAFT);
         version.setDescription(description);
         versionMapper.insert(version);
         final var savedSkill = skill;
@@ -144,7 +146,7 @@ public class SkillServiceImpl implements ISkillService {
         var skill = new Skill();
         skill.setName(name);
         skill.setDescription(description.trim());
-        skill.setStatus(STATUS_ACTIVE);
+        skill.setStatus(SkillStatus.ACTIVE);
         skillMapper.insert(skill);
         var version = newDraftVersion(skill.getId());
         var file = new SkillFile();
@@ -161,13 +163,10 @@ public class SkillServiceImpl implements ISkillService {
     public SkillEditorVo getSkillEditor(Long skillId) {
         var skill = requireSkill(skillId);
         var version = ensureDraftVersion(skill);
-        var files = fileMapper.selectList(QueryBuilder.lambda(SkillFile.class)
+        var files = fileMapper.selectVoList(QueryBuilder.lambda(SkillFile.class)
                         .eq(SkillFile::getVersionId, version.getId())
                         .orderByAsc(SkillFile::getFilePath)
-                        .build())
-                .stream()
-                .map(file -> new SkillFileVo(file.getFilePath(), file.getContent()))
-                .toList();
+                        .build());
         return new SkillEditorVo(toVo(skill), version.getId(), version.getVersion(), files);
     }
 
@@ -261,14 +260,14 @@ public class SkillServiceImpl implements ISkillService {
     @Override
     public boolean disableSkill(Long id) {
         var skill = requireSkill(id);
-        if (skill.getCurrentVersionId() != null) {
+        if (!SkillVersionLifecycle.canDisableSkill(versionsOf(skill))) {
             throw new IllegalArgumentException(
                     "skill has a published version and cannot be disabled, take versions offline first: "
                             + skill.getName());
         }
         var update = new Skill();
         update.setId(id);
-        update.setStatus(STATUS_DISABLED);
+        update.setStatus(SkillStatus.DISABLED);
         return skillMapper.updateById(update) > 0;
     }
 
@@ -277,7 +276,7 @@ public class SkillServiceImpl implements ISkillService {
         requireSkill(id);
         var update = new Skill();
         update.setId(id);
-        update.setStatus(STATUS_ACTIVE);
+        update.setStatus(SkillStatus.ACTIVE);
         return skillMapper.updateById(update) > 0;
     }
 
@@ -285,7 +284,7 @@ public class SkillServiceImpl implements ISkillService {
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteSkill(Long id) {
         var skill = requireSkill(id);
-        if (skill.getCurrentVersionId() != null) {
+        if (!SkillVersionLifecycle.canDeleteSkill(versionsOf(skill))) {
             throw new IllegalArgumentException(
                     "skill has a published version and cannot be deleted, take versions offline first: "
                             + skill.getName());
@@ -301,7 +300,7 @@ public class SkillServiceImpl implements ISkillService {
     public boolean deleteSkillVersion(Long skillId, Long versionId) {
         requireSkill(skillId);
         var version = requireVersion(skillId, versionId);
-        if (VERSION_PUBLISHED.equals(version.getStatus())) {
+        if (!SkillVersionLifecycle.canDeleteVersion(version.getStatus())) {
             throw new IllegalArgumentException("published versions cannot be deleted: " + versionId);
         }
         fileMapper.delete(new LambdaQueryWrapper<SkillFile>().eq(SkillFile::getVersionId, versionId));
@@ -311,13 +310,10 @@ public class SkillServiceImpl implements ISkillService {
     @Override
     public List<SkillVersionVo> listVersions(Long skillId) {
         requireSkill(skillId);
-        return versionMapper.selectList(QueryBuilder.lambda(SkillVersion.class)
+        return versionMapper.selectVoList(QueryBuilder.lambda(SkillVersion.class)
                         .eq(SkillVersion::getSkillId, skillId)
                         .orderByDesc(SkillVersion::getVersion)
-                        .build())
-                .stream()
-                .map(this::toVersionVo)
-                .toList();
+                        .build());
     }
 
     @Override
@@ -325,12 +321,12 @@ public class SkillServiceImpl implements ISkillService {
     public SkillVo publishVersion(Long skillId, Long versionId) {
         var skill = requireActiveSkill(skillId);
         var version = requireVersion(skillId, versionId);
-        if (!VERSION_DRAFT.equals(version.getStatus())) {
-            throw new IllegalArgumentException("only draft versions can be published: " + versionId);
+        if (!SkillVersionLifecycle.canPublish(version.getStatus())) {
+            throw new IllegalArgumentException("only draft or offline versions can be published: " + versionId);
         }
         var versionUpdate = new SkillVersion();
         versionUpdate.setId(version.getId());
-        versionUpdate.setStatus(VERSION_PUBLISHED);
+        versionUpdate.setStatus(SkillVersionStatus.PUBLISHED);
         versionUpdate.setPublishedAt(OffsetDateTime.now());
         versionMapper.updateById(versionUpdate);
 
@@ -347,12 +343,12 @@ public class SkillServiceImpl implements ISkillService {
     public SkillVo offlineVersion(Long skillId, Long versionId) {
         var skill = requireSkill(skillId);
         var version = requireVersion(skillId, versionId);
-        if (!VERSION_PUBLISHED.equals(version.getStatus())) {
+        if (!SkillVersionLifecycle.canOffline(version.getStatus())) {
             throw new IllegalArgumentException("only published versions can be taken offline: " + versionId);
         }
         var versionUpdate = new SkillVersion();
         versionUpdate.setId(version.getId());
-        versionUpdate.setStatus(VERSION_DRAFT);
+        versionUpdate.setStatus(SkillVersionStatus.OFFLINE);
         versionMapper.updateById(versionUpdate);
         if (version.getId().equals(skill.getCurrentVersionId())) {
             // updateById 忽略 null 字段，清除当前版本指针需显式 set
@@ -377,7 +373,7 @@ public class SkillServiceImpl implements ISkillService {
     public SkillVo rollback(Long skillId, Long versionId) {
         var skill = requireActiveSkill(skillId);
         var version = requireVersion(skillId, versionId);
-        if (!VERSION_PUBLISHED.equals(version.getStatus())) {
+        if (version.getStatus() != SkillVersionStatus.PUBLISHED) {
             throw new IllegalArgumentException("only published versions can be rolled back to: " + versionId);
         }
         var skillUpdate = new Skill();
@@ -440,15 +436,15 @@ public class SkillServiceImpl implements ISkillService {
     private Skill requireSkill(Long id) {
         var skill = id == null ? null : skillMapper.selectById(id);
         if (skill == null) {
-            throw new IllegalArgumentException("skill does not exist: " + id);
+            throw new ServiceException("skill does not exist: " + id);
         }
         return skill;
     }
 
     private Skill requireActiveSkill(Long id) {
         var skill = requireSkill(id);
-        if (!STATUS_ACTIVE.equals(skill.getStatus())) {
-            throw new IllegalArgumentException("skill is disabled: " + skill.getName());
+        if (skill.getStatus() != SkillStatus.ACTIVE) {
+            throw new ServiceException("skill is disabled: " + skill.getName());
         }
         return skill;
     }
@@ -462,33 +458,38 @@ public class SkillServiceImpl implements ISkillService {
     }
 
     /**
-     * 获取（或新建）该 Skill 的当前 DRAFT 版本：已有 DRAFT 直接复用；
-     * 没有则新建一个 DRAFT，并从当前已发布版本拷贝文件作为编辑起点。
+     * 该 Skill 的全部版本（供生命周期规则裁决与编辑器草稿选择）。
+     */
+    private List<SkillVersion> versionsOf(Skill skill) {
+        return versionMapper.selectList(new LambdaQueryWrapper<SkillVersion>()
+                .eq(SkillVersion::getSkillId, skill.getId()));
+    }
+
+    /**
+     * 获取（或新建）该 Skill 的可编辑 DRAFT 版本：最新版本号的 DRAFT 直接复用（规则见
+     * {@link SkillVersionLifecycle}）；没有则新建一个 DRAFT，并从当前生效版本拷贝文件作为编辑起点。
      */
     private SkillVersion ensureDraftVersion(Skill skill) {
-        var draft = versionMapper.selectOne(new LambdaQueryWrapper<SkillVersion>()
-                .eq(SkillVersion::getSkillId, skill.getId())
-                .eq(SkillVersion::getStatus, VERSION_DRAFT)
-                .orderByDesc(SkillVersion::getVersion)
-                .last("LIMIT 1"));
-        if (draft != null) {
-            return draft;
+        List<SkillVersion> versions = versionsOf(skill);
+        var draft = SkillVersionLifecycle.latestDraft(versions);
+        if (draft.isPresent()) {
+            return draft.get();
         }
         var version = newDraftVersion(skill.getId());
         if (skill.getCurrentVersionId() != null) {
-            var current = versionMapper.selectById(skill.getCurrentVersionId());
-            if (current != null) {
-                fileMapper.selectList(new LambdaQueryWrapper<SkillFile>()
-                                .eq(SkillFile::getVersionId, current.getId()))
-                        .forEach(source -> {
-                            var file = new SkillFile();
-                            file.setSkillId(source.getSkillId());
-                            file.setVersionId(version.getId());
-                            file.setFilePath(source.getFilePath());
-                            file.setContent(source.getContent());
-                            fileMapper.insert(file);
-                        });
-            }
+            versions.stream()
+                    .filter(v -> v.getId().equals(skill.getCurrentVersionId()))
+                    .findFirst()
+                    .ifPresent(current -> fileMapper.selectList(new LambdaQueryWrapper<SkillFile>()
+                                    .eq(SkillFile::getVersionId, current.getId()))
+                            .forEach(source -> {
+                                var file = new SkillFile();
+                                file.setSkillId(source.getSkillId());
+                                file.setVersionId(version.getId());
+                                file.setFilePath(source.getFilePath());
+                                file.setContent(source.getContent());
+                                fileMapper.insert(file);
+                            }));
         }
         return version;
     }
@@ -497,7 +498,7 @@ public class SkillServiceImpl implements ISkillService {
         var version = new SkillVersion();
         version.setSkillId(skillId);
         version.setVersion(versionMapper.nextVersion(skillId));
-        version.setStatus(VERSION_DRAFT);
+        version.setStatus(SkillVersionStatus.DRAFT);
         versionMapper.insert(version);
         return version;
     }
@@ -558,24 +559,47 @@ public class SkillServiceImpl implements ISkillService {
     }
 
     /**
-     * 实体转 VO，并填充当前生效版本号。
+     * 批量实体转 VO：一次 selectBatchIds 取全部当前版本号（避免分页 N+1）。
+     */
+    private List<SkillVo> toVos(List<Skill> skills) {
+        if (skills == null || skills.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Long> versionNumberById = versionNumbersById(skills.stream()
+                .map(Skill::getCurrentVersionId)
+                .filter(java.util.Objects::nonNull)
+                .toList());
+        return skills.stream().map(skill -> toVo(skill, versionNumberById)).toList();
+    }
+
+    /**
+     * 单个实体转 VO（低频单查路径，版本号按需单查）。
      */
     private SkillVo toVo(Skill skill) {
+        return toVo(skill, null);
+    }
+
+    private SkillVo toVo(Skill skill, Map<Long, Long> versionNumberById) {
         var vo = new SkillVo();
         vo.setId(skill.getId());
         vo.setName(skill.getName());
         vo.setDescription(skill.getDescription());
-        vo.setStatus(skill.getStatus());
+        vo.setStatus(skill.getStatus().name());
         vo.setCurrentVersionId(skill.getCurrentVersionId());
         vo.setCreatedAt(skill.getCreatedAt());
         vo.setUpdatedAt(skill.getUpdatedAt());
         if (skill.getCurrentVersionId() != null) {
-            var current = versionMapper.selectById(skill.getCurrentVersionId());
-            if (current != null) {
-                vo.setCurrentVersion(current.getVersion());
-            }
+            Long versionNumber = versionNumberById == null
+                    ? fetchVersionNumber(skill.getCurrentVersionId())
+                    : versionNumberById.get(skill.getCurrentVersionId());
+            vo.setCurrentVersion(versionNumber);
         }
         return vo;
+    }
+
+    private Long fetchVersionNumber(Long versionId) {
+        var current = versionMapper.selectById(versionId);
+        return current == null ? null : current.getVersion();
     }
 
     private SkillVersionVo toVersionVo(SkillVersion version) {
@@ -583,7 +607,7 @@ public class SkillServiceImpl implements ISkillService {
         vo.setId(version.getId());
         vo.setSkillId(version.getSkillId());
         vo.setVersion(version.getVersion());
-        vo.setStatus(version.getStatus());
+        vo.setStatus(version.getStatus().name());
         vo.setDescription(version.getDescription());
         vo.setPublishedAt(version.getPublishedAt());
         vo.setCreatedAt(version.getCreatedAt());

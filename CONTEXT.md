@@ -17,14 +17,14 @@ Skill 的 zip 文件形态（SKILL.md + prompts/ + resources/），通过上传�
 _Avoid_: 技能压缩包（口语）
 
 **版本（Version）**:
-Skill 的可发布快照，状态为 DRAFT（草稿，可编辑/可发布）或 PUBLISHED（已发布，运行时注入「当前版本」）。
+Skill 的可发布快照，状态三态：DRAFT（编辑中，唯一可编辑）/ PUBLISHED（已发布，运行时注入「当前版本」）/ OFFLINE（已下线，内容冻结不可编辑，可重新发布或删除）。
 _Avoid_: 草稿版本号、发布版本（口语）
 
 **当前版本（Current Version）**:
 Skill 上指向运行时注入版本的指针；下线当前版本会清除该指针，Skill 随即停止注入、不可再被绑定。
 
 **上线 / 下线**:
-发布（DRAFT → PUBLISHED）与撤下（PUBLISHED → DRAFT）版本的操作；下线当前版本是删除/禁用 Skill 的前置条件。
+发布（DRAFT/OFFLINE → PUBLISHED）与撤下（PUBLISHED → OFFLINE）版本的操作；Skill 存在任何已发布版本时不可禁用/删除，须先全部下线。
 _Avoid_: 回滚（回滚为兼容保留的旧接口，不再作为版本管理主流程）
 
 **AI生成**:

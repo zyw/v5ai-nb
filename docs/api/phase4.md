@@ -71,8 +71,8 @@ DELETE /api/admin/skills/{id}/files?path=prompts/guide.md   # 从 DRAFT 删除�
 ## 版本发布、下线与 Skill 禁用
 
 ```http
-POST /api/admin/skills/{id}/versions/{versionId}/publish    # DRAFT → PUBLISHED，并设为当前版本
-POST /api/admin/skills/{id}/versions/{versionId}/offline    # PUBLISHED → DRAFT；若是当前版本则清除当前版本指针
+POST /api/admin/skills/{id}/versions/{versionId}/publish    # DRAFT/OFFLINE → PUBLISHED，并设为当前版本
+POST /api/admin/skills/{id}/versions/{versionId}/offline    # PUBLISHED → OFFLINE；若是当前版本则清除当前版本指针
 GET  /api/admin/skills/{id}/usage                           # → { count: <绑定该 Skill 的 Agent 数> }
 POST /api/admin/skills/{id}/rollback                        # 兼容保留：把当前版本指针指回旧版本
 Content-Type: application/json
@@ -80,11 +80,11 @@ Content-Type: application/json
 { "versionId": <已发布的旧版本 id> }
 ```
 
-- 上传 → DRAFT；发布 → 成为「当前版本」；下线 → 撤下该版本（状态回 DRAFT，可再次编辑/发布）；
-- **下线当前版本会清除当前版本指针**：运行时停止注入，`/options` 不再可选，此时 Skill 才允许被禁用；
-- **禁用校验**：Skill 存在已发布版本（`current_version_id` 非空）时禁止禁用，需先下线版本；
+- 版本状态三态：`DRAFT`（编辑中，唯一可编辑）/ `PUBLISHED`（已发布，注入「当前版本」）/ `OFFLINE`（已下线，内容冻结不可编辑，可重新发布或删除）；
+- 上传 → DRAFT；发布（DRAFT 首次上线 / OFFLINE 重新上线）→ PUBLISHED 并成为当前版本；下线 → OFFLINE，**若下线的是当前版本会清除当前版本指针**：运行时停止注入，`/options` 不再可选；
+- **禁用/删除校验**：Skill 存在**任何已发布（PUBLISHED）版本**（与是否 current 无关）时禁止禁用/删除，须先全部下线 —— 判定集中在纯规则模块 `SkillVersionLifecycle`（含 `canPublish/canOffline/canDeleteVersion/canDeleteSkill/latestDraft`）；
 - 下线提示：前端先查 `/{id}/usage`，若已被 Agent 绑定（count > 0）提示「有使用，是否下线」，确认后仍可执行；
-- 运行时只注入「当前版本」的文件内容；只能发布 DRAFT 版本、只能下线已发布的版本。
+- 版本状态在实体层为枚举（`domain.enums.SkillVersionStatus`/`SkillStatus`，按 name 存库），VO/前端仍为字符串契约。
 
 ## 删除
 
@@ -93,8 +93,8 @@ DELETE /api/admin/skills/{id}                        # 删除 Skill：级联删�
 DELETE /api/admin/skills/{id}/versions/{versionId}   # 删除某个版本（连同其文件）
 ```
 
-- **Skill 删除**：存在已发布版本（`current_version_id` 非空）时禁止删除，需先下线；删除同步级联清理全部版本、文件与 Agent 绑定，前端二次确认提醒；
-- **版本删除**：已发布（PUBLISHED）版本禁止删除，仅未发布（DRAFT）版本可删除。
+- **Skill 删除**：存在任何已发布（PUBLISHED）版本时禁止删除，需先全部下线；删除同步级联清理全部版本、文件与 Agent 绑定，前端二次确认提醒；
+- **版本删除**：已发布（PUBLISHED）版本禁止删除，DRAFT/OFFLINE 版本可删除（连同文件）。
 
 ## AI 生成 / 优化（编辑器）
 

@@ -19,6 +19,7 @@ const MAP: Record<string, { type: TagType; label: string }> = {
   INACTIVE: { type: 'default', label: '停用' },
   SUSPENDED: { type: 'default', label: '停用' },
   DRAFT: { type: 'info', label: '草稿' },
+  OFFLINE: { type: 'default', label: '已下线' },
   PENDING: { type: 'warning', label: '待处理' },
   PROCESSING: { type: 'info', label: '处理中' },
   RUNNING: { type: 'info', label: '运行中' },

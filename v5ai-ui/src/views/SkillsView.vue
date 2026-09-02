@@ -116,12 +116,12 @@ const versionColumns: DataTableColumns<SkillVersionResponse> = [
     key: 'actions',
     width: 160,
     render: (row) =>
-      row.status === 'DRAFT'
-        ? h(NSpace, { size: 6 }, { default: () => [
+      row.status === 'PUBLISHED'
+        ? h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => handleOffline(row) }, { default: () => '下线' })
+        : h(NSpace, { size: 6 }, { default: () => [
             h(NButton, { size: 'small', type: 'primary', onClick: () => handlePublish(row) }, { default: () => '发布' }),
             h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDeleteVersion(row) }, { default: () => '删除' })
           ] })
-        : h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => handleOffline(row) }, { default: () => '下线' })
   }
 ]
 
@@ -454,7 +454,7 @@ onMounted(reload)
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
-        运行时注入的是「当前版本」；发布新版本会切换当前版本，「下线」可撤下已发布版本（当前版本下线后停止注入，且 Skill 才可被禁用）。
+        运行时注入的是「当前版本」；发布新版本会切换当前版本；「下线」把已发布版本置为已下线（OFFLINE：不再注入、内容冻结，可重新发布或删除）；Skill 存在任何已发布版本时不可禁用或删除。
       </n-alert>
       <n-data-table :columns="versionColumns" :data="versions" :bordered="false" />
     </n-modal>

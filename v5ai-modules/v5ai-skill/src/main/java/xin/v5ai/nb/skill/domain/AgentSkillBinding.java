@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 
 /**
@@ -19,8 +21,10 @@ import java.time.OffsetDateTime;
 @Setter
 @ToString
 @TableName("v5ai_agent_skill")
-public class AgentSkillBinding {
+public class AgentSkillBinding implements Serializable {
 
+    @Serial
+    private static final long serialVersionUID = 1L;
     /**
      * Agent 对外标识
      */

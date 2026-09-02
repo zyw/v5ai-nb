@@ -12,7 +12,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.exception.ModelChatException;
 import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
 import xin.v5ai.nb.common.agentscope.core.factory.config.AgentModelCredentialConfig;
-import xin.v5ai.nb.common.encrypt.utils.CipherUtils;
+import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 import java.time.Duration;
 import java.util.List;
@@ -31,6 +31,7 @@ public class AgentScopeModelChatClient implements ModelChatClient {
     private static final int MESSAGE_MAX_LENGTH = 200;
 
     private final ModelRuntimeConfigGateway runtimeConfigGateway;
+    private final CredentialCipher credentialCipher;
     private final AgentScopeModelFactory modelFactory;
 
     @Override
@@ -80,7 +81,7 @@ public class AgentScopeModelChatClient implements ModelChatClient {
         if (config == null) {
             throw new IllegalArgumentException("model runtime config not found: " + modelId);
         }
-        String plaintext = CipherUtils.decrypt(config.credentialsCiphertext());
+        String plaintext = credentialCipher.decrypt(config.credentialsCiphertext());
         Model model = modelFactory.create(config, plaintext);
         String label = describeTarget(config, plaintext);
         return new ChatContext(model, label);
