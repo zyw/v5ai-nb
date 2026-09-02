@@ -31,8 +31,9 @@ Authorization: Bearer <admin-token>
 
 GET    /api/admin/skills
 GET    /api/admin/skills/options              # 可绑定 Skill 下拉选项（仅 ACTIVE 且有已发布版本）
-DELETE /api/admin/skills/{id}              # 禁用（禁止新上传/新绑定，运行时跳过）
-GET    /api/admin/skills/{id}/versions     # 版本列表（按版本号降序）
+PUT    /api/admin/skills/{id}/disable         # 禁用（有已发布版本时禁止；运行时跳过）
+PUT    /api/admin/skills/{id}/enable          # 启用
+GET    /api/admin/skills/{id}/versions        # 版本列表（按版本号降序）
 ```
 
 `/options` 返回 `[{ value, label: "name (v<currentVersion>)" }]`，仅查 id/name/status/current_version 列，供 Agent 编辑/绑定弹窗按需加载。
@@ -84,6 +85,16 @@ Content-Type: application/json
 - **禁用校验**：Skill 存在已发布版本（`current_version_id` 非空）时禁止禁用，需先下线版本；
 - 下线提示：前端先查 `/{id}/usage`，若已被 Agent 绑定（count > 0）提示「有使用，是否下线」，确认后仍可执行；
 - 运行时只注入「当前版本」的文件内容；只能发布 DRAFT 版本、只能下线已发布的版本。
+
+## 删除
+
+```http
+DELETE /api/admin/skills/{id}                        # 删除 Skill：级联删除其全部版本、文件与 Agent 绑定
+DELETE /api/admin/skills/{id}/versions/{versionId}   # 删除某个版本（连同其文件）
+```
+
+- **Skill 删除**：存在已发布版本（`current_version_id` 非空）时禁止删除，需先下线；删除同步级联清理全部版本、文件与 Agent 绑定，前端二次确认提醒；
+- **版本删除**：已发布（PUBLISHED）版本禁止删除，仅未发布（DRAFT）版本可删除。
 
 ## Agent 绑定
 

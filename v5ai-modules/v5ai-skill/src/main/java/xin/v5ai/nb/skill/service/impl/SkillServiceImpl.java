@@ -247,6 +247,33 @@ public class SkillServiceImpl implements ISkillService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteSkill(Long id) {
+        var skill = requireSkill(id);
+        if (skill.getCurrentVersionId() != null) {
+            throw new IllegalArgumentException(
+                    "skill has a published version and cannot be deleted, take versions offline first: "
+                            + skill.getName());
+        }
+        fileMapper.delete(new LambdaQueryWrapper<SkillFile>().eq(SkillFile::getSkillId, id));
+        versionMapper.delete(new LambdaQueryWrapper<SkillVersion>().eq(SkillVersion::getSkillId, id));
+        bindingMapper.delete(new LambdaQueryWrapper<AgentSkillBinding>().eq(AgentSkillBinding::getSkillId, id));
+        return skillMapper.deleteById(id) > 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteSkillVersion(Long skillId, Long versionId) {
+        requireSkill(skillId);
+        var version = requireVersion(skillId, versionId);
+        if (VERSION_PUBLISHED.equals(version.getStatus())) {
+            throw new IllegalArgumentException("published versions cannot be deleted: " + versionId);
+        }
+        fileMapper.delete(new LambdaQueryWrapper<SkillFile>().eq(SkillFile::getVersionId, versionId));
+        return versionMapper.deleteById(versionId) > 0;
+    }
+
+    @Override
     public List<SkillVersionVo> listVersions(Long skillId) {
         requireSkill(skillId);
         return versionMapper.selectList(QueryBuilder.lambda(SkillVersion.class)

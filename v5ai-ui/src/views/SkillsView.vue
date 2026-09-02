@@ -21,11 +21,13 @@ import {
   type DataTableColumns,
   type UploadFileInfo
 } from 'naive-ui'
-import { FilePlus2, Plus, RefreshCw, Search } from 'lucide-vue-next'
+import { FilePlus2, Plus, RefreshCw, Search, Trash2 } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createSkillOnline,
+  deleteSkill,
+  deleteSkillVersion,
   disableSkill,
   enableSkill,
   getSkillUsage,
@@ -89,11 +91,12 @@ const skillColumns: DataTableColumns<SkillResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 150,
+    width: 210,
     render: (row) =>
       h(NSpace, { size: 6 }, { default: () => [
         h(NButton, { size: 'small', secondary: true, type: 'info', onClick: () => handleShowVersions(row) }, { default: () => '版本' }),
-        h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => handleEdit(row) }, { default: () => '编辑' })
+        h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => handleEdit(row) }, { default: () => '编辑' }),
+        h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDeleteSkill(row) }, { default: () => '删除' })
       ] })
   }
 ]
@@ -111,10 +114,13 @@ const versionColumns: DataTableColumns<SkillVersionResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 100,
+    width: 160,
     render: (row) =>
       row.status === 'DRAFT'
-        ? h(NButton, { size: 'small', type: 'primary', onClick: () => handlePublish(row) }, { default: () => '发布' })
+        ? h(NSpace, { size: 6 }, { default: () => [
+            h(NButton, { size: 'small', type: 'primary', onClick: () => handlePublish(row) }, { default: () => '发布' }),
+            h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDeleteVersion(row) }, { default: () => '删除' })
+          ] })
         : h(NButton, { size: 'small', secondary: true, type: 'warning', onClick: () => handleOffline(row) }, { default: () => '下线' })
   }
 ]
@@ -189,6 +195,48 @@ async function handleCreateOnline() {
 
 function handleEdit(skill: SkillResponse) {
   void router.push({ name: 'skill-editor', params: { id: skill.id } })
+}
+
+function handleDeleteSkill(skill: SkillResponse) {
+  if (skill.currentVersionId != null) {
+    message.warning('该 Skill 有已发布的版本，不能删除；请先在「版本」中下线后再删除')
+    return
+  }
+  dialog.warning({
+    title: '删除确认',
+    content: `确认删除 Skill「${skill.name}」？删除将同步删除其全部版本与文件，且不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteSkill(adminToken.value, skill.id)
+        message.success(`Skill「${skill.name}」已删除`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除失败')
+      }
+    }
+  })
+}
+
+async function handleDeleteVersion(version: SkillVersionResponse) {
+  if (!selectedSkill.value) return
+  dialog.warning({
+    title: '删除确认',
+    content: `确认删除 v${version.version}？该版本及其文件将被一并删除，且不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteSkillVersion(adminToken.value, selectedSkill.value!.id, version.id)
+        message.success(`v${version.version} 已删除`)
+        await reload()
+        await handleShowVersions(selectedSkill.value!)
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除失败')
+      }
+    }
+  })
 }
 
 async function handleUpload() {

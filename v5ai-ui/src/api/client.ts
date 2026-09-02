@@ -1303,6 +1303,14 @@ export function enableSkill(adminToken: string, id: number): Promise<void> {
   return requestJson<void>(`/api/admin/skills/${id}/enable`, { method: 'PUT' }, adminToken)
 }
 
+export function deleteSkill(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/skills/${id}`, { method: 'DELETE' }, adminToken)
+}
+
+export function deleteSkillVersion(adminToken: string, id: number, versionId: number): Promise<void> {
+  return requestJson<void>(`/api/admin/skills/${id}/versions/${versionId}`, { method: 'DELETE' }, adminToken)
+}
+
 export function listSkillVersions(adminToken: string, id: number): Promise<PageResult<SkillVersionResponse>> {
   return requestJson<PageResult<SkillVersionResponse>>(`/api/admin/skills/${id}/versions`, {}, adminToken)
 }

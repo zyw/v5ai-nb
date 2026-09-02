@@ -22,6 +22,7 @@ import xin.v5ai.nb.skill.mapper.SkillVersionMapper;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -162,10 +163,15 @@ class SkillServiceImplTest {
             return 1;
         }).when(fileMapper).updateById(any(SkillFile.class));
         doAnswer(inv -> {
-            List<Object> values = orderedWrapperParams(inv.getArgument(0));
-            Long versionId = (Long) values.get(0);
-            String path = (String) values.get(1);
-            files.removeIf(f -> f.getVersionId().equals(versionId) && f.getFilePath().equals(path));
+            Map<String, Object> cols = wrapperColumns(inv.getArgument(0));
+            if (cols.containsKey("file_path")) {
+                files.removeIf(f -> f.getVersionId().equals(cols.get("version_id"))
+                        && f.getFilePath().equals(cols.get("file_path")));
+            } else if (cols.containsKey("version_id")) {
+                files.removeIf(f -> f.getVersionId().equals(cols.get("version_id")));
+            } else if (cols.containsKey("skill_id")) {
+                files.removeIf(f -> f.getSkillId().equals(cols.get("skill_id")));
+            }
             return 1;
         }).when(fileMapper).delete(any(Wrapper.class));
 
@@ -181,9 +187,28 @@ class SkillServiceImplTest {
             return 1;
         }).when(bindingMapper).insert(any(AgentSkillBinding.class));
         doAnswer(inv -> {
-            bindings.removeIf(b -> b.getAgentKey().equals(inv.getArgument(0, String.class)));
+            Map<String, Object> cols = wrapperColumns(inv.getArgument(0));
+            if (cols.containsKey("agent_key")) {
+                bindings.removeIf(b -> b.getAgentKey().equals(cols.get("agent_key")));
+            } else if (cols.containsKey("skill_id")) {
+                bindings.removeIf(b -> b.getSkillId().equals(cols.get("skill_id")));
+            }
             return 1;
         }).when(bindingMapper).delete(any(Wrapper.class));
+        // 删除版本/技能：按 skill_id 删除版本、按 id 删除实体
+        doAnswer(inv -> {
+            Map<String, Object> cols = wrapperColumns(inv.getArgument(0));
+            versions.removeIf(v -> v.getSkillId().equals(cols.get("skill_id")));
+            return 1;
+        }).when(versionMapper).delete(any(Wrapper.class));
+        doAnswer(inv -> {
+            versions.removeIf(v -> v.getId().equals(inv.getArgument(0)));
+            return 1;
+        }).when(versionMapper).deleteById(anyLong());
+        doAnswer(inv -> {
+            skills.removeIf(s -> s.getId().equals(inv.getArgument(0)));
+            return 1;
+        }).when(skillMapper).deleteById(anyLong());
 
         service = new SkillServiceImpl(skillMapper, versionMapper, fileMapper, bindingMapper, new SkillPackageParser());
     }
@@ -336,6 +361,50 @@ class SkillServiceImplTest {
     }
 
     @Test
+    void deleteSkillRejectedWhenPublishedAndCascadesOtherwise() {
+        var vo = service.uploadSkill(packageBytes("weather"), "v1");
+        service.publishVersion(vo.getId(), versions.get(0).getId());
+        service.bindSkills("demo", List.of(vo.getId()));
+
+        assertThatThrownBy(() -> service.deleteSkill(vo.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be deleted");
+
+        // 下线当前版本后允许删除，且级联删除版本、文件与绑定
+        service.offlineVersion(vo.getId(), versions.get(0).getId());
+        assertThat(service.deleteSkill(vo.getId())).isTrue();
+        assertThat(skills).isEmpty();
+        assertThat(versions).isEmpty();
+        assertThat(files).isEmpty();
+        assertThat(bindings).isEmpty();
+    }
+
+    @Test
+    void deleteSkillVersionRejectedWhenPublished() {
+        var vo = service.uploadSkill(packageBytes("weather"), "v1");
+        service.publishVersion(vo.getId(), versions.get(0).getId());
+
+        assertThatThrownBy(() -> service.deleteSkillVersion(vo.getId(), versions.get(0).getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("published versions cannot be deleted");
+    }
+
+    @Test
+    void deleteDraftVersionRemovesVersionAndItsFiles() {
+        var vo = service.uploadSkill(packageBytes("weather"), "v1");
+        service.publishVersion(vo.getId(), versions.get(0).getId());
+        service.uploadSkill(packageBytes("weather"), "v2"); // v2 DRAFT
+        Long v2Id = versions.get(1).getId();
+
+        assertThat(service.deleteSkillVersion(vo.getId(), v2Id)).isTrue();
+
+        assertThat(versions).extracting(SkillVersion::getId).doesNotContain(v2Id);
+        // v1 的 SKILL.md 仍在，当前版本不受影响
+        assertThat(files).extracting(SkillFile::getFilePath).contains("SKILL.md");
+        assertThat(service.getSkill(vo.getId()).getCurrentVersion()).isEqualTo(1L);
+    }
+
+    @Test
     void createSkillOnlineCreatesSkillDraftAndSkillMdSkeleton() {
         var vo = service.createSkillOnline("weather", "查询天气");
 
@@ -468,6 +537,24 @@ class SkillServiceImplTest {
             i--;
         }
         return Integer.parseInt(key.substring(i));
+    }
+
+    /**
+     * 解析 Wrapper 的等值条件：列名 → 参数值。
+     * SQL 中占位符为 #{ew.paramNameValuePairs.MPGENVALn}（按渲染顺序编号），
+     * 与 orderedWrapperParams 的排序结果按出现顺序配对。
+     */
+    private static Map<String, Object> wrapperColumns(Object wrapper) {
+        var abstractWrapper = (AbstractWrapper<?, ?, ?>) wrapper;
+        String sql = abstractWrapper.getSqlSegment();
+        List<Object> values = orderedWrapperParams(abstractWrapper);
+        Map<String, Object> cols = new HashMap<>();
+        var matcher = java.util.regex.Pattern.compile("([a-z_]+)\\s*=\\s*(?:\\?|#\\{[^}]*\\})").matcher(sql);
+        int index = 0;
+        while (matcher.find() && index < values.size()) {
+            cols.put(matcher.group(1), values.get(index++));
+        }
+        return cols;
     }
 
     private static byte[] packageBytes(String name) {

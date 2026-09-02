@@ -89,6 +89,18 @@ public interface ISkillService {
     boolean enableSkill(Long id);
 
     /**
+     * 删除 Skill（级联删除其全部版本、文件与 Agent 绑定）。
+     * 存在已发布版本时禁止删除。
+     */
+    boolean deleteSkill(Long id);
+
+    /**
+     * 删除某 Skill 的一个版本（连同其文件）。
+     * 已发布版本禁止删除。
+     */
+    boolean deleteSkillVersion(Long skillId, Long versionId);
+
+    /**
      * 查询某 Skill 的版本列表（新版本在前）。
      */
     List<SkillVersionVo> listVersions(Long skillId);

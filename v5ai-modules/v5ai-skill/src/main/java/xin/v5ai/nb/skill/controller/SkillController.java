@@ -113,6 +113,19 @@ public class SkillController extends BaseController {
         return toAjax(skillService.enableSkill(id));
     }
 
+    @DeleteMapping("/{id}")
+    @Log(title = "删除技能", businessType = BusinessType.DELETE)
+    public R<Void> deleteSkill(@PathVariable("id") Long id) {
+        return toAjax(skillService.deleteSkill(id));
+    }
+
+    @DeleteMapping("/{id}/versions/{versionId}")
+    @Log(title = "删除技能版本", businessType = BusinessType.DELETE)
+    public R<Void> deleteSkillVersion(@PathVariable("id") Long id,
+                                      @PathVariable("versionId") Long versionId) {
+        return toAjax(skillService.deleteSkillVersion(id, versionId));
+    }
+
     @GetMapping("/{id}/versions")
     public R<PageResult<SkillVersionVo>> listVersions(@PathVariable("id") Long id, PageQuery pageQuery) {
         var list = skillService.listVersions(id);
