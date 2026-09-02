@@ -104,6 +104,33 @@ class SkillPackageParserTest {
     }
 
     @Test
+    void ignoresMacOsZipMetadataEntries() {
+        // macOS 打包产物：__MACOSX/ 元数据目录、AppleDouble 伴随文件与 .DS_Store 均为二进制，应被过滤而非报 UTF-8 错误
+        var raw = new LinkedHashMap<String, byte[]>();
+        raw.put("SKILL.md", skillMd("weather", "查询天气", "content").getBytes(StandardCharsets.UTF_8));
+        raw.put("__MACOSX/", new byte[0]);
+        raw.put("__MACOSX/._SKILL.md", new byte[]{(byte) 0x00, 0x05, 0x16, (byte) 0x07});
+        raw.put(".DS_Store", new byte[]{(byte) 0x00, (byte) 0x01, (byte) 0xFF});
+        raw.put("prompts/._guide.md", new byte[]{(byte) 0x00, 0x05, 0x16, (byte) 0x07});
+
+        var parsed = new SkillPackageParser().parse(zipRaw(raw));
+
+        assertThat(parsed.name()).isEqualTo("weather");
+        assertThat(parsed.files()).containsOnlyKeys("SKILL.md");
+    }
+
+    @Test
+    void ignoresWindowsThumbsDb() {
+        var raw = new LinkedHashMap<String, byte[]>();
+        raw.put("SKILL.md", skillMd("x", "y", "content").getBytes(StandardCharsets.UTF_8));
+        raw.put("Thumbs.db", new byte[]{(byte) 0xFF, (byte) 0xFE, 0x00});
+
+        var parsed = new SkillPackageParser().parse(zipRaw(raw));
+
+        assertThat(parsed.files()).containsOnlyKeys("SKILL.md");
+    }
+
+    @Test
     void rejectsEmptyPackage() {
         assertThatThrownBy(() -> new SkillPackageParser().parse(new byte[0]))
                 .isInstanceOf(IllegalArgumentException.class)

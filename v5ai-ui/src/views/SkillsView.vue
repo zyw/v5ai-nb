@@ -107,6 +107,7 @@ const skillScrollX = computed(() =>
 )
 
 const versionColumns: DataTableColumns<SkillVersionResponse> = [
+  { title: 'ID', key: 'id', width: 64 },
   { title: '版本', key: 'version', width: 80, render: (row) => `v${row.version}` },
   { title: '状态', key: 'status', width: 110, render: (row) => h(StatusTag, { status: row.status }) },
   { title: '描述', key: 'description', ellipsis: { tooltip: true } },

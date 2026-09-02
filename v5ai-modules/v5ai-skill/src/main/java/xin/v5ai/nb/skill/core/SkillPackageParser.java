@@ -53,7 +53,7 @@ public class SkillPackageParser {
                     continue;
                 }
                 String path = normalizePath(entry.getName());
-                if (path.isEmpty()) {
+                if (path.isEmpty() || isIgnoredEntry(path)) {
                     continue;
                 }
                 validatePath(path);
@@ -146,6 +146,20 @@ public class SkillPackageParser {
                 throw new IllegalArgumentException("path traversal is not allowed in skill package: " + path);
             }
         }
+    }
+
+    /**
+     * 过滤打包工具产生的无用条目（不参与技能内容、不应触发 UTF-8 等校验）：
+     * macOS 的 __MACOSX/ 元数据目录、AppleDouble 伴随文件（._*）、.DS_Store、Windows 的 Thumbs.db。
+     */
+    private static boolean isIgnoredEntry(String path) {
+        if (path.startsWith("__MACOSX") && (path.equals("__MACOSX") || path.startsWith("__MACOSX/"))) {
+            return true;
+        }
+        String fileName = path.substring(path.lastIndexOf('/') + 1);
+        return fileName.startsWith("._")
+                || fileName.equals(".DS_Store")
+                || fileName.equals("Thumbs.db");
     }
 
     private static String decodeUtf8(String path, byte[] raw) {

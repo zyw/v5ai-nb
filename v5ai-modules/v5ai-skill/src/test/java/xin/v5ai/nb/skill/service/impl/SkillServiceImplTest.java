@@ -1,21 +1,26 @@
 package xin.v5ai.nb.skill.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.extra.spring.SpringUtil;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import io.github.linpeilie.Converter;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticApplicationContext;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.skill.core.SkillAiGenerator;
 import xin.v5ai.nb.skill.core.SkillPackageParser;
-import xin.v5ai.nb.skill.domain.enums.SkillStatus;
-import xin.v5ai.nb.skill.domain.enums.SkillVersionStatus;
 import xin.v5ai.nb.skill.domain.AgentSkillBinding;
 import xin.v5ai.nb.skill.domain.Skill;
 import xin.v5ai.nb.skill.domain.SkillFile;
 import xin.v5ai.nb.skill.domain.SkillVersion;
+import xin.v5ai.nb.skill.domain.enums.SkillStatus;
+import xin.v5ai.nb.skill.domain.enums.SkillVersionStatus;
 import xin.v5ai.nb.skill.domain.vo.SkillFileVo;
 import xin.v5ai.nb.skill.domain.vo.SkillVo;
 import xin.v5ai.nb.skill.mapper.AgentSkillBindingMapper;
@@ -43,13 +48,35 @@ import static org.mockito.Mockito.when;
 
 class SkillServiceImplTest {
 
-    // 单测环境无 Spring，Lambda 查询包装器解析列名需要 TableInfo 缓存，这里手动初始化。
+    // 单测环境无 Spring：手动初始化实体 TableInfo（Lambda 查询解析列名），
+    // 并注册属性名拷贝 Converter（MapstructUtils 类加载时经 SpringUtil 取 Converter bean）。
     static {
+        var context = new StaticApplicationContext();
+        context.getBeanFactory().registerSingleton("converter", new CopyConverter());
+        new SpringUtil().setApplicationContext(context);
+
         var assistant = new MapperBuilderAssistant(new MybatisConfiguration(), "");
         TableInfoHelper.initTableInfo(assistant, Skill.class);
         TableInfoHelper.initTableInfo(assistant, SkillVersion.class);
         TableInfoHelper.initTableInfo(assistant, SkillFile.class);
         TableInfoHelper.initTableInfo(assistant, AgentSkillBinding.class);
+    }
+
+    /** 按属性名拷贝的 Converter：单测中替代 mapstruct-plus 的 Spring 装配（同 v5ai-rag StoreInstanceServiceImplTest）。 */
+    private static class CopyConverter extends Converter {
+        @Override
+        public <S, T> T convert(S source, Class<T> desc) {
+            if (source == null) {
+                return null;
+            }
+            try {
+                T target = desc.getDeclaredConstructor().newInstance();
+                BeanUtil.copyProperties(source, target);
+                return target;
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
+            }
+        }
     }
 
     private final List<Skill> skills = new ArrayList<>();
@@ -145,6 +172,17 @@ class SkillServiceImplTest {
             return 1;
         }).when(fileMapper).insert(any(SkillFile.class));
         when(fileMapper.selectList(any(Wrapper.class))).thenAnswer(inv -> new ArrayList<>(files));
+        // 编辑器读取文件（getSkillEditor 走 selectVoList 自动映射）
+        when(fileMapper.selectVoList(any(Wrapper.class))).thenAnswer(inv -> files.stream().map(f -> {
+            var vo = new SkillFileVo();
+            vo.setId(f.getId());
+            vo.setSkillId(f.getSkillId());
+            vo.setVersionId(f.getVersionId());
+            vo.setFilePath(f.getFilePath());
+            vo.setContent(f.getContent());
+            vo.setCreatedAt(f.getCreatedAt());
+            return vo;
+        }).toList());
         // 文件查询：服务内统一按 (versionId, filePath) 过滤
         when(fileMapper.selectOne(any(Wrapper.class))).thenAnswer(inv -> {
             List<Object> values = orderedWrapperParams(inv.getArgument(0));
@@ -302,7 +340,7 @@ class SkillServiceImplTest {
         service.disableSkill(vo.getId());
 
         assertThatThrownBy(() -> service.publishVersion(vo.getId(), versions.get(0).getId()))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("skill is disabled");
     }
 
