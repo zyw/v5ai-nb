@@ -92,7 +92,7 @@ public class SkillController extends BaseController {
                 || request.requirement() == null || request.requirement().isBlank()) {
             throw new IllegalArgumentException("modelId and requirement are required");
         }
-        return R.ok(skillService.generateSkillMd(id, request.modelId(), request.requirement().trim()));
+        return R.ok("Success Generated Markdown Content",skillService.generateSkillMd(id, request.modelId(), request.requirement().trim()));
     }
 
     @PostMapping("/{id}/files/ai/optimize")

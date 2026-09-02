@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.skill.core.SkillAiGenerator;
@@ -97,7 +98,8 @@ public class SkillServiceImpl implements ISkillService {
         var skillPackage = packageParser.parse(packageBytes);
         var skill = skillMapper.selectOne(new LambdaQueryWrapper<Skill>()
                 .eq(Skill::getName, skillPackage.name()));
-        if (skill != null && skill.getStatus() != SkillStatus.ACTIVE) {
+        if (skill != null
+                && skill.getStatus() != SkillStatus.ACTIVE) {
             throw new IllegalArgumentException("skill is disabled and cannot accept new versions: " + skill.getName());
         }
         if (skill == null) {
@@ -580,14 +582,9 @@ public class SkillServiceImpl implements ISkillService {
     }
 
     private SkillVo toVo(Skill skill, Map<Long, Long> versionNumberById) {
-        var vo = new SkillVo();
-        vo.setId(skill.getId());
-        vo.setName(skill.getName());
-        vo.setDescription(skill.getDescription());
+        var vo = MapstructUtils.convert(skill, SkillVo.class);
+        assert vo != null;
         vo.setStatus(skill.getStatus().name());
-        vo.setCurrentVersionId(skill.getCurrentVersionId());
-        vo.setCreatedAt(skill.getCreatedAt());
-        vo.setUpdatedAt(skill.getUpdatedAt());
         if (skill.getCurrentVersionId() != null) {
             Long versionNumber = versionNumberById == null
                     ? fetchVersionNumber(skill.getCurrentVersionId())
@@ -600,19 +597,6 @@ public class SkillServiceImpl implements ISkillService {
     private Long fetchVersionNumber(Long versionId) {
         var current = versionMapper.selectById(versionId);
         return current == null ? null : current.getVersion();
-    }
-
-    private SkillVersionVo toVersionVo(SkillVersion version) {
-        var vo = new SkillVersionVo();
-        vo.setId(version.getId());
-        vo.setSkillId(version.getSkillId());
-        vo.setVersion(version.getVersion());
-        vo.setStatus(version.getStatus().name());
-        vo.setDescription(version.getDescription());
-        vo.setPublishedAt(version.getPublishedAt());
-        vo.setCreatedAt(version.getCreatedAt());
-        vo.setUpdatedAt(version.getUpdatedAt());
-        return vo;
     }
 
     /**
