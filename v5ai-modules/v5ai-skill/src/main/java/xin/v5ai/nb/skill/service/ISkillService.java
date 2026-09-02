@@ -74,6 +74,16 @@ public interface ISkillService {
     void deleteSkillFile(Long skillId, String filePath);
 
     /**
+     * AI 生成 SKILL.md 内容（不保存，返回全文）：保留技能名，需求说明作为 frontmatter description。
+     */
+    String generateSkillMd(Long skillId, Long modelId, String requirement);
+
+    /**
+     * AI 优化 DRAFT 版本中某文件的内容（不保存，返回全文）。
+     */
+    String optimizeSkillFile(Long skillId, Long modelId, String filePath, String requirement, String direction);
+
+    /**
      * 查询单个 Skill。
      */
     SkillVo getSkill(Long id);
@@ -129,7 +139,7 @@ public interface ISkillService {
     /**
      * 全量替换某 Agent 绑定的 Skill 集合。
      */
-    void bindSkills(String agentKey, List<Long> skillIds);
+    boolean bindSkills(String agentKey, List<Long> skillIds);
 
     /**
      * 查询某 Agent 绑定的 Skill ID 集合。

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
+  NAlert,
   NButton,
   NForm,
   NFormItem,
   NIcon,
   NInput,
   NModal,
+  NSelect,
   NSpace,
   NSpin,
   NTag,
@@ -16,14 +18,18 @@ import {
   useMessage,
   type TreeOption
 } from 'naive-ui'
-import { ArrowLeft, FilePlus2, FolderOpen, Save, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, FilePlus2, FolderOpen, Save, Sparkles, Trash2, Wand2 } from 'lucide-vue-next'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MonacoTextView from '../components/MonacoTextView.vue'
 import {
+  aiGenerateSkillMd,
+  aiOptimizeSkillFile,
   createSkillFile,
   deleteSkillFile,
   getSkillEditor,
+  listModelOptions,
   updateSkillFile,
+  type OptionResponse,
   type SkillEditorResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
@@ -48,6 +54,17 @@ const showNewFile = ref(false)
 const newFile = reactive({ path: '', content: '' })
 const creating = ref(false)
 
+// ---- AI 生成 / 优化 ----
+const MODELS_KEY = 'v5ai.skillAiModel'
+const models = ref<OptionResponse[]>([])
+const aiModelId = ref<number | null>(null)
+const showGenerateModal = ref(false)
+const generateForm = reactive({ requirement: '' })
+const showOptimizeModal = ref(false)
+const optimizeForm = reactive({ requirement: '', direction: '' })
+const generating = ref(false)
+const optimizing = ref(false)
+
 const filePaths = computed(() => Object.keys(filesMap).sort())
 const treeData = computed<TreeOption[]>(() => buildTree(filePaths.value))
 const isDirty = computed(() => (currentPath.value ? dirtyPaths.has(currentPath.value) : false))
@@ -57,6 +74,7 @@ const currentKind = computed<'markdown' | 'code' | null>(() => {
 })
 
 onMounted(async () => {
+  await loadModels()
   try {
     const data = await getSkillEditor(adminToken.value, skillId)
     editorData.value = data
@@ -68,6 +86,28 @@ onMounted(async () => {
     message.error(e instanceof Error ? e.message : '加载 Skill 编辑器失败')
   } finally {
     loading.value = false
+  }
+})
+
+/** 加载启用的 CHAT 模型选项：localStorage 记忆优先，其次 isDefault 默认模型，最后取第一个。 */
+async function loadModels() {
+  try {
+    models.value = await listModelOptions(adminToken.value, 'CHAT')
+    const saved = Number(localStorage.getItem(MODELS_KEY))
+    if (models.value.some((m) => m.value === saved)) {
+      aiModelId.value = saved
+    } else {
+      const defaultModel = models.value.find((m) => m.isDefault)
+      aiModelId.value = defaultModel?.value ?? models.value[0]?.value ?? null
+    }
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '加载模型列表失败')
+  }
+}
+
+watch(aiModelId, (value) => {
+  if (value != null) {
+    localStorage.setItem(MODELS_KEY, String(value))
   }
 })
 
@@ -184,6 +224,89 @@ function handleDelete() {
   })
 }
 
+// ---- AI 生成 / 优化 ----
+
+function openGenerateModal() {
+  generateForm.requirement = parseSkillMdDescription(filesMap['SKILL.md'] ?? '')
+  showGenerateModal.value = true
+}
+
+async function submitGenerate() {
+  const requirement = generateForm.requirement.trim()
+  if (!requirement) {
+    message.warning('请输入需求说明')
+    return
+  }
+  if (aiModelId.value == null) {
+    message.warning('请先选择模型')
+    return
+  }
+  generating.value = true
+  try {
+    const content = await aiGenerateSkillMd(adminToken.value, skillId, aiModelId.value, requirement)
+    filesMap['SKILL.md'] = content
+    dirtyPaths.add('SKILL.md')
+    currentPath.value = 'SKILL.md'
+    showGenerateModal.value = false
+    message.success('AI 已生成 SKILL.md，请检查后保存')
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : 'AI 生成失败')
+  } finally {
+    generating.value = false
+  }
+}
+
+function openOptimizeModal() {
+  optimizeForm.requirement = ''
+  optimizeForm.direction = ''
+  showOptimizeModal.value = true
+}
+
+async function submitOptimize() {
+  const path = currentPath.value
+  if (!path) return
+  const requirement = optimizeForm.requirement.trim()
+  if (!requirement) {
+    message.warning('请输入优化要求')
+    return
+  }
+  if (aiModelId.value == null) {
+    message.warning('请先选择模型')
+    return
+  }
+  optimizing.value = true
+  try {
+    const content = await aiOptimizeSkillFile(
+      adminToken.value,
+      skillId,
+      path,
+      aiModelId.value,
+      requirement,
+      optimizeForm.direction.trim() || undefined
+    )
+    filesMap[path] = content
+    dirtyPaths.add(path)
+    showOptimizeModal.value = false
+    message.success('AI 已优化当前文件，请检查后保存')
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : 'AI 优化失败')
+  } finally {
+    optimizing.value = false
+  }
+}
+
+/** 从 SKILL.md frontmatter 中提取 description（用于 AI 生成弹窗回填）。 */
+function parseSkillMdDescription(content: string): string {
+  const m = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+  if (!m) return ''
+  const line = m[1].split('\n').find((l) => /^description\s*:/.test(l))
+  if (!line) return ''
+  return line
+    .replace(/^description\s*:\s*/, '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+}
+
 function isMarkdown(path: string): boolean {
   return /\.(md|markdown)$/i.test(path)
 }
@@ -225,6 +348,31 @@ function buildTree(paths: string[]): TreeOption[] {
         <span v-if="editorData?.skill.description" class="desc">{{ editorData.skill.description }}</span>
       </div>
       <div class="editor-actions">
+        <n-space :size="8" align="center" class="ai-actions">
+          <n-button
+            size="small"
+            type="primary"
+            secondary
+            title="AI 生成仅针对 SKILL.md 文件"
+            :disabled="currentPath !== 'SKILL.md' || generating || optimizing"
+            :loading="generating"
+            @click="openGenerateModal"
+          >
+            <template #icon><n-icon :component="Sparkles" /></template>
+            AI生成
+          </n-button>
+          <n-button
+            size="small"
+            type="primary"
+            secondary
+            :disabled="!currentPath || generating || optimizing"
+            :loading="optimizing"
+            @click="openOptimizeModal"
+          >
+            <template #icon><n-icon :component="Wand2" /></template>
+            AI优化
+          </n-button>
+        </n-space>
         <n-alert v-if="editorData" type="info" :bordered="false" class="publish-hint">
           编辑内容保存到草稿版本，发布请在 Skill 管理的「版本」中操作
         </n-alert>
@@ -308,6 +456,64 @@ function buildTree(paths: string[]): TreeOption[] {
         <n-space justify="end">
           <n-button @click="showNewFile = false">取消</n-button>
           <n-button type="primary" :loading="creating" @click="handleCreateFile">创建</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <n-modal v-model:show="showGenerateModal" preset="card" title="AI 生成 SKILL.md" style="width: 650px" :bordered="false">
+      <n-alert type="info" :bordered="false" style="margin-bottom: 12px">
+        将按需求说明重新生成 SKILL.md（保留技能名，description 使用需求说明）。结果替换进编辑器后需手动保存。
+      </n-alert>
+      <n-form label-placement="top">
+        <n-form-item label="需求说明（必填）">
+          <n-input
+            v-model:value="generateForm.requirement"
+            type="textarea"
+            :rows="6"
+            placeholder="描述该技能的作用、输入输出与使用方式"
+          />
+        </n-form-item>
+        <n-form-item label="使用模型">
+          <n-select v-model:value="aiModelId" :options="models" placeholder="选择模型" />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showGenerateModal = false">取消</n-button>
+          <n-button type="primary" :loading="generating" :disabled="aiModelId == null" @click="submitGenerate">生成</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <n-modal v-model:show="showOptimizeModal" preset="card" title="AI 优化当前文件" style="width: 650px" :bordered="false">
+      <n-alert type="info" :bordered="false" style="margin-bottom: 12px">
+        将按优化要求重写「{{ currentPath }}」。结果替换进编辑器后需手动保存。
+      </n-alert>
+      <n-form label-placement="top">
+        <n-form-item label="优化要求（必填）">
+          <n-input
+            v-model:value="optimizeForm.requirement"
+            type="textarea"
+            :rows="4"
+            placeholder="如：表述更简洁、补充边界情况、更贴合 AgentScope 技能规范"
+          />
+        </n-form-item>
+        <n-form-item label="优化方向（选填）">
+          <n-input
+            v-model:value="optimizeForm.direction"
+            type="textarea"
+            :rows="2"
+            placeholder="如：更专业、更口语化、面向开发者"
+          />
+        </n-form-item>
+        <n-form-item label="使用模型">
+          <n-select v-model:value="aiModelId" :options="models" placeholder="选择模型" />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showOptimizeModal = false">取消</n-button>
+          <n-button type="primary" :loading="optimizing" :disabled="aiModelId == null" @click="submitOptimize">优化</n-button>
         </n-space>
       </template>
     </n-modal>

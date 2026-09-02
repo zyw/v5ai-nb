@@ -79,7 +79,8 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
                 .build());
         return models.stream()
                 .map(model -> new OptionDTO(model.getId(),
-                        model.getProviderId() + "/" + model.getModelKey() + " (" + model.getModelType() + ")"))
+                        model.getProviderId() + "/" + model.getModelKey() + " (" + model.getModelType() + ")",
+                        model.getIsDefault()))
                 .toList();
     }
 
@@ -94,11 +95,8 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         assert add != null;
         add.setId(null);
         add.setProviderId(provider.getId());
-//        add.setModelType(bo.getType().name());
-//        add.setEnabled(Boolean.TRUE.equals(bo.getEnabled()));
         add.setModelName(StrUtil.isBlank(bo.getModelName()) ? bo.getModelKey() : bo.getModelName().trim());
         add.setScope(normalizeScope(bo.getScope()));
-//        add.setIsDefault(Boolean.TRUE.equals(bo.getIsDefault()));
         add.setConfig(validateConfig(bo.getConfig()));
         add.setCredentialsCiphertext(credentialCipher.encrypt(bo.getCredentials()));
         boolean flag = mapper.insert(add) > 0;

@@ -1,4 +1,4 @@
-package xin.v5ai.nb.skill.controller;
+package xin.v5ai.nb.skill.domain.bo;
 
 import java.util.List;
 
@@ -7,5 +7,5 @@ import java.util.List;
  *
  * @param skillIds 要绑定的 Skill ID 集合（全量替换）
  */
-public record SkillBindRequest(List<Long> skillIds) {
+public record SkillBindBo(List<Long> skillIds) {
 }

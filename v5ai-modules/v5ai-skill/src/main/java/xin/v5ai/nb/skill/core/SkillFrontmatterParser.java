@@ -8,8 +8,7 @@ import java.util.Map;
  * （含引号包裹的值），用于 SKILL.md 的 YAML Front Matter 与 metadata.yaml。
  * 复杂 YAML 不在本阶段支持范围。
  */
-final class SkillFrontmatterParser {
-
+public final class SkillFrontmatterParser {
     private SkillFrontmatterParser() {
     }
 
@@ -20,7 +19,7 @@ final class SkillFrontmatterParser {
      * @param markdown SKILL.md 内容
      * @return 解析结果（metadata 可为空；content 为去掉 frontmatter 后的正文）
      */
-    static ParsedMarkdown parseMarkdown(String markdown) {
+    public static ParsedMarkdown parseMarkdown(String markdown) {
         if (markdown == null || !markdown.startsWith("---")) {
             return new ParsedMarkdown(Map.of(), markdown);
         }
@@ -79,6 +78,6 @@ final class SkillFrontmatterParser {
         return value;
     }
 
-    record ParsedMarkdown(Map<String, String> metadata, String content) {
+    public record ParsedMarkdown(Map<String, String> metadata, String content) {
     }
 }

@@ -9,19 +9,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
+import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.skill.core.SkillAiGenerator;
+import xin.v5ai.nb.skill.core.SkillFrontmatterParser;
 import xin.v5ai.nb.skill.core.SkillPackageParser;
 import xin.v5ai.nb.skill.domain.AgentSkillBinding;
 import xin.v5ai.nb.skill.domain.Skill;
 import xin.v5ai.nb.skill.domain.SkillFile;
 import xin.v5ai.nb.skill.domain.SkillVersion;
 import xin.v5ai.nb.skill.domain.bo.SkillBo;
-import xin.v5ai.nb.skill.domain.vo.SkillEditorVo;
-import xin.v5ai.nb.skill.domain.vo.SkillFileVo;
-import xin.v5ai.nb.skill.domain.vo.SkillUsageVo;
-import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
-import xin.v5ai.nb.skill.domain.vo.SkillVo;
+import xin.v5ai.nb.skill.domain.vo.*;
 import xin.v5ai.nb.skill.mapper.AgentSkillBindingMapper;
 import xin.v5ai.nb.skill.mapper.SkillFileMapper;
 import xin.v5ai.nb.skill.mapper.SkillMapper;
@@ -56,6 +55,7 @@ public class SkillServiceImpl implements ISkillService {
     private final SkillFileMapper fileMapper;
     private final AgentSkillBindingMapper bindingMapper;
     private final SkillPackageParser packageParser;
+    private final SkillAiGenerator skillAiGenerator;
 
     @Override
     public PageResult<SkillVo> queryPageList(SkillBo bo, PageQuery pageQuery) {
@@ -201,6 +201,24 @@ public class SkillServiceImpl implements ISkillService {
         var file = requireDraftFile(version, path);
         file.setContent(content);
         fileMapper.updateById(file);
+        if (SKILL_MD.equals(path)) {
+            syncDescriptionFromSkillMd(skill, content);
+        }
+    }
+
+    /**
+     * 保存 SKILL.md 时，把 frontmatter 的 description 同步到 Skill 实体（name 保持不变）。
+     */
+    private void syncDescriptionFromSkillMd(Skill skill, String content) {
+        String description = SkillFrontmatterParser.parseMarkdown(content).metadata().get("description");
+        if (description == null || description.isBlank() || description.trim().equals(skill.getDescription())) {
+            return;
+        }
+        var update = new Skill();
+        update.setId(skill.getId());
+        update.setDescription(description.trim());
+        skillMapper.updateById(update);
+        skill.setDescription(description.trim());
     }
 
     @Override
@@ -216,6 +234,23 @@ public class SkillServiceImpl implements ISkillService {
         fileMapper.delete(new LambdaQueryWrapper<SkillFile>()
                 .eq(SkillFile::getVersionId, version.getId())
                 .eq(SkillFile::getFilePath, path));
+    }
+
+    @Override
+    public String generateSkillMd(Long skillId, Long modelId, String requirement) {
+        var skill = requireSkill(skillId);
+        return skillAiGenerator.generateSkillMd(skill.getName(), requirement, modelId);
+    }
+
+    @Override
+    public String optimizeSkillFile(Long skillId, Long modelId, String filePath,
+                                    String requirement, String direction) {
+        var skill = requireSkill(skillId);
+        var version = ensureDraftVersion(skill);
+        var path = normalizeAndValidatePath(filePath);
+        var file = requireDraftFile(version, path);
+        return skillAiGenerator.optimizeFile(path, file.getContent(), requirement, direction,
+                skill.getName(), modelId);
     }
 
     @Override
@@ -355,7 +390,7 @@ public class SkillServiceImpl implements ISkillService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void bindSkills(String agentKey, List<Long> skillIds) {
+    public boolean bindSkills(String agentKey, List<Long> skillIds) {
         if (agentKey == null || agentKey.isBlank()) {
             throw new IllegalArgumentException("agentKey is required");
         }
@@ -365,13 +400,20 @@ public class SkillServiceImpl implements ISkillService {
         for (Long skillId : skillIds) {
             requireBindableSkill(skillId);
         }
-        bindingMapper.delete(new LambdaQueryWrapper<AgentSkillBinding>()
-                .eq(AgentSkillBinding::getAgentKey, agentKey));
-        for (Long skillId : skillIds) {
-            var binding = new AgentSkillBinding();
-            binding.setAgentKey(agentKey);
-            binding.setSkillId(skillId);
-            bindingMapper.insert(binding);
+        try {
+            int delResult = bindingMapper.delete(new LambdaQueryWrapper<AgentSkillBinding>()
+                    .eq(AgentSkillBinding::getAgentKey, agentKey));
+            log.info("AgentSkillBinding表删除行数：{}", delResult);
+            for (Long skillId : skillIds) {
+                var binding = new AgentSkillBinding();
+                binding.setAgentKey(agentKey);
+                binding.setSkillId(skillId);
+                bindingMapper.insert(binding);
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("Agent绑定失败：{}",e.getMessage(),e);
+            throw new ServiceException("Agent绑定失败: " + e.getMessage());
         }
     }
 

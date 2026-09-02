@@ -10,7 +10,7 @@ import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
-import xin.v5ai.nb.skill.domain.bo.SkillBo;
+import xin.v5ai.nb.skill.domain.bo.*;
 import xin.v5ai.nb.skill.domain.vo.SkillEditorVo;
 import xin.v5ai.nb.skill.domain.vo.SkillUsageVo;
 import xin.v5ai.nb.skill.domain.vo.SkillVersionVo;
@@ -50,7 +50,7 @@ public class SkillController extends BaseController {
 
     @PostMapping("/online")
     @Log(title = "在线新建技能", businessType = BusinessType.INSERT)
-    public R<SkillVo> createOnline(@RequestBody CreateSkillRequest request) {
+    public R<SkillVo> createOnline(@RequestBody CreateSkillBo request) {
         if (request == null) {
             throw new IllegalArgumentException("request body is required");
         }
@@ -64,7 +64,7 @@ public class SkillController extends BaseController {
 
     @PostMapping("/{id}/files")
     @Log(title = "新建技能文件", businessType = BusinessType.INSERT)
-    public R<Void> createFile(@PathVariable("id") Long id, @RequestBody SkillFileRequest request) {
+    public R<Void> createFile(@PathVariable("id") Long id, @RequestBody SkillFileBo request) {
         requireFileRequest(request);
         skillService.createSkillFile(id, request.filePath(), request.content());
         return R.ok();
@@ -72,7 +72,7 @@ public class SkillController extends BaseController {
 
     @PutMapping("/{id}/files")
     @Log(title = "更新技能文件", businessType = BusinessType.UPDATE)
-    public R<Void> updateFile(@PathVariable("id") Long id, @RequestBody SkillFileRequest request) {
+    public R<Void> updateFile(@PathVariable("id") Long id, @RequestBody SkillFileBo request) {
         requireFileRequest(request);
         skillService.updateSkillFile(id, request.filePath(), request.content());
         return R.ok();
@@ -85,7 +85,29 @@ public class SkillController extends BaseController {
         return R.ok();
     }
 
-    private static void requireFileRequest(SkillFileRequest request) {
+    @PostMapping("/{id}/ai/generate")
+    @Log(title = "AI 生成技能", businessType = BusinessType.UPDATE)
+    public R<String> aiGenerate(@PathVariable("id") Long id, @RequestBody AiGenerateBo request) {
+        if (request == null || request.modelId() == null
+                || request.requirement() == null || request.requirement().isBlank()) {
+            throw new IllegalArgumentException("modelId and requirement are required");
+        }
+        return R.ok(skillService.generateSkillMd(id, request.modelId(), request.requirement().trim()));
+    }
+
+    @PostMapping("/{id}/files/ai/optimize")
+    @Log(title = "AI 优化技能文件", businessType = BusinessType.UPDATE)
+    public R<String> aiOptimize(@PathVariable("id") Long id, @RequestBody AiOptimizeBo request) {
+        if (request == null || request.modelId() == null
+                || request.filePath() == null || request.filePath().isBlank()
+                || request.requirement() == null || request.requirement().isBlank()) {
+            throw new IllegalArgumentException("modelId, filePath and requirement are required");
+        }
+        return R.ok(skillService.optimizeSkillFile(id, request.modelId(), request.filePath(),
+                request.requirement().trim(), request.direction()));
+    }
+
+    private static void requireFileRequest(SkillFileBo request) {
         if (request == null || request.filePath() == null || request.filePath().isBlank()) {
             throw new IllegalArgumentException("filePath is required");
         }
@@ -154,7 +176,7 @@ public class SkillController extends BaseController {
     @PostMapping("/{id}/rollback")
     @Log(title = "回滚技能", businessType = BusinessType.UPDATE)
     public R<SkillVo> rollback(@PathVariable("id") Long id,
-                               @RequestBody RollbackRequest request) {
+                               @RequestBody RollbackBo request) {
         if (request == null || request.versionId() == null) {
             throw new IllegalArgumentException("versionId is required");
         }

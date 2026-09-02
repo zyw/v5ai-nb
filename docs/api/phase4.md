@@ -96,6 +96,27 @@ DELETE /api/admin/skills/{id}/versions/{versionId}   # 删除某个版本（连�
 - **Skill 删除**：存在已发布版本（`current_version_id` 非空）时禁止删除，需先下线；删除同步级联清理全部版本、文件与 Agent 绑定，前端二次确认提醒；
 - **版本删除**：已发布（PUBLISHED）版本禁止删除，仅未发布（DRAFT）版本可删除。
 
+## AI 生成 / 优化（编辑器）
+
+```http
+POST /api/admin/skills/{id}/ai/generate
+Content-Type: application/json
+
+{ "modelId": 1, "requirement": "查询 5 天天气预报" }
+# → 生成的 SKILL.md 全文（非流式）；保留技能 name，description 用需求说明
+
+POST /api/admin/skills/{id}/files/ai/optimize
+Content-Type: application/json
+
+{ "modelId": 1, "filePath": "prompts/guide.md", "requirement": "更简洁", "direction": "面向开发者" }
+# → 重写后的文件全文（非流式）
+```
+
+- 模型链路复用平台已配置的 CHAT 模型（`ModelRuntimeConfigGateway` → 凭据解密 → `AgentScopeModelFactory` → `model.stream().collectList()`）；编辑器内模型下拉取 `/api/admin/models/options?modelType=CHAT`（`OptionDTO` 新增 `isDefault` 字段），默认选择逻辑：localStorage 记忆 → `isDefault` 默认模型 → 第一个启用模型；
+- 生成/优化**不落库**：返回全文由前端替换进编辑器（标记未保存），用户确认后走普通保存；
+- 校验：生成的 SKILL.md 必须有合法 frontmatter（name 与技能名一致、description/正文非空）、单文件 ≤512KB，非法结果报错拒绝；
+- 保存 SKILL.md 时会把 frontmatter `description` 同步到 Skill 实体（`name` 不变）；管理端 AI 调用暂不计入用量/配额。
+
 ## Agent 绑定
 
 ```http

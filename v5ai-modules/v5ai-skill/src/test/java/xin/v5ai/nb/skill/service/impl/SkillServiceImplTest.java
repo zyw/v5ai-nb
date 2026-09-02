@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.skill.core.SkillAiGenerator;
 import xin.v5ai.nb.skill.core.SkillPackageParser;
 import xin.v5ai.nb.skill.domain.AgentSkillBinding;
 import xin.v5ai.nb.skill.domain.Skill;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -54,6 +56,7 @@ class SkillServiceImplTest {
     private final List<AgentSkillBinding> bindings = new ArrayList<>();
 
     private SkillServiceImpl service;
+    private SkillAiGenerator skillAiGenerator;
 
     @BeforeEach
     void setUp() {
@@ -61,6 +64,7 @@ class SkillServiceImplTest {
         SkillVersionMapper versionMapper = mock(SkillVersionMapper.class);
         SkillFileMapper fileMapper = mock(SkillFileMapper.class);
         AgentSkillBindingMapper bindingMapper = mock(AgentSkillBindingMapper.class);
+        skillAiGenerator = mock(SkillAiGenerator.class);
 
         when(skillMapper.selectOne(any(Wrapper.class))).thenAnswer(inv -> skills.stream().findFirst().orElse(null));
         when(skillMapper.selectById(anyLong())).thenAnswer(inv -> findById(skills, inv.getArgument(0)));
@@ -210,7 +214,8 @@ class SkillServiceImplTest {
             return 1;
         }).when(skillMapper).deleteById(anyLong());
 
-        service = new SkillServiceImpl(skillMapper, versionMapper, fileMapper, bindingMapper, new SkillPackageParser());
+        service = new SkillServiceImpl(skillMapper, versionMapper, fileMapper, bindingMapper,
+                new SkillPackageParser(), skillAiGenerator);
     }
 
     @Test
@@ -474,6 +479,49 @@ class SkillServiceImplTest {
         var updated = files.stream().filter(f -> f.getFilePath().equals("SKILL.md")).findFirst().orElseThrow();
         assertThat(updated.getContent()).contains("新内容");
         assertThatThrownBy(() -> service.updateSkillFile(vo.getId(), "prompts/nope.md", "x"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("does not exist");
+    }
+
+    @Test
+    void savingSkillMdSyncsDescriptionToEntity() {
+        var vo = service.createSkillOnline("weather", "查询天气");
+
+        service.updateSkillFile(vo.getId(), "SKILL.md",
+                "---\nname: weather\ndescription: 新的描述\n---\n正文");
+
+        assertThat(service.getSkill(vo.getId()).getDescription()).isEqualTo("新的描述");
+    }
+
+    @Test
+    void generateSkillMdDelegatesToAiGenerator() {
+        var vo = service.createSkillOnline("weather", "查询天气");
+        when(skillAiGenerator.generateSkillMd("weather", "查询 5 天天气预报", 1L))
+                .thenReturn("---\nname: weather\ndescription: 查询 5 天天气预报\n---\n正文");
+
+        String content = service.generateSkillMd(vo.getId(), 1L, "查询 5 天天气预报");
+
+        assertThat(content).contains("查询 5 天天气预报");
+    }
+
+    @Test
+    void optimizeSkillFileReadsDraftFileAndPassesContext() {
+        var vo = service.createSkillOnline("weather", "查询天气");
+        service.createSkillFile(vo.getId(), "prompts/guide.md", "# 指南");
+        when(skillAiGenerator.optimizeFile(eq("prompts/guide.md"), eq("# 指南"), eq("更简洁"),
+                eq("中文"), eq("weather"), eq(1L)))
+                .thenReturn("# 更简洁的指南");
+
+        String content = service.optimizeSkillFile(vo.getId(), 1L, "prompts/guide.md", "更简洁", "中文");
+
+        assertThat(content).isEqualTo("# 更简洁的指南");
+    }
+
+    @Test
+    void optimizeSkillFileRejectsMissingFile() {
+        var vo = service.createSkillOnline("weather", "查询天气");
+
+        assertThatThrownBy(() -> service.optimizeSkillFile(vo.getId(), 1L, "prompts/nope.md", "x", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("does not exist");
     }

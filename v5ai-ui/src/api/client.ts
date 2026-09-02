@@ -1383,6 +1383,39 @@ export function deleteSkillFile(adminToken: string, id: number, filePath: string
   return requestJson<void>(`/api/admin/skills/${id}/files?path=${encodeURIComponent(filePath)}`, { method: 'DELETE' }, adminToken)
 }
 
+export interface AiGenerateRequest {
+  modelId: number
+  requirement: string
+}
+
+export interface AiOptimizeRequest {
+  modelId: number
+  filePath: string
+  requirement: string
+  direction?: string
+}
+
+export function aiGenerateSkillMd(adminToken: string, id: number, modelId: number, requirement: string): Promise<string> {
+  return requestJson<string>(`/api/admin/skills/${id}/ai/generate`, {
+    method: 'POST',
+    body: JSON.stringify({ modelId, requirement })
+  }, adminToken)
+}
+
+export function aiOptimizeSkillFile(
+  adminToken: string,
+  id: number,
+  filePath: string,
+  modelId: number,
+  requirement: string,
+  direction?: string
+): Promise<string> {
+  return requestJson<string>(`/api/admin/skills/${id}/files/ai/optimize`, {
+    method: 'POST',
+    body: JSON.stringify({ modelId, filePath, requirement, direction })
+  }, adminToken)
+}
+
 export function bindSkills(adminToken: string, agentKey: string, skillIds: number[]): Promise<void> {
   return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/skill-bindings`, {
     method: 'POST',
@@ -1399,10 +1432,11 @@ export function getSkillBindings(adminToken: string, agentKey: string): Promise<
 export interface OptionResponse {
   value: number
   label: string
+  isDefault?: boolean
 }
 
 export function listModelOptions(adminToken: string, type?: 'CHAT' | 'EMBEDDING' | 'RERANK'): Promise<OptionResponse[]> {
-  return requestJson<OptionResponse[]>(`/api/admin/models/options${type ? `?type=${type}` : ''}`, {}, adminToken)
+  return requestJson<OptionResponse[]>(`/api/admin/models/options${type ? `?modelType=${type}` : ''}`, {}, adminToken)
 }
 
 export function listKnowledgeBaseOptions(adminToken: string): Promise<OptionResponse[]> {
