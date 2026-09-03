@@ -57,12 +57,12 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
      * 使用指定的执行器工厂构造 MCP Agent 的文本执行器。
      */
     @Override
-    public Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request) {
-        var model = modelResolver.resolve(application.modelId());
+    public Flux<AgentTextEvent> streamText(Agent agent, AgentRunRequest request) {
+        var model = modelResolver.resolve(agent.modelId());
         if (model == null) {
-            return Flux.error(new IllegalArgumentException("model is not resolvable: " + application.modelId()));
+            return Flux.error(new IllegalArgumentException("model is not resolvable: " + agent.modelId()));
         }
-        return executorFactory.create(model).streamText(application, request);
+        return executorFactory.create(model).streamText(agent, request);
     }
 
     /**
