@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
+  NAlert,
   NButton,
   NCard,
   NDataTable,
@@ -26,6 +27,7 @@ import {
   createStoreInstance,
   deleteStoreInstances,
   listStoreInstances,
+  testStoreInstanceConnection,
   updateStoreInstance,
   type StoreInstanceRequest,
   type StoreInstanceResponse
@@ -171,8 +173,10 @@ function handlePageSizeChange(pageSize: number) {
 
 const showModal = ref(false)
 const saving = ref(false)
+const testing = ref(false)
 const editingId = ref<number | null>(null)
 const togglingId = ref<number | null>(null)
+const testResult = ref<{ ok: boolean; message: string } | null>(null)
 
 const form = reactive<StoreInstanceRequest>({
   name: '',
@@ -230,6 +234,7 @@ const KNOWN_CONFIG_KEYS = new Set([
 function resetConfigForType(type: number) {
   Object.assign(configForm, CONFIG_DEFAULTS[type] ?? CONFIG_DEFAULTS[1])
   preservedConfig.value = {}
+  testResult.value = null
 }
 
 function asStr(v: unknown, fallback: string): string {
@@ -377,6 +382,30 @@ async function handleSave() {
     message.error(e instanceof Error ? e.message : '保存失败')
   } finally {
     saving.value = false
+  }
+}
+
+async function handleTestConnection() {
+  testing.value = true
+  testResult.value = null
+  try {
+    const result = await testStoreInstanceConnection(adminToken.value, {
+      type: form.type,
+      config: buildConfigJson(form.type),
+      id: editingId.value ?? undefined
+    })
+    testResult.value = result
+    if (result.ok) {
+      message.success('连接成功')
+    } else {
+      message.error(`连接失败: ${result.message}`)
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '测试连接失败'
+    testResult.value = { ok: false, message: msg }
+    message.error(msg)
+  } finally {
+    testing.value = false
   }
 }
 
@@ -566,6 +595,23 @@ onMounted(reload)
             <n-switch v-model:value="configForm.sslVerificationDisabled" />
           </n-form-item>
         </template>
+        <n-alert v-if="testResult" :type="testResult.ok ? 'success' : 'error'" :bordered="false" style="margin-bottom: 8px">
+          {{ testResult.message }}
+        </n-alert>
+        <n-form-item>
+          <n-space align="center">
+            <n-button
+              v-if="form.type === 1 || form.type === 4"
+              size="small"
+              secondary
+              :loading="testing"
+              @click="handleTestConnection"
+            >
+              测试连接
+            </n-button>
+            <span v-else style="font-size: 12px; opacity: 0.6">该类型暂不支持连接测试</span>
+          </n-space>
+        </n-form-item>
         <n-form-item label="状态">
           <n-select v-model:value="form.status" :options="statusOptions" />
         </n-form-item>

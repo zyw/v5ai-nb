@@ -15,8 +15,11 @@ import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.rag.core.StoreConnectionTester;
 import xin.v5ai.nb.rag.domain.StoreInstance;
+import xin.v5ai.nb.rag.domain.bo.StoreConnectionTestBo;
 import xin.v5ai.nb.rag.domain.bo.StoreInstanceBo;
+import xin.v5ai.nb.rag.domain.vo.StoreConnectionTestVo;
 import xin.v5ai.nb.rag.domain.vo.StoreInstanceVo;
 import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
 import xin.v5ai.nb.rag.service.IStoreInstanceService;
@@ -79,6 +82,8 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
     private static final Set<String> SENSITIVE_CONFIG_KEYS = Set.of("password", "token");
 
     private final StoreInstanceMapper storeInstanceMapper;
+
+    private final StoreConnectionTester connectionTester;
 
     @Override
     public PageResult<StoreInstanceVo> queryPageList(StoreInstanceBo bo, PageQuery pageQuery) {
@@ -155,6 +160,26 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
             throw new ServiceException("存储实例不存在或已被删除");
         }
         return storeInstanceMapper.deleteByIds(ids) > 0;
+    }
+
+    @Override
+    public StoreConnectionTestVo testConnection(StoreConnectionTestBo bo) {
+        Integer type = bo.type();
+        if (type == null || type < TYPE_PG_VECTOR || type > TYPE_PG_FULLTEXT) {
+            return StoreConnectionTestVo.failure("类型不合法: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT");
+        }
+        if (type == TYPE_MILVUS || type == TYPE_ELASTICSEARCH) {
+            return StoreConnectionTestVo.failure("该类型暂不支持连接测试，仅支持 PG_VECTOR / PG_FULLTEXT");
+        }
+        // 编辑态合并库中脱敏的敏感字段（password/token 留空时沿用原值），新建态直接用表单值
+        String effectiveConfig = bo.config();
+        if (bo.id() != null) {
+            StoreInstance existing = storeInstanceMapper.selectById(bo.id());
+            if (existing != null) {
+                effectiveConfig = mergeSensitiveConfig(bo.config(), existing.getConfig());
+            }
+        }
+        return connectionTester.test(type, effectiveConfig);
     }
 
     /**

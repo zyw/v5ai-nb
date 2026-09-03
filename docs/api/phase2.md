@@ -51,7 +51,10 @@ GET    /api/admin/store-instances/{id}            # 详情
 POST   /api/admin/store-instances                 # 新增
 PUT    /api/admin/store-instances                 # 修改
 DELETE /api/admin/store-instances/{ids}           # 批量删除（逗号分隔）
+POST   /api/admin/store-instances/test-connection # 连接测试（type + config + 可选 id）
 ```
+
+连接测试请求体（`StoreConnectionTestBo`）：`{ "type": 1, "config": "{...}", "id": 1 }`。`id` 仅编辑态传入，用于合并库中已脱敏的敏感字段（`password`/`token` 留空沿用原值）。仅支持 PostgreSQL 类型（1-PG_VECTOR / 4-PG_FULLTEXT），PG_VECTOR 额外校验 `pgvector` 扩展；Milvus / Elasticsearch 返回失败提示。响应 `{ ok, message }` 始终 200，不落库测试结果。
 
 请求体（`StoreInstanceBo`）：
 

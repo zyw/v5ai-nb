@@ -11,11 +11,15 @@ import io.github.linpeilie.Converter;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.support.StaticApplicationContext;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.rag.core.StoreConnectionTester;
 import xin.v5ai.nb.rag.domain.StoreInstance;
+import xin.v5ai.nb.rag.domain.bo.StoreConnectionTestBo;
 import xin.v5ai.nb.rag.domain.bo.StoreInstanceBo;
+import xin.v5ai.nb.rag.domain.vo.StoreConnectionTestVo;
 import xin.v5ai.nb.rag.domain.vo.StoreInstanceVo;
 import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
 
@@ -27,6 +31,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -43,6 +48,7 @@ class StoreInstanceServiceImplTest {
     private final List<StoreInstance> instances = new ArrayList<>();
 
     private StoreInstanceMapper storeInstanceMapper;
+    private StoreConnectionTester connectionTester;
     private StoreInstanceServiceImpl service;
 
     @BeforeEach
@@ -61,6 +67,7 @@ class StoreInstanceServiceImplTest {
         new SpringUtil().setApplicationContext(context);
 
         storeInstanceMapper = mock(StoreInstanceMapper.class);
+        connectionTester = mock(StoreConnectionTester.class);
         when(storeInstanceMapper.selectById(any())).thenAnswer(inv -> findById(instances, inv.getArgument(0)));
         when(storeInstanceMapper.selectByIds(any())).thenAnswer(inv -> {
             Collection<?> ids = inv.getArgument(0);
@@ -124,7 +131,7 @@ class StoreInstanceServiceImplTest {
             return ids.size();
         }).when(storeInstanceMapper).deleteByIds(any());
 
-        service = new StoreInstanceServiceImpl(storeInstanceMapper);
+        service = new StoreInstanceServiceImpl(storeInstanceMapper, connectionTester);
     }
 
     @Test
@@ -348,6 +355,45 @@ class StoreInstanceServiceImplTest {
         assertThatThrownBy(() -> service.deleteWithValidByIds(List.of(), true))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("主键不能为空");
+    }
+
+    @Test
+    void testConnectionUnsupportedTypeReturnsFailure() {
+        var result = service.testConnection(new StoreConnectionTestBo(2, "{}", null));
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.message()).contains("暂不支持连接测试");
+    }
+
+    @Test
+    void testConnectionInvalidTypeReturnsFailure() {
+        var result = service.testConnection(new StoreConnectionTestBo(9, "{}", null));
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.message()).contains("类型不合法");
+    }
+
+    @Test
+    void testConnectionNewInstancePassesConfigAsIs() {
+        when(connectionTester.test(1, "{\"host\":\"h\"}")).thenReturn(StoreConnectionTestVo.success("连接成功"));
+
+        var result = service.testConnection(new StoreConnectionTestBo(1, "{\"host\":\"h\"}", null));
+
+        assertThat(result.ok()).isTrue();
+        verify(connectionTester).test(1, "{\"host\":\"h\"}");
+    }
+
+    @Test
+    void testConnectionEditMergesBlankSensitiveFromSaved() {
+        seed(1L, "pg", 1, 1, false);
+        findById(instances, 1L).setConfig("{\"host\":\"h\",\"password\":\"old-pwd\",\"token\":\"old-tk\"}");
+        when(connectionTester.test(eq(1), any())).thenReturn(StoreConnectionTestVo.success("连接成功"));
+
+        service.testConnection(new StoreConnectionTestBo(1, "{\"host\":\"h2\",\"password\":\"\"}", 1L));
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(connectionTester).test(eq(1), captor.capture());
+        assertThat(captor.getValue()).contains("old-pwd", "old-tk", "\"host\":\"h2\"");
     }
 
     private static StoreInstanceBo bo(String name, int category, int type, String config, Integer status, boolean isDefault) {

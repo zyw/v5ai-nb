@@ -301,6 +301,11 @@ export interface StoreInstanceRequest {
   isDefault?: boolean
 }
 
+export interface StoreConnectionTestResponse {
+  ok: boolean
+  message: string
+}
+
 export interface DocumentResponse {
   id: number
   knowledgeBaseId: number
@@ -972,6 +977,16 @@ export function updateStoreInstance(adminToken: string, request: StoreInstanceRe
 
 export function deleteStoreInstances(adminToken: string, ids: number[]): Promise<void> {
   return requestJson<void>(`/api/admin/store-instances/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+export function testStoreInstanceConnection(
+  adminToken: string,
+  request: { type: number; config?: string; id?: number }
+): Promise<StoreConnectionTestResponse> {
+  return requestJson<StoreConnectionTestResponse>('/api/admin/store-instances/test-connection', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
 }
 
 // ---- 资源存储（通用资源存储 plm_resource） ----

@@ -20,7 +20,9 @@ import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
+import xin.v5ai.nb.rag.domain.bo.StoreConnectionTestBo;
 import xin.v5ai.nb.rag.domain.bo.StoreInstanceBo;
+import xin.v5ai.nb.rag.domain.vo.StoreConnectionTestVo;
 import xin.v5ai.nb.rag.domain.vo.StoreInstanceVo;
 import xin.v5ai.nb.rag.service.IStoreInstanceService;
 
@@ -106,5 +108,21 @@ public class StoreInstanceController extends BaseController {
     public R<Void> remove(@NotNull(message = "主键不能为空")
                           @PathVariable("ids") Long[] ids) {
         return toAjax(storeInstanceService.deleteWithValidByIds(List.of(ids), true));
+    }
+
+    /**
+     * 连接测试：按未保存的表单值（type + config）验证连通性，始终返回 200 + ok 标志。
+     *
+     * @param bo 测试请求体
+     * @return 测试结果
+     */
+    @SaCheckPermission("rag:store:query")
+    @PostMapping("/test-connection")
+    public R<StoreConnectionTestVo> testConnection(@RequestBody StoreConnectionTestBo bo) {
+        try {
+            return R.ok(storeInstanceService.testConnection(bo));
+        } catch (Exception exception) {
+            return R.ok(StoreConnectionTestVo.failure(exception.getMessage()));
+        }
     }
 }

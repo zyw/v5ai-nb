@@ -2,7 +2,9 @@ package xin.v5ai.nb.rag.service;
 
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.rag.domain.bo.StoreConnectionTestBo;
 import xin.v5ai.nb.rag.domain.bo.StoreInstanceBo;
+import xin.v5ai.nb.rag.domain.vo.StoreConnectionTestVo;
 import xin.v5ai.nb.rag.domain.vo.StoreInstanceVo;
 
 import java.util.Collection;
@@ -47,4 +49,9 @@ public interface IStoreInstanceService {
      * 校验并批量删除存储实例
      */
     Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
+
+    /**
+     * 连接测试：按未保存的表单值（type + config）验证连通性；编辑态（带 id）合并库中脱敏字段后测试。
+     */
+    StoreConnectionTestVo testConnection(StoreConnectionTestBo bo);
 }
