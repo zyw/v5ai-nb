@@ -3,22 +3,22 @@ package xin.v5ai.nb.runtime.core.resolver;
 import io.agentscope.core.model.Model;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.common.agentscope.core.ModelConfigRetrieve;
 import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
 import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 @Component
 @RequiredArgsConstructor
-public class MyBatisAgentModelResolver implements AgentModelResolver {
+public class DBAgentModelResolver implements AgentModelResolver {
 
-    private final ModelRuntimeConfigGateway runtimeConfigGateway;
+    private final ModelConfigRetrieve configRetrieve;
     private final CredentialCipher credentialCipher;
     private final AgentScopeModelFactory modelFactory;
 
     @Override
     public Model resolve(Long modelId) {
-        var config = runtimeConfigGateway.findRuntimeConfigByModelId(modelId);
+        var config = configRetrieve.findRuntimeConfigByModelId(modelId);
         if (config == null) {
             throw new IllegalArgumentException("model runtime config not found: " + modelId);
         }

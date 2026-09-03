@@ -3,7 +3,7 @@ package xin.v5ai.nb.model.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.common.agentscope.core.ModelConfigRetrieve;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
@@ -19,7 +19,7 @@ import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
  */
 @Service
 @RequiredArgsConstructor
-public class ModelRuntimeConfigGatewayImpl implements ModelRuntimeConfigGateway {
+public class ModelConfigRetrieveImpl implements ModelConfigRetrieve {
 
     private final V5aiModelMapper modelMapper;
     private final V5aiModelProviderMapper providerMapper;

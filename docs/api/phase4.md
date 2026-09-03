@@ -113,7 +113,7 @@ Content-Type: application/json
 # → 重写后的文件全文（非流式）
 ```
 
-- 模型链路复用平台已配置的 CHAT 模型（`ModelRuntimeConfigGateway` → 凭据解密 → `AgentScopeModelFactory` → `model.stream().collectList()`）；编辑器内模型下拉取 `/api/admin/models/options?modelType=CHAT`（`OptionDTO` 新增 `isDefault` 字段），默认选择逻辑：localStorage 记忆 → `isDefault` 默认模型 → 第一个启用模型；
+- 模型链路复用平台已配置的 CHAT 模型（`ModelConfigRetrieve` → 凭据解密 → `AgentScopeModelFactory` → `model.stream().collectList()`）；编辑器内模型下拉取 `/api/admin/models/options?modelType=CHAT`（`OptionDTO` 新增 `isDefault` 字段），默认选择逻辑：localStorage 记忆 → `isDefault` 默认模型 → 第一个启用模型；
 - 生成/优化**不落库**：返回全文由前端替换进编辑器（标记未保存），用户确认后走普通保存；
 - 校验：生成的 SKILL.md 必须有合法 frontmatter（name 与技能名一致、description/正文非空）、单文件 ≤512KB，非法结果报错拒绝；
 - 保存 SKILL.md 时会把 frontmatter `description` 同步到 Skill 实体（`name` 不变）；管理端 AI 调用暂不计入用量/配额。

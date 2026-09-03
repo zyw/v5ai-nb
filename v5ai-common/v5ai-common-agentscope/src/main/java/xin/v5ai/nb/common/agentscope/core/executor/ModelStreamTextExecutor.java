@@ -4,9 +4,7 @@ import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.event.*;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
-import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.ToolResultState;
-import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
 import io.agentscope.core.state.InMemoryAgentStateStore;
@@ -16,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
+import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
 import xin.v5ai.nb.common.agentscope.core.PlatformMcpTool;
 import xin.v5ai.nb.common.agentscope.core.domain.*;
@@ -101,7 +100,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         return Flux.concat(
                 Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
                 model.stream(messages, List.of(), generateOptions())
-                        .map(ModelStreamTextExecutor::extractText)
+                        .map(ChatResponseTexts::textOf)
                         .filter(text -> text != null && !text.isEmpty())
                         .map(AgentTextEvent.Text::new));
     }
@@ -280,20 +279,5 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         return GenerateOptions.builder().stream(true).build();
     }
 
-    /**
-     * 从模型响应中提取文本内容：
-     * 拼接所有 TextBlock 的文本；响应为空或无内容时返回 null。
-     */
-    private static String extractText(ChatResponse response) {
-        if (response == null || response.getContent() == null) {
-            return null;
-        }
-        var text = new StringBuilder();
-        for (var block : response.getContent()) {
-            if (block instanceof TextBlock textBlock && textBlock.getText() != null) {
-                text.append(textBlock.getText());
-            }
-        }
-        return text.toString();
-    }
 }
+

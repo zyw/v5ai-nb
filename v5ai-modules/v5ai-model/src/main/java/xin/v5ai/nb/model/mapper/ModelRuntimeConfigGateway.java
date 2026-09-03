@@ -6,7 +6,7 @@
 // * 模型运行时配置网关：为运行时提供"按模型 ID 查找配置"与"查找嵌入模型"的能力。
 // * 由基础设施层实现（MyBatis），供 Agent 模型解析器与 RAG Embedding 客户端使用。
 // */
-//public interface ModelRuntimeConfigGateway {
+//public interface ModelConfigRetrieve {
 //    /**
 //     * 按模型 ID 查找运行所需的模型配置（服务商、模型名、Endpoint、密文凭据等）。
 //     *

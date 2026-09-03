@@ -1,27 +1,25 @@
 package xin.v5ai.nb.common.agentscope.core;
 
 import io.agentscope.core.message.Msg;
-import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.model.ChatResponse;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.exception.ModelChatException;
-import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
-import xin.v5ai.nb.common.agentscope.core.factory.config.AgentModelCredentialConfig;
-import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
+import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
+import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
 
 import java.time.Duration;
 import java.util.List;
 
 /**
  * {@link ModelChatClient} 的 AgentScope 实现（真 adapter）：
- * 按 modelId 解析运行时配置、解密密文凭据、经 {@link AgentScopeModelFactory} 构建模型后发起对话。
- * 错误契约：配置缺失抛 {@link IllegalArgumentException}；超时 / 连接失败 / 空响应抛
- * {@link ModelChatException}（消息含目标模型与端点标签）。
+ * 模型解析经 {@link AgentModelResolver} 端口（配置→解密→构建模型的唯一实现处），
+ * 本模块只负责发起对话、拼接文本与超时/错误映射。
+ * 错误契约：配置缺失抛 {@link IllegalArgumentException}（由解析器抛出）；
+ * 超时 / 连接失败 / 空响应抛 {@link ModelChatException}（消息含模型标签）。
  */
 @Slf4j
 @Component
@@ -30,9 +28,7 @@ public class AgentScopeModelChatClient implements ModelChatClient {
 
     private static final int MESSAGE_MAX_LENGTH = 200;
 
-    private final ModelRuntimeConfigGateway runtimeConfigGateway;
-    private final CredentialCipher credentialCipher;
-    private final AgentScopeModelFactory modelFactory;
+    private final AgentModelResolver modelResolver;
 
     @Override
     public String chatText(Long modelId, List<Msg> messages, Duration timeout) {
@@ -74,25 +70,12 @@ public class AgentScopeModelChatClient implements ModelChatClient {
     }
 
     /**
-     * 解析运行时配置 + 解密凭据 + 构建模型；同时计算错误文案用的模型标签。
+     * 经模型解析端口取模型，并计算错误文案用的模型标签（解析细节不在此重复）。
      */
     private ChatContext resolve(Long modelId) {
-        ModelRuntimeConfigDTO config = runtimeConfigGateway.findRuntimeConfigByModelId(modelId);
-        if (config == null) {
-            throw new IllegalArgumentException("model runtime config not found: " + modelId);
-        }
-        String plaintext = credentialCipher.decrypt(config.credentialsCiphertext());
-        Model model = modelFactory.create(config, plaintext);
-        String label = describeTarget(config, plaintext);
+        Model model = modelResolver.resolve(modelId);
+        String label = model.getModelName() + " (modelId " + modelId + ")";
         return new ChatContext(model, label);
-    }
-
-    private static String describeTarget(ModelRuntimeConfigDTO config, String plaintextCredentials) {
-        String baseUrl = plaintextCredentials == null
-                ? null : AgentModelCredentialConfig.parse(plaintextCredentials).baseUrl();
-        String target = baseUrl == null || baseUrl.isBlank() ? "(default endpoint)" : baseUrl;
-        return target + " (" + config.providerType() + "/" + config.modelKey()
-                + ", modelId " + config.modelId() + ")";
     }
 
     private static String failureMessage(ChatContext context, Exception exception) {
@@ -103,17 +86,13 @@ public class AgentScopeModelChatClient implements ModelChatClient {
         return "model chat failed for " + context.label() + ": " + detail;
     }
 
-    /** 拼接全部响应的 TextBlock 文本。 */
+    /** 拼接整段流的全部文本块（空响应/无文本块 → ""，语义由调用方判定）。 */
     private static String joinText(List<ChatResponse> responses) {
         StringBuilder text = new StringBuilder();
         for (ChatResponse response : responses) {
-            if (response.getContent() == null) {
-                continue;
-            }
-            for (var block : response.getContent()) {
-                if (block instanceof TextBlock textBlock && textBlock.getText() != null) {
-                    text.append(textBlock.getText());
-                }
+            String part = ChatResponseTexts.textOf(response);
+            if (part != null) {
+                text.append(part);
             }
         }
         return text.toString();

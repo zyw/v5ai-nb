@@ -2,7 +2,7 @@ package xin.v5ai.nb.rag.core;
 
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
-import xin.v5ai.nb.common.agentscope.core.ModelRuntimeConfigGateway;
+import xin.v5ai.nb.common.agentscope.core.ModelConfigRetrieve;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.factory.config.AgentModelCredentialConfig;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
@@ -27,11 +27,11 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private final ModelRuntimeConfigGateway runtimeConfigGateway;
+    private final ModelConfigRetrieve configRetrieve;
     private final CredentialCipher credentialCipher;
 
-    public OpenAiCompatibleEmbeddingClient(ModelRuntimeConfigGateway runtimeConfigGateway, CredentialCipher credentialCipher) {
-        this.runtimeConfigGateway = runtimeConfigGateway;
+    public OpenAiCompatibleEmbeddingClient(ModelConfigRetrieve configRetrieve, CredentialCipher credentialCipher) {
+        this.configRetrieve = configRetrieve;
         this.credentialCipher = credentialCipher;
     }
 
@@ -76,7 +76,7 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
     }
 
     private ModelRuntimeConfigDTO findEmbeddingModel() {
-        return runtimeConfigGateway.findFirstEmbeddingModel();
+        return configRetrieve.findFirstEmbeddingModel();
     }
 
     private List<Float> parseEmbedding(String json) throws Exception {

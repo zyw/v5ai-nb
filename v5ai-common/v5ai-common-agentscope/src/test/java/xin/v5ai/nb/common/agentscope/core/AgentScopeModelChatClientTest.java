@@ -9,10 +9,8 @@ import io.agentscope.core.model.Model;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.exception.ModelChatException;
-import xin.v5ai.nb.common.agentscope.core.factory.AgentScopeModelFactory;
-import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
+import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
 
 import java.time.Duration;
 import java.util.List;
@@ -21,31 +19,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link AgentScopeModelChatClient} 单测：mock gateway / cipher / factory 与假 Model 流，
- * 验证文本拼接、空响应 / 超时 / 配置缺失的映射（不经网络）。
+ * {@link AgentScopeModelChatClient} 单测：mock {@link AgentModelResolver}（模型解析唯一接缝）与假 Model 流，
+ * 验证文本拼接、空响应 / 超时 / 解析失败映射（不经网络、不复刻解析链）。
  */
 class AgentScopeModelChatClientTest {
 
-    private static final String PLAINTEXT = "{\"apiKey\":\"k\",\"baseUrl\":\"https://api.example.com\"}";
-
-    private final ModelRuntimeConfigGateway gateway = mock(ModelRuntimeConfigGateway.class);
-    private final CredentialCipher cipher = mock(CredentialCipher.class);
-    private final AgentScopeModelFactory factory = mock(AgentScopeModelFactory.class);
+    private final AgentModelResolver resolver = mock(AgentModelResolver.class);
     private final Model model = mock(Model.class);
 
     private AgentScopeModelChatClient client;
 
     @BeforeEach
     void setUp() {
-        client = new AgentScopeModelChatClient(gateway, cipher, factory);
-        var config = new ModelRuntimeConfigDTO(1L, "gpt-4o", "CHAT", 1L, "openai", "OPENAI", "cipher");
-        when(gateway.findRuntimeConfigByModelId(1L)).thenReturn(config);
-        when(cipher.decrypt("cipher")).thenReturn(PLAINTEXT);
-        when(factory.create(config, PLAINTEXT)).thenReturn(model);
+        when(resolver.resolve(1L)).thenReturn(model);
+        when(model.getModelName()).thenReturn("gpt-4o");
+        client = new AgentScopeModelChatClient(resolver);
     }
 
     @Test
@@ -86,12 +79,13 @@ class AgentScopeModelChatClientTest {
         assertThatThrownBy(() -> client.chatText(1L, List.of(userMsg("hi")), Duration.ofSeconds(10)))
                 .isInstanceOf(ModelChatException.class)
                 .hasMessageContaining("timed out")
-                .hasMessageContaining("api.example.com");
+                .hasMessageContaining("gpt-4o")
+                .hasMessageContaining("modelId 1");
     }
 
     @Test
-    void chatTextRejectsMissingConfig() {
-        when(gateway.findRuntimeConfigByModelId(2L)).thenReturn(null);
+    void chatTextPropagatesResolverFailure() {
+        when(resolver.resolve(2L)).thenThrow(new IllegalArgumentException("model runtime config not found: 2"));
 
         assertThatThrownBy(() -> client.chatText(2L, List.of(userMsg("hi")), Duration.ofSeconds(10)))
                 .isInstanceOf(IllegalArgumentException.class)

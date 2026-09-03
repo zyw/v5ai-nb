@@ -86,7 +86,7 @@
 - Test: `v5ai-infrastructure/src/test/java/xin/v5ai/nb/infrastructure/runtime/MyBatisAgentModelResolverTest.java`
 
 **Interfaces:**
-- Consumes: `ModelRuntimeConfigGateway`, `CredentialCipher`, `AgentScopeModelFactory`.
+- Consumes: `ModelConfigRetrieve`, `CredentialCipher`, `AgentScopeModelFactory`.
 - Produces: `AgentModelResolver` bean.
 
 - [ ] Write failing resolver test that decrypts credentials and delegates to factory.
