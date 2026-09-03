@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.rag.core.repository.KnowledgeTaskRepository;
+import xin.v5ai.nb.rag.service.IKnowledgeTaskService;
 
 /**
  * Periodically picks up processable knowledge indexing tasks (PENDING plus FAILED
@@ -16,12 +16,12 @@ import xin.v5ai.nb.rag.core.repository.KnowledgeTaskRepository;
 @RequiredArgsConstructor
 public class KnowledgeTaskScheduler {
 
-    private final KnowledgeTaskRepository taskRepository;
+    private final IKnowledgeTaskService taskService;
     private final KnowledgeIndexingService indexingService;
 
     @Scheduled(fixedDelayString = "${v5ai.worker.scan-interval-ms:5000}", initialDelayString = "${v5ai.worker.initial-delay-ms:10000}")
     public void scanAndProcess() {
-        var tasks = taskRepository.findProcessable(batchSize());
+        var tasks = taskService.findProcessable(batchSize());
         for (var task : tasks) {
             try {
                 indexingService.processTask(task.getId());

@@ -10,11 +10,14 @@ import xin.v5ai.nb.rag.core.KnowledgeDocumentContentStore;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.core.parser.DocumentParser;
-import xin.v5ai.nb.rag.core.repository.KnowledgeBaseRepository;
-import xin.v5ai.nb.rag.core.repository.KnowledgeDocumentRepository;
-import xin.v5ai.nb.rag.core.repository.KnowledgeTaskRepository;
+import xin.v5ai.nb.rag.core.store.KeywordStore;
 import xin.v5ai.nb.rag.core.store.VectorStore;
+import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
+import xin.v5ai.nb.rag.domain.vo.KnowledgeBaseVo;
+import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
+import xin.v5ai.nb.rag.service.IKnowledgeDocumentService;
+import xin.v5ai.nb.rag.service.IKnowledgeTaskService;
 
 import java.util.ArrayList;
 
@@ -58,39 +61,40 @@ public class KnowledgeIndexingService {
      */
     private static final String SOURCE_TYPE_TEXT = "TEXT";
 
-    private final KnowledgeTaskRepository taskRepository;
-    private final KnowledgeDocumentRepository documentRepository;
-    private final KnowledgeBaseRepository knowledgeBaseRepository;
+    private final IKnowledgeTaskService taskService;
+    private final IKnowledgeDocumentService documentService;
+    private final IKnowledgeBaseService knowledgeBaseService;
     private final KnowledgeDocumentContentStore contentStore;
     private final DocumentParser documentParser;
     private final DocumentChunker documentChunker;
     private final EmbeddingClient embeddingClient;
-    private final VectorStore vectorStore;
+    private final VectorStoreResolver vectorStoreResolver;
 
     public void processTask(Long taskId) {
-        var task = taskRepository.findById(taskId);
+        var task = taskService.findById(taskId);
         if (task == null) {
             return;
         }
-        var document = documentRepository.findById(task.getDocumentId());
+        var document = documentService.findById(task.getDocumentId());
         if (document == null) {
             return;
         }
         task.setAttemptCount(task.getAttemptCount() + 1);
         task.setStatus(STATUS_PROCESSING);
         task.setErrorMessage(null);
-        taskRepository.save(task);
+        taskService.save(task);
         document.setStatus(DOC_STATUS_PARSING);
-        documentRepository.save(document);
+        documentService.save(document);
         try {
             var content = contentStore.loadContent(document.getId());
             var parseStart = System.currentTimeMillis();
             var text = documentParser.parse(content, DocumentFileType.valueOf(document.getFileType()));
             var parseTime = (int) (System.currentTimeMillis() - parseStart);
-            var chunks = documentChunker.chunk(text, chunkingOptions(document.getKnowledgeBaseId()));
+            var knowledgeBase = knowledgeBaseService.getKnowledgeBase(document.getKnowledgeBaseId());
+            var chunks = documentChunker.chunk(text, chunkingOptions(knowledgeBase));
             document.setStatus(DOC_STATUS_PROCESSING);
             document.setChunkCount(chunks.size());
-            documentRepository.save(document);
+            documentService.save(document);
             var vectors = new ArrayList<VectorStore.VectorChunk>(chunks.size());
             for (int i = 0; i < chunks.size(); i++) {
                 vectors.add(new VectorStore.VectorChunk(
@@ -104,33 +108,55 @@ public class KnowledgeIndexingService {
                         sha256Hex(chunks.get(i)),
                         SOURCE_TYPE_TEXT));
             }
-            vectorStore.deleteByDocumentId(document.getId());
+            var vectorStore = vectorStoreResolver.vectorStore(
+                    knowledgeBase == null ? null : knowledgeBase.getVectorStoreInstanceId());
+            vectorStore.deleteByDocumentId(document.getKnowledgeBaseId(), document.getId());
             vectorStore.store(vectors);
+            // 双写：同时启用搜索引擎且与向量库不同实例时，将切片写入搜索引擎以支持关键词召回
+            var keywordStore = dualWriteKeywordStore(knowledgeBase);
+            if (keywordStore != null) {
+                keywordStore.deleteByDocumentId(document.getKnowledgeBaseId(), document.getId());
+                keywordStore.store(vectors);
+            }
             document.setParseTime(parseTime);
             document.setStatus(DOC_STATUS_COMPLETED);
-            documentRepository.save(document);
+            documentService.save(document);
             task.setStatus(STATUS_COMPLETED);
-            taskRepository.save(task);
+            taskService.save(task);
         } catch (Exception exception) {
             var errorMessage = exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
             task.setStatus(STATUS_FAILED);
             task.setErrorMessage(errorMessage);
-            taskRepository.save(task);
+            taskService.save(task);
             document.setStatus(DOC_STATUS_FAILED);
             document.setErrorMessage(errorMessage);
-            documentRepository.save(document);
+            documentService.save(document);
         }
+    }
+
+    /**
+     * 双写条件：开启搜索引擎 + 配置了搜索引擎实例 + 与向量库实例不同。
+     */
+    private KeywordStore dualWriteKeywordStore(KnowledgeBaseVo knowledgeBase) {
+        if (knowledgeBase == null || !Boolean.TRUE.equals(knowledgeBase.getSearchEngineEnable())) {
+            return null;
+        }
+        Long searchEngineId = knowledgeBase.getSearchEngineInstanceId();
+        if (searchEngineId == null || searchEngineId.equals(knowledgeBase.getVectorStoreInstanceId())) {
+            return null;
+        }
+        return vectorStoreResolver.keywordStore(searchEngineId);
     }
 
     /**
      * 按知识库配置构建切片参数；delimiter 模式未配置自定义分隔符时回退到知识库 delimiter 列。
      */
-    private ChunkingOptions chunkingOptions(Long knowledgeBaseId) {
-        var base = knowledgeBaseRepository.findById(knowledgeBaseId);
+    private ChunkingOptions chunkingOptions(KnowledgeBaseVo base) {
         if (base == null) {
             return ChunkingOptions.DEFAULT;
         }
-        RagConfigDO config = RagConfigDO.fromJson(base.getConfig());
+//        RagConfigDO config = RagConfigDO.fromJson(base.getConfig());
+        RagConfigDO config =base.getConfig();
         var chunkParams = config == null ? null : config.getChunkParams();
         if (chunkParams == null) {
             return new ChunkingOptions(null, null, null, base.getDelimiter(), null, false);

@@ -601,7 +601,6 @@ onMounted(reload)
         <n-form-item>
           <n-space align="center">
             <n-button
-              v-if="form.type === 1 || form.type === 4"
               size="small"
               secondary
               :loading="testing"
@@ -609,7 +608,6 @@ onMounted(reload)
             >
               测试连接
             </n-button>
-            <span v-else style="font-size: 12px; opacity: 0.6">该类型暂不支持连接测试</span>
           </n-space>
         </n-form-item>
         <n-form-item label="状态">

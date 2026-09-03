@@ -6,7 +6,7 @@
     <parent>
         <groupId>xin.v5ai.nb</groupId>
         <artifactId>v5ai-common</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>v5ai-common-milvus</artifactId>
@@ -16,6 +16,10 @@
     </description>
 
     <dependencies>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>

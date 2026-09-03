@@ -49,10 +49,12 @@ public interface VectorStore {
 
     /**
      * 删除某文档的全部向量切片（文档删除/重新索引时调用）。
+     * 按知识库定位后端索引/集合（ES/Milvus 每个知识库一个索引/集合）。
      *
-     * @param documentId 文档 ID
+     * @param knowledgeBaseId 所属知识库 ID
+     * @param documentId      文档 ID
      */
-    void deleteByDocumentId(Long documentId);
+    void deleteByDocumentId(Long knowledgeBaseId, Long documentId);
 
     /**
      * 向量相似度检索：用查询向量在指定知识库内召回 topK 条结果。
@@ -63,14 +65,4 @@ public interface VectorStore {
      * @return 命中结果列表（按得分降序）
      */
     List<RetrievalHit> search(List<Long> knowledgeBaseIds, List<Float> queryVector, int topK);
-
-    /**
-     * 关键词检索：按关键词召回结果（向量检索失败/为空时的降级策略）。
-     *
-     * @param knowledgeBaseIds 限定的知识库 ID 集合
-     * @param keyword          关键词
-     * @param topK             返回条数
-     * @return 命中结果列表
-     */
-    List<RetrievalHit> keywordSearch(List<Long> knowledgeBaseIds, String keyword, int topK);
 }

@@ -10,7 +10,7 @@ import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
-import xin.v5ai.nb.rag.core.store.VectorStore;
+import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link KnowledgeBaseServiceImpl} 的 Mockito 单测：mock Mapper + 假 VectorStore/UrlContentFetcher。
+ * {@link KnowledgeBaseServiceImpl} 的 Mockito 单测：mock Mapper + 假 VectorStoreResolver/UrlContentFetcher。
  *
  * @author ZYW
  * @since 2026-08-22
@@ -66,7 +66,7 @@ class KnowledgeBaseServiceImplTest {
         KnowledgeTaskMapper taskMapper = mock(KnowledgeTaskMapper.class);
         AgentKnowledgeBindingMapper bindingMapper = mock(AgentKnowledgeBindingMapper.class);
         StoreInstanceMapper storeInstanceMapper = mock(StoreInstanceMapper.class);
-        VectorStore vectorStore = mock(VectorStore.class);
+        VectorStoreResolver vectorStoreResolver = mock(VectorStoreResolver.class);
         UrlContentFetcher urlFetcher = mock(UrlContentFetcher.class);
 
         when(knowledgeBaseMapper.selectById(any())).thenAnswer(inv -> findById(knowledgeBases, inv.getArgument(0)));
@@ -140,7 +140,7 @@ class KnowledgeBaseServiceImplTest {
         when(urlFetcher.fetch("https://example.com/doc")).thenReturn("hello world");
 
         service = new KnowledgeBaseServiceImpl(knowledgeBaseMapper, documentMapper, taskMapper,
-                bindingMapper, storeInstanceMapper, vectorStore, urlFetcher);
+                bindingMapper, storeInstanceMapper, vectorStoreResolver, urlFetcher);
     }
 
     @Test

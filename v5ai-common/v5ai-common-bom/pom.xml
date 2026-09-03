@@ -84,6 +84,16 @@
                 <artifactId>v5ai-common-web</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-common-elasticsearch</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>xin.v5ai.nb</groupId>
+                <artifactId>v5ai-common-milvus</artifactId>
+                <version>${revision}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

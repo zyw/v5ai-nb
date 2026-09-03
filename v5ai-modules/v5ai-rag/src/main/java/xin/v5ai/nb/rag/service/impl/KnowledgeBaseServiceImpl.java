@@ -16,7 +16,7 @@ import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
-import xin.v5ai.nb.rag.core.store.VectorStore;
+import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
@@ -108,7 +108,7 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     private final KnowledgeTaskMapper taskMapper;
     private final AgentKnowledgeBindingMapper bindingMapper;
     private final StoreInstanceMapper storeInstanceMapper;
-    private final VectorStore vectorStore;
+    private final VectorStoreResolver vectorStoreResolver;
     private final UrlContentFetcher urlContentFetcher;
 
     @Override
@@ -253,7 +253,18 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         if (document == null) {
             throw new IllegalArgumentException("document does not exist: " + documentId);
         }
-        vectorStore.deleteByDocumentId(documentId);
+        var knowledgeBase = knowledgeBaseMapper.selectById(document.getKnowledgeBaseId());
+        Long vectorInstanceId = knowledgeBase == null ? null : knowledgeBase.getVectorStoreInstanceId();
+        vectorStoreResolver.vectorStore(vectorInstanceId)
+                .deleteByDocumentId(document.getKnowledgeBaseId(), documentId);
+        if (knowledgeBase != null && Boolean.TRUE.equals(knowledgeBase.getSearchEngineEnable())
+                && knowledgeBase.getSearchEngineInstanceId() != null
+                && !knowledgeBase.getSearchEngineInstanceId().equals(knowledgeBase.getVectorStoreInstanceId())) {
+            var keywordStore = vectorStoreResolver.keywordStore(knowledgeBase.getSearchEngineInstanceId());
+            if (keywordStore != null) {
+                keywordStore.deleteByDocumentId(document.getKnowledgeBaseId(), documentId);
+            }
+        }
         taskMapper.delete(new LambdaQueryWrapper<KnowledgeTask>()
                 .eq(KnowledgeTask::getDocumentId, documentId));
         documentMapper.deleteById(documentId);

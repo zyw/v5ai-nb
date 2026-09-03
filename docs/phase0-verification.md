@@ -45,4 +45,4 @@ mvn -Dmaven.repo.local=/private/tmp/v5ai-m2 clean verify \
 ## 备注
 
 - Phase 0 仅完成 AgentScope 最小调用边界；真实模型 Provider/Model 到 AgentScope Model 的解析属于 Phase 1。
-- `RuntimeConfiguration` 在存在 AgentScope `Model` Bean 时启用 `AgentScopeHarnessExecutor`，否则保留开发占位响应，避免 Phase 0 本地启动强依赖真实模型服务。
+- `AgentScopeRuntimeConfiguration` 在存在 AgentScope `Model` Bean 时启用 `AgentScopeHarnessExecutor`，否则保留开发占位响应，避免 Phase 0 本地启动强依赖真实模型服务。

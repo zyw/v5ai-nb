@@ -1,4 +1,4 @@
-package xin.v5ai.nb.rag.core.config;
+package xin.v5ai.nb.common.elasticsearch.domain;
 
 import lombok.Data;
 
@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class ElasticsearchVectorConfigDO {
 
-    /** 是否启用该 Elasticsearch 向量库配置 */
+    /** 是否启用该 Elasticsearch 配置 */
     private boolean enabled = true;
 
     /** 主机地址，支持直接填写带 scheme 的完整 endpoint */
@@ -29,7 +29,7 @@ public class ElasticsearchVectorConfigDO {
     /** 是否关闭 HTTPS 证书和主机名校验，仅用于内网自签名证书 */
     private boolean sslVerificationDisabled = false;
 
-    /** 实际索引名：{indexPrefix}_{ragId} */
+    /** 实际索引名：{indexPrefix}_{knowledgeBaseId} */
     private String indexPrefix = "v5ai_ai_vector";
 
     /** cosine | dot_product | l2_norm */

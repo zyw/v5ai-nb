@@ -30,6 +30,14 @@
         </dependency>
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-elasticsearch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-milvus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-runtime</artifactId>
         </dependency>
         <dependency>

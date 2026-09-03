@@ -2,6 +2,26 @@ package xin.v5ai.nb.common.agentscope.core.domain;
 
 import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
 
+/**
+ * Agent 领域契约：运行时所需的 Agent 完整配置（发布态快照），
+ * 含基础信息、绑定模型、系统提示词、展示信息与能力开关。
+ *
+ * @param agentKey          Agent 对外运行标识（唯一）
+ * @param name              Agent 名称
+ * @param description       Agent 描述
+ * @param status            状态（DRAFT / PUBLISHED / DISABLED）
+ * @param modelId           绑定的模型 ID
+ * @param publishedVersion  已发布版本号；未发布时为 null
+ * @param systemPrompt      系统提示词
+ * @param avatar            头像
+ * @param greeting          开场白
+ * @param presetQuestions   预设问题（JSON 数组字符串）
+ * @param memoryEnabled     是否启用会话记忆
+ * @param mcpEnabled        是否启用 MCP 工具
+ * @param skillEnabled      是否启用 Skill
+ * @param webSearchEnabled  是否启用联网搜索
+ * @param ragEnabled        是否启用 RAG 知识库检索
+ */
 public record Agent(
         String agentKey,
         String name,

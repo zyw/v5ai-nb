@@ -49,9 +49,9 @@ public class StoreInstance extends BaseEntity {
 
     /**
      * 连接参数 JSON
-     * type=1时，PgVectorConfigDO
-     * type=2时，MilvusConfigDO
-     * type=3时，ElasticsearchConfigDO
+     * type=1时，PgVectorConfigDO（xin.v5ai.nb.rag.core.config）
+     * type=2时，MilvusVectorConfigDO（xin.v5ai.nb.common.milvus）
+     * type=3时，ElasticsearchVectorConfigDO（xin.v5ai.nb.common.elasticsearch）
      * type=4时，PgVectorConfigDO
      */
     private String config;

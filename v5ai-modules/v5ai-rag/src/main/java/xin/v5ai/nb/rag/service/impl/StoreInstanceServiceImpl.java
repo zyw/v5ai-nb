@@ -16,6 +16,7 @@ import xin.v5ai.nb.common.core.utils.MapstructUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.rag.core.StoreConnectionTester;
+import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.StoreInstance;
 import xin.v5ai.nb.rag.domain.bo.StoreConnectionTestBo;
 import xin.v5ai.nb.rag.domain.bo.StoreInstanceBo;
@@ -85,6 +86,8 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
 
     private final StoreConnectionTester connectionTester;
 
+    private final VectorStoreResolver vectorStoreResolver;
+
     @Override
     public PageResult<StoreInstanceVo> queryPageList(StoreInstanceBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<StoreInstance> lqw = buildQueryWrapper(bo);
@@ -144,8 +147,11 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
         String mergedConfig = mergeSensitiveConfig(bo.getConfig(), existing.getConfig());
         update.setConfig(StrUtil.isBlank(mergedConfig) ? null : mergedConfig);
         boolean flag = storeInstanceMapper.updateById(update) > 0;
-        if (flag && Boolean.TRUE.equals(update.getIsDefault())) {
-            clearDefault(update.getCategory(), update.getId());
+        if (flag) {
+            vectorStoreResolver.invalidate(bo.getId());
+            if (Boolean.TRUE.equals(update.getIsDefault())) {
+                clearDefault(update.getCategory(), update.getId());
+            }
         }
         return flag;
     }
@@ -159,7 +165,11 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
         if (storeInstanceMapper.selectByIds(ids).size() != ids.size()) {
             throw new ServiceException("存储实例不存在或已被删除");
         }
-        return storeInstanceMapper.deleteByIds(ids) > 0;
+        boolean deleted = storeInstanceMapper.deleteByIds(ids) > 0;
+        if (deleted) {
+            ids.forEach(vectorStoreResolver::invalidate);
+        }
+        return deleted;
     }
 
     @Override
@@ -167,9 +177,6 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
         Integer type = bo.type();
         if (type == null || type < TYPE_PG_VECTOR || type > TYPE_PG_FULLTEXT) {
             return StoreConnectionTestVo.failure("类型不合法: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT");
-        }
-        if (type == TYPE_MILVUS || type == TYPE_ELASTICSEARCH) {
-            return StoreConnectionTestVo.failure("该类型暂不支持连接测试，仅支持 PG_VECTOR / PG_FULLTEXT");
         }
         // 编辑态合并库中脱敏的敏感字段（password/token 留空时沿用原值），新建态直接用表单值
         String effectiveConfig = bo.config();

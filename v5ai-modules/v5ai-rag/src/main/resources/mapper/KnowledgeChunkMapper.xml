@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper">
+
+    <select id="findChunkByBaseIds" resultType="xin.v5ai.nb.rag.domain.KnowledgeChunkDO">
+        SELECT knowledge_base_id, document_id, chunk_index, content, metadata,
+        1 - (embedding &lt;=> #{embed1}::vector) AS score
+        FROM v5ai_knowledge_chunk
+        WHERE knowledge_base_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY embedding &lt;=> #{embed2}::vector
+        LIMIT #{limit}
+    </select>
+    <select id="findChunkByIdsAndLinkKeyword" resultType="xin.v5ai.nb.rag.domain.KnowledgeChunkDO">
+        SELECT knowledge_base_id, document_id, chunk_index, content, metadata, 1.0 AS score
+        FROM v5ai_knowledge_chunk
+        WHERE knowledge_base_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND content ILIKE #{keyword}
+        ORDER BY id
+        LIMIT #{limit}
+    </select>
+</mapper>

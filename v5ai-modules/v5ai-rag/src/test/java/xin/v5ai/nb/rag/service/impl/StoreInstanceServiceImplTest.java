@@ -16,6 +16,7 @@ import org.springframework.context.support.StaticApplicationContext;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.rag.core.StoreConnectionTester;
+import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.StoreInstance;
 import xin.v5ai.nb.rag.domain.bo.StoreConnectionTestBo;
 import xin.v5ai.nb.rag.domain.bo.StoreInstanceBo;
@@ -49,6 +50,7 @@ class StoreInstanceServiceImplTest {
 
     private StoreInstanceMapper storeInstanceMapper;
     private StoreConnectionTester connectionTester;
+    private VectorStoreResolver vectorStoreResolver;
     private StoreInstanceServiceImpl service;
 
     @BeforeEach
@@ -68,6 +70,7 @@ class StoreInstanceServiceImplTest {
 
         storeInstanceMapper = mock(StoreInstanceMapper.class);
         connectionTester = mock(StoreConnectionTester.class);
+        vectorStoreResolver = mock(VectorStoreResolver.class);
         when(storeInstanceMapper.selectById(any())).thenAnswer(inv -> findById(instances, inv.getArgument(0)));
         when(storeInstanceMapper.selectByIds(any())).thenAnswer(inv -> {
             Collection<?> ids = inv.getArgument(0);
@@ -131,7 +134,7 @@ class StoreInstanceServiceImplTest {
             return ids.size();
         }).when(storeInstanceMapper).deleteByIds(any());
 
-        service = new StoreInstanceServiceImpl(storeInstanceMapper, connectionTester);
+        service = new StoreInstanceServiceImpl(storeInstanceMapper, connectionTester, vectorStoreResolver);
     }
 
     @Test
@@ -358,11 +361,23 @@ class StoreInstanceServiceImplTest {
     }
 
     @Test
-    void testConnectionUnsupportedTypeReturnsFailure() {
+    void testConnectionMilvusTypeDelegatesToTester() {
+        when(connectionTester.test(2, "{}")).thenReturn(StoreConnectionTestVo.success("连接成功"));
+
         var result = service.testConnection(new StoreConnectionTestBo(2, "{}", null));
 
-        assertThat(result.ok()).isFalse();
-        assertThat(result.message()).contains("暂不支持连接测试");
+        assertThat(result.ok()).isTrue();
+        verify(connectionTester).test(2, "{}");
+    }
+
+    @Test
+    void testConnectionElasticsearchTypeDelegatesToTester() {
+        when(connectionTester.test(3, "{}")).thenReturn(StoreConnectionTestVo.success("连接成功"));
+
+        var result = service.testConnection(new StoreConnectionTestBo(3, "{}", null));
+
+        assertThat(result.ok()).isTrue();
+        verify(connectionTester).test(3, "{}");
     }
 
     @Test

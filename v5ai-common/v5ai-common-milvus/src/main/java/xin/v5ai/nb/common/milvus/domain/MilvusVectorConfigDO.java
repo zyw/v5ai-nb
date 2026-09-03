@@ -1,4 +1,4 @@
-package xin.v5ai.nb.rag.core.config;
+package xin.v5ai.nb.common.milvus.domain;
 
 import lombok.Data;
 
@@ -23,7 +23,7 @@ public class MilvusVectorConfigDO {
     /** 数据库名 */
     private String database = "default";
 
-    /** 实际 collection：{collectionPrefix}_{ragId} */
+    /** 实际 collection：{collectionPrefix}_{knowledgeBaseId} */
     private String collectionPrefix = "snail_rag_vector";
 
     /** COSINE | L2 | IP */

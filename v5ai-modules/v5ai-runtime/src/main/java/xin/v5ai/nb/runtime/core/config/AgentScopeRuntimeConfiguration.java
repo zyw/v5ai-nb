@@ -30,7 +30,7 @@ import java.nio.file.Path;
 
 @Configuration
 @EnableConfigurationProperties(AgentScopeRuntimeProperties.class)
-public class RuntimeConfiguration {
+public class AgentScopeRuntimeConfiguration {
     @Bean
     AgentTextExecutor agentTextExecutor(
             ObjectProvider<AgentModelResolver> modelResolverProvider,
