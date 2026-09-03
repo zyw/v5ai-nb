@@ -595,21 +595,6 @@ onMounted(reload)
             <n-switch v-model:value="configForm.sslVerificationDisabled" />
           </n-form-item>
         </template>
-        <n-alert v-if="testResult" :type="testResult.ok ? 'success' : 'error'" :bordered="false" style="margin-bottom: 8px">
-          {{ testResult.message }}
-        </n-alert>
-        <n-form-item>
-          <n-space align="center">
-            <n-button
-              size="small"
-              secondary
-              :loading="testing"
-              @click="handleTestConnection"
-            >
-              测试连接
-            </n-button>
-          </n-space>
-        </n-form-item>
         <n-form-item label="状态">
           <n-select v-model:value="form.status" :options="statusOptions" />
         </n-form-item>
@@ -618,7 +603,11 @@ onMounted(reload)
         </n-form-item>
       </n-form>
       <template #footer>
+        <n-alert v-if="testResult" :type="testResult.ok ? 'success' : 'error'" :bordered="false" style="margin-bottom: 8px">
+          {{ testResult.message }}
+        </n-alert>
         <n-space justify="end">
+          <n-button secondary :loading="testing" @click="handleTestConnection">测试连接</n-button>
           <n-button @click="showModal = false">取消</n-button>
           <n-button type="primary" :loading="saving" @click="handleSave">保存</n-button>
         </n-space>

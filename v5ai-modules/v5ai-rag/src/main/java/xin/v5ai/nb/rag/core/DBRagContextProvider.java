@@ -9,7 +9,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 
 @Component
 @RequiredArgsConstructor
-public class MyBatisRagContextProvider implements RagContextProvider {
+public class DBRagContextProvider implements RagContextProvider {
 
     private final RetrievalContextBuilder retrievalContextBuilder;
 

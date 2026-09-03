@@ -49,7 +49,7 @@ cd v5ai-ui && npm run build
   未配置时回退确定性 Hash 嵌入（1536 维）。
 - 向量存储：`PgVectorStore`（JdbcTemplate + `<=>` 余弦检索），空结果回退 `ILIKE` 关键词检索；
   检索保留 `documentId/chunkIndex/title` 引用元数据并格式化为引用上下文。
-- 运行时集成：`MyBatisRagContextProvider` 注入 `AgentScopeRuntime`，检索命中时发 `RETRIEVAL` 事件，
+- 运行时集成：`DBRagContextProvider` 注入 `AgentScopeRuntime`，检索命中时发 `RETRIEVAL` 事件，
   上下文经 `AgentRunRequest.ragContext` 注入 `ModelStreamTextExecutor` 的 System Prompt。
 - Admin API：知识库 CRUD、文档 multipart 上传/URL 导入/删除/重试、任务查询、Agent 绑定。
 - 前端：`KnowledgeBasesView`（建库、上传、状态/任务表、重试）、ModelsView 凭据表单化与连通性测试、
