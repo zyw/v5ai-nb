@@ -23,5 +23,7 @@
         <module>v5ai-common-log</module>
         <module>v5ai-common-translation</module>
         <module>v5ai-common-sensitive</module>
+        <module>v5ai-common-elasticsearch</module>
+        <module>v5ai-common-milvus</module>
     </modules>
 </project>
