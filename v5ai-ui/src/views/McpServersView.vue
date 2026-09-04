@@ -112,7 +112,7 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
         unchecked: () => h('span', '禁')
       })
   },
-  { title: '测试状态', key: 'lastTestStatus', width: 100, render: (row) => h(StatusTag, { status: row.lastTestStatus }) },
+  { title: '测试状态', key: 'lastTestStatus', width: 100, render: (row) => h(StatusTag, { status: row.lastTestStatus === 'ok' ? 'success' : row.lastTestStatus }) },
   { title: '测试时间', key: 'lastTestedAt', width: 182, render: (row) => fmtTime(row.lastTestedAt) },
   { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
@@ -133,7 +133,8 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
 ]
 
 const toolColumns: DataTableColumns<McpToolResponse> = [
-  { title: '工具名', key: 'toolName' },
+  { title: 'ID', key: 'id', width: 64 },
+  { title: '工具名', key: 'toolName', width: 'auto' },
   { title: '描述', key: 'description', ellipsis: { tooltip: true } },
   {
     title: '只读',
@@ -457,8 +458,8 @@ onMounted(reload)
     <n-modal
       v-model:show="showToolsModal"
       preset="card"
-      :title="`工具列表（${activeServer?.name ?? ''}）`"
-      style="width: 50%"
+      :title="`工具列表（${activeServer?.name ?? ''} 共${tools.length} 个工具）`"
+      style="width: 70%"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">

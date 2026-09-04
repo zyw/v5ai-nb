@@ -45,4 +45,9 @@ public class ModelProviderBo {
      * 是否启用，默认 true
      */
     private Boolean enabled;
+
+    /**
+     * 搜索关键词（供应商名称或 key 模糊匹配，OR 关系）
+     */
+    private String keyword;
 }

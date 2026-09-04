@@ -1,5 +1,6 @@
 package xin.v5ai.nb.model.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -108,6 +109,10 @@ public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
                 .likeIfText(V5aiModelProvider::getName, bo.getName())
                 .eqIfText(V5aiModelProvider::getProviderType, bo.getProviderType())
                 .eq(bo.getEnabled() != null, V5aiModelProvider::getEnabled, bo.getEnabled())
+                .and(StrUtil.isNotBlank(bo.getKeyword()),
+                        w -> w.like(V5aiModelProvider::getName, bo.getKeyword())
+                                .or()
+                                .like(V5aiModelProvider::getProviderKey, bo.getKeyword()))
                 .orderByAsc(V5aiModelProvider::getId)
                 .build();
     }

@@ -648,8 +648,8 @@ function paramString(params?: object): string {
 
 // ---- Provider ----
 
-export function listProviders(adminToken: string, query?: PageQuery): Promise<PageResult<ProviderResponse>> {
-  return requestJson<PageResult<ProviderResponse>>(`/api/admin/providers${pageQueryString(query)}`, {}, adminToken)
+export function listProviders(adminToken: string, query?: PageQuery & { keyword?: string }): Promise<PageResult<ProviderResponse>> {
+  return requestJson<PageResult<ProviderResponse>>(`/api/admin/providers${paramString(query)}`, {}, adminToken)
 }
 
 export function createProvider(adminToken: string, request: CreateProviderRequest): Promise<ProviderResponse> {
@@ -674,8 +674,8 @@ export function deleteProvider(adminToken: string, ids: number[]): Promise<void>
 
 // ---- Model ----
 
-export function listModels(adminToken: string, query?: PageQuery): Promise<PageResult<ModelResponse>> {
-  return requestJson<PageResult<ModelResponse>>(`/api/admin/models${pageQueryString(query)}`, {}, adminToken)
+export function listModels(adminToken: string, query?: PageQuery & { keyword?: string; providerKey?: string; modelType?: string; enabled?: boolean }): Promise<PageResult<ModelResponse>> {
+  return requestJson<PageResult<ModelResponse>>(`/api/admin/models${paramString(query)}`, {}, adminToken)
 }
 
 export function createModel(adminToken: string, request: CreateModelRequest): Promise<ModelResponse> {

@@ -156,6 +156,10 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         return QueryBuilder.lambda(V5aiModel.class)
                 .likeIfText(V5aiModel::getModelKey, bo.getModelKey())
                 .likeIfText(V5aiModel::getModelName, bo.getModelName())
+                .and(StrUtil.isNotBlank(bo.getKeyword()),
+                        w -> w.like(V5aiModel::getModelName, bo.getKeyword())
+                                .or()
+                                .like(V5aiModel::getModelKey, bo.getKeyword()))
                 .eqIfText(V5aiModel::getScope, bo.getScope())
                 .eq(bo.getModelType() != null, V5aiModel::getModelType, bo.getModelType() == null ? null : bo.getModelType().name())
                 .eq(bo.getEnabled() != null, V5aiModel::getEnabled, bo.getEnabled())

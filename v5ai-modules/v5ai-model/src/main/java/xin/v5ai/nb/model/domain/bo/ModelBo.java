@@ -91,4 +91,9 @@ public class ModelBo {
      * 明文凭据 JSON（apiKey/baseUrl/temperature/maxTokens），仅创建或改密时提交
      */
     private String credentials;
+
+    /**
+     * 搜索关键词（模型名称或 key 模糊匹配，OR 关系）
+     */
+    private String keyword;
 }

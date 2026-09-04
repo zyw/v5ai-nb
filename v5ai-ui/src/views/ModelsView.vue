@@ -22,7 +22,7 @@ import {
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
@@ -51,6 +51,19 @@ const testingModelId = ref<number | null>(null)
 
 const providerPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 const modelPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+
+const providerSearch = reactive({ keyword: '' })
+const modelSearch = reactive({
+  keyword: '',
+  providerKey: null as string | null,
+  modelType: null as string | null,
+  enabled: null as string | null
+})
+
+const enabledOptions = [
+  { label: '启用', value: 'true' },
+  { label: '禁用', value: 'false' }
+]
 
 const showProviderModal = ref(false)
 const showModelModal = ref(false)
@@ -292,8 +305,19 @@ async function reload() {
   loading.value = true
   try {
     const [providerRows, modelRows] = await Promise.all([
-      listProviders(adminToken.value, { pageNum: providerPagination.page, pageSize: providerPagination.pageSize }),
-      listModels(adminToken.value, { pageNum: modelPagination.page, pageSize: modelPagination.pageSize })
+      listProviders(adminToken.value, {
+        pageNum: providerPagination.page,
+        pageSize: providerPagination.pageSize,
+        keyword: providerSearch.keyword || undefined
+      }),
+      listModels(adminToken.value, {
+        pageNum: modelPagination.page,
+        pageSize: modelPagination.pageSize,
+        keyword: modelSearch.keyword || undefined,
+        providerKey: modelSearch.providerKey ?? undefined,
+        modelType: modelSearch.modelType ?? undefined,
+        enabled: modelSearch.enabled === null ? undefined : modelSearch.enabled === 'true'
+      })
     ])
     providers.value = providerRows.rows
     providerPagination.itemCount = providerRows.total
@@ -337,6 +361,24 @@ function handleTabChange(tab: string) {
     modelPagination.page = 1
   }
   void reload()
+}
+
+function handleProviderSearch() {
+  providerPagination.page = 1
+  void reload()
+}
+
+function handleModelSearch() {
+  modelPagination.page = 1
+  void reload()
+}
+
+function handleCreate() {
+  if (activeTab.value === 'provider') {
+    openProviderModal()
+  } else {
+    void openModelModal()
+  }
 }
 
 function openProviderModal() {
@@ -531,15 +573,30 @@ onMounted(reload)
 
 <template>
   <div class="page">
-    <PageHeader title="模型管理" description="配置模型 Provider 与可用模型，模型凭证将加密存储。" />
+    <PageHeader title="模型管理" description="配置模型 Provider 与可用模型，模型凭证将加密存储。">
+      <template #actions>
+        <n-button size="small" type="primary" @click="handleCreate">
+          <template #icon><n-icon :component="Plus" /></template>
+          {{ activeTab === 'provider' ? '新建 Provider' : '新建模型' }}
+        </n-button>
+      </template>
+    </PageHeader>
 
     <n-tabs v-model:value="activeTab" type="line" @update:value="handleTabChange">
       <!-- 模型管理 -->
       <n-tab-pane name="model" tab="模型管理">
-        <n-space style="margin-bottom: 12px" justify="end">
-          <n-button size="small" type="primary" @click="openModelModal">
-            <template #icon><n-icon :component="Plus" /></template>
-            新建 Model
+        <n-space style="margin-bottom: 12px" :size="8" align="center">
+          <n-input v-model:value="modelSearch.keyword" placeholder="模型名称 / Key" clearable style="width: 220px" @keyup.enter="handleModelSearch" />
+          <n-select v-model:value="modelSearch.providerKey" placeholder="模型供应商" clearable style="width: 180px" :options="providerOptions()" />
+          <n-select v-model:value="modelSearch.modelType" placeholder="模型类型" clearable style="width: 140px" :options="modelTypeOptions" />
+          <n-select v-model:value="modelSearch.enabled" placeholder="状态" clearable style="width: 110px" :options="enabledOptions" />
+          <n-button size="small" type="primary" secondary @click="handleModelSearch">
+            <template #icon><n-icon :component="Search" /></template>
+            查询
+          </n-button>
+          <n-button size="small" quaternary @click="handleModelSearch">
+            <template #icon><n-icon :component="RefreshCw" /></template>
+            刷新
           </n-button>
         </n-space>
         <n-data-table :loading="loading" :columns="modelColumns" :data="models" :bordered="false" />
@@ -557,10 +614,15 @@ onMounted(reload)
 
       <!-- 供应商管理 -->
       <n-tab-pane name="provider" tab="供应商管理">
-        <n-space style="margin-bottom: 12px" justify="end">
-          <n-button size="small" type="primary" @click="openProviderModal">
-            <template #icon><n-icon :component="Plus" /></template>
-            新建 Provider
+        <n-space style="margin-bottom: 12px" :size="8" align="center">
+          <n-input v-model:value="providerSearch.keyword" placeholder="供应商名称 / Key" clearable style="width: 240px" @keyup.enter="handleProviderSearch" />
+          <n-button size="small" type="primary" secondary @click="handleProviderSearch">
+            <template #icon><n-icon :component="Search" /></template>
+            查询
+          </n-button>
+          <n-button size="small" quaternary @click="handleProviderSearch">
+            <template #icon><n-icon :component="RefreshCw" /></template>
+            刷新
           </n-button>
         </n-space>
         <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" />

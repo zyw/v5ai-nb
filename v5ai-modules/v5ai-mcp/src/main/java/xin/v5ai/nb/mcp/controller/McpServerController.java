@@ -90,7 +90,7 @@ public class McpServerController extends BaseController {
     @GetMapping("/{id}/tools")
     public R<PageResult<McpToolVo>> listTools(@PathVariable("id") Long id, PageQuery pageQuery) {
         var list = mcpServerService.listTools(id);
-        return R.ok(PageResult.build(list, (long) list.size()));
+        return R.ok(PageResult.build(list, list.size()));
     }
 
     @PutMapping("/{id}/tools/{toolName}/permission")
