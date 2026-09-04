@@ -23,7 +23,7 @@ class ModelRuntimeConfigGatewayTest {
         assertThat(config.modelType()).isEqualTo("CHAT");
         assertThat(config.providerId()).isEqualTo(3L);
         assertThat(config.providerKey()).isEqualTo("openai");
-        assertThat(config.providerType()).isEqualTo("OPENAI_COMPATIBLE");
+        assertThat(config.adapterKey()).isEqualTo("openai-compatible");
         assertThat(config.credentialsCiphertext()).isEqualTo("ciphertext");
     }
 }

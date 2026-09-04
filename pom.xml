@@ -27,7 +27,7 @@
 
         <redisson.version>4.6.1</redisson.version>
         <minio.version>8.5.17</minio.version>
-        <agentscope.version>2.0.0</agentscope.version>
+        <agentscope.version>2.0.2-subagent-bugfix</agentscope.version>
         <pdfbox.version>3.0.7</pdfbox.version>
         <hutool.version>5.8.47</hutool.version>
         <mapstruct-plus.version>1.5.1</mapstruct-plus.version>
@@ -102,14 +102,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- hutool 的依赖配置-->
-            <dependency>
-                <groupId>cn.hutool</groupId>
-                <artifactId>hutool-bom</artifactId>
-                <version>${hutool.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
             <!-- sa-token-bom 依赖 -->
             <!-- Sa-Token 权限认证, 在线文档：http://sa-token.dev33.cn/ -->
             <dependency>
@@ -119,6 +111,22 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- hutool 的依赖配置-->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-bom</artifactId>
+                <version>${hutool.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-bom</artifactId>
+                <version>${mybatis-plus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- v5ai-common 依赖配置 -->
             <dependency>
                 <groupId>xin.v5ai.nb</groupId>
                 <artifactId>v5ai-common-bom</artifactId>
@@ -126,35 +134,41 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- mybatis-plus 的依赖配置-->
+<!--            &lt;!&ndash; mybatis-plus 的依赖配置&ndash;&gt;-->
+<!--            <dependency>-->
+<!--                <groupId>com.baomidou</groupId>-->
+<!--                <artifactId>mybatis-plus-spring-boot4-starter</artifactId>-->
+<!--                <version>${mybatis-plus.version}</version>-->
+<!--            </dependency>-->
+<!--            &lt;!&ndash; MyBatis Plus JSqlParser 支持 &ndash;&gt;-->
+<!--            <dependency>-->
+<!--                <groupId>com.baomidou</groupId>-->
+<!--                <artifactId>mybatis-plus-jsqlparser</artifactId>-->
+<!--                <version>${mybatis-plus.version}</version>-->
+<!--            </dependency>-->
+<!--            &lt;!&ndash; MyBatis Plus 注解 &ndash;&gt;-->
+<!--            <dependency>-->
+<!--                <groupId>com.baomidou</groupId>-->
+<!--                <artifactId>mybatis-plus-annotation</artifactId>-->
+<!--                <version>${mybatis-plus.version}</version>-->
+<!--            </dependency>-->
+            <!-- dynamic-datasource 多数据源-->
             <dependency>
                 <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
-                <version>${mybatis-plus.version}</version>
+                <artifactId>dynamic-datasource-spring-boot4-starter</artifactId>
+                <version>${dynamic-ds.version}</version>
             </dependency>
-            <!-- MyBatis Plus JSqlParser 支持 -->
+            <!-- 分布式锁 -->
             <dependency>
                 <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-jsqlparser</artifactId>
-                <version>${mybatis-plus.version}</version>
-            </dependency>
-            <!-- MyBatis Plus 注解 -->
-            <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-annotation</artifactId>
-                <version>${mybatis-plus.version}</version>
+                <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
+                <version>${lock4j.version}</version>
             </dependency>
             <!-- MyBatis Plus Join -->
             <dependency>
                 <groupId>com.github.yulichang</groupId>
                 <artifactId>mybatis-plus-join-boot-starter</artifactId>
                 <version>${mybatis-plus-join.version}</version>
-            </dependency>
-            <!-- dynamic-datasource 多数据源-->
-            <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>dynamic-datasource-spring-boot4-starter</artifactId>
-                <version>${dynamic-ds.version}</version>
             </dependency>
             <!--redisson-->
             <dependency>
@@ -167,12 +181,6 @@
                 <groupId>io.github.linpeilie</groupId>
                 <artifactId>mapstruct-plus-spring-boot-starter</artifactId>
                 <version>${mapstruct-plus.version}</version>
-            </dependency>
-            <!-- 分布式锁 -->
-            <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
-                <version>${lock4j.version}</version>
             </dependency>
 
             <dependency>
@@ -215,6 +223,16 @@
             <dependency>
                 <groupId>io.agentscope</groupId>
                 <artifactId>agentscope-extensions-model-dashscope</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-gemini</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-anthropic</artifactId>
                 <version>${agentscope.version}</version>
             </dependency>
             <dependency>

@@ -8,7 +8,7 @@ package xin.v5ai.nb.common.agentscope.core.domain.dto;
  * @param modelType             模型类型（LLM / EMBEDDING 等）
  * @param providerId            模型供应商 ID
  * @param providerKey           供应商对外标识
- * @param providerType          供应商类型（如 openai / dashscope）
+ * @param adapterKey          底层协议适配器标识(openai-compatible,qwen-rerank)
  * @param credentialsCiphertext 模型凭据密文（AES-GCM 加密，使用前需解密）
  */
 public record ModelRuntimeConfigDTO(
@@ -17,7 +17,7 @@ public record ModelRuntimeConfigDTO(
         String modelType,
         Long providerId,
         String providerKey,
-        String providerType,
+        String adapterKey,
         String credentialsCiphertext
 ) {
 }

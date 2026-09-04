@@ -2,7 +2,9 @@ package xin.v5ai.nb.common.agentscope.core.factory;
 
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
+import io.agentscope.extensions.model.anthropic.AnthropicChatModel;
 import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
+import io.agentscope.extensions.model.gemini.GeminiChatModel;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
@@ -15,11 +17,41 @@ public class AgentScopeModelFactory {
             throw new IllegalArgumentException("only CHAT models can be used by agent runtime");
         }
         var credentials = AgentModelCredentialConfig.parse(plaintextCredentials);
-        return switch (config.providerType()) {
-            case "OPENAI", "OPENAI_COMPATIBLE" -> openAiModel(config, credentials);
-            case "DASHSCOPE" -> dashScopeModel(config, credentials);
-            default -> throw new IllegalArgumentException("unsupported provider type: " + config.providerType());
+        return switch (config.providerKey()) {
+            case "anthropic" -> anthropicModel(config, credentials);
+            case "gemini" -> geminiModel(config, credentials);
+            case "dashscope" -> dashScopeModel(config, credentials);
+            default -> {
+                if(config.adapterKey().equals("openai-compatible")) {
+                    yield openAiModel(config, credentials);
+                }
+                yield null;
+            }
         };
+    }
+
+    private Model geminiModel(ModelRuntimeConfigDTO config, AgentModelCredentialConfig credentials) {
+        var builder = GeminiChatModel.builder()
+                .apiKey(credentials.apiKey())
+                .modelName(config.modelKey())
+                .streamEnabled(true)
+                .defaultOptions(generateOptions(credentials));
+        if (credentials.baseUrl() != null && !credentials.baseUrl().isBlank()) {
+            builder.baseUrl(credentials.baseUrl());
+        }
+        return builder.build();
+    }
+
+    private Model anthropicModel(ModelRuntimeConfigDTO config, AgentModelCredentialConfig credentials) {
+        var builder = AnthropicChatModel.builder()
+                .apiKey(credentials.apiKey())
+                .modelName(config.modelKey())
+                .stream(true)
+                .defaultOptions(generateOptions(credentials));
+        if (credentials.baseUrl() != null && !credentials.baseUrl().isBlank()) {
+            builder.baseUrl(credentials.baseUrl());
+        }
+        return builder.build();
     }
 
     private Model openAiModel(ModelRuntimeConfigDTO config, AgentModelCredentialConfig credentials) {
