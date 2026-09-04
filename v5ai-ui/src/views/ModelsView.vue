@@ -199,7 +199,7 @@ function applyConfig(configJson?: string | null) {
 
 const providerColumns: DataTableColumns<ProviderResponse> = [
   { title: 'ID', key: 'id', width: 64 },
-  { title: 'Provider Key', key: 'providerKey' },
+  { title: '供应商Key', key: 'providerKey' },
   { title: '名称', key: 'name' },
   { title: '类型', key: 'providerType' },
   {
@@ -234,12 +234,12 @@ function providerLabel(providerId: number): string {
 const modelColumns: DataTableColumns<ModelResponse> = [
   { title: 'ID', key: 'id', width: 64 },
   {
-    title: 'Provider',
+    title: '供应商',
     key: 'providerId',
     render: (row) => providerLabel(row.providerId)
   },
   { title: '名称', key: 'modelName', render: (row) => row.modelName ?? row.modelKey },
-  { title: 'Model Key', key: 'modelKey' },
+  { title: '模型Key', key: 'modelKey' },
   {
     title: '类型',
     key: 'modelType',
@@ -573,11 +573,11 @@ onMounted(reload)
 
 <template>
   <div class="page">
-    <PageHeader title="模型管理" description="配置模型 Provider 与可用模型，模型凭证将加密存储。">
+    <PageHeader title="模型管理" description="配置模型供应商与可用模型，模型凭证将加密存储。">
       <template #actions>
         <n-button size="small" type="primary" @click="handleCreate">
           <template #icon><n-icon :component="Plus" /></template>
-          {{ activeTab === 'provider' ? '新建 Provider' : '新建模型' }}
+          {{ activeTab === 'provider' ? '新建供应商' : '新建模型' }}
         </n-button>
       </template>
     </PageHeader>
