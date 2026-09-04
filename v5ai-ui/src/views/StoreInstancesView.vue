@@ -176,7 +176,7 @@ const saving = ref(false)
 const testing = ref(false)
 const editingId = ref<number | null>(null)
 const togglingId = ref<number | null>(null)
-const testResult = ref<{ ok: boolean; message: string } | null>(null)
+// const testResult = ref<{ ok: boolean; message: string } | null>(null)
 
 const form = reactive<StoreInstanceRequest>({
   name: '',
@@ -234,7 +234,7 @@ const KNOWN_CONFIG_KEYS = new Set([
 function resetConfigForType(type: number) {
   Object.assign(configForm, CONFIG_DEFAULTS[type] ?? CONFIG_DEFAULTS[1])
   preservedConfig.value = {}
-  testResult.value = null
+  // testResult.value = null
 }
 
 function asStr(v: unknown, fallback: string): string {
@@ -300,7 +300,9 @@ function buildConfigJson(type: number): string {
     // MilvusVectorConfigDO
     cfg = {
       ...base,
-      token: text(configForm.token),
+      // token: text(configForm.token),
+      username: text(configForm.username),
+      password: text(configForm.password),
       database: text(configForm.database) ?? 'default'
     }
   } else {
@@ -387,14 +389,14 @@ async function handleSave() {
 
 async function handleTestConnection() {
   testing.value = true
-  testResult.value = null
+  // testResult.value = null
   try {
     const result = await testStoreInstanceConnection(adminToken.value, {
       type: form.type,
       config: buildConfigJson(form.type),
       id: editingId.value ?? undefined
     })
-    testResult.value = result
+    // testResult.value = result
     if (result.ok) {
       message.success('连接成功')
     } else {
@@ -402,7 +404,7 @@ async function handleTestConnection() {
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : '测试连接失败'
-    testResult.value = { ok: false, message: msg }
+    // testResult.value = { ok: false, message: msg }
     message.error(msg)
   } finally {
     testing.value = false
@@ -526,90 +528,100 @@ onMounted(reload)
       />
     </n-card>
 
-    <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 50%" :bordered="false">
+    <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 60%" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="实例名称">
-          <n-input v-model:value="form.name" placeholder="实例显示名称" />
-        </n-form-item>
-        <n-form-item label="实例描述">
-          <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="实例用途 / 备注（可选）" />
-        </n-form-item>
-        <n-form-item label="分类">
-          <n-select v-model:value="form.category" :options="categoryOptions" @update:value="handleCategoryChange" />
-        </n-form-item>
-        <n-form-item label="类型">
-          <n-select v-model:value="form.type" :options="formTypeOptions" @update:value="handleTypeChange" />
-        </n-form-item>
-        <!-- 连接参数：按类型动态渲染，保存时自动生成对应 DO 的 JSON -->
-        <template v-if="form.type === 1 || form.type === 4">
-          <n-form-item label="主机地址">
-            <n-input v-model:value="configForm.host" placeholder="localhost" />
-          </n-form-item>
-          <n-form-item label="端口">
-            <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
-          </n-form-item>
-          <n-form-item label="数据库名">
-            <n-input v-model:value="configForm.database" placeholder="v5ai_ai" />
-          </n-form-item>
-          <n-form-item label="用户名">
-            <n-input v-model:value="configForm.username" placeholder="postgres" />
-          </n-form-item>
-          <n-form-item label="密码">
-            <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用密码认证" />
-          </n-form-item>
-          <n-form-item label="启用 SSL">
-            <n-switch v-model:value="configForm.sslEnabled" />
-          </n-form-item>
-        </template>
-        <template v-else-if="form.type === 2">
-          <n-form-item label="主机地址">
-            <n-input v-model:value="configForm.host" placeholder="localhost" />
-          </n-form-item>
-          <n-form-item label="端口">
-            <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
-          </n-form-item>
-          <n-form-item label="Token">
-            <n-input v-model:value="configForm.token" type="password" show-password-on="mousedown" placeholder="留空表示不启用鉴权" />
-          </n-form-item>
-          <n-form-item label="数据库名">
-            <n-input v-model:value="configForm.database" placeholder="default" />
-          </n-form-item>
-        </template>
-        <template v-else>
-          <n-form-item label="主机地址">
-            <n-input v-model:value="configForm.host" placeholder="localhost" />
-          </n-form-item>
-          <n-form-item label="端口">
-            <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
-          </n-form-item>
-          <n-form-item label="协议">
-            <n-select v-model:value="configForm.scheme" :options="[{ label: 'http', value: 'http' }, { label: 'https', value: 'https' }]" />
-          </n-form-item>
-          <n-form-item label="用户名">
-            <n-input v-model:value="configForm.username" placeholder="留空表示不启用 Basic 认证" />
-          </n-form-item>
-          <n-form-item label="密码">
-            <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用 Basic 认证" />
-          </n-form-item>
-          <n-form-item label="关闭 SSL 证书校验">
-            <n-switch v-model:value="configForm.sslVerificationDisabled" />
-          </n-form-item>
-        </template>
-        <n-form-item label="状态">
-          <n-select v-model:value="form.status" :options="statusOptions" />
-        </n-form-item>
-        <n-form-item label="设为该分类下默认实例">
-          <n-switch v-model:value="form.isDefault" />
-        </n-form-item>
+        <n-grid :cols="24" :x-gap="24">
+          <n-form-item-gi :span="24" label="实例名称">
+            <n-input v-model:value="form.name" placeholder="实例显示名称" />
+          </n-form-item-gi>
+          <n-form-item-gi :span="24" label="实例描述">
+            <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="实例用途 / 备注（可选）" />
+          </n-form-item-gi>
+          <n-form-item-gi :span="12" label="分类">
+            <n-select v-model:value="form.category" :options="categoryOptions" @update:value="handleCategoryChange" />
+          </n-form-item-gi>
+          <n-form-item-gi :span="12" label="类型">
+            <n-select v-model:value="form.type" :options="formTypeOptions" @update:value="handleTypeChange" />
+          </n-form-item-gi>
+          <!-- 连接参数：按类型动态渲染，保存时自动生成对应 DO 的 JSON -->
+          <template v-if="form.type === 1 || form.type === 4">
+            <n-form-item-gi :span="12" label="主机地址">
+              <n-input v-model:value="configForm.host" placeholder="localhost" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="端口">
+              <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="数据库名">
+              <n-input v-model:value="configForm.database" placeholder="v5ai_ai" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="用户名">
+              <n-input v-model:value="configForm.username" placeholder="postgres" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="密码">
+              <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用密码认证" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="启用 SSL">
+              <n-switch v-model:value="configForm.sslEnabled" />
+            </n-form-item-gi>
+          </template>
+          <template v-else-if="form.type === 2">
+            <n-form-item-gi :span="12" label="主机地址">
+              <n-input v-model:value="configForm.host" placeholder="localhost" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="端口">
+              <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
+            </n-form-item-gi>
+            <!--          <n-form-item label="Token">-->
+            <!--            <n-input v-model:value="configForm.token" type="password" show-password-on="mousedown" placeholder="留空表示不启用鉴权" />-->
+            <!--          </n-form-item>-->
+            <n-form-item-gi :span="12" label="用户名">
+              <n-input v-model:value="configForm.username" placeholder="root" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="密码">
+              <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用密码认证" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="数据库名">
+              <n-input v-model:value="configForm.database" placeholder="default" />
+            </n-form-item-gi>
+          </template>
+          <template v-else>
+            <n-form-item-gi :span="12" label="主机地址">
+              <n-input v-model:value="configForm.host" placeholder="localhost" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="端口">
+              <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="协议">
+              <n-select v-model:value="configForm.scheme" :options="[{ label: 'http', value: 'http' }, { label: 'https', value: 'https' }]" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="用户名">
+              <n-input v-model:value="configForm.username" placeholder="留空表示不启用 Basic 认证" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="密码">
+              <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用 Basic 认证" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="关闭 SSL 证书校验">
+              <n-switch v-model:value="configForm.sslVerificationDisabled" />
+            </n-form-item-gi>
+          </template>
+          <n-form-item-gi :span="12" label="状态">
+            <n-select v-model:value="form.status" :options="statusOptions" />
+          </n-form-item-gi>
+          <n-form-item-gi :span="12" label="设为该分类下默认实例">
+            <n-switch v-model:value="form.isDefault" />
+          </n-form-item-gi>
+        </n-grid>
       </n-form>
       <template #footer>
-        <n-alert v-if="testResult" :type="testResult.ok ? 'success' : 'error'" :bordered="false" style="margin-bottom: 8px">
+<!--        <n-alert v-if="testResult" :type="testResult.ok ? 'success' : 'error'" :bordered="false" style="margin-bottom: 8px">
           {{ testResult.message }}
-        </n-alert>
-        <n-space justify="end">
+        </n-alert>-->
+        <n-space justify="space-between">
           <n-button secondary :loading="testing" @click="handleTestConnection">测试连接</n-button>
-          <n-button @click="showModal = false">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="handleSave">保存</n-button>
+          <div style="display: flex; align-items: center; gap: 8px">
+            <n-button @click="showModal = false">取消</n-button>
+            <n-button type="primary" :loading="saving" @click="handleSave">保存</n-button>
+          </div>
         </n-space>
       </template>
     </n-modal>

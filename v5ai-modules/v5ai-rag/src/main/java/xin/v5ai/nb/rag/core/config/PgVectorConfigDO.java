@@ -1,30 +1,33 @@
 package xin.v5ai.nb.rag.core.config;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import xin.v5ai.nb.common.core.domain.VectorConfigDO;
 
 /**
  * PostgreSQL 向量库连接与表/索引参数，由存储实例 {@code config} JSON 解析得到（不依赖 application.yml）。
  */
 @Data
-public class PgVectorConfigDO {
+@EqualsAndHashCode(callSuper = true)
+public class PgVectorConfigDO extends VectorConfigDO {
 
-    /** 是否启用该 PostgreSQL 向量库配置 */
-    private boolean enabled = true;
-
-    /** 数据库主机地址 */
-    private String host = "localhost";
-
-    /** 数据库端口 */
-    private int port = 5432;
+//    /** 是否启用该 PostgreSQL 向量库配置 */
+//    private boolean enabled = true;
+//
+//    /** 数据库主机地址 */
+//    private String host = "localhost";
+//
+//    /** 数据库端口 */
+//    private int port = 5432;
 
     /** 数据库名 */
     private String database = "v5ai_ai";
 
-    /** 登录用户名 */
-    private String username = "postgres";
-
-    /** 登录密码 */
-    private String password = "";
+//    /** 登录用户名 */
+//    private String username = "postgres";
+//
+//    /** 登录密码 */
+//    private String password = "";
 
     /** 是否启用 SSL 连接 */
     private boolean sslEnabled = false;
