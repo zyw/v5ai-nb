@@ -731,20 +731,20 @@ onMounted(reload)
       v-model:show="showProviderModal"
       preset="card"
       :title="editingProviderId != null ? '编辑 Provider' : '新建 Provider'"
-      style="width: 460px"
+      style="width: 50%"
       :bordered="false"
     >
       <n-form label-placement="top">
-        <n-form-item label="Provider Key">
+        <n-form-item label="供应商Key">
           <n-input v-model:value="providerForm.providerKey" :disabled="editingProviderId != null" placeholder="如 openai" />
         </n-form-item>
         <n-form-item label="名称">
           <n-input v-model:value="providerForm.name" placeholder="如 OpenAI" />
         </n-form-item>
         <n-form-item label="描述">
-          <n-input v-model:value="providerForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 1, maxRows: 3 }" placeholder="请输入提供商描述" />
+          <n-input v-model:value="providerForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 3, maxRows: 5 }" placeholder="请输入提供商描述" />
         </n-form-item>
-        <n-form-item label="LOGO 图标">
+        <n-form-item label="图标">
           <div style="display:flex;align-items:center;gap:12px">
             <div
               title="点击选择图标"
@@ -801,7 +801,7 @@ onMounted(reload)
           <n-select v-model:value="modelForm.adapterKey" filterable tag :options="adapterKeyOptions" />
         </n-form-item>
         <n-form-item label="描述">
-          <n-input v-model:value="modelForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 1, maxRows: 3 }" placeholder="请输入模型描述" />
+          <n-input v-model:value="modelForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 3, maxRows: 5 }" placeholder="请输入模型描述" />
         </n-form-item>
         <n-form-item :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
           <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />

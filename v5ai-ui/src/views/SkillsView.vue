@@ -413,10 +413,10 @@ onMounted(reload)
           <n-input v-model:value="createForm.name" placeholder="如 weather（全局唯一）" @keyup.enter="handleCreateOnline" />
         </n-form-item>
         <n-form-item label="Skill 描述">
-          <n-input v-model:value="createForm.description" type="textarea" :rows="3" placeholder="技能用途描述" />
+          <n-input v-model:value="createForm.description" type="textarea" :maxlength="2000" :rows="3" show-count placeholder="技能用途描述" />
         </n-form-item>
         <n-form-item label="版本描述（可选）">
-          <n-input v-model:value="createForm.versionDescription" type="textarea" :rows="3" placeholder="如 v1 初版（写入该草稿版本的版本描述）" />
+          <n-input v-model:value="createForm.versionDescription" type="textarea" :maxlength="1000" :rows="3" show-count placeholder="如 v1 初版（写入该草稿版本的版本描述）" />
         </n-form-item>
       </n-form>
       <template #footer>
@@ -445,7 +445,7 @@ onMounted(reload)
           </n-upload>
         </n-form-item>
         <n-form-item label="版本描述（可选）">
-          <n-input v-model:value="uploadForm.description" type="textarea" :rows="3" placeholder="如 v1 支持天气查询（可选）" />
+          <n-input v-model:value="uploadForm.description" type="textarea" :maxlength="1000" :rows="3" show-count placeholder="如 v1 支持天气查询（可选）" />
         </n-form-item>
       </n-form>
       <template #footer>
