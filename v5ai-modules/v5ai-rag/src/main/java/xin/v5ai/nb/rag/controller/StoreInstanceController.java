@@ -21,6 +21,7 @@ import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.domain.bo.StoreConnectionTestBo;
+import xin.v5ai.nb.rag.domain.bo.StoreDefaultBo;
 import xin.v5ai.nb.rag.domain.bo.StoreInstanceBo;
 import xin.v5ai.nb.rag.domain.vo.StoreConnectionTestVo;
 import xin.v5ai.nb.rag.domain.vo.StoreInstanceVo;
@@ -94,6 +95,22 @@ public class StoreInstanceController extends BaseController {
     @PutMapping
     public R<Void> edit(@Validated(EditGroup.class) @RequestBody StoreInstanceBo bo) {
         return toAjax(storeInstanceService.updateByBo(bo));
+    }
+
+    /**
+     * 切换存储实例默认状态：同一分类至多一个默认实例，设为默认时自动清除该分类其它默认。
+     *
+     * @param id 主键
+     * @param bo 默认状态（isDefault: true 设置默认 / false 取消默认）
+     * @return 操作结果
+     */
+    @SaCheckPermission("rag:store:edit")
+    @Log(title = "存储实例", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/default")
+    public R<Void> setDefault(@NotNull(message = "主键不能为空")
+                              @PathVariable("id") Long id,
+                              @RequestBody StoreDefaultBo bo) {
+        return toAjax(storeInstanceService.updateDefault(id, bo.isDefault()));
     }
 
     /**

@@ -52,6 +52,7 @@ POST   /api/admin/store-instances                 # 新增
 PUT    /api/admin/store-instances                 # 修改
 DELETE /api/admin/store-instances/{ids}           # 批量删除（逗号分隔）
 POST   /api/admin/store-instances/test-connection # 连接测试（type + config + 可选 id）
+PUT    /api/admin/store-instances/{id}/default    # 切换默认（body: { "isDefault": true|false }）
 ```
 
 连接测试请求体（`StoreConnectionTestBo`）：`{ "type": 1, "config": "{...}", "id": 1 }`。`id` 仅编辑态传入，用于合并库中已脱敏的敏感字段（`password`/`token` 留空沿用原值）。支持全部类型：1-PG_VECTOR / 4-PG_FULLTEXT 走 JDBC `SELECT 1`（PG_VECTOR 额外校验 `pgvector` 扩展），2-MILVUS 走 `listCollections`，3-ELASTICSEARCH 走 `GET /`。响应 `{ ok, message }` 始终 200，不落库测试结果。
@@ -78,6 +79,7 @@ POST   /api/admin/store-instances/test-connection # 连接测试（type + config
   向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎支持 ELASTICSEARCH/PG_FULLTEXT，`config` 必须为合法 JSON；
 - `status`：0-停用 1-启用（新增缺省为 1）；
 - `isDefault`：为 `true` 时同分类下其它实例自动取消默认（事务内保证每分类至多一个默认实例）；
+- 切换默认：`PUT /{id}/default`（请求体 `{ "isDefault": true|false }`），`true` 设为默认并清除同分类其它默认，`false` 仅取消自身默认（分类可暂无默认）；权限 `rag:store:edit`；
 - 权限标识：`rag:store:list/query/add/edit/remove`，写操作记录操作日志。
 
 ## 文档管理

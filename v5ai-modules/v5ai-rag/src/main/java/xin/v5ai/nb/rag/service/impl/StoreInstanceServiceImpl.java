@@ -158,6 +158,20 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public Boolean updateDefault(Long id, Boolean isDefault) {
+        StoreInstance existing = exist(id);
+        StoreInstance update = new StoreInstance();
+        update.setId(id);
+        update.setIsDefault(Boolean.TRUE.equals(isDefault));
+        boolean flag = storeInstanceMapper.updateById(update) > 0;
+        if (flag && Boolean.TRUE.equals(update.getIsDefault())) {
+            clearDefault(existing.getCategory(), id);
+        }
+        return flag;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
         if (ids == null || ids.isEmpty()) {
             throw new ServiceException("主键不能为空");

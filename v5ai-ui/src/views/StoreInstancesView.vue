@@ -18,7 +18,9 @@ import {
   NTag,
   useDialog,
   useMessage,
-  type DataTableColumns
+  type DataTableColumns,
+  type FormInst,
+  type FormRules
 } from 'naive-ui'
 import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
@@ -29,6 +31,7 @@ import {
   listStoreInstances,
   testStoreInstanceConnection,
   updateStoreInstance,
+  updateStoreInstanceDefault,
   type StoreInstanceRequest,
   type StoreInstanceResponse
 } from '../api/client'
@@ -65,11 +68,36 @@ const statusOptions = [
   { label: '停用', value: 0 }
 ]
 
-const rules = {
-  name: [
-    { required: true, message: '请输入实例名称', trigger: 'blur' }
-  ]
+const formRef = ref<FormInst | null>(null)
+
+/** n-form 校验按 path 读取值：form 与 configForm 合并为模型 */
+const formModel = computed(() => ({ ...form, configForm }))
+
+function validatePort(_rule: unknown, value: unknown): boolean | Error {
+  if (typeof value !== 'number' || value < 1 || value > 65535) {
+    return new Error('端口范围为 1-65535')
+  }
+  return true
 }
+
+/** 校验规则：name/主机/端口必填；PG 需数据库与用户名，Milvus 需数据库，ES 用户名可留空 */
+const rules = computed<FormRules>(() => {
+  const common: FormRules = {
+    name: [{ required: true, whitespace: true, message: '请输入实例名称', trigger: 'blur' }],
+    'configForm.host': [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
+    'configForm.port': [
+      { required: true, type: 'number', message: '请输入端口', trigger: 'blur' },
+      { validator: validatePort, trigger: ['blur', 'change'] }
+    ]
+  }
+  if (form.type === 1 || form.type === 4) {
+    // common['configForm.database'] = [{ required: true, message: '请输入数据库名', trigger: 'blur' }]
+    common['configForm.username'] = [{ required: true, message: '请输入用户名', trigger: 'blur' }]
+  } else if (form.type === 2) {
+    // common['configForm.database'] = [{ required: true, message: '请输入数据库名', trigger: 'blur' }]
+  }
+  return common
+})
 
 
 function categoryLabel(category?: number): string {
@@ -105,6 +133,20 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
     key: 'type',
     width: 140,
     render: (row) => h(NTag, { size: 'small', type: 'info', bordered: false }, { default: () => typeLabel(row.type) })
+  },
+  {
+    title: '默认',
+    key: 'isDefault',
+    width: 90,
+    render: (row) =>
+        h(NSwitch, {
+          value: row.isDefault || false,
+          loading: defaultId.value === row.id,
+          onUpdateValue: () => handleToggleDefault(row)
+        }, {
+          checked: () => h('span', '是'),
+          unchecked: () => h('span', '否')
+        })
   },
   {
     title: '状态',
@@ -182,6 +224,7 @@ const showModal = ref(false)
 const saving = ref(false)
 const testing = ref(false)
 const editingId = ref<number | null>(null)
+const defaultId = ref<number | null>(null)
 const togglingId = ref<number | null>(null)
 // const testResult = ref<{ ok: boolean; message: string } | null>(null)
 
@@ -367,8 +410,9 @@ function openEdit(row: StoreInstanceResponse) {
 }
 
 async function handleSave() {
-  if (!form.name.trim()) {
-    message.warning('请输入实例名称')
+  try {
+    await formRef.value?.validate()
+  } catch {
     return
   }
   saving.value = true
@@ -416,6 +460,28 @@ async function handleTestConnection() {
   } finally {
     testing.value = false
   }
+}
+
+function handleToggleDefault(row: StoreInstanceResponse) {
+  const next = row.isDefault ? '取消默认' : '设置为默认'
+  dialog.warning({
+    title: `${next}确认`,
+    content: `确认${next}存储实例「${row.name}」？`,
+    positiveText: next,
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      defaultId.value = row.id
+      try {
+        await updateStoreInstanceDefault(adminToken.value, row.id, !row.isDefault)
+        message.success(`${row.name} 已${next}`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        defaultId.value = null
+      }
+    }
+  })
 }
 
 function handleToggleStatus(row: StoreInstanceResponse) {
@@ -536,7 +602,7 @@ onMounted(reload)
     </n-card>
 
     <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 60%" :bordered="false">
-      <n-form label-placement="top" :rules="rules">
+      <n-form ref="formRef" label-placement="top" :model="formModel" :rules="rules">
         <n-grid :cols="24" :x-gap="24">
           <n-form-item-gi :span="24" label="实例名称" path="name">
             <n-input v-model:value="form.name" placeholder="实例显示名称" />
@@ -544,6 +610,12 @@ onMounted(reload)
           <n-form-item-gi :span="24" label="实例描述">
             <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="实例用途 / 备注（可选）" />
           </n-form-item-gi>
+<!--          <n-form-item-gi :span="12" label="状态">-->
+<!--            <n-select v-model:value="form.status" :options="statusOptions" />-->
+<!--          </n-form-item-gi>-->
+<!--          <n-form-item-gi :span="12" label="设为该分类下默认实例">-->
+<!--            <n-switch v-model:value="form.isDefault" />-->
+<!--          </n-form-item-gi>-->
           <n-form-item-gi :span="12" label="分类">
             <n-select v-model:value="form.category" :options="categoryOptions" @update:value="handleCategoryChange" />
           </n-form-item-gi>
@@ -552,30 +624,30 @@ onMounted(reload)
           </n-form-item-gi>
           <!-- 连接参数：按类型动态渲染，保存时自动生成对应 DO 的 JSON -->
           <template v-if="form.type === 1 || form.type === 4">
-            <n-form-item-gi :span="12" label="主机地址">
+            <n-form-item-gi :span="12" label="主机地址" path="configForm.host">
               <n-input v-model:value="configForm.host" placeholder="localhost" />
             </n-form-item-gi>
-            <n-form-item-gi :span="12" label="端口">
+            <n-form-item-gi :span="12" label="端口" path="configForm.port">
               <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
             </n-form-item-gi>
-            <n-form-item-gi :span="12" label="数据库名">
-              <n-input v-model:value="configForm.database" placeholder="v5ai_ai" />
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" label="用户名">
+            <n-form-item-gi :span="12" label="用户名" path="configForm.username">
               <n-input v-model:value="configForm.username" placeholder="postgres" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="密码">
               <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用密码认证" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="数据库名" path="configForm.database">
+              <n-input v-model:value="configForm.database" placeholder="v5ai_ai" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="启用 SSL">
               <n-switch v-model:value="configForm.sslEnabled" />
             </n-form-item-gi>
           </template>
           <template v-else-if="form.type === 2">
-            <n-form-item-gi :span="12" label="主机地址">
+            <n-form-item-gi :span="12" label="主机地址" path="configForm.host">
               <n-input v-model:value="configForm.host" placeholder="localhost" />
             </n-form-item-gi>
-            <n-form-item-gi :span="12" label="端口">
+            <n-form-item-gi :span="12" label="端口" path="configForm.port">
               <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
             </n-form-item-gi>
             <!--          <n-form-item label="Token">-->
@@ -587,18 +659,18 @@ onMounted(reload)
             <n-form-item-gi :span="12" label="密码">
               <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用密码认证" />
             </n-form-item-gi>
-            <n-form-item-gi :span="12" label="数据库名">
+            <n-form-item-gi :span="12" label="数据库名" path="configForm.database">
               <n-input v-model:value="configForm.database" placeholder="default" />
             </n-form-item-gi>
           </template>
           <template v-else>
-            <n-form-item-gi :span="12" label="协议">
+            <n-form-item-gi :span="3" label="协议">
               <n-select v-model:value="configForm.scheme" :options="[{ label: 'http', value: 'http' }, { label: 'https', value: 'https' }]" />
             </n-form-item-gi>
-            <n-form-item-gi :span="12" label="主机地址">
+            <n-form-item-gi :span="9" label="主机地址" path="configForm.host">
               <n-input v-model:value="configForm.host" placeholder="localhost" />
             </n-form-item-gi>
-            <n-form-item-gi :span="12" label="端口">
+            <n-form-item-gi :span="12" label="端口" path="configForm.port">
               <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="用户名">
@@ -611,12 +683,6 @@ onMounted(reload)
               <n-switch v-model:value="configForm.sslVerificationDisabled" />
             </n-form-item-gi>
           </template>
-          <n-form-item-gi :span="12" label="状态">
-            <n-select v-model:value="form.status" :options="statusOptions" />
-          </n-form-item-gi>
-          <n-form-item-gi :span="12" label="设为该分类下默认实例">
-            <n-switch v-model:value="form.isDefault" />
-          </n-form-item-gi>
         </n-grid>
       </n-form>
       <template #footer>

@@ -272,6 +272,39 @@ class StoreInstanceServiceImplTest {
     }
 
     @Test
+    void updateDefaultSetsDefaultAndClearsOthersInSameCategory() {
+        seed(1L, "pg-old", 1, 1, true);
+        seed(2L, "milvus", 1, 2, false);
+
+        var flag = service.updateDefault(2L, true);
+
+        assertThat(flag).isTrue();
+        assertThat(findById(instances, 2L).getIsDefault()).isTrue();
+        assertThat(findById(instances, 1L).getIsDefault()).isFalse();
+        assertThat(countDefault(1)).isEqualTo(1);
+    }
+
+    @Test
+    void updateDefaultUnsetsDefaultWithoutClearingOthers() {
+        seed(1L, "pg", 1, 1, false);
+        seed(2L, "milvus", 1, 2, true);
+
+        var flag = service.updateDefault(2L, false);
+
+        assertThat(flag).isTrue();
+        assertThat(findById(instances, 2L).getIsDefault()).isFalse();
+        assertThat(findById(instances, 1L).getIsDefault()).isFalse();
+        assertThat(countDefault(1)).isZero();
+    }
+
+    @Test
+    void updateDefaultUnknownIdThrows() {
+        assertThatThrownBy(() -> service.updateDefault(99L, true))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("存储实例不存在");
+    }
+
+    @Test
     void queryByIdReturnsVo() {
         seed(1L, "pg", 1, 1, false);
 

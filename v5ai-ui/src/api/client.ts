@@ -975,6 +975,13 @@ export function updateStoreInstance(adminToken: string, request: StoreInstanceRe
   }, adminToken)
 }
 
+export function updateStoreInstanceDefault(adminToken: string, id: number, isDefault: boolean): Promise<void> {
+  return requestJson<void>(`/api/admin/store-instances/${id}/default`, {
+    method: 'PUT',
+    body: JSON.stringify({ isDefault })
+  }, adminToken)
+}
+
 export function deleteStoreInstances(adminToken: string, ids: number[]): Promise<void> {
   return requestJson<void>(`/api/admin/store-instances/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
 }

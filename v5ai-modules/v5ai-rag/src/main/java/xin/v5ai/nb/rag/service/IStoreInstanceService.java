@@ -51,6 +51,15 @@ public interface IStoreInstanceService {
     Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
 
     /**
+     * 切换存储实例默认状态：true 时清除同分类其它默认，false 时仅取消自身默认。
+     *
+     * @param id        实例主键
+     * @param isDefault 是否设为默认
+     * @return 是否切换成功
+     */
+    Boolean updateDefault(Long id, Boolean isDefault);
+
+    /**
      * 连接测试：按未保存的表单值（type + config）验证连通性；编辑态（带 id）合并库中脱敏字段后测试。
      */
     StoreConnectionTestVo testConnection(StoreConnectionTestBo bo);
