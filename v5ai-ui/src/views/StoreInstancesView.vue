@@ -65,6 +65,13 @@ const statusOptions = [
   { label: '停用', value: 0 }
 ]
 
+const rules = {
+  name: [
+    { required: true, message: '请输入实例名称', trigger: 'blur' }
+  ]
+}
+
+
 function categoryLabel(category?: number): string {
   return categoryOptions.find((o) => o.value === category)?.label ?? '—'
 }
@@ -529,9 +536,9 @@ onMounted(reload)
     </n-card>
 
     <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 60%" :bordered="false">
-      <n-form label-placement="top">
+      <n-form label-placement="top" :rules="rules">
         <n-grid :cols="24" :x-gap="24">
-          <n-form-item-gi :span="24" label="实例名称">
+          <n-form-item-gi :span="24" label="实例名称" path="name">
             <n-input v-model:value="form.name" placeholder="实例显示名称" />
           </n-form-item-gi>
           <n-form-item-gi :span="24" label="实例描述">
@@ -585,14 +592,14 @@ onMounted(reload)
             </n-form-item-gi>
           </template>
           <template v-else>
+            <n-form-item-gi :span="12" label="协议">
+              <n-select v-model:value="configForm.scheme" :options="[{ label: 'http', value: 'http' }, { label: 'https', value: 'https' }]" />
+            </n-form-item-gi>
             <n-form-item-gi :span="12" label="主机地址">
               <n-input v-model:value="configForm.host" placeholder="localhost" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="端口">
               <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" label="协议">
-              <n-select v-model:value="configForm.scheme" :options="[{ label: 'http', value: 'http' }, { label: 'https', value: 'https' }]" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="用户名">
               <n-input v-model:value="configForm.username" placeholder="留空表示不启用 Basic 认证" />

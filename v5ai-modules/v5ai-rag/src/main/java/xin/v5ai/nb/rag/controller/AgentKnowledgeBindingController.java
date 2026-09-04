@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.web.core.BaseController;
+import xin.v5ai.nb.rag.domain.bo.KnowledgeBindBo;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 
 import java.util.List;
@@ -28,7 +29,7 @@ public class AgentKnowledgeBindingController extends BaseController {
 
     @PostMapping
     public R<Void> bindKnowledgeBases(@PathVariable("agentKey") String agentKey,
-                                      @RequestBody KnowledgeBindRequest request) {
+                                      @RequestBody KnowledgeBindBo request) {
         if (request == null || request.knowledgeBaseIds() == null) {
             throw new IllegalArgumentException("knowledgeBaseIds is required");
         }

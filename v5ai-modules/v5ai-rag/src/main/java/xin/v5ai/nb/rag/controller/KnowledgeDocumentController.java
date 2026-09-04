@@ -16,6 +16,7 @@ import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
+import xin.v5ai.nb.rag.domain.bo.ImportUrlBo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 
@@ -54,7 +55,7 @@ public class KnowledgeDocumentController extends BaseController {
     }
 
     @PostMapping("/knowledge-bases/{kbId}/documents/url")
-    public R<KnowledgeDocumentVo> importUrl(@PathVariable("kbId") Long kbId, @RequestBody ImportUrlRequest request) {
+    public R<KnowledgeDocumentVo> importUrl(@PathVariable("kbId") Long kbId, @RequestBody ImportUrlBo request) {
         if (request == null || request.url() == null || request.url().isBlank()) {
             throw new IllegalArgumentException("url is required");
         }

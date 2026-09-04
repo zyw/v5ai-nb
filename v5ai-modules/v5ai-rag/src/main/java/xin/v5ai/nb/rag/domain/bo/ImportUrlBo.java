@@ -1,4 +1,4 @@
-package xin.v5ai.nb.rag.controller;
+package xin.v5ai.nb.rag.domain.bo;
 
 /**
  * URL 导入请求体。
@@ -6,5 +6,5 @@ package xin.v5ai.nb.rag.controller;
  * @param url   目标 URL（必填）
  * @param title 文档标题（可选，缺省用 URL）
  */
-public record ImportUrlRequest(String url, String title) {
+public record ImportUrlBo(String url, String title) {
 }
