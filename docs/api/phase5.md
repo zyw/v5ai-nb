@@ -159,7 +159,7 @@ Authorization: Bearer <token>
         "fileSize": 20480,
         "mimeType": "application/pdf",
         "storageType": "LOCAL",
-        "accessUrl": "/api/admin/resources/1/download",
+        "accessUrl": "/api/admin/resources/1/preview",
         "bizType": "DOCUMENT",
         "bizId": null,
         "createdBy": 1,
@@ -189,6 +189,8 @@ bizId: 42                # 可选
 存储类型不再由接口提供，由配置 `v5ai.storage.type`（`V5AI_STORAGE_TYPE` 环境变量，LOCAL/MINIO，默认 LOCAL）统一决定。
 
 响应为资源 VO（`data` 同上），包含生成的 `id`、`storageKey`、`accessUrl`。
+
+`accessUrl` 始终为应用内鉴权路径 `/api/admin/resources/{id}/preview`，与存储后端（LOCAL/MINIO）及 MinIO 桶策略无关；MinIO 桶设为私有同样可经该路径访问（由应用代理 + `platform:resource:query` 鉴权读取）。
 
 ### 修改元数据
 

@@ -61,7 +61,7 @@ public class ModelConfigRetrieveImpl implements ModelConfigRetrieve {
                 model.getModelType(),
                 provider.getId(),
                 provider.getProviderKey(),
-                provider.getProviderType(),
+                model.getAdapterKey(),
                 model.getCredentialsCiphertext());
     }
 }

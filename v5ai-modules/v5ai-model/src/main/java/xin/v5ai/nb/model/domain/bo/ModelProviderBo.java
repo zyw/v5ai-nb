@@ -36,15 +36,19 @@ public class ModelProviderBo {
     private String name;
 
     /**
-     * 供应商类型（OPENAI / OPENAI_COMPATIBLE / DASHSCOPE）
-     */
-    @NotBlank(message = "供应商类型不能为空")
-    private String providerType;
-
-    /**
      * 是否启用，默认 true
      */
     private Boolean enabled;
+
+    /**
+     * 提供商描述
+     */
+    private String description;
+
+    /**
+     * LOGO 图标 URL
+     */
+    private String iconUrl;
 
     /**
      * 搜索关键词（供应商名称或 key 模糊匹配，OR 关系）

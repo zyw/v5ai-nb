@@ -14,7 +14,7 @@ class AgentScopeModelFactoryTest {
     void createsOpenAiCompatibleChatModel() {
         var factory = new AgentScopeModelFactory();
 
-        var model = factory.create(config("CHAT", "OPENAI_COMPATIBLE"), """
+        var model = factory.create(config("CHAT", "my-provider", "openai-compatible"), """
                 {"apiKey":"sk-test","baseUrl":"https://api.example.com/v1","temperature":0.3,"maxTokens":1024}
                 """);
 
@@ -26,7 +26,7 @@ class AgentScopeModelFactoryTest {
     void createsDashScopeChatModel() {
         var factory = new AgentScopeModelFactory();
 
-        var model = factory.create(config("CHAT", "DASHSCOPE"), """
+        var model = factory.create(config("CHAT", "dashscope", "openai-compatible"), """
                 {"apiKey":"sk-test","baseUrl":"https://dashscope.aliyuncs.com/compatible-mode/v1"}
                 """);
 
@@ -38,21 +38,21 @@ class AgentScopeModelFactoryTest {
     void rejectsNonChatModelForAgentRuntime() {
         var factory = new AgentScopeModelFactory();
 
-        assertThatThrownBy(() -> factory.create(config("EMBEDDING", "OPENAI"), "{\"apiKey\":\"sk\"}"))
+        assertThatThrownBy(() -> factory.create(config("EMBEDDING", "my-provider", "openai-compatible"), "{\"apiKey\":\"sk\"}"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("only CHAT models can be used by agent runtime");
     }
 
     @Test
-    void rejectsUnsupportedProviderType() {
+    void rejectsUnsupportedAdapterKey() {
         var factory = new AgentScopeModelFactory();
 
-        assertThatThrownBy(() -> factory.create(config("CHAT", "UNKNOWN"), "{\"apiKey\":\"sk\"}"))
+        assertThatThrownBy(() -> factory.create(config("CHAT", "my-provider", "http"), "{\"apiKey\":\"sk\"}"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("unsupported provider type: UNKNOWN");
+                .hasMessage("unsupported adapter key: http");
     }
 
-    private static ModelRuntimeConfigDTO config(String modelType, String providerType) {
-        return new ModelRuntimeConfigDTO(7L, "gpt-4o", modelType, 3L, "provider", providerType, "ciphertext");
+    private static ModelRuntimeConfigDTO config(String modelType, String providerKey, String adapterKey) {
+        return new ModelRuntimeConfigDTO(7L, "gpt-4o", modelType, 3L, providerKey, adapterKey, "ciphertext");
     }
 }

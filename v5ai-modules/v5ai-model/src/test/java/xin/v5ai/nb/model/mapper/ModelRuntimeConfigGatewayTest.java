@@ -14,7 +14,7 @@ class ModelRuntimeConfigGatewayTest {
                 "CHAT",
                 3L,
                 "openai",
-                "OPENAI_COMPATIBLE",
+                "openai-compatible",
                 "ciphertext"
         );
 

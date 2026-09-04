@@ -101,13 +101,12 @@ public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
      * 构造供应商列表查询条件。
      *
      * @param bo 供应商筛选条件
-     * @return 包含 providerKey、name、providerType、enabled 等条件的查询包装器
+     * @return 包含 providerKey、name、enabled 等条件的查询包装器
      */
     private LambdaQueryWrapper<V5aiModelProvider> buildQueryWrapper(ModelProviderBo bo) {
         return QueryBuilder.lambda(V5aiModelProvider.class)
                 .likeIfText(V5aiModelProvider::getProviderKey, bo.getProviderKey())
                 .likeIfText(V5aiModelProvider::getName, bo.getName())
-                .eqIfText(V5aiModelProvider::getProviderType, bo.getProviderType())
                 .eq(bo.getEnabled() != null, V5aiModelProvider::getEnabled, bo.getEnabled())
                 .and(StrUtil.isNotBlank(bo.getKeyword()),
                         w -> w.like(V5aiModelProvider::getName, bo.getKeyword())

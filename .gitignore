@@ -13,3 +13,5 @@ dist/
 /logs/
 /v5ai-starter/logs/
 /v5ai-upload/
+/v5ai-starter/src/main/resources/application-dev.yml
+/v5ai-starter/src/main/resources/application-home.yml

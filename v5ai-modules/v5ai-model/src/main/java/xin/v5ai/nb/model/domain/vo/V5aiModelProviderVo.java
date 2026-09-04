@@ -31,7 +31,15 @@ public class V5aiModelProviderVo implements Serializable {
 
     private Boolean enabled;
 
-    private String providerType;
+    /**
+     * 提供商描述
+     */
+    private String description;
+
+    /**
+     * LOGO 图标 URL
+     */
+    private String iconUrl;
 
     private OffsetDateTime createdAt;
 

@@ -102,7 +102,7 @@ Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5a
 
 `GET /api/admin/models/options` 返回模型下拉选项（`[{ "value": <modelId>, "label": "<providerId>/<modelKey> (<modelType>)" }]`），仅返回启用模型，不加载凭据密文，供 Agent 编辑/绑定弹窗按需加载。
 
-创建 Provider 请求体：`{ "providerKey": "openai", "name": "OpenAI", "providerType": "OPENAI", "enabled": true }`；更新通过 `PUT /api/admin/providers`（body 带 `id`），删除通过 `DELETE /api/admin/providers/{ids}`（逗号分隔的 id 列表）。
+创建 Provider 请求体：`{ "providerKey": "openai", "name": "OpenAI", "enabled": true }`（可选：`description` 提供商描述、`iconUrl` LOGO 图标 URL）；更新通过 `PUT /api/admin/providers`（body 带 `id`），删除通过 `DELETE /api/admin/providers/{ids}`（逗号分隔的 id 列表）。`provider_type` 已移除（V26），运行时按 `providerKey` + 模型的 `adapterKey` 判别 SDK 适配器。
 
 创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "modelName": "GPT-4o Mini", "endpoint": "...(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\"}" }`；扩展字段（均可选）：`description`（模型描述）、`adapterKey`（协议适配器标识，如 openai-compatible/http）、`config`（模型参数配置 JSON，对应 `ModelExtConfigAttrs`：通用 `timeoutMs`/`maxRetries`，CHAT `temperature`/`topP`/`topK`/`maxTokens`/`frequencyPenalty`/`presencePenalty`/`stopSequences`/`seed`/`responseFormat`/`stream`/`extraBody`，EMBEDDING `embeddingDimension`/`encodingFormat`，RERANKER `rerankPath`）、`scope`（`GLOBAL`=全局/`PERSONAL`=个人，缺省 GLOBAL）、`isDefault`（是否默认模型，缺省 false）、`ownerId`（所有者 ID，NULL=全局）。更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials`/`config` 为空时保留原值），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 引用时返回 409）。
 

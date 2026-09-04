@@ -27,6 +27,8 @@
 
         <redisson.version>4.6.1</redisson.version>
         <minio.version>8.5.17</minio.version>
+        <!-- OkHttp 5.3.2（agentscope）需要 Okio >= 3.14 的 Okio.socket；统一到 3.16.4 消除 3.6.0/3.16.4 冲突导致的 NoSuchMethodError -->
+        <okio.version>3.16.4</okio.version>
         <agentscope.version>2.0.2-subagent-bugfix</agentscope.version>
         <pdfbox.version>3.0.7</pdfbox.version>
         <hutool.version>5.8.47</hutool.version>
@@ -64,7 +66,7 @@
             <id>dev</id>
             <properties>
                 <!-- 环境标识，需要与配置文件的名称相对应 -->
-                <profiles.active>dev</profiles.active>
+                <profiles.active>home</profiles.active>
                 <logging.level>info</logging.level>
 <!--                <monitor.username>ruoyi</monitor.username>-->
 <!--                <monitor.password>123456</monitor.password>-->
@@ -204,6 +206,18 @@
                 <groupId>io.minio</groupId>
                 <artifactId>minio</artifactId>
                 <version>${minio.version}</version>
+            </dependency>
+            <!-- Okio 版本统一：okhttp 4.12.0（MinIO/milvus/dashscope）声明 3.6.0，okhttp 5.3.2（agentscope）声明 3.16.4，
+                 若 okio-jvm 3.6.0 进入 classpath，OkHttp 5 连接时报 NoSuchMethodError: Okio.socket -->
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio</artifactId>
+                <version>${okio.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio-jvm</artifactId>
+                <version>${okio.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.agentscope</groupId>

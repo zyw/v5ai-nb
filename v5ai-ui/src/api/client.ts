@@ -23,8 +23,9 @@ export interface ProviderResponse {
   id: number
   providerKey: string
   name: string
-  providerType: string
   enabled: boolean
+  description?: string | null
+  iconUrl?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -32,15 +33,17 @@ export interface ProviderResponse {
 export interface CreateProviderRequest {
   providerKey: string
   name: string
-  providerType: string
   enabled: boolean
+  description?: string
+  iconUrl?: string
 }
 
 export interface UpdateProviderRequest {
   id: number
   name: string
-  providerType: string
   enabled: boolean
+  description?: string
+  iconUrl?: string
 }
 
 export interface ModelResponse {
@@ -1066,6 +1069,15 @@ export function updateResource(adminToken: string, request: ResourceRequest): Pr
 /** 批量删除资源（物理删除文件与记录）。 */
 export function deleteResources(adminToken: string, ids: number[]): Promise<void> {
   return requestJson<void>(`/api/admin/resources/${ids.join(',')}`, { method: 'DELETE' }, adminToken)
+}
+
+/** 将资源 URL 转为可直接用于 <img> 的地址：相对路径（LOCAL 存储）走带鉴权拉取转 objectURL，绝对地址（MinIO/外部）直接返回。 */
+export async function loadImagePreview(adminToken: string, url: string): Promise<string> {
+  if (url.startsWith('/api/')) {
+    const blob = await fetchResourceBlob(adminToken, url)
+    return URL.createObjectURL(blob)
+  }
+  return url
 }
 
 /** 带鉴权头拉取资源文件内容（预览/下载共用），返回 Blob。 */

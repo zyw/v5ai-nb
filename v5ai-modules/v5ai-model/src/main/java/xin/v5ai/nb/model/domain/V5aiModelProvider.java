@@ -33,5 +33,13 @@ public class V5aiModelProvider extends BaseEntity {
 
     private Boolean enabled;
 
-    private String providerType;
+    /**
+     * 提供商描述
+     */
+    private String description;
+
+    /**
+     * LOGO 图标 URL
+     */
+    private String iconUrl;
 }

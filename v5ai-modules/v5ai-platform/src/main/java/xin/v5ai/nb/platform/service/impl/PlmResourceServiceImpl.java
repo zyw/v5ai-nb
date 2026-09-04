@@ -167,8 +167,8 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
             removeFileQuietly(type, storageKey);
             throw e;
         }
-        // 入库成功后回填访问 URL（LOCAL 走鉴权接口，MINIO 走对象直链）
-        add.setAccessUrl(buildAccessUrl(type, add.getId(), storageKey));
+        // 入库成功后回填访问 URL（统一为应用内鉴权路径，与存储后端无关）
+        add.setAccessUrl(buildAccessUrl(add.getId()));
         resourceMapper.updateById(add);
         return MapstructUtils.convert(add, PlmResourceVo.class);
     }
@@ -377,14 +377,11 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
     }
 
     /**
-     * 构建访问 URL：LOCAL 走鉴权下载接口，MINIO 走对象直链。
+     * 构建访问 URL：始终为应用内鉴权路径（统一引用资源 id，与存储后端无关；
+     * 经 /preview 由应用代理读取，MinIO 桶设为私有也不影响访问）。
      */
-    private String buildAccessUrl(String storageType, Long id, String storageKey) {
-        if (STORAGE_MINIO.equals(storageType)) {
-            String endpoint = StrUtil.removeSuffix(minioProperties.getEndpoint(), "/");
-            return endpoint + "/" + minioProperties.getBucket() + "/" + storageKey;
-        }
-        return "/api/admin/resources/" + id + "/download";
+    private String buildAccessUrl(Long id) {
+        return "/api/admin/resources/" + id + "/preview";
     }
 
     private PlmResource exist(Long id) {

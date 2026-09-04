@@ -22,10 +22,10 @@ public class AgentScopeModelFactory {
             case "gemini" -> geminiModel(config, credentials);
             case "dashscope" -> dashScopeModel(config, credentials);
             default -> {
-                if(config.adapterKey().equals("openai-compatible")) {
+                if ("openai-compatible".equals(config.adapterKey())) {
                     yield openAiModel(config, credentials);
                 }
-                yield null;
+                throw new IllegalArgumentException("unsupported adapter key: " + config.adapterKey());
             }
         };
     }

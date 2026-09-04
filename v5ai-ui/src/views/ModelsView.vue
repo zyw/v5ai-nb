@@ -24,6 +24,7 @@ import {
 } from 'naive-ui'
 import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
+import IconPicker from '../components/IconPicker.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createModel,
@@ -32,6 +33,7 @@ import {
   deleteProvider,
   listModels,
   listProviders,
+  loadImagePreview,
   testModelConnection,
   updateModel,
   updateProvider,
@@ -75,9 +77,15 @@ const editingModelId = ref<number | null>(null)
 const providerForm = reactive({
   providerKey: '',
   name: '',
-  providerType: 'OPENAI_COMPATIBLE',
+  description: '',
+  iconUrl: '',
   enabled: true
 })
+
+/** LOGO 预览地址（已选图标的鉴权拉取 objectURL / 直链），用于表单内缩略图展示。 */
+const providerIconPreview = ref('')
+/** 图标选择弹框开关（上传 / 资源库单选 / 网络 URL）。 */
+const showIconPicker = ref(false)
 
 const modelForm = reactive({
   providerKey: '',
@@ -105,12 +113,6 @@ const modelForm = reactive({
   // 重排模型参数
   rerankPath: ''
 })
-
-const providerTypeOptions = [
-  { label: 'OpenAI', value: 'OPENAI' },
-  { label: 'OpenAI Compatible', value: 'OPENAI_COMPATIBLE' },
-  { label: 'DashScope', value: 'DASHSCOPE' }
-]
 
 const modelTypeOptions = [
   { label: '对话模型', value: 'CHAT' },
@@ -197,11 +199,46 @@ function applyConfig(configJson?: string | null) {
   }
 }
 
+/** Provider 图标预览映射（id -> 可直接用于 <img> 的地址）。 */
+const providerIcons = reactive<Record<number, string>>({})
+
+function revokeProviderIcons() {
+  for (const url of Object.values(providerIcons)) {
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+  }
+  for (const key of Object.keys(providerIcons)) delete providerIcons[Number(key)]
+}
+
+async function refreshProviderIcons(rows: ProviderResponse[]) {
+  revokeProviderIcons()
+  await Promise.all(
+    rows
+      .filter((r) => r.iconUrl)
+      .map(async (r) => {
+        try {
+          providerIcons[r.id] = await loadImagePreview(adminToken.value, r.iconUrl!)
+        } catch {
+          // 忽略加载失败的图标
+        }
+      })
+  )
+}
+
 const providerColumns: DataTableColumns<ProviderResponse> = [
   { title: 'ID', key: 'id', width: 64 },
+  {
+    title: '名称',
+    key: 'name',
+    render: (row) =>
+      h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+        providerIcons[row.id]
+          ? h('img', { src: providerIcons[row.id], alt: row.name, style: 'width:20px;height:20px;border-radius:4px;object-fit:cover' })
+          : null,
+        h('span', row.name)
+      ])
+  },
   { title: '供应商Key', key: 'providerKey' },
-  { title: '名称', key: 'name' },
-  { title: '类型', key: 'providerType' },
+  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
   {
     title: '状态',
     key: 'enabled',
@@ -321,6 +358,7 @@ async function reload() {
     ])
     providers.value = providerRows.rows
     providerPagination.itemCount = providerRows.total
+    void refreshProviderIcons(providerRows.rows)
     models.value = modelRows.rows
     modelPagination.itemCount = modelRows.total
     allProviders.value = (await listProviders(adminToken.value, { pageNum: 1, pageSize: 1000 })).rows
@@ -381,22 +419,64 @@ function handleCreate() {
   }
 }
 
+function resetProviderIcon() {
+  if (providerIconPreview.value) {
+    URL.revokeObjectURL(providerIconPreview.value)
+  }
+  providerIconPreview.value = ''
+}
+
 function openProviderModal() {
   editingProviderId.value = null
   providerForm.providerKey = ''
   providerForm.name = ''
-  providerForm.providerType = 'OPENAI_COMPATIBLE'
+  providerForm.description = ''
+  providerForm.iconUrl = ''
   providerForm.enabled = true
+  resetProviderIcon()
   showProviderModal.value = true
 }
 
-function openEditProvider(row: ProviderResponse) {
+async function openEditProvider(row: ProviderResponse) {
   editingProviderId.value = row.id
   providerForm.providerKey = row.providerKey
   providerForm.name = row.name
-  providerForm.providerType = row.providerType
+  providerForm.description = row.description ?? ''
+  providerForm.iconUrl = row.iconUrl ?? ''
   providerForm.enabled = row.enabled
+  resetProviderIcon()
+  if (row.iconUrl) {
+    try {
+      providerIconPreview.value = await loadImagePreview(adminToken.value, row.iconUrl)
+    } catch {
+      providerIconPreview.value = ''
+    }
+  }
   showProviderModal.value = true
+}
+
+function openIconPicker() {
+  showIconPicker.value = true
+}
+
+async function handleIconPicked(value: string) {
+  providerForm.iconUrl = value
+  if (providerIconPreview.value) {
+    URL.revokeObjectURL(providerIconPreview.value)
+  }
+  providerIconPreview.value = ''
+  if (value) {
+    try {
+      providerIconPreview.value = await loadImagePreview(adminToken.value, value)
+    } catch {
+      providerIconPreview.value = ''
+    }
+  }
+}
+
+function clearProviderIcon() {
+  resetProviderIcon()
+  providerForm.iconUrl = ''
 }
 
 async function openModelModal() {
@@ -455,16 +535,24 @@ function modelExtras() {
 async function handleSaveProvider() {
   savingProvider.value = true
   try {
+    const iconUrl = providerForm.iconUrl
     if (editingProviderId.value != null) {
       await updateProvider(adminToken.value, {
         id: editingProviderId.value,
         name: providerForm.name,
-        providerType: providerForm.providerType,
-        enabled: providerForm.enabled
+        enabled: providerForm.enabled,
+        description: providerForm.description.trim() || undefined,
+        iconUrl: iconUrl || undefined
       })
       message.success('Provider 已更新')
     } else {
-      await createProvider(adminToken.value, providerForm)
+      await createProvider(adminToken.value, {
+        providerKey: providerForm.providerKey,
+        name: providerForm.name,
+        enabled: providerForm.enabled,
+        description: providerForm.description.trim() || undefined,
+        iconUrl: iconUrl || undefined
+      })
       message.success('Provider 已保存')
     }
     showProviderModal.value = false
@@ -653,8 +741,22 @@ onMounted(reload)
         <n-form-item label="名称">
           <n-input v-model:value="providerForm.name" placeholder="如 OpenAI" />
         </n-form-item>
-        <n-form-item label="Provider Type">
-          <n-select v-model:value="providerForm.providerType" :options="providerTypeOptions" />
+        <n-form-item label="描述">
+          <n-input v-model:value="providerForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 1, maxRows: 3 }" placeholder="请输入提供商描述" />
+        </n-form-item>
+        <n-form-item label="LOGO 图标">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div
+              title="点击选择图标"
+              style="width:56px;height:56px;border:1px dashed #d9d9d9;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:#fafafa"
+              @click="openIconPicker"
+            >
+              <img v-if="providerIconPreview" :src="providerIconPreview" alt="LOGO" style="width:100%;height:100%;object-fit:cover" />
+              <span v-else style="font-size:12px;color:#999">选择图标</span>
+            </div>
+            <n-button v-if="providerForm.iconUrl" size="small" quaternary type="error" @click="clearProviderIcon">移除</n-button>
+            <span style="font-size:12px;color:#999">点击图标可选择 / 上传 / 输入网络 URL</span>
+          </div>
         </n-form-item>
         <n-form-item label="启用">
           <n-switch v-model:value="providerForm.enabled" />
@@ -667,6 +769,13 @@ onMounted(reload)
         </n-space>
       </template>
     </n-modal>
+
+    <IconPicker
+      v-model:show="showIconPicker"
+      :model-value="providerForm.iconUrl"
+      :admin-token="adminToken"
+      @update:model-value="handleIconPicked"
+    />
 
     <n-modal
       v-model:show="showModelModal"

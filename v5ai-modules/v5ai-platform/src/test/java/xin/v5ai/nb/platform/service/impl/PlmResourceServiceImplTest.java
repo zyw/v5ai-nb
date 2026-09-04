@@ -130,7 +130,7 @@ class PlmResourceServiceImplTest {
         assertThat(vo.getBizType()).isEqualTo("DOCUMENT");
         assertThat(vo.getBizId()).isEqualTo(42L);
         assertThat(vo.getCreateDt()).isNotNull();
-        assertThat(vo.getAccessUrl()).isEqualTo("/api/admin/resources/1/download");
+        assertThat(vo.getAccessUrl()).isEqualTo("/api/admin/resources/1/preview");
         // 文件实际写入本地目录，存储键为 yyyyMM/uuid.txt 相对路径
         assertThat(vo.getStorageKey()).matches("\\d{6}/[0-9a-f]{32}\\.txt");
         assertThat(Files.readAllBytes(uploadRoot.resolve(vo.getStorageKey()))).isEqualTo(content);
@@ -173,7 +173,8 @@ class PlmResourceServiceImplTest {
         var vo = service.upload("avatar.png", content, "image/png", "AVATAR", null);
 
         assertThat(vo.getStorageType()).isEqualTo("MINIO");
-        assertThat(vo.getAccessUrl()).isEqualTo("http://localhost:9000/v5ai/" + vo.getStorageKey());
+        // access_url 与 LOCAL 一致，统一为应用内鉴权路径（不存 MinIO 对象直链）
+        assertThat(vo.getAccessUrl()).isEqualTo("/api/admin/resources/1/preview");
         verify(minioClient).makeBucket(any(MakeBucketArgs.class));
         verify(minioClient).putObject(any(PutObjectArgs.class));
     }
