@@ -10,6 +10,9 @@ import xin.v5ai.nb.common.core.validate.EditGroup;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 /**
  * 知识库请求体（列表查询条件 / 创建 / 编辑共用）。
  *
@@ -18,7 +21,10 @@ import xin.v5ai.nb.rag.domain.KnowledgeBase;
  */
 @Data
 @AutoMapper(target = KnowledgeBase.class, reverseConvertGenerate = false)
-public class KnowledgeBaseBo {
+public class KnowledgeBaseBo implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
      * 主键，编辑时必填

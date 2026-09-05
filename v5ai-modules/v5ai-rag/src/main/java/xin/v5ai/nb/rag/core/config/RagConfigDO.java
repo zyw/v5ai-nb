@@ -21,8 +21,14 @@ import java.util.List;
 @AllArgsConstructor
 public class RagConfigDO {
 
+    /**
+     * 检索参数（创建知识库时写入）
+     */
     private SearchParams searchParams;
 
+    /**
+     * 生成答案时使用的对话模型参数（创建知识库时写入）
+     */
     private ModelParams modelParams;
 
     /**
@@ -116,6 +122,9 @@ public class RagConfigDO {
          * 单片段最大 token/字符量级（与 recursive splitter 一致）
          */
         private Integer maxChunkTokens;
+        /**
+         * 重叠部分的 token/字符量级
+         */
         private Integer chunkOverlap;
         /**
          * mode=delimiter 时作为一级切分符
@@ -129,7 +138,13 @@ public class RagConfigDO {
          * mode=smart 时用于语义切片的对话模型配置 ID
          */
         private Long chunkModelId;
+        /**
+         * 是否合并短片段
+         */
         private Boolean mergeShortSegments;
+        /**
+         * 是否对图片进行 OCR
+         */
         private Boolean imageOcr;
     }
 
@@ -138,15 +153,48 @@ public class RagConfigDO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SearchParams {
+        /**
+         * 检索结果数量
+         */
         private Integer resultCount;
+        /**
+         * 是否启用检索结果重排序
+         */
         private Boolean rerankEnabled;
+        /**
+         * 检索结果重排序模型 ID
+         */
         private Long rerankModelId;
+        /**
+         * 检索结果重排序前进入重排序的文档数量
+         */
         private Integer enterRerankCount;
+        /**
+         * 是否启用检索结果阈值过滤
+         */
         private Boolean thresholdEnabled;
+        /**
+         * 检索结果阈值
+         */
         private Double threshold;
+        /**
+         * 检索结果中稠密向量的权重
+         */
         private Double denseWeight;
+        /**
+         * 检索结果中稀疏向量的权重
+         */
+        /**
+         * 检索结果融合策略
+         */
         private String fusionStrategy;
+        /**
+         * RRF 融合策略中的 k 值
+         */
         private Integer rrfK;
+        /**
+         * 是否启用问题重写
+         */
         private Boolean questionRewrite;
     }
 
@@ -155,8 +203,17 @@ public class RagConfigDO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ModelParams {
+        /**
+         * 生成答案的对话模型配置 ID
+         */
         private Long modelId;
+        /**
+         * 生成答案时使用的文档片段数量
+         */
         private Integer nearbySliceCount;
+        /**
+         * 生成答案时的提示信息
+         */
         private String prompt;
     }
 }

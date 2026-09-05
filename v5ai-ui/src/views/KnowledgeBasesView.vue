@@ -26,7 +26,7 @@ import {
   type DataTableColumns,
   type UploadFileInfo
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus,CircleQuestionMark } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
@@ -297,7 +297,7 @@ async function handleSaveKb() {
 
 // ---- 内联新增存储实例（向量库 / 搜索引擎） ----
 
-const showStoreModal = ref(false)
+// const showStoreModal = ref(false)
 const storeCategory = ref(1)
 const storeForm = reactive({ name: '', type: 1, config: '', isDefault: false })
 const storeTypeOptions = computed(() =>
@@ -312,14 +312,14 @@ const storeTypeOptions = computed(() =>
       ]
 )
 
-function openStoreModal(category: number) {
-  storeCategory.value = category
-  storeForm.name = ''
-  storeForm.type = category === 1 ? 1 : 3
-  storeForm.config = ''
-  storeForm.isDefault = false
-  showStoreModal.value = true
-}
+// function openStoreModal(category: number) {
+//   storeCategory.value = category
+//   storeForm.name = ''
+//   storeForm.type = category === 1 ? 1 : 3
+//   storeForm.config = ''
+//   storeForm.isDefault = false
+//   showStoreModal.value = true
+// }
 
 async function handleSaveStore() {
   if (!storeForm.name.trim()) {
@@ -337,7 +337,7 @@ async function handleSaveStore() {
       isDefault: storeForm.isDefault
     })
     message.success('存储实例已创建')
-    showStoreModal.value = false
+    // showStoreModal.value = false
     await loadFormOptions()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '创建存储实例失败')
@@ -665,44 +665,53 @@ onMounted(() => {
     <n-modal
       v-model:show="showKbModal"
       preset="card"
-      :title="form.id != null ? '编辑知识库' : '创建 RAG'"
-      style="width: 760px"
+      :title="form.id != null ? '编辑知识库' : '创建知识库'"
+      style="width: 70%"
       :bordered="false"
     >
       <div class="kb-form">
         <div class="form-section">
           <div class="section-title">基本信息</div>
           <n-form label-placement="top">
-            <n-form-item label="RAG 名称 *">
+            <n-grid :cols="24" :x-gap="24">
+            <n-form-item-gi :span="24" label="知识库名称">
               <n-input v-model:value="form.name" placeholder="请输入 RAG 名称" :maxlength="128" show-count />
-            </n-form-item>
-            <n-form-item label="描述">
-              <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="可选，便于区分用途" />
-            </n-form-item>
-            <n-form-item label="嵌入模型 *">
+            </n-form-item-gi>
+            <n-form-item-gi :span="24" label="描述">
+              <n-input v-model:value="form.description" type="textarea" :maxlength="1200" show-count :autosize="{ minRows: 3, maxRows: 4 }" placeholder="可选，便于区分用途" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="嵌入模型">
               <n-select v-model:value="form.embeddingModelId" placeholder="请选择嵌入模型" :options="embeddingModels" filterable />
-            </n-form-item>
-            <n-form-item label="向量库 *">
-              <n-space :size="8" style="width: 100%">
-                <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable style="flex: 1" @update:value="handleVectorStoreSelect" />
-                <n-button secondary size="small" @click="openStoreModal(1)">+ 新增</n-button>
-              </n-space>
-            </n-form-item>
-            <n-form-item label="向量维度 *">
-              <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 200px">
-                <template #suffix>−</template>
-              </n-input-number>
-              <span class="muted" style="margin-left: 8px">选择向量库后自动填充，可按需调整</span>
-            </n-form-item>
-            <n-form-item label="混合检索">
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="向量库">
+              <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable style="flex: 1" @update:value="handleVectorStoreSelect" />
+<!--              <n-space :size="8" style="width: 100%">-->
+<!--                <n-button secondary size="small" @click="openStoreModal(1)">+ 新增</n-button>-->
+<!--              </n-space>-->
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="向量维度">
+              <template #label>
+                <span style="vertical-align:baseline;">向量维度</span>
+                <n-popover trigger="hover">
+                  <template #trigger>
+                    <n-icon><CircleQuestionMark/></n-icon>
+                  </template>
+                  <span class="muted">选择向量库后自动填充，可按需调整</span>
+                </n-popover>
+              </template>
+              <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 100%"/>
+<!--              <span class="muted" style="margin-left: 8px">选择向量库后自动填充，可按需调整</span>-->
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="混合检索">
               <n-switch v-model:value="form.searchEngineEnable" />
-            </n-form-item>
-            <n-form-item v-if="form.searchEngineEnable" label="搜索引擎 *">
-              <n-space :size="8" style="width: 100%">
-                <n-select v-model:value="form.searchEngineInstanceId" placeholder="选择搜索引擎实例" :options="searchEngineOptions()" filterable style="flex: 1" />
-                <n-button secondary size="small" @click="openStoreModal(2)">+ 新增</n-button>
-              </n-space>
-            </n-form-item>
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" v-if="form.searchEngineEnable" label="搜索引擎">
+              <n-select v-model:value="form.searchEngineInstanceId" placeholder="选择搜索引擎实例" :options="searchEngineOptions()" filterable style="flex: 1" />
+<!--              <n-space :size="8" style="width: 100%">-->
+<!--                <n-button secondary size="small" @click="openStoreModal(2)">+ 新增</n-button>-->
+<!--              </n-space>-->
+            </n-form-item-gi>
+            </n-grid>
           </n-form>
         </div>
 
@@ -710,16 +719,18 @@ onMounted(() => {
           <div class="section-title">上传去重</div>
           <div class="muted section-hint">控制同一知识库内重复文档的判定与处理方式。</div>
           <n-form label-placement="top">
-            <n-form-item label="去重策略">
+            <n-grid :cols="24" :x-gap="24">
+            <n-form-item-gi :span="12" label="去重策略">
               <n-select v-model:value="form.dedupStrategy" :options="dedupStrategyOptions" />
-            </n-form-item>
-            <n-form-item label="冲突动作">
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="冲突动作">
               <n-select v-model:value="form.dedupAction" :options="dedupActionOptions" />
-            </n-form-item>
-            <n-form-item label="上传前二次确认">
+            </n-form-item-gi>
+<!--            <n-form-item label="上传前二次确认">
               <n-switch v-model:value="form.confirmBeforeUpload" />
               <span class="muted" style="margin-left: 8px">开启后上传将先弹出预览确认，确认后再入库</span>
-            </n-form-item>
+            </n-form-item>-->
+            </n-grid>
           </n-form>
         </div>
 
@@ -729,19 +740,19 @@ onMounted(() => {
           <n-tabs v-model:value="form.chunkMode" type="line" animated>
             <n-tab-pane v-for="opt in chunkModeOptions" :key="opt.value" :name="opt.value" :tab="opt.label">
               <n-form label-placement="top">
-                <n-form-item v-if="form.chunkMode === 'delimiter'" label="分隔符 *">
-                  <n-input v-model:value="form.customDelimiter" placeholder="如：\n\n（换行符×2）" />
+                <n-form-item v-if="form.chunkMode === 'delimiter'" label="分隔符">
+                  <n-input v-model:value="form.customDelimiter" placeholder="如：\n\n（换行符×2）" class="chunk-inp" />
                   <span class="muted" style="margin-left: 8px">一级切分按所选符号拆分；后续递归切片使用下方最大长度与重叠</span>
                 </n-form-item>
-                <n-form-item v-if="form.chunkMode === 'regex'" label="一级切分正则 *">
-                  <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法，如：\\n\\n" />
+                <n-form-item v-if="form.chunkMode === 'regex'" label="一级切分正则">
+                  <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法，如：\\n\\n" class="chunk-inp" />
                 </n-form-item>
-                <n-form-item v-if="form.chunkMode === 'smart'" label="对话模型 *">
-                  <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable />
+                <n-form-item v-if="form.chunkMode === 'smart'" label="对话模型">
+                  <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable  class="chunk-inp" />
                   <span class="muted" style="margin-left: 8px">模型将输出 JSON 字符串数组；调用失败时回退为按段落切分</span>
                 </n-form-item>
-                <n-form-item label="切片最大长度 *">
-                  <n-input-number v-model:value="form.maxChunkTokens" :min="1" style="width: 160px" />
+                <n-form-item label="切片最大长度">
+                  <n-input-number v-model:value="form.maxChunkTokens" :min="1"  class="chunk-inp" />
                   <n-space :size="6" style="margin-left: 10px">
                     <n-button v-for="v in quickMaxTokens" :key="v" size="tiny" quaternary :type="form.maxChunkTokens === v ? 'primary' : 'default'" @click="form.maxChunkTokens = v">
                       {{ v }}
@@ -750,7 +761,7 @@ onMounted(() => {
                   <span class="muted" style="margin-left: 8px">字符量级（递归切分上限）</span>
                 </n-form-item>
                 <n-form-item label="片段重叠">
-                  <n-input-number v-model:value="form.chunkOverlap" :min="0" style="width: 160px" placeholder="留空" />
+                  <n-input-number v-model:value="form.chunkOverlap" :min="0" placeholder="留空" class="chunk-inp" />
                   <span class="muted" style="margin-left: 8px">留空则使用服务端默认</span>
                 </n-form-item>
                 <n-form-item v-if="form.chunkMode === 'length'" label="合并短文本片">
@@ -798,7 +809,7 @@ onMounted(() => {
     </n-modal>
 
     <!-- 内联新增存储实例 -->
-    <n-modal v-model:show="showStoreModal" preset="card" :title="`新增${storeCategory === 1 ? '向量库' : '搜索引擎'}实例`" style="width: 480px" :bordered="false">
+<!--    <n-modal v-model:show="showStoreModal" preset="card" :title="`新增${storeCategory === 1 ? '向量库' : '搜索引擎'}实例`" style="width: 480px" :bordered="false">
       <n-form label-placement="top">
         <n-form-item label="实例名称">
           <n-input v-model:value="storeForm.name" placeholder="实例显示名称" />
@@ -824,7 +835,7 @@ onMounted(() => {
           <n-button type="primary" :loading="saving" @click="handleSaveStore">创建</n-button>
         </n-space>
       </template>
-    </n-modal>
+    </n-modal>-->
   </div>
 </template>
 
@@ -872,8 +883,13 @@ onMounted(() => {
 
 .muted {
   font-size: 12px;
-  opacity: 0.6;
+  opacity: 0.9;
 }
+
+.chunk-inp {
+  width: 300px;
+}
+
 
 @media (max-width: 720px) {
   .url-toolbar {
