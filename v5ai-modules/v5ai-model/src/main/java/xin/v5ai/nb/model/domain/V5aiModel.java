@@ -47,9 +47,9 @@ public class V5aiModel extends BaseEntity {
     private String modelType;
 
     /**
-     * 模型端点
+     * API 基础地址（与凭据 JSON 的 baseUrl 键一致）
      */
-    private String endpoint;
+    private String baseUrl;
 
     /**
      * 凭据加密存储

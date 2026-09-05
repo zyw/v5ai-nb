@@ -104,7 +104,7 @@ Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5a
 
 创建 Provider 请求体：`{ "providerKey": "openai", "name": "OpenAI", "enabled": true }`（可选：`description` 提供商描述、`iconUrl` LOGO 图标 URL）；更新通过 `PUT /api/admin/providers`（body 带 `id`），删除通过 `DELETE /api/admin/providers/{ids}`（逗号分隔的 id 列表）。`provider_type` 已移除（V26），运行时按 `providerKey` + 模型的 `adapterKey` 判别 SDK 适配器。**停用约束**：`enabled: false` 且该供应商下存在任一模型引用时返回 409（`该供应商下存在模型，无法停用`）；`iconUrl` 传空串（`""`）表示清空图标。
 
-创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "modelName": "GPT-4o Mini", "endpoint": "...(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\"}" }`；扩展字段（均可选）：`description`（模型描述）、`adapterKey`（协议适配器标识，如 openai-compatible）、`config`（模型参数配置 JSON，对应 `ModelExtConfigAttrs`：通用 `timeoutMs`/`maxRetries`，CHAT `temperature`/`topP`/`topK`/`maxTokens`/`frequencyPenalty`/`presencePenalty`/`stopSequences`/`seed`/`responseFormat`/`stream`/`extraBody`，EMBEDDING `embeddingDimension`/`encodingFormat`，RERANKER `rerankPath`）、`scope`（`GLOBAL`=全局/`PERSONAL`=个人，缺省 GLOBAL）、`isDefault`（是否默认模型，缺省 false）、`ownerId`（所有者 ID，NULL=全局）。更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials`/`config` 为空时保留原值），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 或知识库引用时返回 409）。
+创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "modelName": "GPT-4o Mini", "baseUrl": "https://api.deepseek.com/v1(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\",\"baseUrl\":\"https://...\"}" }`（`baseUrl` 为 API 基础地址，与凭据 JSON 的 `baseUrl` 键一致；V29 起 `endpoint` 字段/列已统一更名为 `baseUrl`）；扩展字段（均可选）：`description`（模型描述）、`adapterKey`（协议适配器标识，如 openai-compatible）、`config`（模型参数配置 JSON，对应 `ModelExtConfigAttrs`：通用 `timeoutMs`/`maxRetries`，CHAT `temperature`/`topP`/`topK`/`maxTokens`/`frequencyPenalty`/`presencePenalty`/`stopSequences`/`seed`/`responseFormat`/`stream`/`extraBody`，EMBEDDING `embeddingDimension`/`encodingFormat`，RERANKER `rerankPath`）、`scope`（`GLOBAL`=全局/`PERSONAL`=个人，缺省 GLOBAL）、`isDefault`（是否默认模型，缺省 false）、`ownerId`（所有者 ID，NULL=全局）。更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials`/`config` 为空时保留原值），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 或知识库引用时返回 409）。
 
 **模型启用/停用与默认标记（专用端点，UI 行内开关走此处，不走通用更新接口）**：
 
@@ -113,7 +113,7 @@ Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5a
 
 上述不变式在通用更新接口 `PUT /api/admin/models` 内同样生效（enabled 置 false 触发同一引用校验与默认清理、isDefault 触发同类型唯一清理），无法绕过。
 
-连通性测试 `POST /api/admin/models/{id}/test` 返回 `{ "modelId": <id>, "ok": true|false, "message": "..." }`。
+连通性测试 `POST /api/admin/models/{id}/test` 返回 `{ "modelId": <id>, "ok": true|false, "message": "..." }`。测试按模型类型分发：**CHAT** 走对话首块探测；**EMBEDDING** 向 `{baseUrl}/embeddings` 发最小编码请求（`{"model":key,"input":"ping"}`）；**RERANK** 向 `{baseUrl}{rerankPath}`（config 未配时缺省 `/rerank`）发最小重排请求——HTTP 2xx 判定连通，非 2xx/异常返回 `ok:false` 与原因。
 
 Supported Agent Runtime provider types:
 

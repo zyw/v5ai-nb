@@ -51,7 +51,7 @@ export interface ModelResponse {
   providerId: number
   modelKey: string
   modelType: string
-  endpoint?: string | null
+  baseUrl?: string | null
   credentialsCiphertext?: string
   enabled: boolean
   modelName?: string | null
@@ -68,8 +68,8 @@ export interface ModelResponse {
 export interface CreateModelRequest {
   providerId: number
   modelKey: string
-  type: string
-  endpoint?: string
+  modelType: string
+  baseUrl?: string
   enabled?: boolean
   credentials: string
   modelName?: string
@@ -85,8 +85,8 @@ export interface UpdateModelRequest {
   id: number
   providerId?: number
   modelKey: string
-  type: string
-  endpoint?: string
+  modelType: string
+  baseUrl?: string
   enabled?: boolean
   credentials?: string
   modelName?: string

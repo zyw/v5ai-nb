@@ -98,14 +98,14 @@ const showIconPicker = ref(false)
 const modelForm = reactive({
   providerId: 0,
   modelKey: '',
-  type: 'CHAT',
+  modelType: 'CHAT',
   modelName: '',
   description: '',
   adapterKey: 'openai-compatible',
   scope: 'GLOBAL',
   isDefault: false,
   apiKey: '',
-  endpoint: '',
+  baseUrl: '',
   enabled: true,
   // 对话模型参数
   temperature: 0.7,
@@ -140,12 +140,12 @@ const ADAPTER_LABELS: Record<string, string> = {
 }
 
 /** 各模型类型的默认适配器（取该类型清单首项）。 */
-function defaultAdapterKey(type: string): string {
-  return ADAPTERS_BY_TYPE[type]?.[0] ?? 'openai-compatible'
+function defaultAdapterKey(modelType: string): string {
+  return ADAPTERS_BY_TYPE[modelType]?.[0] ?? 'openai-compatible'
 }
 
 const adapterKeyOptions = computed(() => {
-  const values = ADAPTERS_BY_TYPE[modelForm.type] ?? ['openai-compatible']
+  const values = ADAPTERS_BY_TYPE[modelForm.modelType] ?? ['openai-compatible']
   const options = values.map((value) => ({ label: ADAPTER_LABELS[value] ?? value, value }))
   // 编辑回显：存量 adapterKey 不在当前类型清单内时，仍纳入选项以显示原值（避免 select 显示空白）
   if (modelForm.adapterKey && !values.includes(modelForm.adapterKey)) {
@@ -155,9 +155,9 @@ const adapterKeyOptions = computed(() => {
 })
 
 /** 切换模型类型时，将适配器重置为该类型默认值。 */
-function onModelTypeChange(type: string) {
-  modelForm.type = type
-  modelForm.adapterKey = defaultAdapterKey(type)
+function onModelTypeChange(modelType: string) {
+  modelForm.modelType = modelType
+  modelForm.adapterKey = defaultAdapterKey(modelType)
 }
 
 const scopeOptions = [
@@ -171,14 +171,14 @@ const providerOptions = () =>
 function modelCredentials(): string {
   return JSON.stringify({
     apiKey: modelForm.apiKey,
-    endpoint: modelForm.endpoint || undefined
+    baseUrl: modelForm.baseUrl || undefined
   })
 }
 
 /** 按模型类型构建 config（ConfigExtAttrsDTO JSON）；无参数时返回 undefined。 */
 function buildConfig(): string | undefined {
   const cfg: Record<string, unknown> = {}
-  if (modelForm.type === 'CHAT') {
+  if (modelForm.modelType === 'CHAT') {
     if (modelForm.temperature != null) cfg.temperature = modelForm.temperature
     if (modelForm.topP != null) cfg.topP = modelForm.topP
     if (modelForm.topK != null) cfg.topK = modelForm.topK
@@ -186,10 +186,10 @@ function buildConfig(): string | undefined {
     if (modelForm.frequencyPenalty != null) cfg.frequencyPenalty = modelForm.frequencyPenalty
     if (modelForm.imageInput) cfg.capabilities = ['image']
     if (modelForm.ocrFallback) cfg.defaultVisionModel = true
-  } else if (modelForm.type === 'EMBEDDING') {
+  } else if (modelForm.modelType === 'EMBEDDING') {
     if (modelForm.embeddingDimension != null) cfg.embeddingDimension = modelForm.embeddingDimension
     if (modelForm.timeoutMs != null) cfg.timeoutMs = modelForm.timeoutMs
-  } else if (modelForm.type === 'RERANK') {
+  } else if (modelForm.modelType === 'RERANK') {
     if (modelForm.rerankPath.trim()) cfg.rerankPath = modelForm.rerankPath.trim()
   }
   const text = JSON.stringify(cfg)
@@ -330,8 +330,10 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   {
     title: '类型',
     key: 'modelType',
-    width: 80,
-    render: (row) => h(NTag, { size: 'small', type: row.modelType === 'CHAT' ? 'info' : 'default', bordered: false }, { default: () => row.modelType })
+    width: 90,
+    render: (row) => h(NTag,
+        { size: 'small', type: row.modelType === 'CHAT' ? 'info' : 'default', bordered: false },
+        { default: () => modelTypeOptions.find((option) => option.value === row.modelType)?.label })
   },
   {
     title: '作用域',
@@ -371,28 +373,22 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
-    title: '连通性',
-    key: 'test',
-    width: 120,
-    render: (row) =>
-      h(
-        NButton,
-        {
-          size: 'small',
-          secondary: true,
-          loading: testingModelId.value === row.id,
-          onClick: () => handleTestModel(row.id)
-        },
-        { default: () => '测试连接' }
-      )
-  },
-  {
     title: '操作',
     key: 'actions',
-    width: 140,
+    width: 210,
     render: (row) =>
       h(NSpace, { size: 4 }, {
         default: () => [
+          h(
+              NButton,
+              {
+                size: 'small',
+                secondary: true,
+                loading: testingModelId.value === row.id,
+                onClick: () => handleTestModel(row.id)
+              },
+              { default: () => '测试' }
+          ),
           h(NButton, { size: 'small', quaternary: true, onClick: () => openEditModel(row) }, { default: () => '编辑' }),
           h(
             NButton,
@@ -568,15 +564,15 @@ async function openModelModal() {
   }
   modelForm.providerId = allProviders.value[0]?.id ?? undefined
   modelForm.modelKey = ''
-  modelForm.type = 'CHAT'
+  modelForm.modelType = 'CHAT'
   modelForm.modelName = ''
   modelForm.description = ''
-  modelForm.adapterKey = defaultAdapterKey(modelForm.type)
+  modelForm.adapterKey = defaultAdapterKey(modelForm.modelType)
   modelForm.scope = 'GLOBAL'
   modelForm.isDefault = false
   resetConfigParams()
   modelForm.apiKey = ''
-  modelForm.endpoint = ''
+  modelForm.baseUrl = ''
   modelForm.enabled = true
   showModelModal.value = true
 }
@@ -586,7 +582,7 @@ function openEditModel(row: ModelResponse) {
   const provider = allProviders.value.find((p) => p.id === row.providerId)
   modelForm.providerId = provider?.id ?? 0
   modelForm.modelKey = row.modelKey
-  modelForm.type = row.modelType
+  modelForm.modelType = row.modelType
   modelForm.modelName = row.modelName ?? row.modelKey
   modelForm.description = row.description ?? ''
   modelForm.adapterKey = row.adapterKey ?? defaultAdapterKey(row.modelType)
@@ -595,7 +591,7 @@ function openEditModel(row: ModelResponse) {
   applyConfig(row.config)
   // 凭据加密存储不可回显：留空表示不修改
   modelForm.apiKey = ''
-  modelForm.endpoint = row.endpoint || ''
+  modelForm.baseUrl = row.baseUrl ?? ''
   modelForm.enabled = row.enabled
   showModelModal.value = true
 }
@@ -607,7 +603,7 @@ function modelExtras() {
     adapterKey: modelForm.adapterKey || undefined,
     scope: modelForm.scope || undefined,
     isDefault: modelForm.isDefault || undefined,
-    endpoint: modelForm.endpoint.trim() || undefined,
+    baseUrl: modelForm.baseUrl.trim() || undefined,
     config: buildConfig()
   }
 }
@@ -657,7 +653,7 @@ async function handleSaveModel() {
         id: editingModelId.value,
         providerId: modelForm.providerId,
         modelKey: modelForm.modelKey,
-        type: modelForm.type,
+        modelType: modelForm.modelType,
         enabled: modelForm.enabled,
         ...extras,
         // 编辑时凭据留空则保留原密文，仅在填写 API Key 时更新
@@ -668,7 +664,7 @@ async function handleSaveModel() {
       await createModel(adminToken.value, {
         providerId: modelForm.providerId,
         modelKey: modelForm.modelKey,
-        type: modelForm.type,
+        modelType: modelForm.modelType,
         enabled: modelForm.enabled,
         ...extras,
         credentials: modelCredentials()
@@ -960,7 +956,7 @@ onMounted(reload)
             <n-input v-model:value="modelForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 3, maxRows: 5 }" placeholder="请输入模型描述" />
           </n-form-item-gi>
         <n-form-item-gi :span="12" label="类型">
-          <n-select :value="modelForm.type" :options="modelTypeOptions" @update:value="onModelTypeChange" />
+          <n-select :value="modelForm.modelType" :options="modelTypeOptions" @update:value="onModelTypeChange" />
         </n-form-item-gi>
         <n-form-item-gi :span="12" label="适配器">
           <n-select v-model:value="modelForm.adapterKey" :options="adapterKeyOptions" />
@@ -969,15 +965,15 @@ onMounted(reload)
         <n-form-item-gi :span="12" :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
           <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
         </n-form-item-gi>
-        <n-form-item-gi :span="12" label="API端点">
-          <n-input v-model:value="modelForm.endpoint" placeholder="https://api.deepseek.com" />
+        <n-form-item-gi :span="12" label="API 基础地址">
+          <n-input v-model:value="modelForm.baseUrl" placeholder="https://api.deepseek.com" />
         </n-form-item-gi>
 
         <n-grid-item :span="24">
           <n-collapse :default-expanded-names="['params']" :bordered="false" arrow-placement="right">
             <n-collapse-item title="配置参数" name="params">
               <!-- 对话模型参数 -->
-              <template v-if="modelForm.type === 'CHAT'">
+              <template v-if="modelForm.modelType === 'CHAT'">
                 <n-grid :cols="24" :x-gap="24">
                 <n-form-item-gi :span="12" label="支持图片输入">
                   <n-switch v-model:value="modelForm.imageInput" />
@@ -1009,7 +1005,7 @@ onMounted(reload)
                 </n-grid>
               </template>
               <!-- 向量模型参数 -->
-              <template v-else-if="modelForm.type === 'EMBEDDING'">
+              <template v-else-if="modelForm.modelType === 'EMBEDDING'">
                 <n-grid :cols="24" :x-gap="24">
                 <n-form-item-gi :span="12" label="嵌入维度">
                   <n-input-number v-model:value="modelForm.embeddingDimension" :min="1" :max="65536" style="width: 100%" placeholder="请输入" />
@@ -1020,7 +1016,7 @@ onMounted(reload)
                 </n-grid>
               </template>
               <!-- 重排模型参数 -->
-              <template v-else-if="modelForm.type === 'RERANK'">
+              <template v-else-if="modelForm.modelType === 'RERANK'">
                 <n-form-item label="重排端点路径">
                   <n-input v-model:value="modelForm.rerankPath" placeholder="/rerank, /v1/rerank" />
                 </n-form-item>

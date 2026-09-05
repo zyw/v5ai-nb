@@ -32,7 +32,7 @@ public class V5aiModelVo implements Serializable {
 
     private String modelType;
 
-    private String endpoint;
+    private String baseUrl;
 
     private String credentialsCiphertext;
 

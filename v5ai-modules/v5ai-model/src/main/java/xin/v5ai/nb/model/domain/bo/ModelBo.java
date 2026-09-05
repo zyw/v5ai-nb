@@ -79,9 +79,9 @@ public class ModelBo {
     private ModelType modelType;
 
     /**
-     * 可选的自定义端点
+     * 可选的自定义 API 基础地址（与凭据 JSON 的 baseUrl 键一致）
      */
-    private String endpoint;
+    private String baseUrl;
 
     /**
      * 是否启用，默认 true
