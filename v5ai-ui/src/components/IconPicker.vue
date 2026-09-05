@@ -216,17 +216,17 @@ watch(
         <n-button v-if="pending" size="small" quaternary type="error" @click="clearIcon">清除</n-button>
       </div>
 
-      <!-- 1. 上传图标 -->
+      <!-- 上传图标 -->
       <div>
-        <div style="font-weight: 600; margin-bottom: 8px">1. 上传图标</div>
+        <div style="font-weight: 600; margin-bottom: 8px">上传图标</div>
         <n-upload :default-upload="false" :show-file-list="false" accept="image/*" :disabled="uploading" @change="handleUploadChange">
           <n-button size="small" :loading="uploading">选择图片上传</n-button>
         </n-upload>
       </div>
 
-      <!-- 2. 资源列表单选 -->
+      <!-- 资源列表单选 -->
       <div>
-        <div style="font-weight: 600; margin-bottom: 8px">2. 选择已上传图标</div>
+        <div style="font-weight: 600; margin-bottom: 8px">选择已上传图标</div>
         <n-spin :show="libLoading">
           <div v-if="library.length" style="display: flex; flex-wrap: wrap; gap: 8px">
             <div
@@ -263,9 +263,9 @@ watch(
         />
       </div>
 
-      <!-- 3. 网络 URL -->
+      <!-- 网络 URL -->
       <div>
-        <div style="font-weight: 600; margin-bottom: 8px">3. 网络图标地址</div>
+        <div style="font-weight: 600; margin-bottom: 8px">网络图标URL</div>
         <n-input v-model:value="urlInput" placeholder="https://example.com/logo.png" clearable @update:value="handleUrlChange" />
         <div v-if="urlError" style="color: #d03050; font-size: 12px; margin-top: 4px">{{ urlError }}</div>
       </div>

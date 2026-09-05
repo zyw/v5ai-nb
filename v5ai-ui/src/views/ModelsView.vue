@@ -229,6 +229,7 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
   {
     title: '名称',
     key: 'name',
+    width: 200,
     render: (row) =>
       h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
         providerIcons[row.id]
@@ -237,7 +238,7 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
         h('span', row.name)
       ])
   },
-  { title: '供应商Key', key: 'providerKey' },
+  { title: '供应商Key', key: 'providerKey', width: 150 },
   { title: '描述', key: 'description', ellipsis: { tooltip: true } },
   {
     title: '状态',
@@ -544,7 +545,7 @@ async function handleSaveProvider() {
         description: providerForm.description.trim() || undefined,
         iconUrl: iconUrl || undefined
       })
-      message.success('Provider 已更新')
+      message.success('模型供应商已更新')
     } else {
       await createProvider(adminToken.value, {
         providerKey: providerForm.providerKey,
@@ -553,12 +554,12 @@ async function handleSaveProvider() {
         description: providerForm.description.trim() || undefined,
         iconUrl: iconUrl || undefined
       })
-      message.success('Provider 已保存')
+      message.success('模型供应商已保存')
     }
     showProviderModal.value = false
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '保存 Provider 失败')
+    message.error(e instanceof Error ? e.message : '保存模型供应商失败')
   } finally {
     savingProvider.value = false
   }
@@ -607,16 +608,16 @@ async function handleSaveModel() {
 async function handleDeleteProvider(id: number) {
   dialog.warning({
     title: '删除确认',
-    content: `确认删除 Provider #${id}？`,
+    content: `确认删除模型供应商 #${id}？`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
         await deleteProvider(adminToken.value, [id])
-        message.success('Provider 已删除')
+        message.success('模型供应商已删除')
         await reload()
       } catch (e) {
-        message.error(e instanceof Error ? e.message : '删除 Provider 失败')
+        message.error(e instanceof Error ? e.message : '删除模型供应商失败')
       }
     }
   })
@@ -730,8 +731,8 @@ onMounted(reload)
     <n-modal
       v-model:show="showProviderModal"
       preset="card"
-      :title="editingProviderId != null ? '编辑 Provider' : '新建 Provider'"
-      style="width: 50%"
+      :title="editingProviderId != null ? '编辑供应商' : '新建供应商'"
+      style="width: 60%"
       :bordered="false"
     >
       <n-form label-placement="top">
@@ -758,9 +759,9 @@ onMounted(reload)
             <span style="font-size:12px;color:#999">点击图标可选择 / 上传 / 输入网络 URL</span>
           </div>
         </n-form-item>
-        <n-form-item label="启用">
+<!--        <n-form-item label="启用">
           <n-switch v-model:value="providerForm.enabled" />
-        </n-form-item>
+        </n-form-item>-->
       </n-form>
       <template #footer>
         <n-space justify="end">
@@ -785,19 +786,19 @@ onMounted(reload)
       :bordered="false"
     >
       <n-form label-placement="top">
-        <n-form-item label="请选择提供商 *">
+        <n-form-item label="请选择提供商">
           <n-select v-model:value="modelForm.providerKey" filterable :options="providerOptions()" />
         </n-form-item>
-        <n-form-item label="模型名称 *">
+        <n-form-item label="模型名称">
           <n-input v-model:value="modelForm.modelName" :maxlength="255" show-count placeholder="如 GPT-4o Mini" />
         </n-form-item>
-        <n-form-item label="模型Key *">
+        <n-form-item label="模型Key">
           <n-input v-model:value="modelForm.modelKey" :maxlength="100" show-count placeholder="如 gpt-4o-mini" />
         </n-form-item>
-        <n-form-item label="类型 *">
+        <n-form-item label="类型">
           <n-select v-model:value="modelForm.type" :options="modelTypeOptions" />
         </n-form-item>
-        <n-form-item label="适配器 *">
+        <n-form-item label="适配器">
           <n-select v-model:value="modelForm.adapterKey" filterable tag :options="adapterKeyOptions" />
         </n-form-item>
         <n-form-item label="描述">
@@ -806,7 +807,7 @@ onMounted(reload)
         <n-form-item :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
           <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
         </n-form-item>
-        <n-form-item label="API端点 *">
+        <n-form-item label="API端点">
           <n-input v-model:value="modelForm.baseUrl" placeholder="https://api.deepseek.com" />
         </n-form-item>
 
