@@ -385,14 +385,14 @@ const modelColumns: DataTableColumns<ModelResponse> = [
                 size: 'small',
                 secondary: true,
                 loading: testingModelId.value === row.id,
-                onClick: () => handleTestModel(row.id)
+                onClick: () => handleTestModel(row)
               },
               { default: () => '测试' }
           ),
           h(NButton, { size: 'small', quaternary: true, onClick: () => openEditModel(row) }, { default: () => '编辑' }),
           h(
             NButton,
-            { size: 'small', type: 'error', secondary: true, onClick: () => handleDeleteModel(row.id) },
+            { size: 'small', type: 'error', secondary: true, onClick: () => handleDeleteModel(row) },
             { default: () => '删除' }
           )
         ]
@@ -776,32 +776,35 @@ async function handleDeleteProvider(id: number) {
   })
 }
 
-async function handleDeleteModel(id: number) {
+async function handleDeleteModel(row: ModelResponse) {
+  const id = row.id;
+  const name = row.modelName;
   dialog.warning({
     title: '删除确认',
-    content: `确认删除 Model #${id}？`,
+    content: `确认删除模型 ${name}？`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
         await deleteModel(adminToken.value, id)
-        message.success('Model 已删除')
+        message.success('模型已删除')
         await reload()
       } catch (e) {
-        message.error(e instanceof Error ? e.message : '删除 Model 失败')
+        message.error(e instanceof Error ? e.message : '删除模型失败')
       }
     }
   })
 }
 
-async function handleTestModel(id: number) {
-  testingModelId.value = id
+async function handleTestModel(row: ModelResponse) {
+  testingModelId.value = row.id
+  const name = row.modelName
   try {
-    const result = await testModelConnection(adminToken.value, id)
+    const result = await testModelConnection(adminToken.value, row.id)
     if (result.ok) {
-      message.success(`Model #${id} 连接正常`)
+      message.success(`模型(${name})连接正常`)
     } else {
-      message.error(`Model #${id} 连接失败: ${result.message}`)
+      message.error(`模型(${name})连接失败: ${result.message}`)
     }
   } catch (e) {
     message.error(e instanceof Error ? e.message : '连通性测试失败')
