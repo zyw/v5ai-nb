@@ -66,7 +66,7 @@ export interface ModelResponse {
 }
 
 export interface CreateModelRequest {
-  providerKey: string
+  providerId: number
   modelKey: string
   type: string
   endpoint?: string
@@ -83,7 +83,7 @@ export interface CreateModelRequest {
 
 export interface UpdateModelRequest {
   id: number
-  providerKey?: string
+  providerId?: number
   modelKey: string
   type: string
   endpoint?: string

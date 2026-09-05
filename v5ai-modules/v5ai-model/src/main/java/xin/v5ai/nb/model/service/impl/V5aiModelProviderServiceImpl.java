@@ -100,7 +100,7 @@ public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
         long referenced = modelMapper.selectCount(new LambdaQueryWrapper<V5aiModel>()
                 .in(V5aiModel::getProviderId, ids));
         if (referenced > 0) {
-            throw new V5aiException(ErrorCode.CONFLICT, "provider has models and cannot be deleted");
+            throw new V5aiException(ErrorCode.CONFLICT, "当前供应商下存在模型，无法删除");
         }
         return mapper.deleteByIds(ids) > 0;
     }

@@ -28,8 +28,8 @@ public class ModelBo {
     /**
      * 供应商标识（providerKey），创建时必填，用于解析 providerId
      */
-    @NotBlank(message = "供应商标识不能为空")
-    private String providerKey;
+    @NotNull(message = "供应商ID不能为空")
+    private Long providerId;
 
     /**
      * 模型标识

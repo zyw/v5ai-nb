@@ -86,10 +86,9 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
 
     @Override
     public Boolean insertByBo(ModelBo bo) {
-        var provider = providerMapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
-                .eq(V5aiModelProvider::getProviderKey, bo.getProviderKey()));
+        var provider = providerMapper.selectById(bo.getProviderId());
         if (provider == null || !Boolean.TRUE.equals(provider.getEnabled())) {
-            throw new ServiceException("provider is not enabled");
+            throw new ServiceException("供应商不存在或者已停用");
         }
         V5aiModel add = MapstructUtils.convert(bo, V5aiModel.class);
         assert add != null;
@@ -112,7 +111,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         V5aiModel update = MapstructUtils.convert(bo, V5aiModel.class);
         assert update != null;
         update.setId(bo.getId());
-        update.setProviderId(existing.getProviderId());
+        update.setProviderId(bo.getProviderId());
         if (bo.getModelType() != null) {
             update.setModelType(bo.getModelType().name());
         }
@@ -152,7 +151,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
      * @return 包含 modelKey、type、enabled、providerKey 等条件的查询包装器
      */
     private LambdaQueryWrapper<V5aiModel> buildQueryWrapper(ModelBo bo) {
-        Long providerId = StrUtil.isNotBlank(bo.getProviderKey()) ? resolveProviderId(bo.getProviderKey()) : null;
+//        Long providerId = StrUtil.isNotBlank(bo.getProviderKey()) ? resolveProviderId(bo.getProviderKey()) : null;
         return QueryBuilder.lambda(V5aiModel.class)
                 .likeIfText(V5aiModel::getModelKey, bo.getModelKey())
                 .likeIfText(V5aiModel::getModelName, bo.getModelName())
@@ -163,7 +162,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
                 .eqIfText(V5aiModel::getScope, bo.getScope())
                 .eq(bo.getModelType() != null, V5aiModel::getModelType, bo.getModelType() == null ? null : bo.getModelType().name())
                 .eq(bo.getEnabled() != null, V5aiModel::getEnabled, bo.getEnabled())
-                .eq(providerId != null, V5aiModel::getProviderId, providerId)
+                .eq(bo.getProviderId() != null, V5aiModel::getProviderId, bo.getProviderId())
                 .orderByAsc(V5aiModel::getId)
                 .build();
     }
@@ -200,16 +199,16 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
     /**
      * 根据供应商标识解析 providerId，不存在时返回 {@code null}。
      */
-    private Long resolveProviderId(String providerKey) {
-        var provider = providerMapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
-                .eq(V5aiModelProvider::getProviderKey, providerKey));
-        return provider == null ? null : provider.getId();
-    }
+//    private Long resolveProviderId(String providerKey) {
+//        var provider = providerMapper.selectOne(new LambdaQueryWrapper<V5aiModelProvider>()
+//                .eq(V5aiModelProvider::getProviderKey, providerKey));
+//        return provider == null ? null : provider.getId();
+//    }
 
     private V5aiModel exist(Long id) {
         var existing = mapper.selectById(id);
         if (existing == null) {
-            throw new IllegalArgumentException("model does not exist: " + id);
+            throw new IllegalArgumentException("模型不存在，ID: " + id);
         }
         return existing;
     }

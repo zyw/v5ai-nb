@@ -91,7 +91,7 @@ const providerIconPreview = ref('')
 const showIconPicker = ref(false)
 
 const modelForm = reactive({
-  providerKey: '',
+  providerId: 0,
   modelKey: '',
   type: 'CHAT',
   modelName: '',
@@ -100,7 +100,7 @@ const modelForm = reactive({
   scope: 'GLOBAL',
   isDefault: false,
   apiKey: '',
-  baseUrl: '',
+  endpoint: '',
   enabled: true,
   // 对话模型参数
   temperature: 0.7,
@@ -161,14 +161,12 @@ const scopeOptions = [
 ]
 
 const providerOptions = () =>
-  allProviders.value.map((item) => ({ label: `${item.name} (${item.providerKey})`, value: item.providerKey }))
+  allProviders.value.map((item) => ({ label: `${item.name} (${item.providerKey})`, value: item.id }))
 
 function modelCredentials(): string {
   return JSON.stringify({
     apiKey: modelForm.apiKey,
-    baseUrl: modelForm.baseUrl || undefined,
-    temperature: modelForm.temperature ?? undefined,
-    maxTokens: modelForm.maxTokens ?? undefined
+    endpoint: modelForm.endpoint || undefined
   })
 }
 
@@ -550,7 +548,7 @@ async function openModelModal() {
   } catch {
     allProviders.value = []
   }
-  modelForm.providerKey = allProviders.value[0]?.providerKey ?? ''
+  modelForm.providerId = allProviders.value[0]?.id ?? undefined
   modelForm.modelKey = ''
   modelForm.type = 'CHAT'
   modelForm.modelName = ''
@@ -560,7 +558,7 @@ async function openModelModal() {
   modelForm.isDefault = false
   resetConfigParams()
   modelForm.apiKey = ''
-  modelForm.baseUrl = ''
+  modelForm.endpoint = ''
   modelForm.enabled = true
   showModelModal.value = true
 }
@@ -568,7 +566,7 @@ async function openModelModal() {
 function openEditModel(row: ModelResponse) {
   editingModelId.value = row.id
   const provider = allProviders.value.find((p) => p.id === row.providerId)
-  modelForm.providerKey = provider?.providerKey ?? ''
+  modelForm.providerId = provider?.id ?? 0
   modelForm.modelKey = row.modelKey
   modelForm.type = row.modelType
   modelForm.modelName = row.modelName ?? row.modelKey
@@ -579,7 +577,7 @@ function openEditModel(row: ModelResponse) {
   applyConfig(row.config)
   // 凭据加密存储不可回显：留空表示不修改
   modelForm.apiKey = ''
-  modelForm.baseUrl = ''
+  modelForm.endpoint = row.endpoint || ''
   modelForm.enabled = row.enabled
   showModelModal.value = true
 }
@@ -591,7 +589,7 @@ function modelExtras() {
     adapterKey: modelForm.adapterKey || undefined,
     scope: modelForm.scope || undefined,
     isDefault: modelForm.isDefault || undefined,
-    endpoint: modelForm.baseUrl.trim() || undefined,
+    endpoint: modelForm.endpoint.trim() || undefined,
     config: buildConfig()
   }
 }
@@ -639,7 +637,7 @@ async function handleSaveModel() {
     if (editingModelId.value != null) {
       await updateModel(adminToken.value, {
         id: editingModelId.value,
-        providerKey: modelForm.providerKey,
+        providerId: modelForm.providerId,
         modelKey: modelForm.modelKey,
         type: modelForm.type,
         enabled: modelForm.enabled,
@@ -650,7 +648,7 @@ async function handleSaveModel() {
       message.success('Model 已更新')
     } else {
       await createModel(adminToken.value, {
-        providerKey: modelForm.providerKey,
+        providerId: modelForm.providerId,
         modelKey: modelForm.modelKey,
         type: modelForm.type,
         enabled: modelForm.enabled,
@@ -877,7 +875,7 @@ onMounted(reload)
       <n-form label-placement="top">
         <n-grid :cols="24" :x-gap="24">
         <n-form-item-gi :span="12" label="请选择提供商">
-          <n-select v-model:value="modelForm.providerKey" filterable :options="providerOptions()" />
+          <n-select v-model:value="modelForm.providerId" filterable :options="providerOptions()" />
         </n-form-item-gi>
           <n-form-item-gi :span="12" label="作用域">
             <n-select v-model:value="modelForm.scope" :options="scopeOptions" />
@@ -902,7 +900,7 @@ onMounted(reload)
           <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
         </n-form-item-gi>
         <n-form-item-gi :span="12" label="API端点">
-          <n-input v-model:value="modelForm.baseUrl" placeholder="https://api.deepseek.com" />
+          <n-input v-model:value="modelForm.endpoint" placeholder="https://api.deepseek.com" />
         </n-form-item-gi>
 
         <n-grid-item :span="24">
