@@ -2,6 +2,7 @@ package xin.v5ai.nb.model.domain.vo;
 
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
 import xin.v5ai.nb.model.domain.V5aiModel;
 
 import java.io.Serial;

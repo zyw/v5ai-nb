@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.agentscope.core.ModelConfigRetrieve;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
@@ -62,6 +63,7 @@ public class ModelConfigRetrieveImpl implements ModelConfigRetrieve {
                 provider.getId(),
                 provider.getProviderKey(),
                 model.getAdapterKey(),
-                model.getCredentialsCiphertext());
+                model.getCredentialsCiphertext(),
+                ModelExtConfigAttrs.fromJson(model.getConfig()));
     }
 }

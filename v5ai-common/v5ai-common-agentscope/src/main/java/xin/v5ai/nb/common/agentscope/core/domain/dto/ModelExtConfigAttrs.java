@@ -1,4 +1,4 @@
-package xin.v5ai.nb.model.domain;
+package xin.v5ai.nb.common.agentscope.core.domain.dto;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;

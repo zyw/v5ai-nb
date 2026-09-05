@@ -15,7 +15,7 @@ class AgentScopeModelFactoryTest {
         var factory = new AgentScopeModelFactory();
 
         var model = factory.create(config("CHAT", "my-provider", "openai-compatible"), """
-                {"apiKey":"sk-test","baseUrl":"https://api.example.com/v1","temperature":0.3,"maxTokens":1024}
+                {"apiKey":"sk-test","baseUrl":"https://api.example.com/v1"}
                 """);
 
         assertThat(model).isInstanceOf(OpenAIChatModel.class);
@@ -53,6 +53,6 @@ class AgentScopeModelFactoryTest {
     }
 
     private static ModelRuntimeConfigDTO config(String modelType, String providerKey, String adapterKey) {
-        return new ModelRuntimeConfigDTO(7L, "gpt-4o", modelType, 3L, providerKey, adapterKey, "ciphertext");
+        return new ModelRuntimeConfigDTO(7L, "gpt-4o", modelType, 3L, providerKey, adapterKey, "ciphertext", null);
     }
 }

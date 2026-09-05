@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
-  NAlert,
   NButton,
   NCard,
   NDataTable,
   NForm,
-  NFormItem,
   NIcon,
   NInput,
   NInputNumber,

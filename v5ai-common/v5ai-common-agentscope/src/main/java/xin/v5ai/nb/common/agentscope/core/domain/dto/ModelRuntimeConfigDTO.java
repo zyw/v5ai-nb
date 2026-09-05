@@ -10,6 +10,7 @@ package xin.v5ai.nb.common.agentscope.core.domain.dto;
  * @param providerKey           供应商对外标识
  * @param adapterKey          底层协议适配器标识(openai-compatible,qwen-rerank)
  * @param credentialsCiphertext 模型凭据密文（AES-GCM 加密，使用前需解密）
+ * @param config              模型扩展参数（来自 v5ai_model.config 列，可为 null）
  */
 public record ModelRuntimeConfigDTO(
         Long modelId,
@@ -18,6 +19,7 @@ public record ModelRuntimeConfigDTO(
         Long providerId,
         String providerKey,
         String adapterKey,
-        String credentialsCiphertext
+        String credentialsCiphertext,
+        ModelExtConfigAttrs config
 ) {
 }

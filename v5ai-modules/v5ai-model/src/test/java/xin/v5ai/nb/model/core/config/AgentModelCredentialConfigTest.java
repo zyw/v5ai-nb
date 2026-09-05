@@ -19,8 +19,6 @@ class AgentModelCredentialConfigTest {
 
         assertThat(config.apiKey()).isEqualTo("sk-test");
         assertThat(config.baseUrl()).isEqualTo("https://api.example.com/v1");
-        assertThat(config.temperature()).isEqualTo(0.7);
-        assertThat(config.maxTokens()).isEqualTo(2048);
     }
 
     @Test
@@ -31,7 +29,5 @@ class AgentModelCredentialConfigTest {
 
         assertThat(config.apiKey()).isEqualTo("sk-test");
         assertThat(config.baseUrl()).isNull();
-        assertThat(config.temperature()).isNull();
-        assertThat(config.maxTokens()).isNull();
     }
 }

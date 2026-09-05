@@ -4,6 +4,7 @@ import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
 import xin.v5ai.nb.common.core.enums.ModelType;
 import xin.v5ai.nb.common.core.validate.EditGroup;
 import xin.v5ai.nb.model.domain.V5aiModel;
@@ -88,7 +89,8 @@ public class ModelBo {
     private Boolean enabled;
 
     /**
-     * 明文凭据 JSON（apiKey/baseUrl/temperature/maxTokens），仅创建或改密时提交
+     * 明文凭据 JSON（apiKey/baseUrl），仅创建或改密时提交；
+     * temperature/maxTokens 等生成参数统一放 config
      */
     private String credentials;
 

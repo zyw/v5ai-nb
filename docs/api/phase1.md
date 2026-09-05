@@ -119,13 +119,11 @@ Runtime model credentials are stored encrypted. Before encryption, the credentia
 ```json
 {
   "apiKey": "sk-...",
-  "baseUrl": "https://api.openai.com/v1",
-  "temperature": 0.7,
-  "maxTokens": 2048
+  "baseUrl": "https://api.openai.com/v1"
 }
 ```
 
-`baseUrl`, `temperature`, and `maxTokens` are optional. `EMBEDDING` and `RERANK` models can be managed, but cannot be used as Agent Runtime chat models.
+`baseUrl` is optional. `temperature`/`maxTokens` 等生成参数不再从凭据读取：一律放在 `config`（`ModelExtConfigAttrs`，config 为运行时生成参数唯一权威来源），凭据只承载连接信息（apiKey/baseUrl）。`EMBEDDING` and `RERANK` models can be managed, but cannot be used as Agent Runtime chat models.
 
 ## Admin Agent APIs
 

@@ -41,6 +41,7 @@ import {
   type ProviderResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import {formatDateTime} from "../utils/dateUtils";
 
 const message = useMessage()
 const dialog = useDialog()
@@ -267,7 +268,7 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
       ])
   },
   { title: '供应商Key', key: 'providerKey', width: 150 },
-  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
+  { title: '描述', key: 'description', width: 200, ellipsis: { tooltip: true } },
   {
     title: '状态',
     key: 'enabled',
@@ -286,6 +287,8 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
         }
       )
   },
+  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -306,7 +309,8 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
 
 function providerLabel(providerId: number): string {
   const provider = allProviders.value.find((item) => item.id === providerId)
-  return provider ? `${provider.name} (${provider.providerKey})` : `#${providerId}`
+  // return provider ? `${provider.name} (${provider.providerKey})` : `#${providerId}`
+  return provider ? `${provider.name}` : `#${providerId}`
 }
 
 const modelColumns: DataTableColumns<ModelResponse> = [
@@ -314,13 +318,16 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   {
     title: '供应商',
     key: 'providerId',
+    width: 180,
     render: (row) => providerLabel(row.providerId)
   },
-  { title: '名称', key: 'modelName', render: (row) => row.modelName ?? row.modelKey },
-  { title: '模型Key', key: 'modelKey' },
+  { title: '名称', key: 'modelName',width: 180, render: (row) => row.modelName ?? row.modelKey },
+  { title: '模型Key', key: 'modelKey',width: 180 },
+  { title: '描述', key: 'description', width: 200, ellipsis: { tooltip: true } },
   {
     title: '类型',
     key: 'modelType',
+    width: 80,
     render: (row) => h(NTag, { size: 'small', type: row.modelType === 'CHAT' ? 'info' : 'default', bordered: false }, { default: () => row.modelType })
   },
   {
@@ -342,9 +349,11 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   {
     title: '状态',
     key: 'enabled',
-    width: 100,
+    width: 80,
     render: (row) => h(StatusTag, { status: row.enabled ? 'ACTIVE' : 'DISABLED' })
   },
+  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '连通性',
     key: 'test',
@@ -378,6 +387,20 @@ const modelColumns: DataTableColumns<ModelResponse> = [
       })
   }
 ]
+
+/** 表格横向滚动：列宽总和（auto 列按 240px 估算），窄屏时出现横向滚动条 */
+const modelScrollX = computed(() =>
+  modelColumns.reduce((sum, col) => sum + (typeof col.width === 'number' ? col.width : 240), 0)
+)
+
+/** 供应商表格横向滚动：列宽总和（auto 列按 240px 估算） */
+const providerScrollX = computed(() =>
+  providerColumns.reduce((sum, col) => sum + (typeof col.width === 'number' ? col.width : 240), 0)
+)
+
+function fmtTime(value?: string | null): string {
+  return value ? (formatDateTime(value) ?? '—') : '—'
+}
 
 async function reload() {
   loading.value = true
@@ -754,7 +777,7 @@ onMounted(reload)
             刷新
           </n-button>
         </n-space>
-        <n-data-table :loading="loading" :columns="modelColumns" :data="models" :bordered="false" />
+        <n-data-table :loading="loading" :columns="modelColumns" :data="models" :bordered="false" :scroll-x="modelScrollX" />
         <n-pagination
           :page="modelPagination.page"
           :page-size="modelPagination.pageSize"
@@ -780,7 +803,7 @@ onMounted(reload)
             刷新
           </n-button>
         </n-space>
-        <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" />
+        <n-data-table :loading="loading" :columns="providerColumns" :data="providers" :bordered="false" :scroll-x="providerScrollX" />
         <n-pagination
             :page="providerPagination.page"
             :page-size="providerPagination.pageSize"

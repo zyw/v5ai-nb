@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
 import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 /**
