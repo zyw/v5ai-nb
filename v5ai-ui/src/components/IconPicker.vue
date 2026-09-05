@@ -187,7 +187,8 @@ watch(
   (open) => {
     if (open) {
       pending.value = props.modelValue
-      urlInput.value = ''
+      // 当前图标是网络图标（http(s) 绝对地址）时回填到地址框；相对路径（/api/、/icons/）不回填
+      urlInput.value = HTTP_URL_RE.test(props.modelValue) ? props.modelValue : ''
       urlError.value = ''
       libPage.value = 1
       void refreshPreview()

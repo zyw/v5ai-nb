@@ -114,7 +114,7 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
   {
     title: '名称',
     key: 'name',
-    width: 160,
+    width: 180,
     render: (row) =>
       h('div', [
         row.name,

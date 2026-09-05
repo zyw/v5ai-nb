@@ -71,6 +71,8 @@ const showProviderModal = ref(false)
 const showModelModal = ref(false)
 const savingProvider = ref(false)
 const savingModel = ref(false)
+/** 供应商列表「启用/禁用」Switch 正在切换的供应商 id（行内 loading）。 */
+const togglingProviderId = ref<number | null>(null)
 const editingProviderId = ref<number | null>(null)
 const editingModelId = ref<number | null>(null)
 
@@ -244,7 +246,19 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
     title: '状态',
     key: 'enabled',
     width: 100,
-    render: (row) => h(StatusTag, { status: row.enabled ? 'ACTIVE' : 'DISABLED' })
+    render: (row) =>
+      h(
+        NSwitch,
+        {
+          value: row.enabled,
+          loading: togglingProviderId.value === row.id,
+          onUpdateValue: () => handleToggleProvider(row)
+        },
+        {
+          checked: () => h('span', '启'),
+          unchecked: () => h('span', '停')
+        }
+      )
   },
   {
     title: '操作',
@@ -543,7 +557,7 @@ async function handleSaveProvider() {
         name: providerForm.name,
         enabled: providerForm.enabled,
         description: providerForm.description.trim() || undefined,
-        iconUrl: iconUrl || undefined
+        iconUrl: iconUrl
       })
       message.success('模型供应商已更新')
     } else {
@@ -552,7 +566,7 @@ async function handleSaveProvider() {
         name: providerForm.name,
         enabled: providerForm.enabled,
         description: providerForm.description.trim() || undefined,
-        iconUrl: iconUrl || undefined
+        iconUrl: iconUrl
       })
       message.success('模型供应商已保存')
     }
@@ -603,6 +617,32 @@ async function handleSaveModel() {
   } finally {
     savingModel.value = false
   }
+}
+
+async function handleToggleProvider(row: ProviderResponse) {
+  const next = row.enabled ? '停用' : '启用'
+  dialog.warning({
+    title: `${next}确认`,
+    content: `确认${next}模型供应商「${row.name}」？`,
+    positiveText: next,
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      togglingProviderId.value = row.id
+      try {
+        await updateProvider(adminToken.value, {
+          id: row.id,
+          name: row.name,
+          enabled: !row.enabled
+        })
+        message.success(`模型供应商「${row.name}」已${next}`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        togglingProviderId.value = null
+      }
+    }
+  })
 }
 
 async function handleDeleteProvider(id: number) {

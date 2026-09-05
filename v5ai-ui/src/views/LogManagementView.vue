@@ -59,22 +59,22 @@ const BUSINESS_TYPE_LABELS: Record<number, string> = {
 
 const loginColumns: DataTableColumns<LoginLog> = [
   { type: 'selection' },
-  { title: 'ID', key: 'id', width: 70 },
-  { title: '账号', key: 'userName', width: 130 },
-  { title: 'IP', key: 'ipaddr', width: 130 },
+  { title: 'ID', key: 'id', width: 64 },
+  { title: '账号', key: 'userName', width: 100 },
+  { title: 'IP', key: 'ipaddr', width: 160 },
   { title: '归属地', key: 'loginLocation', width: 110, render: (r) => r.loginLocation ?? '-' },
-  { title: '浏览器', key: 'browser', render: (r) => r.browser ?? '-' },
-  { title: '操作系统', key: 'os', width: 130, render: (r) => r.os ?? '-' },
+  { title: '浏览器', key: 'browser', width: 100, render: (r) => r.browser ?? '-' },
+  { title: '操作系统', key: 'os', width: 100, render: (r) => r.os ?? '-' },
   {
     title: '状态',
     key: 'status',
-    width: 80,
+    width: 70,
     render: (r) => (r.status === '0'
       ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '成功' })
       : h(NTag, { type: 'error', size: 'small', bordered: false, round: true }, { default: () => '失败' }))
   },
-  { title: '信息', key: 'msg', render: (r) => r.msg ?? '-' },
-  { title: '登录时间', key: 'loginTime', width: 170, render: (r) => (r.loginTime ? (formatDateTime(r.loginTime) ?? '-') : '-') },
+  { title: '信息', key: 'msg', width: 100, render: (r) => r.msg ?? '-' },
+  { title: '登录时间', key: 'loginTime', width: 190, render: (r) => (r.loginTime ? (formatDateTime(r.loginTime) ?? '-') : '-') },
   {
     title: '操作',
     key: 'actions',
@@ -174,18 +174,18 @@ const operColumns: DataTableColumns<OperLog> = [
   { title: '类型', key: 'businessType', width: 80, render: (r) => BUSINESS_TYPE_LABELS[r.businessType ?? 0] ?? r.businessType ?? '-' },
   { title: '操作人', key: 'operName', width: 100, render: (r) => r.operName ?? '-' },
   { title: '请求方式', key: 'requestMethod', width: 90, render: (r) => r.requestMethod ?? '-' },
-  { title: 'URL', key: 'operUrl', render: (r) => r.operUrl ?? '-' },
-  { title: 'IP', key: 'operIp', width: 120 },
+  { title: 'URL', key: 'operUrl', ellipsis: { tooltip: true }, render: (r) => r.operUrl ?? '-' },
+  { title: 'IP', key: 'operIp', width: 160 },
   {
     title: '状态',
     key: 'status',
-    width: 80,
+    width: 70,
     render: (r) => (r.status === 0
       ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '成功' })
       : h(NTag, { type: 'error', size: 'small', bordered: false, round: true }, { default: () => '失败' }))
   },
   { title: '耗时(ms)', key: 'costTime', width: 90, render: (r) => r.costTime ?? '-' },
-  { title: '操作时间', key: 'operTime', width: 170, render: (r) => (r.operTime ? (formatDateTime(r.operTime) ?? '-') : '-') },
+  { title: '操作时间', key: 'operTime', width: 190, render: (r) => (r.operTime ? (formatDateTime(r.operTime) ?? '-') : '-') },
   {
     title: '操作',
     key: 'actions',

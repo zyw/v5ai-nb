@@ -76,6 +76,14 @@ public class V5aiModelProviderServiceImpl implements IV5aiModelProviderService {
         if (existing == null) {
             throw new IllegalArgumentException("provider does not exist: " + bo.getId());
         }
+        // 停用被模型引用的供应商：存在任一模型引用时禁止停用（覆盖列表 Switch 与编辑表单两条路径）
+        if (Boolean.FALSE.equals(bo.getEnabled()) && Boolean.TRUE.equals(existing.getEnabled())) {
+            long referenced = modelMapper.selectCount(new LambdaQueryWrapper<V5aiModel>()
+                    .eq(V5aiModel::getProviderId, bo.getId()));
+            if (referenced > 0) {
+                throw new V5aiException(ErrorCode.CONFLICT, "该供应商下存在模型，无法停用");
+            }
+        }
         V5aiModelProvider update = MapstructUtils.convert(bo, V5aiModelProvider.class);
         assert update != null;
         update.setId(bo.getId());
