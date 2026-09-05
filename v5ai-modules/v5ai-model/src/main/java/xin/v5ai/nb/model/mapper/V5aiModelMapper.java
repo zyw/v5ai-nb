@@ -16,9 +16,26 @@ import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 @Mapper
 public interface V5aiModelMapper extends BaseMapperPlus<V5aiModel, V5aiModelVo> {
     /**
-     * 校验模型是否被引用
-     * @param modelId 模型ID
-     * @return true: 被引用, false: 未被引用
+     * 统计引用该模型的 Agent 数（任意状态）。
+     *
+     * @param modelId 模型 ID
+     * @return 引用该模型的 Agent 行数
      */
-    Boolean checkAgentReferenced(Long modelId);
+    Long countAgentUsage(Long modelId);
+
+    /**
+     * 统计引用该模型的知识库数（embedding_model_id / rerank_model_id 任一命中即计入）。
+     *
+     * @param modelId 模型 ID
+     * @return 引用该模型的知识库行数
+     */
+    Long countKnowledgeBaseUsage(Long modelId);
+
+    /**
+     * 清除同 {@code modelType} 下其它模型的默认标记（保留 {@code keepId}）。
+     *
+     * @param modelType 模型类型（CHAT/EMBEDDING/RERANK）
+     * @param keepId    要保留默认标记的模型 ID（目标模型）
+     */
+    void clearModelTypeDefaults(String modelType, Long keepId);
 }

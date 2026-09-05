@@ -695,6 +695,22 @@ export function updateModel(adminToken: string, request: UpdateModelRequest): Pr
   }, adminToken)
 }
 
+/** 专用端点：切换模型启用/停用（停用前后端校验 Agent/知识库引用，停用默认模型自动取消默认）。 */
+export function setModelEnabled(adminToken: string, id: number, enabled: boolean): Promise<void> {
+  return requestJson<void>(`/api/admin/models/${id}/enabled`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled })
+  }, adminToken)
+}
+
+/** 专用端点：切换模型默认标记（同类型至多一个默认，设为默认要求模型已启用）。 */
+export function setModelDefault(adminToken: string, id: number, isDefault: boolean): Promise<void> {
+  return requestJson<void>(`/api/admin/models/${id}/default`, {
+    method: 'PUT',
+    body: JSON.stringify({ isDefault })
+  }, adminToken)
+}
+
 export function deleteModel(adminToken: string, id: number): Promise<void> {
   return requestJson<void>(`/api/admin/models/${id}`, {
     method: 'DELETE'

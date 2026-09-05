@@ -2,7 +2,19 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="xin.v5ai.nb.model.mapper.V5aiModelMapper">
 
-    <select id="checkAgentReferenced" resultType="java.lang.Boolean">
-        SELECT COUNT(*) > 0 FROM v5ai_agent WHERE model_id = #{modelId}
+    <select id="countAgentUsage" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM v5ai_agent WHERE model_id = #{modelId}
     </select>
+
+    <select id="countKnowledgeBaseUsage" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM v5ai_knowledge_base
+        WHERE embedding_model_id = #{modelId} OR rerank_model_id = #{modelId}
+    </select>
+
+    <update id="clearModelTypeDefaults">
+        UPDATE v5ai_model
+        SET is_default = false
+        WHERE model_type = #{modelType} AND id &lt;&gt; #{keepId}
+    </update>
 </mapper>

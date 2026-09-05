@@ -104,7 +104,14 @@ Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5a
 
 创建 Provider 请求体：`{ "providerKey": "openai", "name": "OpenAI", "enabled": true }`（可选：`description` 提供商描述、`iconUrl` LOGO 图标 URL）；更新通过 `PUT /api/admin/providers`（body 带 `id`），删除通过 `DELETE /api/admin/providers/{ids}`（逗号分隔的 id 列表）。`provider_type` 已移除（V26），运行时按 `providerKey` + 模型的 `adapterKey` 判别 SDK 适配器。**停用约束**：`enabled: false` 且该供应商下存在任一模型引用时返回 409（`该供应商下存在模型，无法停用`）；`iconUrl` 传空串（`""`）表示清空图标。
 
-创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "modelName": "GPT-4o Mini", "endpoint": "...(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\"}" }`；扩展字段（均可选）：`description`（模型描述）、`adapterKey`（协议适配器标识，如 openai-compatible）、`config`（模型参数配置 JSON，对应 `ModelExtConfigAttrs`：通用 `timeoutMs`/`maxRetries`，CHAT `temperature`/`topP`/`topK`/`maxTokens`/`frequencyPenalty`/`presencePenalty`/`stopSequences`/`seed`/`responseFormat`/`stream`/`extraBody`，EMBEDDING `embeddingDimension`/`encodingFormat`，RERANKER `rerankPath`）、`scope`（`GLOBAL`=全局/`PERSONAL`=个人，缺省 GLOBAL）、`isDefault`（是否默认模型，缺省 false）、`ownerId`（所有者 ID，NULL=全局）。更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials`/`config` 为空时保留原值），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 引用时返回 409）。
+创建 Model 请求体：`{ "providerKey": "openai", "modelKey": "gpt-4o-mini", "type": "CHAT", "modelName": "GPT-4o Mini", "endpoint": "...(可选)", "enabled": true, "credentials": "{\"apiKey\":\"sk-...\"}" }`；扩展字段（均可选）：`description`（模型描述）、`adapterKey`（协议适配器标识，如 openai-compatible）、`config`（模型参数配置 JSON，对应 `ModelExtConfigAttrs`：通用 `timeoutMs`/`maxRetries`，CHAT `temperature`/`topP`/`topK`/`maxTokens`/`frequencyPenalty`/`presencePenalty`/`stopSequences`/`seed`/`responseFormat`/`stream`/`extraBody`，EMBEDDING `embeddingDimension`/`encodingFormat`，RERANKER `rerankPath`）、`scope`（`GLOBAL`=全局/`PERSONAL`=个人，缺省 GLOBAL）、`isDefault`（是否默认模型，缺省 false）、`ownerId`（所有者 ID，NULL=全局）。更新通过 `PUT /api/admin/models`（body 带 `id`，`providerKey` 可选，`credentials`/`config` 为空时保留原值），删除通过 `DELETE /api/admin/models/{id}`（被 Agent 或知识库引用时返回 409）。
+
+**模型启用/停用与默认标记（专用端点，UI 行内开关走此处，不走通用更新接口）**：
+
+- `PUT /api/admin/models/{id}/enabled`，body `{ "enabled": boolean }`：切换启用/停用。**停用校验**：模型被任一 Agent（任意状态）或任一知识库（`embedding_model_id`/`rerank_model_id`）引用时返回 409，错误信息含明细（`模型被 X 个 Agent、Y 个知识库使用，无法禁用`）；停用的是默认模型时自动清除其默认标记；幂等（状态未变化返回成功）。
+- `PUT /api/admin/models/{id}/default`，body `{ "isDefault": boolean }`：切换默认标记。**同类型唯一**：同 `model_type`（CHAT/EMBEDDING/RERANK）至多一个默认，设为默认时自动清除同类型其它模型的默认；设为默认要求模型已启用（否则 409，`模型未启用，不能设为默认`）；缺省 `isDefault` 视为取消默认。
+
+上述不变式在通用更新接口 `PUT /api/admin/models` 内同样生效（enabled 置 false 触发同一引用校验与默认清理、isDefault 触发同类型唯一清理），无法绕过。
 
 连通性测试 `POST /api/admin/models/{id}/test` 返回 `{ "modelId": <id>, "ok": true|false, "message": "..." }`。
 

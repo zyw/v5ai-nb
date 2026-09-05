@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
@@ -85,6 +86,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean insertByBo(ModelBo bo) {
         var provider = providerMapper.selectById(bo.getProviderId());
         if (provider == null || !Boolean.TRUE.equals(provider.getEnabled())) {
@@ -98,14 +100,25 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         add.setScope(normalizeScope(bo.getScope()));
         add.setConfig(validateConfig(bo.getConfig()));
         add.setCredentialsCiphertext(credentialCipher.encrypt(bo.getCredentials()));
+        // 启用缺省为 true（与列默认一致），保证下方默认校验拿到的状态真实
+        add.setEnabled(bo.getEnabled() == null || Boolean.TRUE.equals(bo.getEnabled()));
+        // 需求1：创建即设默认要求已启用（同类型唯一）
+        boolean requestedDefault = Boolean.TRUE.equals(bo.getIsDefault());
+        if (requestedDefault && !Boolean.TRUE.equals(add.getEnabled())) {
+            throw new V5aiException(ErrorCode.CONFLICT, "模型未启用，不能设为默认");
+        }
         boolean flag = mapper.insert(add) > 0;
         if (flag) {
             bo.setId(add.getId());
+            if (requestedDefault) {
+                mapper.clearModelTypeDefaults(add.getModelType(), add.getId());
+            }
         }
         return flag;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean updateByBo(ModelBo bo) {
         var existing = exist(bo.getId());
         V5aiModel update = MapstructUtils.convert(bo, V5aiModel.class);
@@ -122,18 +135,88 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         if (StrUtil.isNotBlank(bo.getCredentials())) {
             update.setCredentialsCiphertext(credentialCipher.encrypt(bo.getCredentials()));
         }
+
+        // —— 启用/默认不变式（与专用端点同一套守卫，杜绝 PUT 旁路）——
+        boolean existingEnabled = Boolean.TRUE.equals(existing.getEnabled());
+        boolean existingDefault = Boolean.TRUE.equals(existing.getIsDefault());
+        boolean newEnabled = bo.getEnabled() == null ? existingEnabled : Boolean.TRUE.equals(bo.getEnabled());
+        boolean finalDefault = bo.getIsDefault() == null ? existingDefault : Boolean.TRUE.equals(bo.getIsDefault());
+        // 需求2：启用→停用需通过引用校验；停用默认模型自动清除默认标记
+        if (existingEnabled && !newEnabled) {
+            verifyNotReferenced(bo.getId(), "禁用");
+            if (existingDefault && bo.getIsDefault() == null) {
+                update.setIsDefault(false);
+                finalDefault = false;
+            }
+        }
+        // 需求1 + 约定：最终为默认必须已启用
+        if (finalDefault && !newEnabled) {
+            throw new V5aiException(ErrorCode.CONFLICT, "模型未启用，不能设为默认");
+        }
+        if (bo.getEnabled() != null) {
+            update.setEnabled(newEnabled);
+        }
+        boolean flag = mapper.updateById(update) > 0;
+        if (flag && finalDefault) {
+            // 同类型唯一：清掉其它同类型模型的默认标记
+            mapper.clearModelTypeDefaults(existing.getModelType(), bo.getId());
+        }
+        return flag;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean deleteWithValidById(Long id, Boolean isValid) {
+        exist(id);
+        verifyNotReferenced(id, "删除");
+        return mapper.deleteById(id) > 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean updateEnabled(Long id, Boolean enabled) {
+        if (enabled == null) {
+            throw new IllegalArgumentException("enabled is required");
+        }
+        V5aiModel existing = exist(id);
+        boolean current = Boolean.TRUE.equals(existing.getEnabled());
+        if (current == enabled) {
+            return true; // 幂等
+        }
+        V5aiModel update = new V5aiModel();
+        update.setId(id);
+        update.setEnabled(enabled);
+        if (!enabled) {
+            // 需求2：禁用前引用校验
+            verifyNotReferenced(id, "禁用");
+            // 停用默认模型：自动清除其默认标记（同一次写）
+            if (Boolean.TRUE.equals(existing.getIsDefault())) {
+                update.setIsDefault(false);
+            }
+        }
         return mapper.updateById(update) > 0;
     }
 
     @Override
-    public Boolean deleteWithValidById(Long id, Boolean isValid) {
-        exist(id);
-        boolean referenced = mapper.checkAgentReferenced(id);
-        if (referenced) {
-            throw new V5aiException(ErrorCode.CONFLICT,
-                    "model is used by an application and cannot be deleted");
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean updateDefault(Long id, Boolean isDefault) {
+        V5aiModel existing = exist(id);
+        boolean target = Boolean.TRUE.equals(isDefault); // null → 取消默认（与 StoreDefaultBo 语义一致）
+        boolean current = Boolean.TRUE.equals(existing.getIsDefault());
+        if (current == target) {
+            return true; // 幂等
         }
-        return mapper.deleteById(id) > 0;
+        if (target && !Boolean.TRUE.equals(existing.getEnabled())) {
+            throw new V5aiException(ErrorCode.CONFLICT, "模型未启用，不能设为默认");
+        }
+        V5aiModel update = new V5aiModel();
+        update.setId(id);
+        update.setIsDefault(target);
+        if (target) {
+            // 需求1：同类型至多一个默认 → 先清同类型其它默认
+            mapper.clearModelTypeDefaults(existing.getModelType(), id);
+        }
+        return mapper.updateById(update) > 0;
     }
 
     @Override
@@ -204,6 +287,24 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
 //                .eq(V5aiModelProvider::getProviderKey, providerKey));
 //        return provider == null ? null : provider.getId();
 //    }
+
+    /**
+     * 引用校验：模型被 Agent（任意状态）或知识库（embedding/rerank 任一引用）使用时抛 409，
+     * 并给出按引用来源计数的明细。
+     *
+     * @param id      模型 ID
+     * @param opName  操作名（禁用 / 删除），用于错误文案
+     */
+    private void verifyNotReferenced(Long id, String opName) {
+        Long agents = mapper.countAgentUsage(id);
+        Long kbs = mapper.countKnowledgeBaseUsage(id);
+        long agentCount = agents == null ? 0 : agents;
+        long kbCount = kbs == null ? 0 : kbs;
+        if (agentCount > 0 || kbCount > 0) {
+            throw new V5aiException(ErrorCode.CONFLICT,
+                    "模型被 " + agentCount + " 个 Agent、" + kbCount + " 个知识库使用，无法" + opName);
+        }
+    }
 
     private V5aiModel exist(Long id) {
         var existing = mapper.selectById(id);

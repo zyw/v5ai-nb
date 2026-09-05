@@ -25,7 +25,6 @@ import {
 import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import IconPicker from '../components/IconPicker.vue'
-import StatusTag from '../components/StatusTag.vue'
 import {
   createModel,
   createProvider,
@@ -34,6 +33,8 @@ import {
   listModels,
   listProviders,
   loadImagePreview,
+  setModelDefault,
+  setModelEnabled,
   testModelConnection,
   updateModel,
   updateProvider,
@@ -74,6 +75,10 @@ const savingProvider = ref(false)
 const savingModel = ref(false)
 /** 供应商列表「启用/禁用」Switch 正在切换的供应商 id（行内 loading）。 */
 const togglingProviderId = ref<number | null>(null)
+/** 模型列表「启用/禁用」Switch 正在切换的模型 id（行内 loading）。 */
+const togglingModelId = ref<number | null>(null)
+/** 模型列表「是否默认」Switch 正在切换的模型 id（行内 loading）。 */
+const defaultingModelId = ref<number | null>(null)
 const editingProviderId = ref<number | null>(null)
 const editingModelId = ref<number | null>(null)
 
@@ -338,17 +343,30 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   {
     title: '默认',
     key: 'isDefault',
-    width: 70,
+    width: 90,
     render: (row) =>
-      row.isDefault
-        ? h(NTag, { size: 'small', type: 'success', bordered: false, round: true }, { default: () => '默认' })
-        : '—'
+      h(NSwitch, {
+        value: !!row.isDefault,
+        loading: defaultingModelId.value === row.id,
+        onUpdateValue: () => handleToggleModelDefault(row)
+      }, {
+        checked: () => h('span', '是'),
+        unchecked: () => h('span', '否')
+      })
   },
   {
     title: '状态',
     key: 'enabled',
-    width: 80,
-    render: (row) => h(StatusTag, { status: row.enabled ? 'ACTIVE' : 'DISABLED' })
+    width: 90,
+    render: (row) =>
+      h(NSwitch, {
+        value: row.enabled,
+        loading: togglingModelId.value === row.id,
+        onUpdateValue: () => handleToggleModelEnabled(row)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '停')
+      })
   },
   { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
@@ -687,6 +705,58 @@ async function handleToggleProvider(row: ProviderResponse) {
         message.error(e instanceof Error ? e.message : `${next}失败`)
       } finally {
         togglingProviderId.value = null
+      }
+    }
+  })
+}
+
+/** 模型行内「启用/禁用」开关：走专用端点（后端校验引用；停用默认模型时自动取消其默认标记）。 */
+async function handleToggleModelEnabled(row: ModelResponse) {
+  const next = row.enabled ? '停用' : '启用'
+  const label = row.modelName ?? row.modelKey
+  // 停用默认模型时后端会同步取消其默认标记，文案提前告知
+  const clearsDefault = row.enabled && !!row.isDefault
+  dialog.warning({
+    title: `${next}确认`,
+    content: clearsDefault
+      ? `确认${next}模型「${label}」？该模型为同类型默认模型，停用后将同时取消其默认标记。`
+      : `确认${next}模型「${label}」？`,
+    positiveText: next,
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      togglingModelId.value = row.id
+      try {
+        await setModelEnabled(adminToken.value, row.id, !row.enabled)
+        message.success(`模型「${label}」已${next}`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        togglingModelId.value = null
+      }
+    }
+  })
+}
+
+/** 模型行内「是否默认」开关：走专用端点（同类型唯一默认由后端保证）。 */
+async function handleToggleModelDefault(row: ModelResponse) {
+  const next = row.isDefault ? '取消默认' : '设为默认'
+  const label = row.modelName ?? row.modelKey
+  dialog.warning({
+    title: `${next}确认`,
+    content: `确认${next}模型「${label}」？`,
+    positiveText: next,
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      defaultingModelId.value = row.id
+      try {
+        await setModelDefault(adminToken.value, row.id, !row.isDefault)
+        message.success(`模型「${label}」已${next}`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        defaultingModelId.value = null
       }
     }
   })

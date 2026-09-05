@@ -14,6 +14,8 @@ import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.model.domain.bo.ModelBo;
+import xin.v5ai.nb.model.domain.bo.ModelDefaultBo;
+import xin.v5ai.nb.model.domain.bo.ModelEnabledBo;
 import xin.v5ai.nb.model.domain.vo.TestModelConnectionVo;
 import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 import xin.v5ai.nb.model.service.IV5aiModelService;
@@ -87,6 +89,37 @@ public class V5aiModelController extends BaseController {
     public R<Void> deleteModel(@NotNull(message = "主键不能为空")
                                @PathVariable("id") Long id) {
         return toAjax(service.deleteWithValidById(id, true));
+    }
+
+    /**
+     * 切换模型启用/停用（专用端点）：停用前校验模型是否被 Agent/知识库使用，
+     * 停用默认模型时自动清除其默认标记。
+     *
+     * @param id 模型 ID
+     * @param bo 目标启用状态（enabled）
+     * @return 结果
+     */
+    @PutMapping("/{id}/enabled")
+    @Log(title = "启停模型", businessType = BusinessType.UPDATE)
+    public R<Void> setEnabled(@NotNull(message = "主键不能为空")
+                              @PathVariable("id") Long id,
+                              @RequestBody ModelEnabledBo bo) {
+        return toAjax(service.updateEnabled(id, bo.enabled()));
+    }
+
+    /**
+     * 切换模型默认标记（专用端点）：同类型至多一个默认，设为默认要求模型已启用。
+     *
+     * @param id 模型 ID
+     * @param bo 是否设为默认（isDefault）
+     * @return 结果
+     */
+    @PutMapping("/{id}/default")
+    @Log(title = "设置默认模型", businessType = BusinessType.UPDATE)
+    public R<Void> setDefault(@NotNull(message = "主键不能为空")
+                              @PathVariable("id") Long id,
+                              @RequestBody ModelDefaultBo bo) {
+        return toAjax(service.updateDefault(id, bo.isDefault()));
     }
 
     @PostMapping("/{id}/test")
