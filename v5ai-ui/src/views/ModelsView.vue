@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NCard,
@@ -122,11 +122,37 @@ const modelTypeOptions = [
   { label: '重排模型', value: 'RERANK' }
 ]
 
-const adapterKeyOptions = [
-  { label: 'OpenAI 兼容', value: 'openai-compatible' },
-  { label: 'HTTP', value: 'http' },
-  { label: 'Qwen Rerank', value: 'qwen-rerank' }
-]
+const ADAPTERS_BY_TYPE: Record<string, string[]> = {
+  CHAT: ['openai-compatible'],
+  EMBEDDING: ['openai-compatible'],
+  RERANK: ['qwen-rerank']
+}
+
+const ADAPTER_LABELS: Record<string, string> = {
+  'openai-compatible': 'OpenAI 兼容',
+  'qwen-rerank': 'Qwen Rerank'
+}
+
+/** 各模型类型的默认适配器（取该类型清单首项）。 */
+function defaultAdapterKey(type: string): string {
+  return ADAPTERS_BY_TYPE[type]?.[0] ?? 'openai-compatible'
+}
+
+const adapterKeyOptions = computed(() => {
+  const values = ADAPTERS_BY_TYPE[modelForm.type] ?? ['openai-compatible']
+  const options = values.map((value) => ({ label: ADAPTER_LABELS[value] ?? value, value }))
+  // 编辑回显：存量 adapterKey 不在当前类型清单内时，仍纳入选项以显示原值（避免 select 显示空白）
+  if (modelForm.adapterKey && !values.includes(modelForm.adapterKey)) {
+    options.unshift({ label: modelForm.adapterKey, value: modelForm.adapterKey })
+  }
+  return options
+})
+
+/** 切换模型类型时，将适配器重置为该类型默认值。 */
+function onModelTypeChange(type: string) {
+  modelForm.type = type
+  modelForm.adapterKey = defaultAdapterKey(type)
+}
 
 const scopeOptions = [
   { label: '全局（GLOBAL）', value: 'GLOBAL' },
@@ -506,7 +532,7 @@ async function openModelModal() {
   modelForm.type = 'CHAT'
   modelForm.modelName = ''
   modelForm.description = ''
-  modelForm.adapterKey = 'openai-compatible'
+  modelForm.adapterKey = defaultAdapterKey(modelForm.type)
   modelForm.scope = 'GLOBAL'
   modelForm.isDefault = false
   resetConfigParams()
@@ -524,7 +550,7 @@ function openEditModel(row: ModelResponse) {
   modelForm.type = row.modelType
   modelForm.modelName = row.modelName ?? row.modelKey
   modelForm.description = row.description ?? ''
-  modelForm.adapterKey = row.adapterKey ?? 'openai-compatible'
+  modelForm.adapterKey = row.adapterKey ?? defaultAdapterKey(row.modelType)
   modelForm.scope = row.scope ?? 'GLOBAL'
   modelForm.isDefault = !!row.isDefault
   applyConfig(row.config)
@@ -821,97 +847,105 @@ onMounted(reload)
     <n-modal
       v-model:show="showModelModal"
       preset="card"
-      :title="editingModelId != null ? '编辑 Model' : '新建 Model'"
-      style="width: 600px"
+      :title="editingModelId != null ? '编辑模型' : '新建模型'"
+      style="width: 70%"
       :bordered="false"
     >
       <n-form label-placement="top">
-        <n-form-item label="请选择提供商">
+        <n-grid :cols="24" :x-gap="24">
+        <n-form-item-gi :span="12" label="请选择提供商">
           <n-select v-model:value="modelForm.providerKey" filterable :options="providerOptions()" />
-        </n-form-item>
-        <n-form-item label="模型名称">
+        </n-form-item-gi>
+          <n-form-item-gi :span="12" label="作用域">
+            <n-select v-model:value="modelForm.scope" :options="scopeOptions" />
+          </n-form-item-gi>
+        <n-form-item-gi :span="12" label="模型名称">
           <n-input v-model:value="modelForm.modelName" :maxlength="255" show-count placeholder="如 GPT-4o Mini" />
-        </n-form-item>
-        <n-form-item label="模型Key">
+        </n-form-item-gi>
+        <n-form-item-gi :span="12" label="模型Key">
           <n-input v-model:value="modelForm.modelKey" :maxlength="100" show-count placeholder="如 gpt-4o-mini" />
-        </n-form-item>
-        <n-form-item label="类型">
-          <n-select v-model:value="modelForm.type" :options="modelTypeOptions" />
-        </n-form-item>
-        <n-form-item label="适配器">
-          <n-select v-model:value="modelForm.adapterKey" filterable tag :options="adapterKeyOptions" />
-        </n-form-item>
-        <n-form-item label="描述">
-          <n-input v-model:value="modelForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 3, maxRows: 5 }" placeholder="请输入模型描述" />
-        </n-form-item>
-        <n-form-item :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
-          <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
-        </n-form-item>
-        <n-form-item label="API端点">
-          <n-input v-model:value="modelForm.baseUrl" placeholder="https://api.deepseek.com" />
-        </n-form-item>
+        </n-form-item-gi>
+          <n-form-item-gi :span="24" label="描述">
+            <n-input v-model:value="modelForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 3, maxRows: 5 }" placeholder="请输入模型描述" />
+          </n-form-item-gi>
+        <n-form-item-gi :span="12" label="类型">
+          <n-select :value="modelForm.type" :options="modelTypeOptions" @update:value="onModelTypeChange" />
+        </n-form-item-gi>
+        <n-form-item-gi :span="12" label="适配器">
+          <n-select v-model:value="modelForm.adapterKey" :options="adapterKeyOptions" />
+        </n-form-item-gi>
 
-        <n-collapse :default-expanded-names="['params']" :bordered="false" arrow-placement="right">
-          <n-collapse-item title="配置参数" name="params">
-            <n-form label-placement="top">
+        <n-form-item-gi :span="12" :label="editingModelId != null ? 'API Key（留空则不修改凭据）' : 'API Key'">
+          <n-input v-model:value="modelForm.apiKey" type="password" show-password-on="click" placeholder="sk-..." />
+        </n-form-item-gi>
+        <n-form-item-gi :span="12" label="API端点">
+          <n-input v-model:value="modelForm.baseUrl" placeholder="https://api.deepseek.com" />
+        </n-form-item-gi>
+
+        <n-grid-item :span="24">
+          <n-collapse :default-expanded-names="['params']" :bordered="false" arrow-placement="right">
+            <n-collapse-item title="配置参数" name="params">
               <!-- 对话模型参数 -->
               <template v-if="modelForm.type === 'CHAT'">
-                <n-form-item label="支持图片输入">
+                <n-grid :cols="24" :x-gap="24">
+                <n-form-item-gi :span="12" label="支持图片输入">
                   <n-switch v-model:value="modelForm.imageInput" />
                   <span class="param-hint">开启后该模型可接收图片消息</span>
-                </n-form-item>
-                <n-form-item label="作为 OCR 视觉兜底模型">
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="作为 OCR 视觉兜底模型">
                   <n-switch v-model:value="modelForm.ocrFallback" />
                   <span class="param-hint">开启后作为 OCR 视觉兜底模型使用</span>
-                </n-form-item>
-                <n-form-item label="Temperature">
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="Temperature">
                   <n-slider v-model:value="modelForm.temperature" :min="0" :max="2" :step="0.1" :format-tooltip="(v: number) => v.toFixed(1)" style="flex: 1" />
                   <span class="param-value">{{ modelForm.temperature.toFixed(1) }}</span>
-                </n-form-item>
-                <n-form-item label="Top P">
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="Top P">
                   <n-slider v-model:value="modelForm.topP" :min="0" :max="1" :step="0.05" :format-tooltip="(v: number) => v.toFixed(2)" style="flex: 1" />
                   <span class="param-value">{{ modelForm.topP.toFixed(2) }}</span>
-                </n-form-item>
-                <n-form-item label="Top K">
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="Top K">
                   <n-slider v-model:value="modelForm.topK" :min="0" :max="100" :step="1" style="flex: 1" />
                   <span class="param-value">{{ modelForm.topK }}</span>
-                </n-form-item>
-                <n-form-item label="最大Token数">
-                  <n-input-number v-model:value="modelForm.maxTokens" :min="1" :max="1048576" style="width: 160px" />
-                </n-form-item>
-                <n-form-item label="频率惩罚">
-                  <n-slider v-model:value="modelForm.frequencyPenalty" :min="0" :max="2" :step="0.1" :format-tooltip="(v: number) => v.toFixed(1)" style="flex: 1" />
-                  <span class="param-value">{{ modelForm.frequencyPenalty.toFixed(1) }}</span>
-                </n-form-item>
+                </n-form-item-gi>
+                  <n-form-item-gi :span="12" label="频率惩罚">
+                    <n-slider v-model:value="modelForm.frequencyPenalty" :min="0" :max="2" :step="0.1" :format-tooltip="(v: number) => v.toFixed(1)" style="flex: 1" />
+                    <span class="param-value">{{ modelForm.frequencyPenalty.toFixed(1) }}</span>
+                  </n-form-item-gi>
+                <n-form-item-gi :span="12" label="最大Token数">
+                  <n-input-number v-model:value="modelForm.maxTokens" :min="1" :max="1048576" style="width: 100%" />
+                </n-form-item-gi>
+                </n-grid>
               </template>
               <!-- 向量模型参数 -->
               <template v-else-if="modelForm.type === 'EMBEDDING'">
-                <n-form-item label="嵌入维度">
-                  <n-input-number v-model:value="modelForm.embeddingDimension" :min="1" :max="65536" style="width: 160px" placeholder="请输入" />
-                </n-form-item>
-                <n-form-item label="超时时间(ms)">
-                  <n-input-number v-model:value="modelForm.timeoutMs" :min="0" :step="1000" style="width: 160px" placeholder="默认" />
-                </n-form-item>
+                <n-grid :cols="24" :x-gap="24">
+                <n-form-item-gi :span="12" label="嵌入维度">
+                  <n-input-number v-model:value="modelForm.embeddingDimension" :min="1" :max="65536" style="width: 100%" placeholder="请输入" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="超时时间(ms)">
+                  <n-input-number v-model:value="modelForm.timeoutMs" :min="0" :step="1000" style="width: 100%" placeholder="默认" />
+                </n-form-item-gi>
+                </n-grid>
               </template>
               <!-- 重排模型参数 -->
               <template v-else-if="modelForm.type === 'RERANK'">
                 <n-form-item label="重排端点路径">
-                  <n-input v-model:value="modelForm.rerankPath" placeholder="e.g., /v1/rerank" />
+                  <n-input v-model:value="modelForm.rerankPath" placeholder="/rerank, /v1/rerank" />
                 </n-form-item>
               </template>
-            </n-form>
-          </n-collapse-item>
-        </n-collapse>
+            </n-collapse-item>
+          </n-collapse>
+        </n-grid-item>
 
-        <n-form-item label="作用域">
-          <n-select v-model:value="modelForm.scope" :options="scopeOptions" />
-        </n-form-item>
-        <n-form-item label="默认模型">
-          <n-switch v-model:value="modelForm.isDefault" />
-        </n-form-item>
-        <n-form-item label="启用">
-          <n-switch v-model:value="modelForm.enabled" />
-        </n-form-item>
+
+<!--        <n-form-item-gi :span="12" label="默认模型">-->
+<!--          <n-switch v-model:value="modelForm.isDefault" />-->
+<!--        </n-form-item-gi>-->
+<!--        <n-form-item-gi :span="24" label="启用">-->
+<!--          <n-switch v-model:value="modelForm.enabled" />-->
+<!--        </n-form-item-gi>-->
+        </n-grid>
       </n-form>
       <template #footer>
         <n-space justify="end">
