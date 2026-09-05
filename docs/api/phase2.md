@@ -110,6 +110,56 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 `updated_at`（更新时间），并新增 `(knowledge_base_id)`、`(knowledge_base_id, content_hash)`、
 `(knowledge_base_id, source_type)` 组合索引；Worker 写入时按空白切分估算 `token_count` 并计算 `content_hash`。
 
+## 知识库详情页（调试：切片 / 知识检索 / 知识问答）
+
+从知识库列表点库名进入的站内详情页（前端路由 `knowledge-base-detail`），头部 + 四个 tab：
+原始文档（复用上面文档管理接口）/ 切片详情 / 知识检索 / 知识问答。文档管理能力已迁入详情页，列表页不再内联管理。
+
+```http
+GET /api/admin/knowledge-bases/{id}                    # 详情：KnowledgeBaseVo + docCount/chunkCount
+
+# 切片管理（卡片流 / 筛选 / 手工切片 CRUD，写操作同步嵌入向量）
+GET    /api/admin/knowledge-bases/{kbId}/chunks        # 分页（documentId / chunkId / content 过滤）
+POST   /api/admin/knowledge-bases/{kbId}/chunks        # { documentId, content } → 追加到文档末尾并向量入库
+PUT    /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}   # { content } → 编辑并重新嵌入
+DELETE /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}
+
+# 检索调试
+POST /api/admin/knowledge-bases/{kbId}/retrieve
+Content-Type: application/json
+
+# 问答调试（SSE，事件名 = RuntimeEventType：RETRIEVAL / TEXT_DELTA / RUN_COMPLETED / RUN_FAILED）
+POST /api/admin/knowledge-bases/{kbId}/chat/stream
+Content-Type: application/json
+Accept: text/event-stream
+```
+
+`retrieve` 请求体（空字段按知识库 `config.searchParams` → 默认值补齐，仅本次会话生效、不回写）：
+
+```json
+{
+  "query": "单晶硅如何拉晶",
+  "resultCount": 20,
+  "questionRewrite": false,
+  "thresholdEnabled": false,
+  "threshold": 0.5,
+  "fusionStrategy": "RRF",
+  "rrfK": 60,
+  "modelId": 3
+}
+```
+
+- 融合策略：`RRF`（倒数排名融合，默认）/ `VECTOR` / `KEYWORD`；向量路得分 = 余弦相似度（0~1），关键词路为 ILIKE 粗检（得分 1.0）；
+- 阈值过滤仅作用于向量相似度；RRF 两路候选数 = `max(resultCount*3, 30)`，按 `sum(1/(rrfK+rank))` 融合后取前 `resultCount`；
+- 问题改写为「半真」：需要 `modelId`（或知识库 `config.modelParams.modelId`），模型缺失/调用失败时自动跳过改写并走原问题，不影响检索；
+- `chat/stream` 请求体为 `KbChatBo`：`modelId` / `nearbySliceCount`（拼接邻近文本片数量，默认 5，= 每个命中前后补片数）/ `prompt`（可含 `<Documents>` 变量，缺省用内置模板）/ 检索参数同 retrieve / `messages`（`[{role: user|assistant, content}]`，末条为当前问题）。
+  问答链路：检索 → 邻近补全 → Prompt 注入 → 对话模型流式回答；**无状态**（历史由前端携带，不落库、不占运行配额、不计 Agent 用量），对话模型经运行时 `AgentModelResolver` 解析（仅 CHAT 模型可用）。
+
+注意事项：
+- 手工切片写入与 Worker 索引共用同一条 Embedding→VectorStore 链路；单切片编辑/删除为行级操作，仅默认 PgVectorStore 保证索引同步（ES/Milvus 实例无单条更新 API，编辑后需重新索引文档保持一致）；
+- 切片列表不返回向量列；命中/引用载荷里切片内容截断至 2000 字符；
+- 知识库被禁用不影响详情浏览；切片写入不校验知识库状态（与文档上传一致）。
+
 ## Agent 绑定知识库
 
 ```http

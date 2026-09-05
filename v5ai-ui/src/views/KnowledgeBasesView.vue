@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+/**
+ * 知识库管理（列表页）：
+ * 点击「名称」进入知识库详情页（四 tab：原始文档/切片详情/知识检索/知识问答）。
+ * 文档管理能力已整体迁入详情页，本页只保留库级列表与创建/编辑/禁用。
+ */
+import { h, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   NButton,
   NCard,
   NDataTable,
-  NEmpty,
   NForm,
   NFormItem,
+  NFormItemGi,
+  NGrid,
   NIcon,
   NInput,
   NInputNumber,
   NModal,
   NPagination,
+  NPopover,
   NRadioButton,
   NRadioGroup,
   NSelect,
@@ -20,49 +28,36 @@ import {
   NTabPane,
   NTabs,
   NTag,
-  NUpload,
   useDialog,
   useMessage,
-  type DataTableColumns,
-  type UploadFileInfo
+  type DataTableColumns
 } from 'naive-ui'
-import { Plus,CircleQuestionMark } from 'lucide-vue-next'
+import { CircleQuestionMark, Plus } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createKnowledgeBase,
-  createStoreInstance,
-  deleteDocument,
   disableKnowledgeBase,
-  importUrl,
-  listDocuments,
   listKnowledgeBases,
   listModelOptions,
   listStoreInstances,
-  listTasks,
-  retryDocument,
   updateKnowledgeBase,
-  uploadDocument,
   type CreateKnowledgeBaseRequest,
-  type DocumentResponse,
   type KnowledgeBaseResponse,
   type OptionResponse,
   type RagConfig,
-  type StoreInstanceResponse,
-  type TaskResponse
+  type StoreInstanceResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
 
+const router = useRouter()
 const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
 const knowledgeBases = ref<KnowledgeBaseResponse[]>([])
-const documents = ref<DocumentResponse[]>([])
-const tasks = ref<TaskResponse[]>([])
-const selectedKb = ref<KnowledgeBaseResponse | null>(null)
-const uploadFile = ref<File | null>(null)
 const kbPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
-const docPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+
+const LIST_STATE_KEY = 'kb-list-state'
 
 // ---- 新建 / 编辑知识库表单 ----
 
@@ -86,7 +81,6 @@ const form = reactive({
   searchEngineInstanceId: null as number | null,
   dedupStrategy: 2,
   dedupAction: 0,
-  confirmBeforeUpload: false,
   chunkMode: 'length' as ChunkMode,
   maxChunkTokens: 2000,
   chunkOverlap: null as number | null,
@@ -169,7 +163,6 @@ function resetForm() {
   form.searchEngineInstanceId = null
   form.dedupStrategy = 2
   form.dedupAction = 0
-  form.confirmBeforeUpload = false
   form.chunkMode = 'length'
   form.maxChunkTokens = 2000
   form.chunkOverlap = null
@@ -295,127 +288,67 @@ async function handleSaveKb() {
   }
 }
 
-// ---- 内联新增存储实例（向量库 / 搜索引擎） ----
+// ---- 列表 ----
 
-// const showStoreModal = ref(false)
-const storeCategory = ref(1)
-const storeForm = reactive({ name: '', type: 1, config: '', isDefault: false })
-const storeTypeOptions = computed(() =>
-  storeCategory.value === 1
-    ? [
-        { label: 'PG_VECTOR', value: 1 },
-        { label: 'MILVUS', value: 2 }
-      ]
-    : [
-        { label: 'ELASTICSEARCH', value: 3 },
-        { label: 'PG_FULLTEXT', value: 4 }
-      ]
-)
-
-// function openStoreModal(category: number) {
-//   storeCategory.value = category
-//   storeForm.name = ''
-//   storeForm.type = category === 1 ? 1 : 3
-//   storeForm.config = ''
-//   storeForm.isDefault = false
-//   showStoreModal.value = true
-// }
-
-async function handleSaveStore() {
-  if (!storeForm.name.trim()) {
-    message.warning('请输入实例名称')
-    return
-  }
-  saving.value = true
-  try {
-    await createStoreInstance(adminToken.value, {
-      name: storeForm.name.trim(),
-      category: storeCategory.value,
-      type: storeForm.type,
-      config: storeForm.config.trim() || undefined,
-      status: 1,
-      isDefault: storeForm.isDefault
-    })
-    message.success('存储实例已创建')
-    // showStoreModal.value = false
-    await loadFormOptions()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '创建存储实例失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-// ---- 列表与文档管理 ----
-
-/** 文档索引状态映射（后端 SMALLINT） */
-const DOC_STATUS_MAP: Record<number, { type: 'default' | 'success' | 'info' | 'warning' | 'error'; label: string }> = {
-  0: { type: 'warning', label: '待处理' },
-  1: { type: 'info', label: '解析中' },
-  2: { type: 'info', label: '处理中' },
-  3: { type: 'success', label: '处理完成' },
-  4: { type: 'error', label: '处理失败' }
-}
-
-function renderDocStatus(status: number) {
-  const entry = DOC_STATUS_MAP[status]
-  return h(NTag, { size: 'small', type: entry?.type ?? 'default', bordered: false, round: true }, { default: () => entry?.label ?? String(status) })
-}
-
-function renderSourceType(sourceType?: string | null) {
-  const isUrl = sourceType === 'URL'
-  return h(NTag, { size: 'small', type: isUrl ? 'info' : 'default', bordered: false, round: true }, { default: () => (isUrl ? '网络' : '上传') })
-}
-
-function formatFileSize(bytes?: number): string {
-  if (bytes == null || bytes <= 0) return '—'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
-const documentColumns: DataTableColumns<DocumentResponse> = [
-  { title: 'ID', key: 'id', width: 70 },
-  { title: '标题', key: 'title', ellipsis: { tooltip: true } },
-  { title: '类型', key: 'fileType', width: 90 },
-  { title: '来源', key: 'sourceType', width: 80, render: (row) => renderSourceType(row.sourceType) },
-  { title: '状态', key: 'status', width: 100, render: (row) => renderDocStatus(row.status) },
-  { title: '大小', key: 'fileSize', width: 90, render: (row) => formatFileSize(row.fileSize ?? 0) },
-  { title: '分片', key: 'chunkCount', width: 70, render: (row) => row.chunkCount ?? 0 },
-  { title: '解析耗时', key: 'parseTime', width: 90, render: (row) => `${row.parseTime ?? 0} ms` },
-  { title: '错误', key: 'errorMessage', ellipsis: { tooltip: true } },
+const kbColumns: DataTableColumns<KnowledgeBaseResponse> = [
+  { title: 'ID', key: 'id', width: 90 },
+  {
+    title: '名称',
+    key: 'name',
+    render: (row) =>
+      h(NButton, {
+        size: 'small',
+        type: 'primary',
+        text: true,
+        onClick: () => openDetail(row)
+      }, { default: () => (row.icon ? `${row.icon} ${row.name}` : row.name) })
+  },
+  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
+  { title: '向量维度', key: 'dimensionOfVectorModel', width: 100, render: (row) => row.dimensionOfVectorModel ?? '—' },
+  { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
   {
     title: '操作',
     key: 'actions',
-    width: 130,
+    width: 180,
     render: (row) =>
       h(NSpace, { size: 6 }, { default: () => [
-        h(NButton, { size: 'small', secondary: true, onClick: () => handleRetry(row.id) }, { default: () => '重试' }),
-        h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDeleteDoc(row.id) }, { default: () => '删除' })
+        h(NButton, { size: 'small', type: 'primary', secondary: true, onClick: () => openDetail(row) }, { default: () => '详情' }),
+        h(NButton, { size: 'small', secondary: true, onClick: () => openEdit(row) }, { default: () => '编辑' }),
+        h(NButton, { size: 'small', secondary: true, type: 'error', disabled: row.status !== 'ACTIVE', onClick: () => handleDisableKb(row) }, { default: () => '禁用' })
       ] })
   }
 ]
 
-const taskColumns: DataTableColumns<TaskResponse> = [
-  { title: 'ID', key: 'id', width: 70 },
-  { title: '文档 ID', key: 'documentId', width: 90 },
-  { title: '状态', key: 'status', width: 110, render: (row) => h(StatusTag, { status: row.status }) },
-  { title: '尝试', key: 'attemptCount', width: 80, render: (row) => `${row.attemptCount}/${row.maxAttempts}` },
-  { title: '错误', key: 'errorMessage', ellipsis: { tooltip: true } }
-]
+function openDetail(row: KnowledgeBaseResponse) {
+  // 轻量恢复：返回列表时还原分页位置
+  sessionStorage.setItem(LIST_STATE_KEY, JSON.stringify({ page: kbPagination.page, pageSize: kbPagination.pageSize }))
+  void router.push({ name: 'knowledge-base-detail', params: { id: row.id } })
+}
+
+async function handleDisableKb(row: KnowledgeBaseResponse) {
+  dialog.warning({
+    title: '禁用确认',
+    content: `确认禁用知识库「${row.name}」？禁用后其绑定 Agent 的检索将停用。`,
+    positiveText: '禁用',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await disableKnowledgeBase(adminToken.value, row.id)
+        message.success('知识库已禁用')
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '禁用失败')
+      }
+    }
+  })
+}
 
 async function reload() {
   loading.value = true
   try {
-    const kbRows = await listKnowledgeBases(adminToken.value, { pageNum: kbPagination.page, pageSize: kbPagination.pageSize })
-    knowledgeBases.value = kbRows.rows
-    kbPagination.itemCount = kbRows.total
-    if (selectedKb.value == null && knowledgeBases.value.length > 0) {
-      selectedKb.value = knowledgeBases.value[0]
-    }
-    if (selectedKb.value != null) {
-      await reloadDocuments(selectedKb.value.id)
-    }
+    const rows = await listKnowledgeBases(adminToken.value, { pageNum: kbPagination.page, pageSize: kbPagination.pageSize })
+    knowledgeBases.value = rows.rows
+    kbPagination.itemCount = rows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载知识库失败')
   } finally {
@@ -434,138 +367,18 @@ function handleKbPageSizeChange(pageSize: number) {
   void reload()
 }
 
-function handleDocPageChange(page: number) {
-  docPagination.page = page
-  if (selectedKb.value) void reloadDocuments(selectedKb.value.id)
-}
-
-function handleDocPageSizeChange(pageSize: number) {
-  docPagination.pageSize = pageSize
-  docPagination.page = 1
-  if (selectedKb.value) void reloadDocuments(selectedKb.value.id)
-}
-
-async function reloadDocuments(kbId: number) {
-  const [docRows, taskRows] = await Promise.all([
-    listDocuments(adminToken.value, kbId, { pageNum: docPagination.page, pageSize: docPagination.pageSize }),
-    listTasks(adminToken.value, kbId)
-  ])
-  documents.value = docRows.rows
-  docPagination.itemCount = docRows.total
-  tasks.value = taskRows.rows
-}
-
-async function selectKb(kb: KnowledgeBaseResponse) {
-  selectedKb.value = kb
-  await reloadDocuments(kb.id)
-}
-
-function handleFileChange(options: { file: UploadFileInfo }) {
-  const raw = options.file.file
-  if (raw instanceof File) {
-    uploadFile.value = raw
-  }
-}
-
-function doUpload() {
-  if (!selectedKb.value || !uploadFile.value) return
-  void uploadDocument(adminToken.value, selectedKb.value.id, uploadFile.value)
-    .then(() => {
-      message.success('文档已上传，Worker 将异步索引')
-      uploadFile.value = null
-      return selectedKb.value ? reloadDocuments(selectedKb.value.id) : undefined
-    })
-    .catch((e) => message.error(e instanceof Error ? e.message : '上传文档失败'))
-}
-
-async function handleUpload() {
-  if (!selectedKb.value) {
-    message.warning('请先选择知识库')
-    return
-  }
-  if (!uploadFile.value) {
-    message.warning('请选择文件')
-    return
-  }
-  const file = uploadFile.value
-  if (form.confirmBeforeUpload) {
-    dialog.warning({
-      title: '上传确认',
-      content: `确认上传「${file.name}」？上传后将进行解析、切片并写入向量库。`,
-      positiveText: '确认上传',
-      negativeText: '取消',
-      onPositiveClick: doUpload
-    })
-  } else {
-    doUpload()
-  }
-}
-
-async function handleImportUrl() {
-  if (!selectedKb.value) {
-    message.warning('请先选择知识库')
-    return
-  }
-  try {
-    await importUrl(adminToken.value, selectedKb.value.id, urlForm)
-    message.success('URL 导入任务已创建')
-    urlForm.url = ''
-    urlForm.title = ''
-    await reloadDocuments(selectedKb.value.id)
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : 'URL 导入失败')
-  }
-}
-
-async function handleRetry(documentId: number) {
-  try {
-    await retryDocument(adminToken.value, documentId)
-    message.success('已重置任务为待处理')
-    if (selectedKb.value) await reloadDocuments(selectedKb.value.id)
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '重试失败')
-  }
-}
-
-async function handleDeleteDoc(documentId: number) {
-  dialog.warning({
-    title: '删除确认',
-    content: `确认删除文档 #${documentId}？`,
-    positiveText: '删除',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await deleteDocument(adminToken.value, documentId)
-        message.success('文档已删除')
-        if (selectedKb.value) await reloadDocuments(selectedKb.value.id)
-      } catch (e) {
-        message.error(e instanceof Error ? e.message : '删除失败')
-      }
-    }
-  })
-}
-
-async function handleDisableKb(row: KnowledgeBaseResponse) {
-  dialog.warning({
-    title: '禁用确认',
-    content: `确认禁用知识库「${row.name}」？`,
-    positiveText: '禁用',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await disableKnowledgeBase(adminToken.value, row.id)
-        message.success('知识库已禁用')
-        await reload()
-      } catch (e) {
-        message.error(e instanceof Error ? e.message : '禁用失败')
-      }
-    }
-  })
-}
-
-const urlForm = reactive({ url: '', title: '' })
-
 onMounted(() => {
+  const raw = sessionStorage.getItem(LIST_STATE_KEY)
+  if (raw) {
+    try {
+      const saved = JSON.parse(raw) as { page?: number; pageSize?: number }
+      if (saved.pageSize) kbPagination.pageSize = saved.pageSize
+      if (saved.page) kbPagination.page = saved.page
+    } catch {
+      // 忽略损坏的状态
+    }
+    sessionStorage.removeItem(LIST_STATE_KEY)
+  }
   void loadFormOptions()
   void reload()
 })
@@ -573,7 +386,7 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <PageHeader title="知识库管理" description="创建知识库并导入文档，由后台 Worker 解析、切片并写入向量库。">
+    <PageHeader title="知识库管理" description="创建知识库并导入文档，由后台 Worker 解析、切片并写入向量库；点击知识库名称进入详情页调试。">
       <template #actions>
         <n-button size="small" type="primary" @click="openCreate">
           <template #icon><n-icon :component="Plus" /></template>
@@ -585,33 +398,10 @@ onMounted(() => {
     <n-card title="知识库列表" :bordered="true">
       <n-data-table
         :loading="loading"
-        :columns="[
-          { title: 'ID', key: 'id', width: 90 },
-          {
-            title: '名称',
-            key: 'name',
-            render: (row: KnowledgeBaseResponse) =>
-              h('div', [
-                row.icon ? h(NTag, { size: 'small', bordered: false, style: 'margin-right: 6px' }, { default: () => row.icon }) : null,
-                row.name
-              ])
-          },
-          { title: '描述', key: 'description', ellipsis: { tooltip: true } },
-          { title: '向量维度', key: 'dimensionOfVectorModel', width: 100, render: (row: KnowledgeBaseResponse) => row.dimensionOfVectorModel ?? '—' },
-          { title: '状态', key: 'status', width: 100, render: (row: KnowledgeBaseResponse) => h(StatusTag, { status: row.status }) },
-          {
-            title: '操作',
-            key: 'actions',
-            width: 230,
-            render: (row: KnowledgeBaseResponse) => h(NSpace, { size: 6 }, { default: () => [
-              h(NButton, { size: 'small', type: 'primary', secondary: true, onClick: () => openEdit(row) }, { default: () => '编辑' }),
-              h(NButton, { size: 'small', type: 'primary', secondary: true, onClick: () => selectKb(row) }, { default: () => '管理文档' }),
-              h(NButton, { size: 'small', type: 'error', secondary: true, disabled: row.status !== 'ACTIVE', onClick: () => handleDisableKb(row) }, { default: () => '禁用' })
-            ] })
-          }
-        ]"
+        :columns="kbColumns"
         :data="knowledgeBases"
         :bordered="false"
+        :scroll-x="kbColumns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
       />
       <n-pagination
         :page="kbPagination.page"
@@ -623,42 +413,6 @@ onMounted(() => {
         @update:page="handleKbPageChange"
         @update:page-size="handleKbPageSizeChange"
       />
-    </n-card>
-
-    <n-card v-if="selectedKb" :title="`文档管理 · ${selectedKb.name}`" :bordered="true">
-      <n-space vertical :size="16">
-        <div class="doc-toolbar">
-          <n-upload :default-upload="false" :show-file-list="false" accept=".txt,.md,.markdown,.pdf,.docx" @change="handleFileChange">
-            <n-button secondary>选择文件（TXT/MD/PDF/DOCX）</n-button>
-          </n-upload>
-          <n-button type="primary" @click="handleUpload">上传文档</n-button>
-          <div class="url-toolbar">
-            <n-input v-model:value="urlForm.url" placeholder="https://example.com/doc" style="width: 280px" />
-            <n-input v-model:value="urlForm.title" placeholder="标题（可选）" style="width: 160px" />
-            <n-button secondary type="info" @click="handleImportUrl">导入 URL</n-button>
-          </div>
-        </div>
-        <n-empty v-if="documents.length === 0" description="暂无文档" />
-        <n-data-table v-else :loading="loading" :columns="documentColumns" :data="documents" :bordered="false" />
-        <n-pagination
-          :page="docPagination.page"
-          :page-size="docPagination.pageSize"
-          :item-count="docPagination.itemCount"
-          :page-sizes="[10, 20, 50, 100]"
-          show-size-picker
-          style="justify-content: flex-end; margin-top: 12px"
-          @update:page="handleDocPageChange"
-          @update:page-size="handleDocPageSizeChange"
-        />
-      </n-space>
-    </n-card>
-
-    <n-card v-if="selectedKb" title="索引任务" :bordered="true">
-      <n-empty v-if="tasks.length === 0" description="暂无索引任务" />
-      <n-data-table v-else :loading="loading" :columns="taskColumns" :data="tasks" :bordered="false" />
-      <div class="muted" style="margin-top: 12px; font-size: 12px">
-        Worker 每 5 秒扫描一次待处理任务，按知识库切片配置执行 解析 → 切片 → Embedding → 写入向量库。
-      </div>
     </n-card>
 
     <!-- 创建 / 编辑知识库 -->
@@ -674,43 +428,36 @@ onMounted(() => {
           <div class="section-title">基本信息</div>
           <n-form label-placement="top">
             <n-grid :cols="24" :x-gap="24">
-            <n-form-item-gi :span="24" label="知识库名称">
-              <n-input v-model:value="form.name" placeholder="请输入 RAG 名称" :maxlength="128" show-count />
-            </n-form-item-gi>
-            <n-form-item-gi :span="24" label="描述">
-              <n-input v-model:value="form.description" type="textarea" :maxlength="1200" show-count :autosize="{ minRows: 3, maxRows: 4 }" placeholder="可选，便于区分用途" />
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" label="嵌入模型">
-              <n-select v-model:value="form.embeddingModelId" placeholder="请选择嵌入模型" :options="embeddingModels" filterable />
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" label="向量库">
-              <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable style="flex: 1" @update:value="handleVectorStoreSelect" />
-<!--              <n-space :size="8" style="width: 100%">-->
-<!--                <n-button secondary size="small" @click="openStoreModal(1)">+ 新增</n-button>-->
-<!--              </n-space>-->
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" label="向量维度">
-              <template #label>
-                <span style="vertical-align:baseline;">向量维度</span>
-                <n-popover trigger="hover">
-                  <template #trigger>
-                    <n-icon><CircleQuestionMark/></n-icon>
-                  </template>
-                  <span class="muted">选择向量库后自动填充，可按需调整</span>
-                </n-popover>
-              </template>
-              <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 100%"/>
-<!--              <span class="muted" style="margin-left: 8px">选择向量库后自动填充，可按需调整</span>-->
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" label="混合检索">
-              <n-switch v-model:value="form.searchEngineEnable" />
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" v-if="form.searchEngineEnable" label="搜索引擎">
-              <n-select v-model:value="form.searchEngineInstanceId" placeholder="选择搜索引擎实例" :options="searchEngineOptions()" filterable style="flex: 1" />
-<!--              <n-space :size="8" style="width: 100%">-->
-<!--                <n-button secondary size="small" @click="openStoreModal(2)">+ 新增</n-button>-->
-<!--              </n-space>-->
-            </n-form-item-gi>
+              <n-form-item-gi :span="24" label="知识库名称">
+                <n-input v-model:value="form.name" placeholder="请输入 RAG 名称" :maxlength="128" show-count />
+              </n-form-item-gi>
+              <n-form-item-gi :span="24" label="描述">
+                <n-input v-model:value="form.description" type="textarea" :maxlength="1200" show-count :autosize="{ minRows: 3, maxRows: 4 }" placeholder="可选，便于区分用途" />
+              </n-form-item-gi>
+              <n-form-item-gi :span="12" label="嵌入模型">
+                <n-select v-model:value="form.embeddingModelId" placeholder="请选择嵌入模型" :options="embeddingModels" filterable />
+              </n-form-item-gi>
+              <n-form-item-gi :span="12" label="向量库">
+                <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable @update:value="handleVectorStoreSelect" />
+              </n-form-item-gi>
+              <n-form-item-gi :span="12" label="向量维度">
+                <template #label>
+                  <span style="vertical-align: baseline">向量维度</span>
+                  <n-popover trigger="hover">
+                    <template #trigger>
+                      <n-icon><CircleQuestionMark /></n-icon>
+                    </template>
+                    <span class="muted">选择向量库后自动填充，可按需调整</span>
+                  </n-popover>
+                </template>
+                <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 100%" />
+              </n-form-item-gi>
+              <n-form-item-gi :span="12" label="混合检索">
+                <n-switch v-model:value="form.searchEngineEnable" />
+              </n-form-item-gi>
+              <n-form-item-gi v-if="form.searchEngineEnable" :span="12" label="搜索引擎">
+                <n-select v-model:value="form.searchEngineInstanceId" placeholder="选择搜索引擎实例" :options="searchEngineOptions()" filterable />
+              </n-form-item-gi>
             </n-grid>
           </n-form>
         </div>
@@ -720,16 +467,12 @@ onMounted(() => {
           <div class="muted section-hint">控制同一知识库内重复文档的判定与处理方式。</div>
           <n-form label-placement="top">
             <n-grid :cols="24" :x-gap="24">
-            <n-form-item-gi :span="12" label="去重策略">
-              <n-select v-model:value="form.dedupStrategy" :options="dedupStrategyOptions" />
-            </n-form-item-gi>
-            <n-form-item-gi :span="12" label="冲突动作">
-              <n-select v-model:value="form.dedupAction" :options="dedupActionOptions" />
-            </n-form-item-gi>
-<!--            <n-form-item label="上传前二次确认">
-              <n-switch v-model:value="form.confirmBeforeUpload" />
-              <span class="muted" style="margin-left: 8px">开启后上传将先弹出预览确认，确认后再入库</span>
-            </n-form-item>-->
+              <n-form-item-gi :span="12" label="去重策略">
+                <n-select v-model:value="form.dedupStrategy" :options="dedupStrategyOptions" />
+              </n-form-item-gi>
+              <n-form-item-gi :span="12" label="冲突动作">
+                <n-select v-model:value="form.dedupAction" :options="dedupActionOptions" />
+              </n-form-item-gi>
             </n-grid>
           </n-form>
         </div>
@@ -748,11 +491,11 @@ onMounted(() => {
                   <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法，如：\\n\\n" class="chunk-inp" />
                 </n-form-item>
                 <n-form-item v-if="form.chunkMode === 'smart'" label="对话模型">
-                  <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable  class="chunk-inp" />
+                  <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable class="chunk-inp" />
                   <span class="muted" style="margin-left: 8px">模型将输出 JSON 字符串数组；调用失败时回退为按段落切分</span>
                 </n-form-item>
                 <n-form-item label="切片最大长度">
-                  <n-input-number v-model:value="form.maxChunkTokens" :min="1"  class="chunk-inp" />
+                  <n-input-number v-model:value="form.maxChunkTokens" :min="1" class="chunk-inp" />
                   <n-space :size="6" style="margin-left: 10px">
                     <n-button v-for="v in quickMaxTokens" :key="v" size="tiny" quaternary :type="form.maxChunkTokens === v ? 'primary' : 'default'" @click="form.maxChunkTokens = v">
                       {{ v }}
@@ -807,54 +550,10 @@ onMounted(() => {
         </n-space>
       </template>
     </n-modal>
-
-    <!-- 内联新增存储实例 -->
-<!--    <n-modal v-model:show="showStoreModal" preset="card" :title="`新增${storeCategory === 1 ? '向量库' : '搜索引擎'}实例`" style="width: 480px" :bordered="false">
-      <n-form label-placement="top">
-        <n-form-item label="实例名称">
-          <n-input v-model:value="storeForm.name" placeholder="实例显示名称" />
-        </n-form-item>
-        <n-form-item label="类型">
-          <n-select v-model:value="storeForm.type" :options="storeTypeOptions" />
-        </n-form-item>
-        <n-form-item label="连接参数（JSON）">
-          <n-input
-            v-model:value="storeForm.config"
-            type="textarea"
-            :autosize="{ minRows: 3, maxRows: 6 }"
-            placeholder='{"url":"http://localhost:5432","database":"v5ai_nb","dimension":1536}'
-          />
-        </n-form-item>
-        <n-form-item label="设为默认实例">
-          <n-switch v-model:value="storeForm.isDefault" />
-        </n-form-item>
-      </n-form>
-      <template #footer>
-        <n-space justify="end">
-          <n-button @click="showStoreModal = false">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="handleSaveStore">创建</n-button>
-        </n-space>
-      </template>
-    </n-modal>-->
   </div>
 </template>
 
 <style scoped>
-.doc-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.url-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-left: auto;
-}
-
 .kb-form {
   max-height: 68vh;
   overflow-y: auto;
@@ -888,13 +587,5 @@ onMounted(() => {
 
 .chunk-inp {
   width: 300px;
-}
-
-
-@media (max-width: 720px) {
-  .url-toolbar {
-    margin-left: 0;
-    width: 100%;
-  }
 }
 </style>

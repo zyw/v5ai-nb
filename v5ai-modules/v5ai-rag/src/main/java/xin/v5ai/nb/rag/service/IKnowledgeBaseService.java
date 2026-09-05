@@ -45,6 +45,11 @@ public interface IKnowledgeBaseService {
     KnowledgeBaseVo getKnowledgeBase(Long id);
 
     /**
+     * 查询单个知识库详情（含 docCount / chunkCount 统计）。
+     */
+    KnowledgeBaseVo getKnowledgeBaseDetail(Long id);
+
+    /**
      * 禁用知识库。
      */
     void disableKnowledgeBase(Long id);

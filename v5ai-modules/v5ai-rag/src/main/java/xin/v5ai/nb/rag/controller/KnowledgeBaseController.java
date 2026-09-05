@@ -62,6 +62,11 @@ public class KnowledgeBaseController extends BaseController {
         return R.ok(knowledgeBaseService.queryOptionList());
     }
 
+    @GetMapping("/{id}")
+    public R<KnowledgeBaseVo> getKnowledgeBaseDetail(@PathVariable("id") Long id) {
+        return R.ok(knowledgeBaseService.getKnowledgeBaseDetail(id));
+    }
+
     @DeleteMapping("/{id}")
     @Log(title = "禁用知识库", businessType = BusinessType.DISABLE)
     public R<Void> disableKnowledgeBase(@PathVariable("id") Long id) {

@@ -22,7 +22,7 @@ public class KnowledgeChunkDO extends KnowledgeChunk implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 分数
+     * 分数（余弦相似度 0~1，由 SQL 计算列映射；关键词命中恒为 1.0）
      */
-    private Integer score;
+    private Double score;
 }

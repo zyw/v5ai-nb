@@ -1,0 +1,235 @@
+package xin.v5ai.nb.rag.service.impl;
+
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.rag.core.EmbeddingClient;
+import xin.v5ai.nb.rag.core.store.VectorStore;
+import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
+import xin.v5ai.nb.rag.domain.KnowledgeBase;
+import xin.v5ai.nb.rag.domain.KnowledgeChunk;
+import xin.v5ai.nb.rag.domain.KnowledgeDocument;
+import xin.v5ai.nb.rag.domain.bo.KbChunkAddBo;
+import xin.v5ai.nb.rag.domain.bo.KbChunkEditBo;
+import xin.v5ai.nb.rag.domain.vo.KnowledgeChunkVo;
+import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
+import xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper;
+import xin.v5ai.nb.rag.mapper.KnowledgeDocumentMapper;
+import xin.v5ai.nb.rag.service.IKnowledgeChunkAdminService;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 知识库切片管理实现：浏览/统计走切片表（不含向量列），写操作与 Worker 同链路。
+ * <p>
+ * 手工切片的向量存储走 {@link VectorStore} 端口（PgVectorStore 为默认实现）；
+ * 若知识库配置了 ES/Milvus 向量实例，新增切片同样写入该实例。
+ * 单切片编辑/删除为行级操作，仅保证默认 PgVectorStore 的索引与行同步
+ * （ES/Milvus 无单条更新 API，编辑后外部索引需重新索引文档以保持一致）。
+ *
+ * @author ZYW
+ * @since 2026-09-06
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminService {
+
+    /**
+     * 手工切片内容最大长度（字符）
+     */
+    private static final int MAX_CHUNK_CHARS = 200_000;
+
+    /**
+     * 手工切片元数据标记
+     */
+    private static final String MANUAL_METADATA = "{\"source\":\"manual\"}";
+
+    private final KnowledgeChunkMapper chunkMapper;
+    private final KnowledgeDocumentMapper documentMapper;
+    private final KnowledgeBaseMapper knowledgeBaseMapper;
+    private final EmbeddingClient embeddingClient;
+    private final VectorStoreResolver vectorStoreResolver;
+
+    @Override
+    public PageResult<KnowledgeChunkVo> listChunks(Long knowledgeBaseId, Long documentId, Long chunkId,
+                                                   String content, PageQuery pageQuery) {
+        requireKnowledgeBase(knowledgeBaseId);
+        LambdaQueryWrapper<KnowledgeChunk> wrapper = new LambdaQueryWrapper<KnowledgeChunk>()
+                .select(KnowledgeChunk.class, field -> !"embedding".equals(field.getProperty()))
+                .eq(KnowledgeChunk::getKnowledgeBaseId, knowledgeBaseId)
+                .eq(documentId != null, KnowledgeChunk::getDocumentId, documentId)
+                .eq(chunkId != null, KnowledgeChunk::getId, chunkId)
+                .like(StrUtil.isNotBlank(content), KnowledgeChunk::getContent, content)
+                .orderByDesc(KnowledgeChunk::getId);
+        Page<KnowledgeChunk> page = pageQuery.build();
+        List<KnowledgeChunk> chunks = chunkMapper.selectList(page, wrapper);
+        Map<Long, String> titles = documentTitles(chunks.stream().map(KnowledgeChunk::getDocumentId).toList());
+        List<KnowledgeChunkVo> vos = chunks.stream()
+                .map(chunk -> toVo(chunk, titles.get(chunk.getDocumentId())))
+                .toList();
+        return PageResult.build(vos, page.getTotal());
+    }
+
+    @Override
+    public long countByKnowledgeBaseId(Long knowledgeBaseId) {
+        return chunkMapper.selectCount(new LambdaQueryWrapper<KnowledgeChunk>()
+                .eq(KnowledgeChunk::getKnowledgeBaseId, knowledgeBaseId));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public KnowledgeChunkVo addChunk(Long knowledgeBaseId, KbChunkAddBo bo) {
+        if (bo == null || bo.documentId() == null) {
+            throw new ServiceException("请选择归属文档");
+        }
+        String content = requireContent(bo.content());
+        KnowledgeDocument document = requireDocumentOfBase(knowledgeBaseId, bo.documentId());
+        KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
+
+        int nextIndex = chunkMapper.nextChunkIndex(knowledgeBaseId, document.getId());
+        List<Float> vector = embed(content);
+        VectorStore store = vectorStoreResolver.vectorStore(base.getVectorStoreInstanceId());
+        store.store(List.of(new VectorStore.VectorChunk(
+                knowledgeBaseId, document.getId(), nextIndex, content, vector,
+                MANUAL_METADATA, null, sha256Hex(content), "TEXT")));
+
+        KnowledgeChunk created = chunkMapper.selectOne(new LambdaQueryWrapper<KnowledgeChunk>()
+                .eq(KnowledgeChunk::getKnowledgeBaseId, knowledgeBaseId)
+                .eq(KnowledgeChunk::getDocumentId, document.getId())
+                .eq(KnowledgeChunk::getChunkIndex, nextIndex));
+        if (created == null) {
+            throw new ServiceException("切片已写入但回查失败，请刷新列表确认");
+        }
+        return toVo(created, document.getTitle());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public KnowledgeChunkVo updateChunk(Long knowledgeBaseId, Long chunkId, KbChunkEditBo bo) {
+        String content = requireContent(bo == null ? null : bo.content());
+        KnowledgeChunk chunk = requireChunkOfBase(knowledgeBaseId, chunkId);
+        KnowledgeDocument document = documentMapper.selectById(chunk.getDocumentId());
+
+        var update = new KnowledgeChunk();
+        update.setId(chunk.getId());
+        update.setContent(content);
+        update.setEmbedding(toVectorLiteral(embed(content)));
+        update.setContentHash(sha256Hex(content));
+        chunkMapper.updateById(update);
+
+        KnowledgeChunk refreshed = chunkMapper.selectById(chunkId);
+        return toVo(refreshed, document == null ? null : document.getTitle());
+    }
+
+    @Override
+    public void deleteChunk(Long knowledgeBaseId, Long chunkId) {
+        requireChunkOfBase(knowledgeBaseId, chunkId);
+        chunkMapper.deleteById(chunkId);
+    }
+
+    // ---------- helpers ----------
+
+    private KnowledgeBase requireKnowledgeBase(Long knowledgeBaseId) {
+        KnowledgeBase base = knowledgeBaseId == null ? null : knowledgeBaseMapper.selectById(knowledgeBaseId);
+        if (base == null) {
+            throw new ServiceException("知识库不存在: " + knowledgeBaseId);
+        }
+        return base;
+    }
+
+    private KnowledgeDocument requireDocumentOfBase(Long knowledgeBaseId, Long documentId) {
+        KnowledgeDocument document = documentId == null ? null : documentMapper.selectById(documentId);
+        if (document == null || !knowledgeBaseId.equals(document.getKnowledgeBaseId())) {
+            throw new ServiceException("文档不存在或不属于该知识库: " + documentId);
+        }
+        return document;
+    }
+
+    private KnowledgeChunk requireChunkOfBase(Long knowledgeBaseId, Long chunkId) {
+        KnowledgeChunk chunk = chunkId == null ? null : chunkMapper.selectById(chunkId);
+        if (chunk == null || !knowledgeBaseId.equals(chunk.getKnowledgeBaseId())) {
+            throw new ServiceException("切片不存在或不属于该知识库: " + chunkId);
+        }
+        return chunk;
+    }
+
+    private static String requireContent(String content) {
+        if (StrUtil.isBlank(content)) {
+            throw new ServiceException("切片内容不能为空");
+        }
+        if (content.length() > MAX_CHUNK_CHARS) {
+            throw new ServiceException("切片内容超过上限（" + MAX_CHUNK_CHARS + " 字符）");
+        }
+        return content;
+    }
+
+    private List<Float> embed(String content) {
+        try {
+            return embeddingClient.embed(content);
+        } catch (Exception exception) {
+            throw new ServiceException("生成向量失败: " + exception.getMessage());
+        }
+    }
+
+    private Map<Long, String> documentTitles(List<Long> documentIds) {
+        List<Long> ids = documentIds.stream().distinct().filter(java.util.Objects::nonNull).toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return documentMapper.selectBatchIds(ids).stream()
+                .collect(Collectors.toMap(KnowledgeDocument::getId, KnowledgeDocument::getTitle,
+                        (a, b) -> a, java.util.LinkedHashMap::new));
+    }
+
+    private static KnowledgeChunkVo toVo(KnowledgeChunk chunk, String documentTitle) {
+        KnowledgeChunkVo vo = new KnowledgeChunkVo();
+        vo.setId(chunk.getId());
+        vo.setKnowledgeBaseId(chunk.getKnowledgeBaseId());
+        vo.setDocumentId(chunk.getDocumentId());
+        vo.setDocumentTitle(documentTitle);
+        vo.setChunkIndex(chunk.getChunkIndex());
+        vo.setContent(chunk.getContent());
+        vo.setParagraphIndex(chunk.getParagraphIndex());
+        vo.setTokenCount(chunk.getTokenCount());
+        vo.setVectorId(chunk.getVectorId());
+        vo.setContentHash(chunk.getContentHash());
+        vo.setSourceType(chunk.getSourceType());
+        vo.setCreatedAt(chunk.getCreatedAt());
+        vo.setUpdatedAt(chunk.getUpdatedAt());
+        return vo;
+    }
+
+    private static String toVectorLiteral(List<Float> embedding) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < embedding.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(embedding.get(i));
+        }
+        return sb.append(']').toString();
+    }
+
+    private static String sha256Hex(String content) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(content.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 not available", exception);
+        }
+    }
+}

@@ -1,0 +1,159 @@
+package xin.v5ai.nb.rag.service.impl;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.rag.core.EmbeddingClient;
+import xin.v5ai.nb.rag.core.store.VectorStore;
+import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
+import xin.v5ai.nb.rag.domain.KnowledgeBase;
+import xin.v5ai.nb.rag.domain.KnowledgeChunk;
+import xin.v5ai.nb.rag.domain.KnowledgeDocument;
+import xin.v5ai.nb.rag.domain.bo.KbChunkAddBo;
+import xin.v5ai.nb.rag.domain.bo.KbChunkEditBo;
+import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
+import xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper;
+import xin.v5ai.nb.rag.mapper.KnowledgeDocumentMapper;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * {@link KnowledgeChunkAdminServiceImpl} 的 Mockito 单测：
+ * 手工切片的新增（归属校验 + 追加序号 + 向量入库）、编辑重嵌、删除与内容校验。
+ *
+ * @author ZYW
+ * @since 2026-09-06
+ */
+class KnowledgeChunkAdminServiceImplTest {
+
+    private KnowledgeChunkMapper chunkMapper;
+    private KnowledgeDocumentMapper documentMapper;
+    private KnowledgeBaseMapper knowledgeBaseMapper;
+    private EmbeddingClient embeddingClient;
+    private VectorStoreResolver vectorStoreResolver;
+    private VectorStore vectorStore;
+    private KnowledgeChunkAdminServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        chunkMapper = mock(KnowledgeChunkMapper.class);
+        documentMapper = mock(KnowledgeDocumentMapper.class);
+        knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
+        embeddingClient = mock(EmbeddingClient.class);
+        vectorStoreResolver = mock(VectorStoreResolver.class);
+        vectorStore = mock(VectorStore.class);
+        service = new KnowledgeChunkAdminServiceImpl(
+                chunkMapper, documentMapper, knowledgeBaseMapper, embeddingClient, vectorStoreResolver);
+    }
+
+    private KnowledgeBase base(Long id) {
+        var base = new KnowledgeBase();
+        base.setId(id);
+        base.setVectorStoreInstanceId(null);
+        return base;
+    }
+
+    private KnowledgeDocument document(Long id, Long kbId, String title) {
+        var document = new KnowledgeDocument();
+        document.setId(id);
+        document.setKnowledgeBaseId(kbId);
+        document.setTitle(title);
+        return document;
+    }
+
+    private KnowledgeChunk chunk(Long id, Long kbId, Long documentId, int index, String content) {
+        var chunk = new KnowledgeChunk();
+        chunk.setId(id);
+        chunk.setKnowledgeBaseId(kbId);
+        chunk.setDocumentId(documentId);
+        chunk.setChunkIndex(index);
+        chunk.setContent(content);
+        return chunk;
+    }
+
+    @Test
+    void addChunk_appendsIndexAndStoresVector() {
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册"));
+        when(chunkMapper.nextChunkIndex(1L, 2L)).thenReturn(7);
+        when(embeddingClient.embed("新切片内容")).thenReturn(List.of(0.1f, 0.2f));
+        when(vectorStoreResolver.vectorStore(null)).thenReturn(vectorStore);
+
+        KnowledgeChunk saved = chunk(88L, 1L, 2L, 7, "新切片内容");
+        saved.setEmbedding("[0.1,0.2]");
+        when(chunkMapper.selectOne(any())).thenReturn(saved);
+
+        var vo = service.addChunk(1L, new KbChunkAddBo(2L, "新切片内容"));
+
+        assertThat(vo.getId()).isEqualTo(88L);
+        assertThat(vo.getDocumentTitle()).isEqualTo("操作手册");
+        // 追加到文档末尾：index = max + 1
+        verify(chunkMapper).nextChunkIndex(1L, 2L);
+        var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(vectorStore).store(captor.capture());
+        @SuppressWarnings("unchecked")
+        VectorStore.VectorChunk stored = ((List<VectorStore.VectorChunk>) captor.getValue()).get(0);
+        assertThat(stored.chunkIndex()).isEqualTo(7);
+        assertThat(stored.content()).isEqualTo("新切片内容");
+        assertThat(stored.metadata()).contains("manual");
+    }
+
+    @Test
+    void addChunk_rejectsDocumentOfAnotherBase() {
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(documentMapper.selectById(9L)).thenReturn(document(9L, 99L, "别人的文档"));
+
+        assertThatThrownBy(() -> service.addChunk(1L, new KbChunkAddBo(9L, "内容")))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("不属于该知识库");
+    }
+
+    @Test
+    void addChunk_rejectsBlankContent() {
+        assertThatThrownBy(() -> service.addChunk(1L, new KbChunkAddBo(2L, "   ")))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("不能为空");
+    }
+
+    @Test
+    void updateChunk_reembedsContent() {
+        when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "旧内容"));
+        when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册"));
+        when(embeddingClient.embed("新内容")).thenReturn(List.of(0.5f, 0.6f));
+
+        KnowledgeChunk refreshed = chunk(5L, 1L, 2L, 3, "新内容");
+        when(chunkMapper.selectById(eq(5L))).thenReturn(refreshed, refreshed);
+
+        var vo = service.updateChunk(1L, 5L, new KbChunkEditBo("新内容"));
+
+        verify(chunkMapper).updateById(any(KnowledgeChunk.class));
+        assertThat(vo.getContent()).isEqualTo("新内容");
+        assertThat(vo.getDocumentTitle()).isEqualTo("操作手册");
+    }
+
+    @Test
+    void deleteChunk_removesRow() {
+        when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "内容"));
+
+        service.deleteChunk(1L, 5L);
+
+        verify(chunkMapper).deleteById(5L);
+    }
+
+    @Test
+    void deleteChunk_rejectsForeignChunk() {
+        when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 99L, 2L, 3, "内容"));
+
+        assertThatThrownBy(() -> service.deleteChunk(1L, 5L))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("不属于该知识库");
+    }
+}

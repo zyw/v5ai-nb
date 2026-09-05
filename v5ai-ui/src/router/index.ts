@@ -26,6 +26,7 @@ export const router = createRouter({
         { path: 'models', name: 'models', component: () => import('../views/ModelsView.vue'), meta: { title: '模型管理' } },
         { path: 'agents', name: 'agents', component: () => import('../views/AgentsView.vue'), meta: { title: 'Agent 管理' } },
         { path: 'knowledge-bases', name: 'knowledge-bases', component: () => import('../views/KnowledgeBasesView.vue'), meta: { title: '知识库管理' } },
+        { path: 'knowledge-bases/:id', name: 'knowledge-base-detail', component: () => import('../views/knowledge-base/KnowledgeBaseDetailView.vue'), meta: { title: '知识库详情' } },
         { path: 'store-instances', name: 'store-instances', component: () => import('../views/StoreInstancesView.vue'), meta: { title: '存储实例' } },
         { path: 'resources', name: 'resources', component: () => import('../views/ResourcesView.vue'), meta: { title: '资源存储' } },
         { path: 'mcp-servers', name: 'mcp-servers', component: () => import('../views/McpServersView.vue'), meta: { title: 'MCP 管理' } },

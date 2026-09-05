@@ -1,9 +1,7 @@
 package xin.v5ai.nb.rag.domain.vo;
 
-import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.ToString;
-import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -11,7 +9,7 @@ import java.time.OffsetDateTime;
 
 /**
  * <p>
- * 
+ * 知识库分片视图对象
  * </p>
  *
  * @author ZYW
@@ -19,7 +17,6 @@ import java.time.OffsetDateTime;
  */
 @Data
 @ToString
-@AutoMapper(target = KnowledgeChunk.class)
 public class KnowledgeChunkVo implements Serializable {
 
     @Serial
@@ -30,6 +27,11 @@ public class KnowledgeChunkVo implements Serializable {
     private Long knowledgeBaseId;
 
     private Long documentId;
+
+    /**
+     * 来源文档标题（列表接口联查填充，非实体列）
+     */
+    private String documentTitle;
 
     private Integer chunkIndex;
 

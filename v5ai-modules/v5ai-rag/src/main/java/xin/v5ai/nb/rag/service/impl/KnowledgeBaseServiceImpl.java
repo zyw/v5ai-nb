@@ -19,6 +19,7 @@ import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
+import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
 import xin.v5ai.nb.rag.domain.StoreInstance;
@@ -28,6 +29,7 @@ import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeTaskVo;
 import xin.v5ai.nb.rag.mapper.AgentKnowledgeBindingMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
+import xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeDocumentMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeTaskMapper;
 import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
@@ -108,6 +110,7 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     private final KnowledgeTaskMapper taskMapper;
     private final AgentKnowledgeBindingMapper bindingMapper;
     private final StoreInstanceMapper storeInstanceMapper;
+    private final KnowledgeChunkMapper chunkMapper;
     private final VectorStoreResolver vectorStoreResolver;
     private final UrlContentFetcher urlContentFetcher;
 
@@ -165,6 +168,16 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     @Override
     public KnowledgeBaseVo getKnowledgeBase(Long id) {
         return toVo(requireKnowledgeBase(id));
+    }
+
+    @Override
+    public KnowledgeBaseVo getKnowledgeBaseDetail(Long id) {
+        KnowledgeBaseVo vo = toVo(requireKnowledgeBase(id));
+        vo.setDocCount(documentMapper.selectCount(new LambdaQueryWrapper<KnowledgeDocument>()
+                .eq(KnowledgeDocument::getKnowledgeBaseId, id)));
+        vo.setChunkCount(chunkMapper.selectCount(new LambdaQueryWrapper<KnowledgeChunk>()
+                .eq(KnowledgeChunk::getKnowledgeBaseId, id)));
+        return vo;
     }
 
     @Override

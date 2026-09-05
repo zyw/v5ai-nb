@@ -13,12 +13,14 @@ import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
+import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
 import xin.v5ai.nb.rag.domain.StoreInstance;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.mapper.AgentKnowledgeBindingMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
+import xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeDocumentMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeTaskMapper;
 import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
@@ -57,6 +59,7 @@ class KnowledgeBaseServiceImplTest {
         var assistant = new MapperBuilderAssistant(configuration, "");
         TableInfoHelper.initTableInfo(assistant, KnowledgeBase.class);
         TableInfoHelper.initTableInfo(assistant, KnowledgeDocument.class);
+        TableInfoHelper.initTableInfo(assistant, KnowledgeChunk.class);
         TableInfoHelper.initTableInfo(assistant, KnowledgeTask.class);
         TableInfoHelper.initTableInfo(assistant, AgentKnowledgeBinding.class);
         TableInfoHelper.initTableInfo(assistant, StoreInstance.class);
@@ -66,6 +69,7 @@ class KnowledgeBaseServiceImplTest {
         KnowledgeTaskMapper taskMapper = mock(KnowledgeTaskMapper.class);
         AgentKnowledgeBindingMapper bindingMapper = mock(AgentKnowledgeBindingMapper.class);
         StoreInstanceMapper storeInstanceMapper = mock(StoreInstanceMapper.class);
+        KnowledgeChunkMapper chunkMapper = mock(KnowledgeChunkMapper.class);
         VectorStoreResolver vectorStoreResolver = mock(VectorStoreResolver.class);
         UrlContentFetcher urlFetcher = mock(UrlContentFetcher.class);
 
@@ -140,7 +144,7 @@ class KnowledgeBaseServiceImplTest {
         when(urlFetcher.fetch("https://example.com/doc")).thenReturn("hello world");
 
         service = new KnowledgeBaseServiceImpl(knowledgeBaseMapper, documentMapper, taskMapper,
-                bindingMapper, storeInstanceMapper, vectorStoreResolver, urlFetcher);
+                bindingMapper, storeInstanceMapper, chunkMapper, vectorStoreResolver, urlFetcher);
     }
 
     @Test

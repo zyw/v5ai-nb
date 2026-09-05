@@ -207,6 +207,10 @@ export interface KnowledgeBaseResponse {
   dedupAction?: number
   createdAt?: string
   updatedAt?: string
+  /** 库内文档数（详情接口返回） */
+  docCount?: number
+  /** 库内切片数（详情接口返回） */
+  chunkCount?: number
 }
 
 export interface RagChunkParams {
@@ -324,6 +328,8 @@ export interface DocumentResponse {
   parseTime?: number
   contentHash?: string | null
   resourceId?: number | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ImportUrlRequest {
@@ -339,6 +345,71 @@ export interface TaskResponse {
   attemptCount: number
   maxAttempts: number
   errorMessage?: string | null
+}
+
+export interface KnowledgeChunkResponse {
+  id: number
+  knowledgeBaseId: number
+  documentId: number
+  /** 来源文档标题（列表接口联查返回） */
+  documentTitle?: string | null
+  chunkIndex: number
+  content: string
+  paragraphIndex?: number | null
+  tokenCount?: number | null
+  vectorId?: string | null
+  contentHash?: string | null
+  sourceType?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** 检索命中（知识检索 tab / 问答引用共用） */
+export interface KbHitResponse {
+  knowledgeBaseId: number
+  documentId: number
+  documentTitle?: string | null
+  chunkIndex: number
+  content: string
+  score: number
+}
+
+export interface KbChunkAddRequest {
+  documentId: number
+  content: string
+}
+
+export interface KbChunkEditRequest {
+  content: string
+}
+
+export interface KbRetrieveRequest {
+  query?: string
+  resultCount?: number
+  questionRewrite?: boolean
+  thresholdEnabled?: boolean
+  threshold?: number
+  fusionStrategy?: string
+  rrfK?: number
+  modelId?: number
+}
+
+export interface KbQaMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface KbQaRequest {
+  modelId?: number
+  nearbySliceCount?: number
+  prompt?: string
+  resultCount?: number
+  questionRewrite?: boolean
+  thresholdEnabled?: boolean
+  threshold?: number
+  fusionStrategy?: string
+  rrfK?: number
+  messages: KbQaMessage[]
 }
 
 export interface CreateApiKeyResult {
@@ -965,6 +1036,77 @@ export function bindKnowledgeBases(adminToken: string, agentKey: string, knowled
 
 export function getKnowledgeBindings(adminToken: string, agentKey: string): Promise<number[]> {
   return requestJson<number[]>(`/api/admin/agents/${encodeURIComponent(agentKey)}/knowledge-bindings`, {}, adminToken)
+}
+
+/** 知识库详情（含 docCount / chunkCount 统计与检索/问答配置）。 */
+export function getKnowledgeBaseDetail(adminToken: string, kbId: number): Promise<KnowledgeBaseResponse> {
+  return requestJson<KnowledgeBaseResponse>(`/api/admin/knowledge-bases/${kbId}`, {}, adminToken)
+}
+
+// ---- 知识库切片管理（详情页） ----
+
+export function listChunks(
+  adminToken: string,
+  kbId: number,
+  query?: PageQuery & { documentId?: number; chunkId?: number; content?: string }
+): Promise<PageResult<KnowledgeChunkResponse>> {
+  return requestJson<PageResult<KnowledgeChunkResponse>>(
+    `/api/admin/knowledge-bases/${kbId}/chunks${paramString(query)}`,
+    {},
+    adminToken
+  )
+}
+
+export function addChunk(adminToken: string, kbId: number, request: KbChunkAddRequest): Promise<KnowledgeChunkResponse> {
+  return requestJson<KnowledgeChunkResponse>(`/api/admin/knowledge-bases/${kbId}/chunks`, {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function updateChunk(
+  adminToken: string,
+  kbId: number,
+  chunkId: number,
+  request: KbChunkEditRequest
+): Promise<KnowledgeChunkResponse> {
+  return requestJson<KnowledgeChunkResponse>(`/api/admin/knowledge-bases/${kbId}/chunks/${chunkId}`, {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+export function deleteChunk(adminToken: string, kbId: number, chunkId: number): Promise<void> {
+  return requestJson<void>(`/api/admin/knowledge-bases/${kbId}/chunks/${chunkId}`, { method: 'DELETE' }, adminToken)
+}
+
+// ---- 知识库调试（知识检索 / 知识问答） ----
+
+/** 检索调试：调整参数预览 RAG 命中。 */
+export function retrieveKnowledgeBase(
+  adminToken: string,
+  kbId: number,
+  request: KbRetrieveRequest
+): Promise<KbHitResponse[]> {
+  return requestJson<KbHitResponse[]>(`/api/admin/knowledge-bases/${kbId}/retrieve`, {
+    method: 'POST',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+/** 知识库流式问答（页内调试会话，SSE 事件：RETRIEVAL / TEXT_DELTA / RUN_COMPLETED / RUN_FAILED）。 */
+export async function kbQaStream(
+  adminToken: string,
+  kbId: number,
+  request: KbQaRequest,
+  onEvent: (event: string, data: string) => void
+): Promise<void> {
+  await streamSse(
+    `/api/admin/knowledge-bases/${kbId}/chat/stream`,
+    { Authorization: normalizeBearer(adminToken) },
+    request,
+    onEvent
+  )
 }
 
 // ---- Store instances ----

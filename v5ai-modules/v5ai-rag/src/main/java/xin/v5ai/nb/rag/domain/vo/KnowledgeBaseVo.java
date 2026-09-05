@@ -1,8 +1,5 @@
 package xin.v5ai.nb.rag.domain.vo;
 
-import io.github.linpeilie.annotations.AutoMapper;
-import io.github.linpeilie.annotations.AutoMapping;
-import io.github.linpeilie.annotations.ReverseAutoMapping;
 import lombok.Data;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
@@ -20,7 +17,6 @@ import java.time.OffsetDateTime;
  * @since 2026-08-22
  */
 @Data
-@AutoMapper(target = KnowledgeBase.class)
 public class KnowledgeBaseVo implements Serializable {
 
     @Serial
@@ -85,8 +81,6 @@ public class KnowledgeBaseVo implements Serializable {
     /**
      * RAG检索和问答的页面配置参数；自动映射忽略，由服务反序列化填充
      */
-    @AutoMapping(ignore = true)
-    @ReverseAutoMapping(ignore = true)
     private RagConfigDO config;
 
     /**
@@ -102,4 +96,14 @@ public class KnowledgeBaseVo implements Serializable {
     private OffsetDateTime createdAt;
 
     private OffsetDateTime updatedAt;
+
+    /**
+     * 库内文档数（详情接口统计填充，列表接口为空）
+     */
+    private Long docCount;
+
+    /**
+     * 库内切片数（详情接口统计填充，列表接口为空）
+     */
+    private Long chunkCount;
 }
