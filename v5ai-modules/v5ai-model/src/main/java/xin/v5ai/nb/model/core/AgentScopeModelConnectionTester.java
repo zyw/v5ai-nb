@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.common.agentscope.core.ModelConfigRetrieve;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 import xin.v5ai.nb.common.agentscope.core.exception.ModelChatException;
 import xin.v5ai.nb.common.agentscope.core.factory.config.AgentModelCredentialConfig;
@@ -67,8 +68,7 @@ public class AgentScopeModelConnectionTester implements ModelConnectionTester {
         }
         return switch (config.modelType()) {
             case TYPE_CHAT -> testChat(config);
-            case TYPE_EMBEDDING -> probe(config, "/embeddings",
-                    "{\"model\":\"%s\",\"input\":\"ping\"}", "EMBEDDING 探测");
+            case TYPE_EMBEDDING -> testEmbedding(config);
             case TYPE_RERANK -> probe(config, rerankPath(config),
                     "{\"model\":\"%s\",\"query\":\"ping\",\"documents\":[\"ping\"]}", "RERANK 探测");
             default -> TestModelConnectionVo.failed(modelId,
@@ -90,34 +90,131 @@ public class AgentScopeModelConnectionTester implements ModelConnectionTester {
         }
     }
 
+    /**
+     * EMBEDDING：发一次最小编码请求判定连通，并解析实际输出维度；
+     * 与 config 声明的维度能力（{@code dimensionAdjustable}/{@code embeddingDimension}/{@code maxDimension}）
+     * 比对，声明与实测不符时返回失败并给出修正指引——避免模型配置臆造可调维度、直到文档索引才炸。
+     */
+    private TestModelConnectionVo testEmbedding(ModelRuntimeConfigDTO config) {
+        try {
+            // ① 不带 dimensions 的最小请求：2xx 判定连通并取实际输出维度
+            ProbeResponse plain = post(config, "/embeddings", "{\"model\":\"%s\",\"input\":\"ping\"}"
+                    .formatted(escape(config.modelKey())));
+            if (!plain.ok()) {
+                return TestModelConnectionVo.failed(config.modelId(),
+                        "EMBEDDING 探测 失败: HTTP " + plain.status() + " " + summarize(plain.body()));
+            }
+            Integer actualDimension = parseEmbeddingDimension(plain.body());
+            ModelExtConfigAttrs declared = config.config();
+            boolean adjustable = declared != null && Boolean.TRUE.equals(declared.getDimensionAdjustable());
+
+            // ② 声明「维度可调」时验证端点确实接受 dimensions 参数（用声明上限探测一次）
+            if (adjustable) {
+                Integer cap = firstPositive(declared.getEmbeddingDimension(), declared.getMaxDimension());
+                if (cap != null) {
+                    ProbeResponse dimsProbe = post(config, "/embeddings",
+                            "{\"model\":\"%s\",\"input\":\"ping\",\"dimensions\":%d}"
+                                    .formatted(escape(config.modelKey()), cap));
+                    if (!dimsProbe.ok()) {
+                        return TestModelConnectionVo.failed(config.modelId(),
+                                "EMBEDDING 探测: 模型配置声明了维度可调(上限 " + cap + ")，但上游拒绝 dimensions 参数"
+                                        + "（HTTP " + dimsProbe.status() + ": " + summarize(dimsProbe.body()) + "）。"
+                                        + "请关闭『维度可调』并把『嵌入维度』改为该模型实际输出维度"
+                                        + (actualDimension == null ? "" : "（实测 " + actualDimension + "）")
+                                        + "，或在知识库维度检查中确认支持值。");
+                    }
+                    // 可调探测成功：记录实际输出维度（声明上限合法即可连通，输出仍以冻结维度为准）
+                }
+            }
+            // ③ 不可调且声明了固定维度：必须与实测输出一致，否则检索维度不匹配
+            Integer declaredDimension = declared == null ? null : declared.getEmbeddingDimension();
+            if (!adjustable && declaredDimension != null && actualDimension != null
+                    && !declaredDimension.equals(actualDimension)) {
+                return TestModelConnectionVo.failed(config.modelId(),
+                        "EMBEDDING 探测: 模型实际输出维度为 " + actualDimension
+                                + "，与配置声明的嵌入维度 " + declaredDimension + " 不一致。"
+                                + "请将『嵌入维度』改为 " + actualDimension + "（如需降维请先确认模型支持 dimensions 参数再开启『维度可调』）。");
+            }
+            String detail = actualDimension == null ? "" : "（实际输出维度 " + actualDimension + "）";
+            return TestModelConnectionVo.ok(config.modelId(), "connection ok" + detail);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return TestModelConnectionVo.failed(config.modelId(), "EMBEDDING 探测 被中断");
+        } catch (Exception exception) {
+            return TestModelConnectionVo.failed(config.modelId(), "EMBEDDING 探测 失败: " + safeMessage(exception));
+        }
+    }
+
     /** EMBEDDING / RERANK：直接向模型 HTTP 端点发最小编码/重排请求，2xx 即判定连通。 */
     private TestModelConnectionVo probe(ModelRuntimeConfigDTO config, String path, String jsonTemplate, String label) {
         try {
-            AgentModelCredentialConfig credentials = decryptCredentials(config);
-            String baseUrl = StrUtil.isBlank(credentials.baseUrl()) ? DEFAULT_BASE_URL : credentials.baseUrl();
-            String url = trimTrailingSlash(baseUrl) + ensureLeadingSlash(path);
-            String jsonBody = jsonTemplate.formatted(escape(config.modelKey()));
-            var client = HttpClient.newBuilder().connectTimeout(timeout).build();
-            var request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(timeout)
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + (credentials.apiKey() == null ? "" : credentials.apiKey()))
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                    .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            int status = response.statusCode();
-            if (status >= 200 && status < 300) {
+            ProbeResponse response = post(config, path, jsonTemplate.formatted(escape(config.modelKey())));
+            if (response.ok()) {
                 return TestModelConnectionVo.ok(config.modelId());
             }
             return TestModelConnectionVo.failed(config.modelId(),
-                    label + " 失败: HTTP " + status + " " + summarize(response.body()));
+                    label + " 失败: HTTP " + response.status() + " " + summarize(response.body()));
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             return TestModelConnectionVo.failed(config.modelId(), label + " 被中断");
         } catch (Exception exception) {
             return TestModelConnectionVo.failed(config.modelId(), label + " 失败: " + safeMessage(exception));
         }
+    }
+
+    /** 发起一次带鉴权的 JSON POST；2xx 视为成功。 */
+    private ProbeResponse post(ModelRuntimeConfigDTO config, String path, String jsonBody) throws Exception {
+        AgentModelCredentialConfig credentials = decryptCredentials(config);
+        String baseUrl = StrUtil.isBlank(credentials.baseUrl()) ? DEFAULT_BASE_URL : credentials.baseUrl();
+        String url = trimTrailingSlash(baseUrl) + ensureLeadingSlash(path);
+        var client = HttpClient.newBuilder().connectTimeout(timeout).build();
+        var request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(timeout)
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + (credentials.apiKey() == null ? "" : credentials.apiKey()))
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        int status = response.statusCode();
+        return new ProbeResponse(status >= 200 && status < 300, status, response.body());
+    }
+
+    /** 解析 OpenAI 兼容 /embeddings 响应的实际输出维度（data[0].embedding 长度）；响应无向量时返回 null。 */
+    private static Integer parseEmbeddingDimension(String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        int idx = body.indexOf("\"embedding\"");
+        if (idx < 0) {
+            return null;
+        }
+        int open = body.indexOf('[', idx);
+        if (open < 0) {
+            return null;
+        }
+        int close = body.indexOf(']', open);
+        if (close <= open) {
+            return null;
+        }
+        String content = body.substring(open + 1, close).trim();
+        if (content.isEmpty()) {
+            return null;
+        }
+        return content.split(",").length;
+    }
+
+    private static Integer firstPositive(Integer... values) {
+        for (Integer value : values) {
+            if (value != null && value > 0) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    /** POST 探测结果：连通性与原始状态码/响应体。 */
+    private record ProbeResponse(boolean ok, int status, String body) {
     }
 
     /** 解密并解析凭据；失败按连接失败返回可读原因。 */

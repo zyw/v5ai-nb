@@ -5,6 +5,10 @@ public record TestModelConnectionVo(Long modelId, boolean ok, String message) {
         return new TestModelConnectionVo(modelId, true, "connection ok");
     }
 
+    public static TestModelConnectionVo ok(Long modelId, String message) {
+        return new TestModelConnectionVo(modelId, true, message);
+    }
+
     public static TestModelConnectionVo failed(Long modelId, String message) {
         return new TestModelConnectionVo(modelId, false, message);
     }

@@ -69,6 +69,69 @@ class AgentScopeModelConnectionTesterTest {
         assertThat(result.message()).contains("EMBEDDING 探测 失败: HTTP 500", "boom detail");
     }
 
+    // ---------- EMBEDDING 维度探测与声明校验 ----------
+
+    @Test
+    void embeddingProbeFlagsDeclaredDimensionMismatchWithActual() {
+        // 模型声明固定嵌入维度 3072，上游实际输出 2048 维 → 测试失败并给出修正指引
+        startServer(exchange -> respond(exchange, 200, embeddingBody(2048)));
+        var attrs = new ModelExtConfigAttrs();
+        attrs.setEmbeddingDimension(3072);
+        var tester = testerWith(config(1L, "text-embedding-3-small", "EMBEDDING", attrs), serverPort());
+
+        var result = tester.test(1L);
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.message()).contains("实际输出维度为 2048", "声明的嵌入维度 3072 不一致", "改为 2048");
+    }
+
+    @Test
+    void embeddingProbeFlagsAdjustableClaimWhenUpstreamRejectsDimensions() {
+        // 模型声明 dimensionAdjustable=true + 上限 3072，但上游拒绝 dimensions 参数（与 doubao 事故同构）
+        startServer(exchange -> {
+            String body = latestRequestBody();
+            if (body.contains("dimensions")) {
+                respond(exchange, 400,
+                        "{\"error\":{\"code\":\"InvalidParameter\",\"param\":\"dimensions\",\"type\":\"BadRequest\"}}");
+            } else {
+                respond(exchange, 200, embeddingBody(2));
+            }
+        });
+        var attrs = new ModelExtConfigAttrs();
+        attrs.setDimensionAdjustable(true);
+        attrs.setMaxDimension(3072);
+        var tester = testerWith(config(1L, "doubao-embedding-vision", "EMBEDDING", attrs), serverPort());
+
+        var result = tester.test(1L);
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.message()).contains("声明了维度可调(上限 3072)", "上游拒绝 dimensions 参数", "关闭『维度可调』");
+    }
+
+    @Test
+    void embeddingProbeSucceedsWhenDeclarationMatchesActual() {
+        // 声明固定维度与实际输出一致 → 连通成功并回传实测维度
+        startServer(exchange -> respond(exchange, 200, embeddingBody(2048)));
+        var attrs = new ModelExtConfigAttrs();
+        attrs.setEmbeddingDimension(2048);
+        var tester = testerWith(config(1L, "doubao-embedding-vision", "EMBEDDING", attrs), serverPort());
+
+        var result = tester.test(1L);
+
+        assertThat(result.ok()).isTrue();
+        assertThat(result.message()).contains("实际输出维度 2048");
+    }
+
+    /** 最近一次请求的 body（startServer 已把原始 body 记入 {@link #requests}）。 */
+    private String latestRequestBody() {
+        return requests.isEmpty() ? "" : requests.get(requests.size() - 1).body();
+    }
+
+    /** 生成指定维度的 OpenAI 兼容 /embeddings 响应体。 */
+    private static String embeddingBody(int dimension) {
+        return "{\"data\":[{\"embedding\":[" + "0.1,".repeat(dimension - 1) + "0.1]}]}";
+    }
+
     // ---------- RERANK ----------
 
     @Test

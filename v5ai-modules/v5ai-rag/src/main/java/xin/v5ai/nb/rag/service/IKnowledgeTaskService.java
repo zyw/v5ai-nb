@@ -44,4 +44,12 @@ public interface IKnowledgeTaskService {
      * @return 可处理的任务列表
      */
     List<KnowledgeTask> findProcessable(int limit);
+
+    /**
+     * 回收卡死的 PROCESSING 任务（进程崩溃/重启遗留），避免任务永久不被调度。
+     *
+     * @param staleMinutes 超过该分钟数未推进即视为卡死
+     * @return 被回收的任务数
+     */
+    int recoverStaleProcessing(int staleMinutes);
 }

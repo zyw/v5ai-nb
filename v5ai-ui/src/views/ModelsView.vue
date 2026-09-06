@@ -812,7 +812,8 @@ async function handleTestModel(row: ModelResponse) {
   try {
     const result = await testModelConnection(adminToken.value, row.id)
     if (result.ok) {
-      message.success(`模型(${name})连接正常`)
+      const suffix = result.message && result.message !== 'connection ok' ? `：${result.message}` : ''
+      message.success(`模型(${name})连接正常${suffix}`)
     } else {
       message.error(`模型(${name})连接失败: ${result.message}`)
     }

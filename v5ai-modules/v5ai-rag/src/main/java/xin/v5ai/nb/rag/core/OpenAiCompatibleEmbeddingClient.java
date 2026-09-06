@@ -74,7 +74,7 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
                     .build();
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                throw new IllegalStateException("embedding request failed with status " + response.statusCode() + ": " + response.body());
+                throw new IllegalStateException(describeFailure(model, frozenDimension, response.statusCode(), response.body()));
             }
             return parseEmbedding(response.body());
         } catch (InterruptedException exception) {
@@ -130,6 +130,49 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
             values.add((float) value.asDouble());
         }
         return values;
+    }
+
+    /**
+     * 把嵌入请求失败转成可操作的信息：上游明确拒绝 {@code dimensions} 参数（400 InvalidParameter
+     * param=dimensions）时，说明模型 config 的 {@code dimensionAdjustable/maxDimension} 声明与
+     * 实际能力不符——错误信息直接提示修正路径，避免运维只看到裸 400 body。
+     */
+    private static String describeFailure(ModelRuntimeConfigDTO model, Integer frozenDimension,
+                                          int status, String upstreamBody) {
+        String base = "embedding request failed with status " + status + ": " + upstreamBody;
+        if (frozenDimension == null || frozenDimension <= 0) {
+            return base;
+        }
+        boolean upstreamRejectsDimensions = upstreamBody != null
+                && upstreamBody.contains("dimensions")
+                && (upstreamBody.contains("InvalidParameter")
+                    || upstreamBody.contains("invalid_request_error")
+                    || upstreamBody.contains("BadRequest")
+                    || upstreamBody.contains("not valid")
+                    || upstreamBody.contains("is not valid"));
+        if (!upstreamRejectsDimensions) {
+            return base;
+        }
+        String hint = ("embedding request rejected by upstream for model '%s' with HTTP %d: it does not accept "
+                + "the dimensions=%d parameter (KB frozen dimension). The model config claims "
+                + "dimensionAdjustable=true/maxDimension=%s, which conflicts with the actual upstream capability. "
+                + "Fix: edit the model (id=%s) and either set dimensionAdjustable=false with embeddingDimension equal "
+                + "to the model's real output dimension (probe via 'test connection'), or adjust the KB frozen "
+                + "dimension to an accepted value. Upstream detail: %s")
+                .formatted(model.modelKey(), status, frozenDimension,
+                        model.config() == null ? "?" : model.config().getMaxDimension(),
+                        model.modelId(), summarize(upstreamBody));
+        log.warn("embedding dimension mismatch: {}", hint);
+        return hint;
+    }
+
+    /** 摘要化上游响应，避免把超长原始 body 直接塞进错误信息/error_message。 */
+    private static String summarize(String body) {
+        if (body == null || body.isBlank()) {
+            return "";
+        }
+        String cleaned = body.replaceAll("\\s+", " ").trim();
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) + "…" : cleaned;
     }
 
     private String escape(String text) {

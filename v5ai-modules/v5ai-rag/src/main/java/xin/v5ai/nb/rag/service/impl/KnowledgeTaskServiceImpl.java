@@ -53,4 +53,9 @@ public class KnowledgeTaskServiceImpl implements IKnowledgeTaskService {
     public List<KnowledgeTask> findProcessable(int limit) {
         return taskMapper.selectProcessable(limit);
     }
+
+    @Override
+    public int recoverStaleProcessing(int staleMinutes) {
+        return taskMapper.recoverStaleProcessing(staleMinutes);
+    }
 }
