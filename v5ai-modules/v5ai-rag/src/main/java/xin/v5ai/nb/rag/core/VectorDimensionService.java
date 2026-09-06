@@ -2,6 +2,7 @@ package xin.v5ai.nb.rag.core;
 
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.agentscope.core.ModelConfigRetrieve;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
@@ -19,6 +20,7 @@ import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
  *   （{@code maxDimension}，如 pgvector 0.5+ 部署允许 16000）。
  * - 可用上限 = min(模型, 库)，供 KB 创建/编辑时权威校验与 UI 提示。
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class VectorDimensionService {
@@ -35,8 +37,8 @@ public class VectorDimensionService {
      * config 用 {@code maxDimension} 显式覆盖（如 16000）；覆盖后检索走 hnsw。
      */
     private static final int PG_VECTOR_DEFAULT_MAX = 2000;
-    private static final int MILVUS_DEFAULT_MAX = 32768;
-    private static final int ES_DEFAULT_MAX = 2048;
+    private static final int MILVUS_DEFAULT_MAX = 4096;
+    private static final int ES_DEFAULT_MAX = 4096;
 
     private final ModelConfigRetrieve modelConfigRetrieve;
     private final StoreInstanceMapper storeInstanceMapper;
@@ -70,6 +72,8 @@ public class VectorDimensionService {
                 var dims = modelDimensions(model);
                 modelMax = dims.max();
                 adjustable = dims.adjustable();
+            } else {
+                log.warn("嵌入模型 {} 不存在", embeddingModelId);
             }
         }
         return new DimensionCapability(modelMax, storeMax, effective(modelMax, storeMax), adjustable);
@@ -129,12 +133,16 @@ public class VectorDimensionService {
         return new MaxDim(null, true);
     }
 
+    /**
+     * 模型最大维度与是否可调。
+     */
     private record MaxDim(Integer max, boolean adjustable) {
     }
 
     private Integer storeMaxDimension(Long instanceId) {
         StoreInstance instance = storeInstanceMapper.selectById(instanceId);
         if (instance == null) {
+            log.warn("向量库实例 {} 不存在", instanceId);
             return null;
         }
         Integer type = instance.getType();

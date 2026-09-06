@@ -2,6 +2,7 @@ package xin.v5ai.nb.model.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.agentscope.core.ModelConfigRetrieve;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
@@ -18,6 +19,7 @@ import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
  * @author ZYW
  * @since 2026-08-20
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ModelConfigRetrieveImpl implements ModelConfigRetrieve {
@@ -29,10 +31,12 @@ public class ModelConfigRetrieveImpl implements ModelConfigRetrieve {
     public ModelRuntimeConfigDTO findRuntimeConfigByModelId(Long modelId) {
         var model = modelMapper.selectById(modelId);
         if (model == null) {
+            log.warn("模型没有找到，ID: {}", modelId);
             return null;
         }
         var provider = providerMapper.selectById(model.getProviderId());
         if (provider == null) {
+            log.warn("模型供应商没有找到, ID: {}", model.getProviderId());
             return null;
         }
         return toRuntimeConfig(model, provider);

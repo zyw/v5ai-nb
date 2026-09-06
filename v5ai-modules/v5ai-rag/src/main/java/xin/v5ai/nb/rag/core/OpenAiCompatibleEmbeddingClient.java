@@ -90,13 +90,14 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
     @Override
     public Integer probeDimension(Long embeddingModelId) {
         if (embeddingModelId == null) {
+            log.warn("embeddingModelId is null");
             return null;
         }
         try {
             var vector = embed("hello", embeddingModelId, null);
             return vector == null ? null : vector.size();
-        } catch (Exception exception) {
-            log.warn("probe embedding dimension failed for model {}: {}", embeddingModelId, exception.getMessage());
+        } catch (Exception e) {
+            log.warn("probe embedding dimension failed for model {}: {}", embeddingModelId, e.getMessage(),e);
             return null;
         }
     }

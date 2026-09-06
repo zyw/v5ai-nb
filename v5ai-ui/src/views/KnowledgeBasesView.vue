@@ -47,7 +47,7 @@ import {
   type KnowledgeBaseResponse,
   type OptionResponse,
   type RagConfig,
-  type StoreInstanceResponse
+  type StoreInstanceResponse, DimensionCheckResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
 
@@ -68,6 +68,7 @@ const embeddingModels = ref<OptionResponse[]>([])
 const vectorStores = ref<StoreInstanceResponse[]>([])
 const searchEngines = ref<StoreInstanceResponse[]>([])
 const chatModels = ref<OptionResponse[]>([])
+const capability = ref<DimensionCheckResponse>()
 
 type ChunkMode = 'length' | 'delimiter' | 'regex' | 'smart'
 
@@ -131,20 +132,20 @@ async function handleEmbeddingConfigChange() {
   const { embeddingModelId, vectorStoreInstanceId } = form
   if (embeddingModelId == null || vectorStoreInstanceId == null) return
   try {
-    const capability = await dimensionCheck(adminToken.value, embeddingModelId, vectorStoreInstanceId)
-    if (capability.dimensionAdjustable) {
-      if (form.dimensionOfVectorModel == null && capability.modelMaxDimension != null) {
-        form.dimensionOfVectorModel = capability.modelMaxDimension
+    capability.value = await dimensionCheck(adminToken.value, embeddingModelId, vectorStoreInstanceId)
+    if (capability.value.dimensionAdjustable) {
+      if (form.dimensionOfVectorModel == null && capability.value.modelMaxDimension != null) {
+        form.dimensionOfVectorModel = capability.value.modelMaxDimension
       }
-      if (capability.effectiveMaxDimension != null) {
-        message.info(`该模型可调维度，可用上限 ${capability.effectiveMaxDimension}`)
+      if (capability.value.effectiveMaxDimension != null) {
+        message.info(`该模型可调维度，可用上限 ${capability.value.effectiveMaxDimension}`)
       }
-    } else if (capability.modelMaxDimension != null) {
-      form.dimensionOfVectorModel = capability.modelMaxDimension
+    } else if (capability.value.modelMaxDimension != null) {
+      form.dimensionOfVectorModel = capability.value.effectiveMaxDimension
     }
-    if (form.dimensionOfVectorModel != null && capability.effectiveMaxDimension != null
-      && form.dimensionOfVectorModel > capability.effectiveMaxDimension) {
-      message.warning(`维度 ${form.dimensionOfVectorModel} 超过可用上限 ${capability.effectiveMaxDimension}`)
+    if (form.dimensionOfVectorModel != null && capability.value.effectiveMaxDimension != null
+      && form.dimensionOfVectorModel > capability.value.effectiveMaxDimension) {
+      message.warning(`维度 ${form.dimensionOfVectorModel} 超过可用上限 ${capability.value.effectiveMaxDimension}`)
     }
   } catch {
     // 维度检查失败不阻塞表单：由后端保存时权威校验兜底
@@ -459,7 +460,9 @@ onMounted(() => {
                     <template #trigger>
                       <n-icon><CircleQuestionMark /></n-icon>
                     </template>
-                    <span class="muted">向量维度 = 所绑嵌入模型的输出维度，须与模型能力一致（后端保存时校验）</span>
+                    <span class="info">
+                      模型最大维度: {{capability?.modelMaxDimension ?? '未知'}}，向量库最大维度: {{capability?.storeMaxDimension ?? '未知'}}，当前可用上限: {{ capability?.effectiveMaxDimension ?? '未知' }}
+                    </span>
                   </n-popover>
                 </template>
                 <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 100%" />

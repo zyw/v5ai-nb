@@ -101,7 +101,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         add.setConfig(validateConfig(bo.getConfig()));
         add.setCredentialsCiphertext(credentialCipher.encrypt(bo.getCredentials()));
         // 启用缺省为 true（与列默认一致），保证下方默认校验拿到的状态真实
-        add.setEnabled(bo.getEnabled() == null || Boolean.TRUE.equals(bo.getEnabled()));
+        add.setEnabled(bo.getEnabled() == null || bo.getEnabled());
         // 需求1：创建即设默认要求已启用（同类型唯一）
         boolean requestedDefault = Boolean.TRUE.equals(bo.getIsDefault());
         if (requestedDefault && !Boolean.TRUE.equals(add.getEnabled())) {
@@ -139,8 +139,8 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         // —— 启用/默认不变式（与专用端点同一套守卫，杜绝 PUT 旁路）——
         boolean existingEnabled = Boolean.TRUE.equals(existing.getEnabled());
         boolean existingDefault = Boolean.TRUE.equals(existing.getIsDefault());
-        boolean newEnabled = bo.getEnabled() == null ? existingEnabled : Boolean.TRUE.equals(bo.getEnabled());
-        boolean finalDefault = bo.getIsDefault() == null ? existingDefault : Boolean.TRUE.equals(bo.getIsDefault());
+        boolean newEnabled = bo.getEnabled() == null ? existingEnabled : bo.getEnabled();
+        boolean finalDefault = bo.getIsDefault() == null ? existingDefault : bo.getIsDefault();
         // 需求2：启用→停用需通过引用校验；停用默认模型自动清除默认标记
         if (existingEnabled && !newEnabled) {
             verifyNotReferenced(bo.getId(), "禁用");
