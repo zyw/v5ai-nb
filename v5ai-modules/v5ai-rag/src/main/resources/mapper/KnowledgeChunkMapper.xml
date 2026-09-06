@@ -2,19 +2,49 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper">
 
-    <select id="findChunkByBaseIds" resultType="xin.v5ai.nb.rag.domain.KnowledgeChunkDO">
-        SELECT knowledge_base_id, document_id, chunk_index, content, metadata,
-        1 - (embedding &lt;=> #{embed1}::vector) AS score
-        FROM v5ai_knowledge_chunk
-        WHERE knowledge_base_id IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">
-            #{id}
+    <insert id="batchSaveChunks" parameterType="xin.v5ai.nb.rag.domain.KnowledgeChunk">
+        INSERT INTO v5ai_knowledge_chunk
+        (knowledge_base_id, document_id, chunk_index, content, metadata,
+        token_count, content_hash, source_type, vector_id, updated_at)
+        VALUES
+        <foreach collection="chunks" item="item" separator=",">
+            (
+            #{item.knowledgeBaseId},
+            #{item.documentId},
+            #{item.chunkIndex},
+            #{item.content},
+            -- 核心修复点：加上 jdbcType=OTHER，告诉 MyBatis 不要当字符串传
+            #{item.metadata, jdbcType=OTHER}::jsonb,
+            #{item.tokenCount},
+            #{item.contentHash},
+            #{item.sourceType},
+            #{item.vectorId},
+            current_timestamp
+            )
         </foreach>
-        ORDER BY embedding &lt;=> #{embed2}::vector
-        LIMIT #{limit}
+        ON CONFLICT (vector_id) DO UPDATE
+        SET content = EXCLUDED.content,
+            metadata = EXCLUDED.metadata,
+            token_count = EXCLUDED.token_count,
+            content_hash = EXCLUDED.content_hash,
+            source_type = EXCLUDED.source_type,
+            updated_at = current_timestamp
+    </insert>
+
+    <!-- 检索回链：按向量标识批量取业务行（内容/元数据以业务表为准） -->
+    <select id="selectByVectorIds" resultType="xin.v5ai.nb.rag.domain.KnowledgeChunkDO">
+        SELECT id, knowledge_base_id, document_id, chunk_index, content, metadata,
+               vector_id, content_hash, source_type
+        FROM v5ai_knowledge_chunk
+        WHERE vector_id IN
+        <foreach collection="vectorIds" item="vid" open="(" separator="," close=")">
+            #{vid}
+        </foreach>
     </select>
+
     <select id="findChunkByIdsAndLinkKeyword" resultType="xin.v5ai.nb.rag.domain.KnowledgeChunkDO">
-        SELECT knowledge_base_id, document_id, chunk_index, content, metadata, 1.0 AS score
+        SELECT id, knowledge_base_id, document_id, chunk_index, content, metadata,
+               vector_id, content_hash, source_type, 1.0 AS score
         FROM v5ai_knowledge_chunk
         WHERE knowledge_base_id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">

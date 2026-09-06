@@ -19,7 +19,8 @@ import java.util.List;
 
 /**
  * Elasticsearch 向量/关键词存储：向量走 kNN、关键词走 match，同一索引按知识库隔离
- * （索引名 {@code {indexPrefix}_{knowledgeBaseId}}），首次写入时惰性创建索引与 mapping。
+ * （索引名 {@code {indexPrefix}_{knowledgeBaseId}}），文档 `_id` = 业务 {@code vector_id}，
+ * 向量检索命中携带 vectorId，内容由调用方回业务表补齐。
  */
 public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
 
@@ -42,7 +43,8 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
 
         var bulk = new StringBuilder();
         for (VectorChunk chunk : chunks) {
-            bulk.append("{\"index\":{\"_index\":\"").append(indexName(knowledgeBaseId)).append("\"}}\n");
+            bulk.append("{\"index\":{\"_index\":\"").append(indexName(knowledgeBaseId))
+                    .append("\",\"_id\":\"").append(chunk.vectorId()).append("\"}}\n");
             bulk.append(docJson(chunk)).append('\n');
         }
         Request request = new Request("POST", "/_bulk");
@@ -64,6 +66,12 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
     }
 
     @Override
+    public void deleteByVectorId(Long knowledgeBaseId, String vectorId) {
+        Request request = new Request("DELETE", "/" + indexName(knowledgeBaseId) + "/_doc/" + vectorId);
+        perform(request);
+    }
+
+    @Override
     public List<RetrievalHit> search(List<Long> knowledgeBaseIds, List<Float> queryVector, int topK) {
         var vector = new JSONArray();
         queryVector.forEach(vector::add);
@@ -74,7 +82,7 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
                 .set("num_candidates", Math.max(config.getNumCandidates(), topK))
                 .set("filter", filter);
         var body = new JSONObject().set("query", new JSONObject().set("knn", new JSONObject().set("embedding", knn)));
-        return searchHits(body);
+        return searchHits(body, true);
     }
 
     @Override
@@ -85,10 +93,14 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
         var body = new JSONObject()
                 .set("query", new JSONObject().set("bool", new JSONObject().set("must", must)))
                 .set("size", topK);
-        return searchHits(body);
+        return searchHits(body, false);
     }
 
-    private List<RetrievalHit> searchHits(JSONObject queryBody) {
+    /**
+     * 统一解析 ES 命中：文档 `_id` 即业务 vectorId；content/metadata 是否内联返回由
+     * {@code inlineContent} 决定（关键词检索为自身数据源可内联，向量检索由调用方回业务表补齐）。
+     */
+    private List<RetrievalHit> searchHits(JSONObject queryBody, boolean inlineContent) {
         Request request = new Request("POST", "/" + config.getIndexPrefix() + "_*/_search");
         request.setJsonEntity(queryBody.toString());
         JSONObject body = JSONUtil.parseObj(entity(perform(request)));
@@ -98,11 +110,12 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
             JSONObject hit = hits.getJSONObject(i);
             JSONObject source = hit.getJSONObject("_source");
             result.add(new RetrievalHit(
+                    hit.getStr("_id"),
                     source.getLong("knowledgeBaseId"),
                     source.getLong("documentId"),
                     source.getInt("chunkIndex", 0),
-                    source.getStr("content"),
-                    source.getStr("metadata"),
+                    inlineContent ? source.getStr("content") : null,
+                    inlineContent ? source.getStr("metadata") : null,
                     hit.getDouble("_score", 1.0)));
         }
         return result;
@@ -133,7 +146,6 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
         properties.set("knowledgeBaseId", new JSONObject().set("type", "long"));
         properties.set("documentId", new JSONObject().set("type", "long"));
         properties.set("chunkIndex", new JSONObject().set("type", "integer"));
-        properties.set("metadata", new JSONObject().set("type", "text").set("index", false));
         properties.set("embedding", new JSONObject()
                 .set("type", "dense_vector")
                 .set("dims", dimension)
@@ -152,7 +164,6 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
                 .set("documentId", chunk.documentId())
                 .set("chunkIndex", chunk.chunkIndex())
                 .set("content", chunk.content())
-                .set("metadata", chunk.metadata() == null ? "" : chunk.metadata())
                 .set("embedding", vector);
     }
 

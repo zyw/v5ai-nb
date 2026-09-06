@@ -3,6 +3,8 @@ package xin.v5ai.nb.rag.core.store;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.DataType;
+import io.milvus.v2.service.collection.request.AddFieldReq;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
 import io.milvus.v2.service.collection.request.HasCollectionReq;
 import io.milvus.v2.service.vector.request.DeleteReq;
@@ -19,7 +21,8 @@ import java.util.Map;
 
 /**
  * Milvus 向量存储：collection 按知识库隔离（{@code {collectionPrefix}_{knowledgeBaseId}}），
- * 动态字段承载 content / 元数据与 id 信息，首次写入时惰性建 collection（autoID + 动态字段）。
+ * 集合主键 = 业务生成的 {@code vector_id}(VarChar)，首次写入惰性建 collection
+ * （显式 schema：vector_id 主键 + vector 字段 + 动态字段承载定位信息）。
  */
 public class MilvusVectorStore implements VectorStore {
 
@@ -56,6 +59,14 @@ public class MilvusVectorStore implements VectorStore {
     }
 
     @Override
+    public void deleteByVectorId(Long knowledgeBaseId, String vectorId) {
+        client.delete(DeleteReq.builder()
+                .collectionName(collectionName(knowledgeBaseId))
+                .filter("vector_id == '" + escape(vectorId) + "'")
+                .build());
+    }
+
+    @Override
     public List<RetrievalHit> search(List<Long> knowledgeBaseIds, List<Float> queryVector, int topK) {
         var hits = new ArrayList<RetrievalHit>();
         for (Long knowledgeBaseId : knowledgeBaseIds) {
@@ -65,14 +76,14 @@ public class MilvusVectorStore implements VectorStore {
                         .data(List.of(new FloatVec(queryVector)))
                         .annsField("vector")
                         .topK(topK)
-                        .outputFields(List.of("content", "knowledgeBaseId", "documentId", "chunkIndex", "metadata"))
+                        .outputFields(List.of("vector_id", "documentId", "chunkIndex"))
                         .build());
                 if (resp.getSearchResults() == null) {
                     continue;
                 }
                 for (List<SearchResp.SearchResult> perQuery : resp.getSearchResults()) {
                     for (SearchResp.SearchResult result : perQuery) {
-                        hits.add(toHit(result));
+                        hits.add(toHit(knowledgeBaseId, result));
                     }
                 }
             } catch (Exception ignored) {
@@ -83,18 +94,47 @@ public class MilvusVectorStore implements VectorStore {
         return hits.size() > topK ? hits.subList(0, topK) : hits;
     }
 
+    /**
+     * 幂等建 collection：显式 schema 以业务 {@code vector_id} 为主键（关 autoID），
+     * 动态字段承载 documentId/chunkIndex/content 等定位信息。
+     */
     private void ensureCollection(Long knowledgeBaseId, int dimension) {
         String name = collectionName(knowledgeBaseId);
         Boolean exists = client.hasCollection(HasCollectionReq.builder().collectionName(name).build());
-        if (Boolean.FALSE.equals(exists)) {
-            client.createCollection(CreateCollectionReq.builder()
-                    .collectionName(name)
-                    .dimension(dimension)
-                    .metricType(config.getMetricType() == null ? "COSINE" : config.getMetricType())
-                    .autoID(true)
-                    .enableDynamicField(true)
-                    .build());
+        if (Boolean.TRUE.equals(exists)) {
+            return;
         }
+        var vectorField = AddFieldReq.builder()
+                .fieldName("vector")
+                .dataType(DataType.FloatVector)
+                .dimension(dimension)
+                .build();
+        var idField = AddFieldReq.builder()
+                .fieldName("vector_id")
+                .dataType(DataType.VarChar)
+                .isPrimaryKey(true)
+                .maxLength(128)
+                .build();
+        var docField = AddFieldReq.builder()
+                .fieldName("documentId")
+                .dataType(DataType.Int64)
+                .build();
+        var chunkField = AddFieldReq.builder()
+                .fieldName("chunkIndex")
+                .dataType(DataType.Int64)
+                .build();
+        CreateCollectionReq.CollectionSchema schema = CreateCollectionReq.CollectionSchema.builder()
+                .enableDynamicField(true)
+                .build()
+                .addField(idField)
+                .addField(vectorField)
+                .addField(docField)
+                .addField(chunkField);
+        client.createCollection(CreateCollectionReq.builder()
+                .collectionName(name)
+                .metricType(config.getMetricType() == null ? "COSINE" : config.getMetricType())
+                .collectionSchema(schema)
+                .build());
     }
 
     private JsonObject rowJson(VectorChunk chunk) {
@@ -103,29 +143,32 @@ public class MilvusVectorStore implements VectorStore {
             vector.add(f);
         }
         JsonObject row = new JsonObject();
+        row.addProperty("vector_id", chunk.vectorId());
         row.add("vector", vector);
-        row.addProperty("content", chunk.content());
-        row.addProperty("knowledgeBaseId", chunk.knowledgeBaseId());
         row.addProperty("documentId", chunk.documentId());
         row.addProperty("chunkIndex", chunk.chunkIndex());
-        row.addProperty("metadata", chunk.metadata() == null ? "" : chunk.metadata());
         return row;
     }
 
-    private RetrievalHit toHit(SearchResp.SearchResult result) {
+    private RetrievalHit toHit(Long knowledgeBaseId, SearchResp.SearchResult result) {
         Map<String, Object> entity = result.getEntity();
         double score = result.getScore() == null ? 0.0 : result.getScore();
         return new RetrievalHit(
-                number(entity.get("knowledgeBaseId")).longValue(),
+                entity.get("vector_id") == null ? null : String.valueOf(entity.get("vector_id")),
+                knowledgeBaseId,
                 number(entity.get("documentId")).longValue(),
                 number(entity.get("chunkIndex")).intValue(),
-                String.valueOf(entity.get("content")),
-                String.valueOf(entity.get("metadata")),
+                null,
+                null,
                 score);
     }
 
     private static Number number(Object value) {
         return value instanceof Number number ? number : 0;
+    }
+
+    private static String escape(String value) {
+        return value == null ? "" : value.replace("'", "\\'");
     }
 
     public void close() {

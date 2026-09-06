@@ -88,6 +88,8 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
 
     private final VectorStoreResolver vectorStoreResolver;
 
+    private final xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper knowledgeBaseMapper;
+
     @Override
     public PageResult<StoreInstanceVo> queryPageList(StoreInstanceBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<StoreInstance> lqw = buildQueryWrapper(bo);
@@ -178,6 +180,15 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
         }
         if (storeInstanceMapper.selectByIds(ids).size() != ids.size()) {
             throw new ServiceException("存储实例不存在或已被删除");
+        }
+        // 被知识库引用（向量库/搜索引擎绑定）的实例禁止删除，避免悬空引用
+        Long referenced = knowledgeBaseMapper.selectCount(new LambdaQueryWrapper<xin.v5ai.nb.rag.domain.KnowledgeBase>()
+                .and(wrapper -> wrapper
+                        .in(xin.v5ai.nb.rag.domain.KnowledgeBase::getVectorStoreInstanceId, ids)
+                        .or()
+                        .in(xin.v5ai.nb.rag.domain.KnowledgeBase::getSearchEngineInstanceId, ids)));
+        if (referenced != null && referenced > 0) {
+            throw new ServiceException("该存储实例正被知识库使用，请先解除绑定后再删除");
         }
         boolean deleted = storeInstanceMapper.deleteByIds(ids) > 0;
         if (deleted) {

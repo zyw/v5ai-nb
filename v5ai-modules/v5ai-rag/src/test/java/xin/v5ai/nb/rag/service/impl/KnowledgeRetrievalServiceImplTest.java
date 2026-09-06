@@ -6,6 +6,7 @@ import org.mockito.ArgumentCaptor;
 import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
+import xin.v5ai.nb.rag.core.RetrievalHitEnricher;
 import xin.v5ai.nb.rag.core.store.KeywordStore;
 import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
@@ -43,6 +44,7 @@ class KnowledgeRetrievalServiceImplTest {
     private KnowledgeDocumentMapper documentMapper;
     private ModelChatClient chatClient;
     private VectorStore vectorStore;
+    private RetrievalHitEnricher hitEnricher;
     private KnowledgeRetrievalServiceImpl service;
 
     @BeforeEach
@@ -54,14 +56,19 @@ class KnowledgeRetrievalServiceImplTest {
         chatClient = mock(ModelChatClient.class);
         // 同时实现向量 + 关键词双接口的存储（如默认 PgVectorStore 的行为）
         vectorStore = mock(VectorStore.class, withSettings().extraInterfaces(KeywordStore.class));
+        // 回填器在单测中透传（构造点已带完整 content，无需回业务表）
+        hitEnricher = mock(RetrievalHitEnricher.class);
+        when(hitEnricher.enrich(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
         service = new KnowledgeRetrievalServiceImpl(
-                baseService, embeddingClient, resolver, documentMapper, chatClient);
+                baseService, embeddingClient, resolver, documentMapper, chatClient, hitEnricher);
     }
 
     private KnowledgeBaseVo base(Long id) {
         var base = new KnowledgeBaseVo();
         base.setId(id);
         base.setStatus("ACTIVE");
+        base.setEmbeddingModelId(1L);
+        base.setDimensionOfVectorModel(3);
         return base;
     }
 
@@ -76,18 +83,18 @@ class KnowledgeRetrievalServiceImplTest {
     }
 
     private VectorStore.RetrievalHit vectorHit(Long docId, int index, String content, double score) {
-        return new VectorStore.RetrievalHit(1L, docId, index, content, "{}", score);
+        return new VectorStore.RetrievalHit("v" + docId + "-" + index, 1L, docId, index, content, "{}", score);
     }
 
     private VectorStore.RetrievalHit keywordHit(Long docId, int index, String content) {
-        return new VectorStore.RetrievalHit(1L, docId, index, content, "{}", 1.0);
+        return new VectorStore.RetrievalHit("v" + docId + "-" + index, 1L, docId, index, content, "{}", 1.0);
     }
 
     @Test
     void retrieve_usesRrfByDefaultAndTrimsToResultCount() {
         when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
         when(resolver.vectorStore(null)).thenReturn(vectorStore);
-        when(embeddingClient.embed("硅片")).thenReturn(List.of(0.1f));
+        when(embeddingClient.embed("硅片", 1L, 3)).thenReturn(List.of(0.1f));
         when(vectorStore.search(anyList(), any(), eq(30))).thenReturn(List.of(
                 vectorHit(1L, 0, "向量命中A", 0.9),
                 vectorHit(1L, 1, "向量命中B", 0.8)));
@@ -108,7 +115,7 @@ class KnowledgeRetrievalServiceImplTest {
     void retrieve_vectorStrategy_appliesThresholdOnSimilarity() {
         when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
         when(resolver.vectorStore(null)).thenReturn(vectorStore);
-        when(embeddingClient.embed("问题")).thenReturn(List.of(0.1f));
+        when(embeddingClient.embed("问题", 1L, 3)).thenReturn(List.of(0.1f));
         when(vectorStore.search(anyList(), any(), eq(30))).thenReturn(List.of(
                 vectorHit(1L, 0, "高相关", 0.9),
                 vectorHit(2L, 0, "中相关", 0.8),
@@ -127,7 +134,7 @@ class KnowledgeRetrievalServiceImplTest {
     void retrieve_rewriteFailureFallsBackToOriginalQuery() {
         when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
         when(resolver.vectorStore(null)).thenReturn(vectorStore);
-        when(embeddingClient.embed("原问题")).thenReturn(List.of(0.1f));
+        when(embeddingClient.embed("原问题", 1L, 3)).thenReturn(List.of(0.1f));
         when(vectorStore.search(anyList(), any(), eq(90))).thenReturn(List.of(vectorHit(1L, 0, "命中", 0.7)));
         when(chatClient.chatText(eq(7L), any(), any())).thenThrow(new RuntimeException("模型不可用"));
         stubDocs();
@@ -136,9 +143,9 @@ class KnowledgeRetrievalServiceImplTest {
                 new KbRetrieveBo("原问题", 30, true, null, null, null, null, 7L));
 
         assertThat(hits).hasSize(1);
-        // 改写失败不中断检索：仍按原问题走向量路
+        // 改写失败不中断检索：仍按原问题走向量路（嵌入模型/维度随 KB 冻结）
         ArgumentCaptor<String> embedArg = ArgumentCaptor.forClass(String.class);
-        verify(embeddingClient).embed(embedArg.capture());
+        verify(embeddingClient).embed(embedArg.capture(), eq(1L), eq(3));
         assertThat(embedArg.getValue()).isEqualTo("原问题");
     }
 

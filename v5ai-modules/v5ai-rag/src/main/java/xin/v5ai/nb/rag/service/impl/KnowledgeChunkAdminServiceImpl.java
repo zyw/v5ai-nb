@@ -33,12 +33,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 知识库切片管理实现：浏览/统计走切片表（不含向量列），写操作与 Worker 同链路。
+ * 知识库切片管理实现：浏览/统计走切片业务表（不含向量），写操作与 Worker 同链路。
  * <p>
- * 手工切片的向量存储走 {@link VectorStore} 端口（PgVectorStore 为默认实现）；
- * 若知识库配置了 ES/Milvus 向量实例，新增切片同样写入该实例。
- * 单切片编辑/删除为行级操作，仅保证默认 PgVectorStore 的索引与行同步
- * （ES/Milvus 无单条更新 API，编辑后外部索引需重新索引文档以保持一致）。
+ * 手工切片的向量存储走 {@link VectorStore} 端口：业务行（content/metadata/vector_id）先落
+ * {@code v5ai_knowledge_chunk}，向量再写入知识库绑定的存储实例集合（主键 = vector_id）。
+ * 单切片编辑/删除同步维护业务行与集合内向量。
  *
  * @author ZYW
  * @since 2026-09-06
@@ -69,7 +68,6 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
                                                    String content, PageQuery pageQuery) {
         requireKnowledgeBase(knowledgeBaseId);
         LambdaQueryWrapper<KnowledgeChunk> wrapper = new LambdaQueryWrapper<KnowledgeChunk>()
-                .select(KnowledgeChunk.class, field -> !"embedding".equals(field.getProperty()))
                 .eq(KnowledgeChunk::getKnowledgeBaseId, knowledgeBaseId)
                 .eq(documentId != null, KnowledgeChunk::getDocumentId, documentId)
                 .eq(chunkId != null, KnowledgeChunk::getId, chunkId)
@@ -100,17 +98,30 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         KnowledgeDocument document = requireDocumentOfBase(knowledgeBaseId, bo.documentId());
         KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
 
+        String vectorId = java.util.UUID.randomUUID().toString();
         int nextIndex = chunkMapper.nextChunkIndex(knowledgeBaseId, document.getId());
-        List<Float> vector = embed(content);
+        List<Float> vector = embed(base, content);
+
+        // 1) 业务行先落库（content/metadata/vector_id，向量列已解耦；metadata 走 XML ::jsonb 转换）
+        var row = new KnowledgeChunk();
+        row.setKnowledgeBaseId(knowledgeBaseId);
+        row.setDocumentId(document.getId());
+        row.setChunkIndex(nextIndex);
+        row.setContent(content);
+        row.setVectorId(vectorId);
+        row.setMetadata(MANUAL_METADATA);
+        row.setContentHash(sha256Hex(content));
+        row.setSourceType("TEXT");
+        chunkMapper.batchSaveChunks(List.of(row));
+
+        // 2) 向量写入知识库绑定的存储实例集合（主键 = vector_id）
         VectorStore store = vectorStoreResolver.vectorStore(base.getVectorStoreInstanceId());
         store.store(List.of(new VectorStore.VectorChunk(
-                knowledgeBaseId, document.getId(), nextIndex, content, vector,
+                vectorId, knowledgeBaseId, document.getId(), nextIndex, content, vector,
                 MANUAL_METADATA, null, sha256Hex(content), "TEXT")));
 
         KnowledgeChunk created = chunkMapper.selectOne(new LambdaQueryWrapper<KnowledgeChunk>()
-                .eq(KnowledgeChunk::getKnowledgeBaseId, knowledgeBaseId)
-                .eq(KnowledgeChunk::getDocumentId, document.getId())
-                .eq(KnowledgeChunk::getChunkIndex, nextIndex));
+                .eq(KnowledgeChunk::getVectorId, vectorId));
         if (created == null) {
             throw new ServiceException("切片已写入但回查失败，请刷新列表确认");
         }
@@ -123,21 +134,39 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         String content = requireContent(bo == null ? null : bo.content());
         KnowledgeChunk chunk = requireChunkOfBase(knowledgeBaseId, chunkId);
         KnowledgeDocument document = documentMapper.selectById(chunk.getDocumentId());
+        KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
 
+        // 业务行更新内容（向量列已解耦，无需再写 embedding 字面量）
         var update = new KnowledgeChunk();
         update.setId(chunk.getId());
         update.setContent(content);
-        update.setEmbedding(toVectorLiteral(embed(content)));
         update.setContentHash(sha256Hex(content));
         chunkMapper.updateById(update);
+
+        // 集合内向量重嵌：删旧写新，保持 vector_id 主键不变
+        if (chunk.getVectorId() != null) {
+            VectorStore store = vectorStoreResolver.vectorStore(base.getVectorStoreInstanceId());
+            List<Float> vector = embed(base, content);
+            store.deleteByVectorId(knowledgeBaseId, chunk.getVectorId());
+            store.store(List.of(new VectorStore.VectorChunk(
+                    chunk.getVectorId(), knowledgeBaseId, chunk.getDocumentId(), chunk.getChunkIndex(),
+                    content, vector, MANUAL_METADATA, null, sha256Hex(content), "TEXT")));
+        }
 
         KnowledgeChunk refreshed = chunkMapper.selectById(chunkId);
         return toVo(refreshed, document == null ? null : document.getTitle());
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteChunk(Long knowledgeBaseId, Long chunkId) {
-        requireChunkOfBase(knowledgeBaseId, chunkId);
+        KnowledgeChunk chunk = requireChunkOfBase(knowledgeBaseId, chunkId);
+        KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
+        // 先删集合内向量，再删业务行
+        if (chunk.getVectorId() != null) {
+            VectorStore store = vectorStoreResolver.vectorStore(base.getVectorStoreInstanceId());
+            store.deleteByVectorId(knowledgeBaseId, chunk.getVectorId());
+        }
         chunkMapper.deleteById(chunkId);
     }
 
@@ -177,9 +206,10 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         return content;
     }
 
-    private List<Float> embed(String content) {
+    private List<Float> embed(KnowledgeBase base, String content) {
         try {
-            return embeddingClient.embed(content);
+            return embeddingClient.embed(content, base.getEmbeddingModelId(),
+                    base.getDimensionOfVectorModel());
         } catch (Exception exception) {
             throw new ServiceException("生成向量失败: " + exception.getMessage());
         }
@@ -211,17 +241,6 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         vo.setCreatedAt(chunk.getCreatedAt());
         vo.setUpdatedAt(chunk.getUpdatedAt());
         return vo;
-    }
-
-    private static String toVectorLiteral(List<Float> embedding) {
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < embedding.size(); i++) {
-            if (i > 0) {
-                sb.append(',');
-            }
-            sb.append(embedding.get(i));
-        }
-        return sb.append(']').toString();
     }
 
     private static String sha256Hex(String content) {

@@ -182,7 +182,6 @@ public class KnowledgeQaServiceImpl implements IKnowledgeQaService {
             int min = neighbor.stream().min(Integer::compareTo).orElse(0);
             int max = neighbor.stream().max(Integer::compareTo).orElse(0);
             List<KnowledgeChunk> chunks = chunkMapper.selectList(new LambdaQueryWrapper<KnowledgeChunk>()
-                    .select(KnowledgeChunk.class, field -> !"embedding".equals(field.getProperty()))
                     .eq(KnowledgeChunk::getKnowledgeBaseId, indexes.knowledgeBaseId)
                     .eq(KnowledgeChunk::getDocumentId, documentId)
                     .between(KnowledgeChunk::getChunkIndex, min, max)

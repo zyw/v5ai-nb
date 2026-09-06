@@ -51,6 +51,7 @@ class StoreInstanceServiceImplTest {
     private StoreInstanceMapper storeInstanceMapper;
     private StoreConnectionTester connectionTester;
     private VectorStoreResolver vectorStoreResolver;
+    private xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper knowledgeBaseMapper;
     private StoreInstanceServiceImpl service;
 
     @BeforeEach
@@ -60,6 +61,7 @@ class StoreInstanceServiceImplTest {
         var configuration = new MybatisConfiguration();
         var assistant = new MapperBuilderAssistant(configuration, "");
         TableInfoHelper.initTableInfo(assistant, StoreInstance.class);
+        TableInfoHelper.initTableInfo(assistant, xin.v5ai.nb.rag.domain.KnowledgeBase.class);
 
         // MapstructUtils 在类加载时通过 SpringUtil 取 Converter Bean，
         // 这里注册一个按属性名拷贝的 Converter 使 BO/VO 转换可独立测试。
@@ -71,6 +73,9 @@ class StoreInstanceServiceImplTest {
         storeInstanceMapper = mock(StoreInstanceMapper.class);
         connectionTester = mock(StoreConnectionTester.class);
         vectorStoreResolver = mock(VectorStoreResolver.class);
+        knowledgeBaseMapper = mock(xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper.class);
+        // 默认无知识库引用该实例，删除校验放行；引用用例单独 stub
+        when(knowledgeBaseMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
         when(storeInstanceMapper.selectById(any())).thenAnswer(inv -> findById(instances, inv.getArgument(0)));
         when(storeInstanceMapper.selectByIds(any())).thenAnswer(inv -> {
             Collection<?> ids = inv.getArgument(0);
@@ -134,7 +139,7 @@ class StoreInstanceServiceImplTest {
             return ids.size();
         }).when(storeInstanceMapper).deleteByIds(any());
 
-        service = new StoreInstanceServiceImpl(storeInstanceMapper, connectionTester, vectorStoreResolver);
+        service = new StoreInstanceServiceImpl(storeInstanceMapper, connectionTester, vectorStoreResolver, knowledgeBaseMapper);
     }
 
     @Test
@@ -391,6 +396,16 @@ class StoreInstanceServiceImplTest {
         assertThatThrownBy(() -> service.deleteWithValidByIds(List.of(), true))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("主键不能为空");
+    }
+
+    @Test
+    void deleteWithValidByIdsRejectsReferencedByKnowledgeBase() {
+        seed(1L, "pg", 1, 1, false);
+        when(knowledgeBaseMapper.selectCount(any(Wrapper.class))).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.deleteWithValidByIds(List.of(1L), true))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("正被知识库使用");
     }
 
     @Test

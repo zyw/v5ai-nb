@@ -60,6 +60,7 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
     private final VectorStoreResolver vectorStoreResolver;
     private final KnowledgeDocumentMapper documentMapper;
     private final ModelChatClient modelChatClient;
+    private final xin.v5ai.nb.rag.core.RetrievalHitEnricher hitEnricher;
 
     @Override
     public List<KbHitVo> retrieve(Long knowledgeBaseId, KbRetrieveBo request) {
@@ -101,7 +102,7 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
         if (merged.size() > resultCount) {
             merged = merged.subList(0, resultCount);
         }
-        return toHits(knowledgeBaseId, merged);
+        return toHits(knowledgeBaseId, hitEnricher.enrich(merged));
     }
 
     // ---------- retrieval ----------
@@ -109,7 +110,8 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
     private List<VectorStore.RetrievalHit> vectorHits(KnowledgeBaseVo base, VectorStore store,
                                                       String query, int candidates) {
         try {
-            List<Float> vector = embeddingClient.embed(query);
+            List<Float> vector = embeddingClient.embed(query, base.getEmbeddingModelId(),
+                    base.getDimensionOfVectorModel());
             return store.search(List.of(base.getId()), vector, candidates);
         } catch (Exception exception) {
             log.warn("kb {} vector search failed: {}", base.getId(), exception.getMessage());
@@ -168,7 +170,7 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
         return fused.values().stream()
                 .sorted(Comparator.comparingDouble((Ranked r) -> r.score).reversed())
                 .map(r -> new VectorStore.RetrievalHit(
-                        r.hit.knowledgeBaseId(), r.hit.documentId(), r.hit.chunkIndex(),
+                        r.hit.vectorId(), r.hit.knowledgeBaseId(), r.hit.documentId(), r.hit.chunkIndex(),
                         r.hit.content(), r.hit.metadata(), r.score))
                 .toList();
     }

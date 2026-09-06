@@ -40,6 +40,32 @@ DELETE /api/admin/knowledge-bases/{id}        # 禁用
 - `config` 为 `RagConfigDO`（searchParams/modelParams/chunkParams/parseParams），切片模式
   length/delimiter/regex/smart；`delimiter` 列缺省 `\n\n`，去重策略/冲突动作缺省 2/0；
 - Worker 索引时按知识库 `config.chunkParams` 与 `delimiter` 执行切片（智能切片未接入对话模型时回退段落切分）。
+- **维度校验（保存时权威执行）**：`dimensionOfVectorModel` 须 ≤ `min(模型维度, 向量库上限)`；
+  固定维度模型（config 未声明 `dimensionAdjustable=true`）的冻结维度必须等于模型输出维度，否则拒绝；
+  引擎类型默认上限：pgvector 2000 / Milvus 32768 / Elasticsearch 2048（实例 config `maxDimension` 可覆盖）。
+  pgvector 默认 2000 对应其索引维度上限（ivfflat 恒 2000；hnsw 依部署版本，0.5.x 亦 2000）：
+  高维模型须部署 hnsw 支持该维度的 pgvector 并在实例 config `maxDimension` 显式覆盖；
+  索引创建失败时平台自动降级为无索引精确检索（结果正确，大数据量需升级引擎后手动补索引）。
+
+### 维度检查（切换嵌入模型/向量库时实时查询）
+
+```http
+GET /api/admin/knowledge-bases/dimension-check?embeddingModelId=11&vectorStoreInstanceId=1
+Authorization: Bearer <admin-token>
+```
+
+```json
+{
+  "modelMaxDimension": 1024,       // 模型 config 声明（固定输出或可调上限）；未声明且探测失败为 null
+  "storeMaxDimension": 2000,       // 引擎类型默认或实例 config maxDimension 覆盖
+  "effectiveMaxDimension": 1024,   // min(model, store)：当前可用上限
+  "dimensionAdjustable": false     // 模型是否支持 dimensions 参数降维
+}
+```
+
+- UI 语义：`dimensionAdjustable=true` 时 `effectiveMaxDimension` 为可选上限（可冻结更低维度）；
+  `false` 且 `effective < modelMax` 的组合不存在（保存时被权威校验拒绝）；
+- 用于 KB 创建/编辑表单在切换模型或向量库时回填「向量维度」并即时提示。
 
 `/options` 仅查 id/name 列（不加载描述），供 Agent 编辑/绑定弹窗按需加载。
 
@@ -105,10 +131,15 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 `sourceType` 标识来源（`UPLOAD`=上传 / `URL`=网络），另含存储元数据列
 （`storageType`/`storagePath`/`fileSize`/`chunkCount`/`parseTime`/`contentHash`）与资源库关联列 `resourceId`（见迁移 V25）。
 
-分片表 `v5ai_knowledge_chunk`（迁移 V26 扩展）：新增 `paragraph_index`（段落索引）、`token_count`（分片 token 数量）、
-`vector_id`（向量 id）、`content_hash`（chunk 内容 SHA-256，用于向量去重）、`source_type`（TEXT=文本 / IMAGE=图片）、
-`updated_at`（更新时间），并新增 `(knowledge_base_id)`、`(knowledge_base_id, content_hash)`、
-`(knowledge_base_id, source_type)` 组合索引；Worker 写入时按空白切分估算 `token_count` 并计算 `content_hash`。
+分片业务表 `v5ai_knowledge_chunk`（迁移 V24 扩展 + V30 存储解耦改造）：
+- 内容/元数据列：`paragraph_index`（段落索引）、`token_count`（分片 token 数量）、`vector_id`（向量 id）、
+  `content_hash`（chunk 内容 SHA-256，用于向量去重）、`source_type`（TEXT=文本 / IMAGE=图片）、`updated_at`（更新时间），
+  并新增 `(knowledge_base_id)`、`(knowledge_base_id, content_hash)`、`(knowledge_base_id, source_type)` 组合索引；
+- **向量与业务行解耦（V30）**：`embedding` 列与 ivfflat 索引已删除，向量落在知识库绑定的存储实例集合
+  （pgvector=每知识库独立向量表 `v5ai_vec_{kbId}` / Milvus=collection / ES=index），集合主键 = 业务生成的
+  `vector_id`(UUID，唯一索引)；切片内容/元数据以业务行为准，向量检索召回 `(vector_id, score)` 后回业务表批量取内容；
+- 存量处理：V30 清空存量 chunk 数据，存量文档行保留、索引任务重置为 PENDING 由 Worker 重建（不做数据迁移）；
+- Worker 写入时按空白切分估算 `token_count` 并计算 `content_hash`，同时写业务行（含 `vector_id`）与存储实例集合向量。
 
 ## 知识库详情页（调试：切片 / 知识检索 / 知识问答）
 
@@ -118,11 +149,11 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 ```http
 GET /api/admin/knowledge-bases/{id}                    # 详情：KnowledgeBaseVo + docCount/chunkCount
 
-# 切片管理（卡片流 / 筛选 / 手工切片 CRUD，写操作同步嵌入向量）
+# 切片管理（卡片流 / 筛选 / 手工切片 CRUD，写操作同步维护业务行与存储实例集合向量）
 GET    /api/admin/knowledge-bases/{kbId}/chunks        # 分页（documentId / chunkId / content 过滤）
-POST   /api/admin/knowledge-bases/{kbId}/chunks        # { documentId, content } → 追加到文档末尾并向量入库
-PUT    /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}   # { content } → 编辑并重新嵌入
-DELETE /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}
+POST   /api/admin/knowledge-bases/{kbId}/chunks        # { documentId, content } → 业务行落库（vector_id=UUID）并写集合向量
+PUT    /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}   # { content } → 更新业务行并按 vector_id 重嵌集合向量
+DELETE /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}   # 删除业务行并移除集合内该 vector_id 的向量
 
 # 检索调试
 POST /api/admin/knowledge-bases/{kbId}/retrieve

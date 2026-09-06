@@ -29,6 +29,7 @@ public class RetrievalContextBuilder {
     private final VectorStoreResolver vectorStoreResolver;
     private final EmbeddingClient embeddingClient;
     private final IKnowledgeDocumentService documentService;
+    private final RetrievalHitEnricher hitEnricher;
 
     public RetrievalResult build(String agentKey, String query) {
         var knowledgeBaseIds = bindingService.findByAgentKey(agentKey);
@@ -48,8 +49,7 @@ public class RetrievalContextBuilder {
 
         List<VectorStore.RetrievalHit> hits;
         try {
-            var queryVector = embeddingClient.embed(query);
-            hits = vectorSearch(bases, queryVector);
+            hits = vectorSearch(bases, query);
         } catch (Exception exception) {
             hits = List.of();
         }
@@ -59,21 +59,36 @@ public class RetrievalContextBuilder {
         if (hits.isEmpty()) {
             return RetrievalResult.empty();
         }
+        // 向量存储检索只返回 (vectorId, score)：按业务表回填内容/元数据
+        hits = hitEnricher.enrich(hits);
         return new RetrievalResult(formatContext(hits), hits);
     }
 
-    private List<VectorStore.RetrievalHit> vectorSearch(Map<Long, KnowledgeBaseVo> bases, List<Float> queryVector) {
-        Map<Long, List<Long>> groups = new LinkedHashMap<>();
-        for (Map.Entry<Long, KnowledgeBaseVo> entry : bases.entrySet()) {
-            groups.computeIfAbsent(entry.getValue().getVectorStoreInstanceId(), k -> new ArrayList<>())
-                    .add(entry.getKey());
+    /**
+     * 按「向量存储实例 + 嵌入模型 + 冻结维度」分组：组内共用一次查询向量（维度一致），
+     * 每组以该组知识库的嵌入模型与维度编码查询并检索。
+     */
+    private List<VectorStore.RetrievalHit> vectorSearch(Map<Long, KnowledgeBaseVo> bases, String query) {
+        Map<String, List<KnowledgeBaseVo>> groups = new LinkedHashMap<>();
+        for (KnowledgeBaseVo base : bases.values()) {
+            String key = groupKey(base.getVectorStoreInstanceId(), base.getEmbeddingModelId(),
+                    base.getDimensionOfVectorModel());
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(base);
         }
         var hits = new ArrayList<VectorStore.RetrievalHit>();
-        for (Map.Entry<Long, List<Long>> group : groups.entrySet()) {
-            VectorStore store = vectorStoreResolver.vectorStore(group.getKey());
-            hits.addAll(store.search(group.getValue(), queryVector, DEFAULT_TOP_K));
+        for (List<KnowledgeBaseVo> group : groups.values()) {
+            KnowledgeBaseVo first = group.get(0);
+            VectorStore store = vectorStoreResolver.vectorStore(first.getVectorStoreInstanceId());
+            var queryVector = embeddingClient.embed(query, first.getEmbeddingModelId(),
+                    first.getDimensionOfVectorModel());
+            List<Long> baseIds = group.stream().map(KnowledgeBaseVo::getId).toList();
+            hits.addAll(store.search(baseIds, queryVector, DEFAULT_TOP_K));
         }
         return merge(hits);
+    }
+
+    private static String groupKey(Long storeId, Long modelId, Integer dimension) {
+        return storeId + ":" + modelId + ":" + (dimension == null ? 0 : dimension);
     }
 
     private List<VectorStore.RetrievalHit> keywordSearch(Map<Long, KnowledgeBaseVo> bases, String keyword) {

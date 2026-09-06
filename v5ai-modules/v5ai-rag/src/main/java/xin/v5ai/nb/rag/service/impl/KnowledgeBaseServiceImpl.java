@@ -113,6 +113,8 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     private final KnowledgeChunkMapper chunkMapper;
     private final VectorStoreResolver vectorStoreResolver;
     private final UrlContentFetcher urlContentFetcher;
+    private final xin.v5ai.nb.rag.service.IKnowledgeChunkService chunkService;
+    private final xin.v5ai.nb.rag.core.VectorDimensionService vectorDimensionService;
 
     @Override
     public PageResult<KnowledgeBaseVo> queryPageList(KnowledgeBaseBo bo, PageQuery pageQuery) {
@@ -266,16 +268,19 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         if (document == null) {
             throw new IllegalArgumentException("document does not exist: " + documentId);
         }
+        // 业务行（内容/元数据）与向量解耦存储：删除文档时先清业务行，再按存储实例清向量
+        chunkService.deleteByDocumentId(document.getKnowledgeBaseId(), documentId);
         var knowledgeBase = knowledgeBaseMapper.selectById(document.getKnowledgeBaseId());
-        Long vectorInstanceId = knowledgeBase == null ? null : knowledgeBase.getVectorStoreInstanceId();
-        vectorStoreResolver.vectorStore(vectorInstanceId)
-                .deleteByDocumentId(document.getKnowledgeBaseId(), documentId);
-        if (knowledgeBase != null && Boolean.TRUE.equals(knowledgeBase.getSearchEngineEnable())
-                && knowledgeBase.getSearchEngineInstanceId() != null
-                && !knowledgeBase.getSearchEngineInstanceId().equals(knowledgeBase.getVectorStoreInstanceId())) {
-            var keywordStore = vectorStoreResolver.keywordStore(knowledgeBase.getSearchEngineInstanceId());
-            if (keywordStore != null) {
-                keywordStore.deleteByDocumentId(document.getKnowledgeBaseId(), documentId);
+        if (knowledgeBase != null && knowledgeBase.getVectorStoreInstanceId() != null) {
+            vectorStoreResolver.vectorStore(knowledgeBase.getVectorStoreInstanceId())
+                    .deleteByDocumentId(document.getKnowledgeBaseId(), documentId);
+            if (Boolean.TRUE.equals(knowledgeBase.getSearchEngineEnable())
+                    && knowledgeBase.getSearchEngineInstanceId() != null
+                    && !knowledgeBase.getSearchEngineInstanceId().equals(knowledgeBase.getVectorStoreInstanceId())) {
+                var keywordStore = vectorStoreResolver.keywordStore(knowledgeBase.getSearchEngineInstanceId());
+                if (keywordStore != null) {
+                    keywordStore.deleteByDocumentId(document.getKnowledgeBaseId(), documentId);
+                }
             }
         }
         taskMapper.delete(new LambdaQueryWrapper<KnowledgeTask>()
@@ -366,6 +371,12 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
             throw new ServiceException("向量维度必须大于 0");
         }
         requireStoreInstance(bo.getVectorStoreInstanceId(), CATEGORY_VECTOR, "向量库");
+        // 权威校验：冻结维度须 ≤ min(模型维度, 向量库上限)；固定维度模型须与模型输出一致
+        String dimensionError = vectorDimensionService.validateDimension(
+                bo.getEmbeddingModelId(), bo.getVectorStoreInstanceId(), bo.getDimensionOfVectorModel());
+        if (dimensionError != null) {
+            throw new ServiceException(dimensionError);
+        }
         if (Boolean.TRUE.equals(bo.getSearchEngineEnable())) {
             requireStoreInstance(bo.getSearchEngineInstanceId(), CATEGORY_SEARCH, "搜索引擎");
         }

@@ -34,7 +34,7 @@ public class VectorStoreResolver {
 
     public VectorStore vectorStore(Long instanceId) {
         if (instanceId == null) {
-            return pgVectorStore;
+            throw new ServiceException("知识库未绑定向量存储实例，无法进行向量检索/写入");
         }
         Object store = resolve(instanceId);
         if (store instanceof VectorStore vectorStore) {

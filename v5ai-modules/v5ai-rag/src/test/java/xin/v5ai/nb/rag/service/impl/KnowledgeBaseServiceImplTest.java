@@ -72,6 +72,10 @@ class KnowledgeBaseServiceImplTest {
         KnowledgeChunkMapper chunkMapper = mock(KnowledgeChunkMapper.class);
         VectorStoreResolver vectorStoreResolver = mock(VectorStoreResolver.class);
         UrlContentFetcher urlFetcher = mock(UrlContentFetcher.class);
+        xin.v5ai.nb.rag.service.IKnowledgeChunkService chunkService =
+                mock(xin.v5ai.nb.rag.service.IKnowledgeChunkService.class);
+        xin.v5ai.nb.rag.core.VectorDimensionService vectorDimensionService =
+                mock(xin.v5ai.nb.rag.core.VectorDimensionService.class);
 
         when(knowledgeBaseMapper.selectById(any())).thenAnswer(inv -> findById(knowledgeBases, inv.getArgument(0)));
         when(knowledgeBaseMapper.selectList(any(Wrapper.class))).thenAnswer(inv -> new ArrayList<>(knowledgeBases));
@@ -144,7 +148,8 @@ class KnowledgeBaseServiceImplTest {
         when(urlFetcher.fetch("https://example.com/doc")).thenReturn("hello world");
 
         service = new KnowledgeBaseServiceImpl(knowledgeBaseMapper, documentMapper, taskMapper,
-                bindingMapper, storeInstanceMapper, chunkMapper, vectorStoreResolver, urlFetcher);
+                bindingMapper, storeInstanceMapper, chunkMapper, vectorStoreResolver, urlFetcher,
+                chunkService, vectorDimensionService);
     }
 
     @Test

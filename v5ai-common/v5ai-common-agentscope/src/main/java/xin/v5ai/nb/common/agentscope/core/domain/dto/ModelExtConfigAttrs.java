@@ -104,9 +104,21 @@ public class ModelExtConfigAttrs {
     // ==================== EMBEDDING 向量模型 ====================
 
     /**
-     * 向量维度
+     * 向量维度：固定输出维度的实际值；可调维度模型（dimensionAdjustable=true）为输出上限
+     * （嵌入维度事实源，落 KB.dimensionOfVectorModel 的取值依据）。
      */
     private Integer embeddingDimension;
+
+    /**
+     * 是否支持可调维度（如 OpenAI text-embedding-3 的 dimensions 参数 / Matryoshka 类模型）。
+     * true 时嵌入请求可带 {@code dimensions=<冻结维度>}，实际维度可小于 embeddingDimension。
+     */
+    private Boolean dimensionAdjustable;
+
+    /**
+     * 可调维度上限；缺省时取 {@link #embeddingDimension}。
+     */
+    private Integer maxDimension;
 
     /**
      * 向量编码格式

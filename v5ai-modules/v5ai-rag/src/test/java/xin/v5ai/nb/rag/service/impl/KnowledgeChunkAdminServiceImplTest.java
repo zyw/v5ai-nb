@@ -20,14 +20,16 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * {@link KnowledgeChunkAdminServiceImpl} 的 Mockito 单测：
- * 手工切片的新增（归属校验 + 追加序号 + 向量入库）、编辑重嵌、删除与内容校验。
+ * 手工切片的新增（归属校验 + 追加序号 + 业务行/向量双写）、编辑重嵌、删除与内容校验。
  *
  * @author ZYW
  * @since 2026-09-06
@@ -57,7 +59,9 @@ class KnowledgeChunkAdminServiceImplTest {
     private KnowledgeBase base(Long id) {
         var base = new KnowledgeBase();
         base.setId(id);
-        base.setVectorStoreInstanceId(null);
+        base.setVectorStoreInstanceId(10L);
+        base.setEmbeddingModelId(1L);
+        base.setDimensionOfVectorModel(2);
         return base;
     }
 
@@ -76,19 +80,19 @@ class KnowledgeChunkAdminServiceImplTest {
         chunk.setDocumentId(documentId);
         chunk.setChunkIndex(index);
         chunk.setContent(content);
+        chunk.setVectorId("vec-" + id);
         return chunk;
     }
 
     @Test
-    void addChunk_appendsIndexAndStoresVector() {
+    void addChunk_appendsIndexAndStoresBusinessRowAndVector() {
         when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
         when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册"));
         when(chunkMapper.nextChunkIndex(1L, 2L)).thenReturn(7);
-        when(embeddingClient.embed("新切片内容")).thenReturn(List.of(0.1f, 0.2f));
-        when(vectorStoreResolver.vectorStore(null)).thenReturn(vectorStore);
+        when(embeddingClient.embed("新切片内容", 1L, 2)).thenReturn(List.of(0.1f, 0.2f));
+        when(vectorStoreResolver.vectorStore(10L)).thenReturn(vectorStore);
 
         KnowledgeChunk saved = chunk(88L, 1L, 2L, 7, "新切片内容");
-        saved.setEmbedding("[0.1,0.2]");
         when(chunkMapper.selectOne(any())).thenReturn(saved);
 
         var vo = service.addChunk(1L, new KbChunkAddBo(2L, "新切片内容"));
@@ -97,10 +101,14 @@ class KnowledgeChunkAdminServiceImplTest {
         assertThat(vo.getDocumentTitle()).isEqualTo("操作手册");
         // 追加到文档末尾：index = max + 1
         verify(chunkMapper).nextChunkIndex(1L, 2L);
+        // 业务行先落（batchSaveChunks，含 vector_id、metadata），再回查
+        verify(chunkMapper).batchSaveChunks(anyList());
+        verify(chunkMapper).selectOne(any());
         var captor = org.mockito.ArgumentCaptor.forClass(List.class);
         verify(vectorStore).store(captor.capture());
         @SuppressWarnings("unchecked")
         VectorStore.VectorChunk stored = ((List<VectorStore.VectorChunk>) captor.getValue()).get(0);
+        assertThat(stored.vectorId()).isNotBlank();
         assertThat(stored.chunkIndex()).isEqualTo(7);
         assertThat(stored.content()).isEqualTo("新切片内容");
         assertThat(stored.metadata()).contains("manual");
@@ -124,10 +132,12 @@ class KnowledgeChunkAdminServiceImplTest {
     }
 
     @Test
-    void updateChunk_reembedsContent() {
+    void updateChunk_reembedsBusinessRowAndVector() {
         when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "旧内容"));
         when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册"));
-        when(embeddingClient.embed("新内容")).thenReturn(List.of(0.5f, 0.6f));
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(embeddingClient.embed("新内容", 1L, 2)).thenReturn(List.of(0.5f, 0.6f));
+        when(vectorStoreResolver.vectorStore(10L)).thenReturn(vectorStore);
 
         KnowledgeChunk refreshed = chunk(5L, 1L, 2L, 3, "新内容");
         when(chunkMapper.selectById(eq(5L))).thenReturn(refreshed, refreshed);
@@ -135,16 +145,22 @@ class KnowledgeChunkAdminServiceImplTest {
         var vo = service.updateChunk(1L, 5L, new KbChunkEditBo("新内容"));
 
         verify(chunkMapper).updateById(any(KnowledgeChunk.class));
+        // 集合内向量：先按 vector_id 删旧，再写新
+        verify(vectorStore).deleteByVectorId(1L, "vec-5");
+        verify(vectorStore).store(anyList());
         assertThat(vo.getContent()).isEqualTo("新内容");
         assertThat(vo.getDocumentTitle()).isEqualTo("操作手册");
     }
 
     @Test
-    void deleteChunk_removesRow() {
+    void deleteChunk_removesRowAndVector() {
         when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "内容"));
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(vectorStoreResolver.vectorStore(10L)).thenReturn(vectorStore);
 
         service.deleteChunk(1L, 5L);
 
+        verify(vectorStore).deleteByVectorId(1L, "vec-5");
         verify(chunkMapper).deleteById(5L);
     }
 
@@ -155,5 +171,6 @@ class KnowledgeChunkAdminServiceImplTest {
         assertThatThrownBy(() -> service.deleteChunk(1L, 5L))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("不属于该知识库");
+        verify(vectorStore, never()).deleteByVectorId(any(), any());
     }
 }

@@ -43,8 +43,6 @@ public class KnowledgeChunk extends BaseEntity implements Serializable {
 
     private String content;
 
-    private Object embedding;
-
     private Object metadata;
 
     /**

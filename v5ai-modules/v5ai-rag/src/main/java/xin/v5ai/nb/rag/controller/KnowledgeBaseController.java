@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.R;
@@ -39,6 +40,14 @@ import java.util.List;
 public class KnowledgeBaseController extends BaseController {
 
     private final IKnowledgeBaseService knowledgeBaseService;
+    private final xin.v5ai.nb.rag.core.VectorDimensionService vectorDimensionService;
+
+    @GetMapping("/dimension-check")
+    public R<xin.v5ai.nb.rag.core.VectorDimensionService.DimensionCapability> dimensionCheck(
+            @RequestParam("embeddingModelId") Long embeddingModelId,
+            @RequestParam("vectorStoreInstanceId") Long vectorStoreInstanceId) {
+        return R.ok(vectorDimensionService.resolve(embeddingModelId, vectorStoreInstanceId));
+    }
 
     @PostMapping
     @Log(title = "新建知识库", businessType = BusinessType.INSERT)

@@ -22,7 +22,7 @@ import {
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { Plus, RefreshCw, Search } from 'lucide-vue-next'
+import { CircleQuestionMark, Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import IconPicker from '../components/IconPicker.vue'
 import {
@@ -117,6 +117,8 @@ const modelForm = reactive({
   ocrFallback: false,
   // 向量模型参数
   embeddingDimension: null as number | null,
+  dimensionAdjustable: false,
+  maxDimension: null as number | null,
   timeoutMs: null as number | null,
   // 重排模型参数
   rerankPath: ''
@@ -188,6 +190,10 @@ function buildConfig(): string | undefined {
     if (modelForm.ocrFallback) cfg.defaultVisionModel = true
   } else if (modelForm.modelType === 'EMBEDDING') {
     if (modelForm.embeddingDimension != null) cfg.embeddingDimension = modelForm.embeddingDimension
+    if (modelForm.dimensionAdjustable) {
+      cfg.dimensionAdjustable = true
+      if (modelForm.maxDimension != null) cfg.maxDimension = modelForm.maxDimension
+    }
     if (modelForm.timeoutMs != null) cfg.timeoutMs = modelForm.timeoutMs
   } else if (modelForm.modelType === 'RERANK') {
     if (modelForm.rerankPath.trim()) cfg.rerankPath = modelForm.rerankPath.trim()
@@ -206,6 +212,8 @@ function resetConfigParams() {
   modelForm.imageInput = false
   modelForm.ocrFallback = false
   modelForm.embeddingDimension = null
+  modelForm.dimensionAdjustable = false
+  modelForm.maxDimension = null
   modelForm.timeoutMs = null
   modelForm.rerankPath = ''
 }
@@ -224,6 +232,8 @@ function applyConfig(configJson?: string | null) {
     modelForm.imageInput = Array.isArray(cfg.capabilities) && (cfg.capabilities as string[]).includes('image')
     modelForm.ocrFallback = cfg.defaultVisionModel === true
     if (typeof cfg.embeddingDimension === 'number') modelForm.embeddingDimension = cfg.embeddingDimension
+    modelForm.dimensionAdjustable = cfg.dimensionAdjustable === true
+    if (typeof cfg.maxDimension === 'number') modelForm.maxDimension = cfg.maxDimension
     if (typeof cfg.timeoutMs === 'number') modelForm.timeoutMs = cfg.timeoutMs
     if (typeof cfg.rerankPath === 'string') modelForm.rerankPath = cfg.rerankPath
   } catch {
@@ -1012,6 +1022,21 @@ onMounted(reload)
                 <n-grid :cols="24" :x-gap="24">
                 <n-form-item-gi :span="12" label="嵌入维度">
                   <n-input-number v-model:value="modelForm.embeddingDimension" :min="1" :max="65536" style="width: 100%" placeholder="请输入" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="维度可调">
+                  <template #label>
+                    <span style="vertical-align: baseline">维度可调</span>
+                    <n-popover trigger="hover">
+                      <template #trigger>
+                        <n-icon><CircleQuestionMark /></n-icon>
+                      </template>
+                      <span class="muted">支持 dimensions 参数的模型（如 OpenAI text-embedding-3）：可对每个知识库冻结更低的输出维度</span>
+                    </n-popover>
+                  </template>
+                  <n-switch v-model:value="modelForm.dimensionAdjustable" />
+                </n-form-item-gi>
+                <n-form-item-gi v-if="modelForm.dimensionAdjustable" :span="12" label="可调上限">
+                  <n-input-number v-model:value="modelForm.maxDimension" :min="1" :max="65536" style="width: 100%" placeholder="默认等于嵌入维度" />
                 </n-form-item-gi>
                 <n-form-item-gi :span="12" label="超时时间(ms)">
                   <n-input-number v-model:value="modelForm.timeoutMs" :min="0" :step="1000" style="width: 100%" placeholder="默认" />

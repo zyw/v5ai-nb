@@ -3,6 +3,7 @@ package xin.v5ai.nb.worker;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import xin.v5ai.nb.common.core.utils.ObjectUtils;
 import xin.v5ai.nb.rag.core.ChunkingOptions;
 import xin.v5ai.nb.rag.core.DocumentChunker;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
@@ -69,6 +70,7 @@ public class KnowledgeIndexingService {
     private final DocumentChunker documentChunker;
     private final EmbeddingClient embeddingClient;
     private final VectorStoreResolver vectorStoreResolver;
+    private final xin.v5ai.nb.rag.service.IKnowledgeChunkService chunkService;
 
     public void processTask(Long taskId) {
         var task = taskService.findById(taskId);
@@ -91,6 +93,9 @@ public class KnowledgeIndexingService {
             var text = documentParser.parse(content, DocumentFileType.valueOf(document.getFileType()));
             var parseTime = (int) (System.currentTimeMillis() - parseStart);
             var knowledgeBase = knowledgeBaseService.getKnowledgeBase(document.getKnowledgeBaseId());
+            if (knowledgeBase == null || knowledgeBase.getVectorStoreInstanceId() == null) {
+                throw new IllegalStateException("知识库未绑定向量存储实例，无法索引: kb=" + document.getKnowledgeBaseId());
+            }
             var chunks = documentChunker.chunk(text, chunkingOptions(knowledgeBase));
             document.setStatus(DOC_STATUS_PROCESSING);
             document.setChunkCount(chunks.size());
@@ -98,19 +103,37 @@ public class KnowledgeIndexingService {
             var vectors = new ArrayList<VectorStore.VectorChunk>(chunks.size());
             for (int i = 0; i < chunks.size(); i++) {
                 vectors.add(new VectorStore.VectorChunk(
+                        java.util.UUID.randomUUID().toString(),
                         document.getKnowledgeBaseId(),
                         document.getId(),
                         i,
                         chunks.get(i),
-                        embeddingClient.embed(chunks.get(i)),
+                        embeddingClient.embed(chunks.get(i), knowledgeBase.getEmbeddingModelId(),
+                                knowledgeBase.getDimensionOfVectorModel()),
                         metadata(document, i),
                         tokenCount(chunks.get(i)),
                         sha256Hex(chunks.get(i)),
                         SOURCE_TYPE_TEXT));
             }
-            var vectorStore = vectorStoreResolver.vectorStore(
-                    knowledgeBase == null ? null : knowledgeBase.getVectorStoreInstanceId());
+            var vectorStore = vectorStoreResolver.vectorStore(knowledgeBase.getVectorStoreInstanceId());
+            // 幂等重建：先清旧业务行与旧向量，再写新业务行（含 vector_id）与新向量
+            chunkService.deleteByDocumentId(document.getKnowledgeBaseId(), document.getId());
             vectorStore.deleteByDocumentId(document.getKnowledgeBaseId(), document.getId());
+            var businessRows = new ArrayList<xin.v5ai.nb.rag.domain.KnowledgeChunk>(vectors.size());
+            for (var v : vectors) {
+                var row = new xin.v5ai.nb.rag.domain.KnowledgeChunk();
+                row.setKnowledgeBaseId(v.knowledgeBaseId());
+                row.setDocumentId(v.documentId());
+                row.setChunkIndex(v.chunkIndex());
+                row.setContent(v.content());
+                row.setVectorId(v.vectorId());
+                row.setTokenCount(v.tokenCount());
+                row.setContentHash(v.contentHash());
+                row.setSourceType(v.sourceType());
+                row.setMetadata(ObjectUtils.defaultIfNull(v.metadata(), "{}"));
+                businessRows.add(row);
+            }
+            chunkService.saveBatch(businessRows);
             vectorStore.store(vectors);
             // 双写：同时启用搜索引擎且与向量库不同实例时，将切片写入搜索引擎以支持关键词召回
             var keywordStore = dualWriteKeywordStore(knowledgeBase);

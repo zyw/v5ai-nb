@@ -19,6 +19,8 @@ import java.util.List;
  */
 public interface KnowledgeChunkMapper extends BaseMapperPlus<KnowledgeChunk, KnowledgeChunkVo> {
 
+    boolean batchSaveChunks(@Param("chunks") List<KnowledgeChunk> knowledgeChunks);
+
     /**
      * 计算某文档的下一个切片序号（当前最大值 + 1；无切片时为 0）。
      *
@@ -29,19 +31,14 @@ public interface KnowledgeChunkMapper extends BaseMapperPlus<KnowledgeChunk, Kno
     @Select("SELECT COALESCE(MAX(chunk_index), -1) + 1 FROM v5ai_knowledge_chunk " +
             "WHERE knowledge_base_id = #{knowledgeBaseId} AND document_id = #{documentId}")
     int nextChunkIndex(@Param("knowledgeBaseId") Long knowledgeBaseId, @Param("documentId") Long documentId);
+
     /**
-     * 根据知识库id列表查询分片
-     * @param embed1 嵌入向量1
-     * @param ids 知识库id列表
-     * @param embed2 嵌入向量2
-     * @param limit 限制数量
-     * @return 查询结果
+     * 按向量标识批量回查业务行（向量检索命中后回业务表取内容/元数据）。
+     *
+     * @param vectorIds 向量标识（集合主键）列表
+     * @return 业务行列表
      */
-    List<KnowledgeChunkDO> findChunkByBaseIds(
-            @Param("embed1") String embed1,
-            @Param("ids") List<Long> ids,
-            @Param("embed2") String embed2,
-            @Param("limit") int limit);
+    List<KnowledgeChunkDO> selectByVectorIds(@Param("vectorIds") List<String> vectorIds);
 
     /**
      * 根据知识库id列表查询分片

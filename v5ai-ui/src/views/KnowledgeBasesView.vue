@@ -37,6 +37,7 @@ import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createKnowledgeBase,
+  dimensionCheck,
   disableKnowledgeBase,
   listKnowledgeBases,
   listModelOptions,
@@ -122,21 +123,32 @@ function searchEngineOptions() {
   return searchEngines.value.map((s) => ({ value: s.id, label: s.name }))
 }
 
-/** 从向量库 config JSON 中读取 dimension，用于自动填充向量维度。 */
-function extractDimension(config?: string | null): number | null {
-  if (!config) return null
+/**
+ * 嵌入模型或向量库变更时查询「模型 × 库」维度能力并回填/校验：
+ * 固定维度模型自动回填其输出维度；可调维度模型提示可用上限（仍可手填更低值）。
+ */
+async function handleEmbeddingConfigChange() {
+  const { embeddingModelId, vectorStoreInstanceId } = form
+  if (embeddingModelId == null || vectorStoreInstanceId == null) return
   try {
-    const dim = (JSON.parse(config) as { dimension?: unknown })?.dimension
-    return typeof dim === 'number' && dim > 0 ? dim : null
+    const capability = await dimensionCheck(adminToken.value, embeddingModelId, vectorStoreInstanceId)
+    if (capability.dimensionAdjustable) {
+      if (form.dimensionOfVectorModel == null && capability.modelMaxDimension != null) {
+        form.dimensionOfVectorModel = capability.modelMaxDimension
+      }
+      if (capability.effectiveMaxDimension != null) {
+        message.info(`该模型可调维度，可用上限 ${capability.effectiveMaxDimension}`)
+      }
+    } else if (capability.modelMaxDimension != null) {
+      form.dimensionOfVectorModel = capability.modelMaxDimension
+    }
+    if (form.dimensionOfVectorModel != null && capability.effectiveMaxDimension != null
+      && form.dimensionOfVectorModel > capability.effectiveMaxDimension) {
+      message.warning(`维度 ${form.dimensionOfVectorModel} 超过可用上限 ${capability.effectiveMaxDimension}`)
+    }
   } catch {
-    return null
+    // 维度检查失败不阻塞表单：由后端保存时权威校验兜底
   }
-}
-
-function handleVectorStoreSelect() {
-  const store = vectorStores.value.find((s) => s.id === form.vectorStoreInstanceId)
-  const dim = extractDimension(store?.config)
-  if (dim) form.dimensionOfVectorModel = dim
 }
 
 async function loadFormOptions() {
@@ -435,10 +447,10 @@ onMounted(() => {
                 <n-input v-model:value="form.description" type="textarea" :maxlength="1200" show-count :autosize="{ minRows: 3, maxRows: 4 }" placeholder="可选，便于区分用途" />
               </n-form-item-gi>
               <n-form-item-gi :span="12" label="嵌入模型">
-                <n-select v-model:value="form.embeddingModelId" placeholder="请选择嵌入模型" :options="embeddingModels" filterable />
+                <n-select v-model:value="form.embeddingModelId" placeholder="请选择嵌入模型" :options="embeddingModels" filterable @update:value="handleEmbeddingConfigChange" />
               </n-form-item-gi>
               <n-form-item-gi :span="12" label="向量库">
-                <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable @update:value="handleVectorStoreSelect" />
+                <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable @update:value="handleEmbeddingConfigChange" />
               </n-form-item-gi>
               <n-form-item-gi :span="12" label="向量维度">
                 <template #label>
@@ -447,7 +459,7 @@ onMounted(() => {
                     <template #trigger>
                       <n-icon><CircleQuestionMark /></n-icon>
                     </template>
-                    <span class="muted">选择向量库后自动填充，可按需调整</span>
+                    <span class="muted">向量维度 = 所绑嵌入模型的输出维度，须与模型能力一致（后端保存时校验）</span>
                   </n-popover>
                 </template>
                 <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 100%" />

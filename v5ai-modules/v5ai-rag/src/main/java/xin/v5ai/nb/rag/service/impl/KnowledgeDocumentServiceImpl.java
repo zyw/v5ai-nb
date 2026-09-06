@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class KnowledgeDocumentServiceImpl implements IKnowledgeDocumentService, KnowledgeDocumentContentStore {
 
-    private KnowledgeDocumentMapper baseMapper;
+    private final KnowledgeDocumentMapper baseMapper;
 
     @Override
     public KnowledgeDocument save(KnowledgeDocument document) {

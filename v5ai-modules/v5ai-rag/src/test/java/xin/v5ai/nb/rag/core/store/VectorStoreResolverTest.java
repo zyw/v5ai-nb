@@ -27,8 +27,11 @@ class VectorStoreResolverTest {
     }
 
     @Test
-    void nullInstanceIdDefaultsToPgVectorStore() {
-        assertThat(resolver.vectorStore(null)).isSameAs(pgVectorStore);
+    void nullInstanceIdRejectedWithoutExplicitBinding() {
+        // 无隐式默认：知识库必须显式绑定存储实例（V30 方案移除 instanceId=null → 业务库 pgvector 兜底）
+        assertThatThrownBy(() -> resolver.vectorStore(null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("未绑定向量存储实例");
     }
 
     @Test

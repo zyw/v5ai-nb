@@ -18,7 +18,7 @@ public class KnowledgeChunkServiceImpl implements IKnowledgeChunkService {
 
     @Override
     public boolean saveBatch(List<KnowledgeChunk> knowledgeChunks) {
-        return baseMapper.insertBatch(knowledgeChunks);
+        return baseMapper.batchSaveChunks(knowledgeChunks);
     }
 
     @Override
@@ -27,8 +27,11 @@ public class KnowledgeChunkServiceImpl implements IKnowledgeChunkService {
     }
 
     @Override
-    public List<KnowledgeChunkDO> findChunkByBaseIds(String embed1, List<Long> ids, String embed2, int limit) {
-        return baseMapper.findChunkByBaseIds(embed1, ids, embed2, limit);
+    public List<KnowledgeChunkDO> selectByVectorIds(List<String> vectorIds) {
+        if (vectorIds == null || vectorIds.isEmpty()) {
+            return List.of();
+        }
+        return baseMapper.selectByVectorIds(vectorIds);
     }
 
     @Override

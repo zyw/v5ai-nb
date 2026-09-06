@@ -22,16 +22,15 @@ public interface IKnowledgeChunkService {
     void deleteByDocumentId(Long knowledgeBaseId, Long documentId);
 
     /**
-     * 根据知识库ID列表查询知识块
-     * @param embed1 嵌入向量1
-     * @param embed2 嵌入向量2
-     * @param limit 限制数量
-     * @return 知识块列表
+     * 按向量标识批量回查业务行（向量检索命中后回业务表取内容/元数据）。
+     *
+     * @param vectorIds 向量标识列表
+     * @return 业务行列表
      */
-    List<KnowledgeChunkDO> findChunkByBaseIds(String embed1, List<Long> ids, String embed2, int limit);
+    List<KnowledgeChunkDO> selectByVectorIds(List<String> vectorIds);
 
     /**
-     * 根据ID列表和链接内容查询知识块
+     * 根据知识库ID列表和链接内容查询知识块
      * @param ids ID列表
       * @param keyword 链接内容
      * @param limit 限制数量

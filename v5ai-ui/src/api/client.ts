@@ -970,6 +970,20 @@ export async function resumeConversation(
 
 // ---- Knowledge bases ----
 
+export interface DimensionCheckResponse {
+  modelMaxDimension: number | null
+  storeMaxDimension: number | null
+  effectiveMaxDimension: number | null
+  dimensionAdjustable: boolean
+}
+
+/** 维度检查：给定「嵌入模型 × 向量库实例」返回各自上限与可用上限（切换模型/库时调用）。 */
+export function dimensionCheck(adminToken: string, embeddingModelId: number, vectorStoreInstanceId: number): Promise<DimensionCheckResponse> {
+  return requestJson<DimensionCheckResponse>(
+    `/api/admin/knowledge-bases/dimension-check?embeddingModelId=${embeddingModelId}&vectorStoreInstanceId=${vectorStoreInstanceId}`,
+    {}, adminToken)
+}
+
 export function listKnowledgeBases(adminToken: string, query?: PageQuery): Promise<PageResult<KnowledgeBaseResponse>> {
   return requestJson<PageResult<KnowledgeBaseResponse>>(`/api/admin/knowledge-bases${pageQueryString(query)}`, {}, adminToken)
 }

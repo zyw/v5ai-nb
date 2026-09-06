@@ -25,4 +25,10 @@ public class VectorConfigDO implements Serializable {
 
     /** 认证密码 */
     private String password;
+
+    /**
+     * 引擎维度上限覆盖（可选，null=用引擎类型默认值 pgvector 2000 / Milvus 32768 / ES 2048）。
+     * 用于适配部署版本差异（如 pgvector 0.5+ 可至 16000）。
+     */
+    private Integer maxDimension;
 }
