@@ -3,12 +3,17 @@ package xin.v5ai.nb.rag.core.store;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.rag.core.config.PgVectorConfigDO;
 import xin.v5ai.nb.rag.domain.StoreInstance;
 import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
+import xin.v5ai.nb.rag.service.IKnowledgeChunkService;
+
+import javax.sql.DataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -18,12 +23,16 @@ import static org.mockito.Mockito.when;
 class VectorStoreResolverTest {
 
     private final StoreInstanceMapper mapper = mock(StoreInstanceMapper.class);
-    private final PgVectorStore pgVectorStore = mock(PgVectorStore.class);
+    private final IKnowledgeChunkService chunkService = mock(IKnowledgeChunkService.class);
+    private final PgVectorDataSourceFactory pgDataSourceFactory = mock(PgVectorDataSourceFactory.class);
+    private final DataSource pgDataSource = mock(DataSource.class);
     private VectorStoreResolver resolver;
 
     @BeforeEach
     void setUp() {
-        resolver = new VectorStoreResolver(mapper, pgVectorStore);
+        resolver = new VectorStoreResolver(mapper, chunkService, pgDataSourceFactory);
+        when(pgDataSourceFactory.create(org.mockito.ArgumentMatchers.any(PgVectorConfigDO.class)))
+                .thenReturn(pgDataSource);
     }
 
     @Test
@@ -35,11 +44,23 @@ class VectorStoreResolverTest {
     }
 
     @Test
-    void pgVectorTypeReturnsPgSingleton() {
-        when(mapper.selectById(1L)).thenReturn(instance(1L, 1));
+    void pgVectorTypeUsesStoreInstanceConnectionConfigAndCachesStore() {
+        StoreInstance instance = instance(1L, 1);
+        instance.setConfig("{\"host\":\"pg-instance\",\"port\":55432,\"database\":\"vectors\",\"username\":\"vector_user\",\"password\":\"secret\"}");
+        when(mapper.selectById(1L)).thenReturn(instance);
 
-        assertThat(resolver.vectorStore(1L)).isSameAs(pgVectorStore);
-        assertThat(resolver.keywordStore(1L)).isSameAs(pgVectorStore);
+        VectorStore first = resolver.vectorStore(1L);
+        VectorStore second = resolver.vectorStore(1L);
+
+        assertThat(first).isInstanceOf(PgVectorStore.class);
+        assertThat(first).isSameAs(second);
+        assertThat(resolver.keywordStore(1L)).isSameAs(first);
+        verify(pgDataSourceFactory).create(org.mockito.ArgumentMatchers.argThat(config ->
+                config.getHost().equals("pg-instance")
+                        && config.getPort() == 55432
+                        && config.getDatabase().equals("vectors")
+                        && config.getUsername().equals("vector_user")
+                        && config.getPassword().equals("secret")));
     }
 
     @Test

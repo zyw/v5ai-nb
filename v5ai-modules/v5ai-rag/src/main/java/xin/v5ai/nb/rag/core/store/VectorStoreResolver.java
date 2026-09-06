@@ -9,15 +9,17 @@ import xin.v5ai.nb.common.elasticsearch.domain.ElasticsearchVectorConfigDO;
 import xin.v5ai.nb.common.milvus.MilvusClientFactory;
 import xin.v5ai.nb.common.milvus.domain.MilvusVectorConfigDO;
 import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.rag.core.config.PgVectorConfigDO;
 import xin.v5ai.nb.rag.domain.StoreInstance;
 import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
+import xin.v5ai.nb.rag.service.IKnowledgeChunkService;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 按存储实例类型解析 {@link VectorStore} / {@link KeywordStore}：PG_VECTOR 用主数据源单例，
- * MILVUS / ELASTICSEARCH 按实例 config 构建并缓存客户端；实例更新/删除时失效缓存并关闭连接。
+ * 按存储实例类型解析 {@link VectorStore} / {@link KeywordStore}：所有外部存储均按实例 config
+ * 构建并缓存客户端；实例更新/删除时失效缓存并关闭连接。
  */
 @Component
 @RequiredArgsConstructor
@@ -28,7 +30,8 @@ public class VectorStoreResolver {
     private static final int TYPE_ELASTICSEARCH = 3;
 
     private final StoreInstanceMapper storeInstanceMapper;
-    private final PgVectorStore pgVectorStore;
+    private final IKnowledgeChunkService chunkService;
+    private final PgVectorDataSourceFactory pgDataSourceFactory;
 
     private final Map<Long, Object> resolved = new ConcurrentHashMap<>();
 
@@ -60,6 +63,8 @@ public class VectorStoreResolver {
             es.close();
         } else if (removed instanceof MilvusVectorStore milvus) {
             milvus.close();
+        } else if (removed instanceof PgVectorStore pg) {
+            pg.close();
         }
     }
 
@@ -72,10 +77,7 @@ public class VectorStoreResolver {
         if (type == null) {
             throw new ServiceException("存储实例缺少类型: " + instanceId);
         }
-        if (type == TYPE_PG_VECTOR) {
-            return pgVectorStore;
-        }
-        if (type != TYPE_MILVUS && type != TYPE_ELASTICSEARCH) {
+        if (type != TYPE_PG_VECTOR && type != TYPE_MILVUS && type != TYPE_ELASTICSEARCH) {
             // PG_FULLTEXT 等未接线的类型：无实现返回 null，由调用方跳过或报错
             return null;
         }
@@ -91,6 +93,10 @@ public class VectorStoreResolver {
             case TYPE_ELASTICSEARCH -> {
                 var config = toConfig(instance.getConfig(), ElasticsearchVectorConfigDO.class);
                 yield new ElasticsearchVectorStore(new ElasticsearchClientFactory().create(config), config);
+            }
+            case TYPE_PG_VECTOR -> {
+                var config = toConfig(instance.getConfig(), PgVectorConfigDO.class);
+                yield new PgVectorStore(pgDataSourceFactory.create(config), chunkService);
             }
             default -> null;
         };

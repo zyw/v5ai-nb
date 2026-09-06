@@ -81,7 +81,9 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("embedding request interrupted", exception);
         } catch (Exception exception) {
-            throw new IllegalStateException("embedding request failed", exception);
+            // 保留真实原因（状态码/响应体/超时），避免上层只见泛化错误
+            String detail = exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
+            throw new IllegalStateException("embedding request failed: " + detail, exception);
         }
     }
 

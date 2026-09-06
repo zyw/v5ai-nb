@@ -11,6 +11,10 @@ import xin.v5ai.nb.common.core.domain.VectorConfigDO;
 @EqualsAndHashCode(callSuper = true)
 public class PgVectorConfigDO extends VectorConfigDO {
 
+    public PgVectorConfigDO() {
+        setPort(5432);
+    }
+
 //    /** 是否启用该 PostgreSQL 向量库配置 */
 //    private boolean enabled = true;
 //

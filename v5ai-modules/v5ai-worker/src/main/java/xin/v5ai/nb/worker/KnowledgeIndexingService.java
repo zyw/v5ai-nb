@@ -1,5 +1,6 @@
 package xin.v5ai.nb.worker;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -103,7 +104,7 @@ public class KnowledgeIndexingService {
             var vectors = new ArrayList<VectorStore.VectorChunk>(chunks.size());
             for (int i = 0; i < chunks.size(); i++) {
                 vectors.add(new VectorStore.VectorChunk(
-                        java.util.UUID.randomUUID().toString(),
+                        IdUtil.simpleUUID(),
                         document.getKnowledgeBaseId(),
                         document.getId(),
                         i,

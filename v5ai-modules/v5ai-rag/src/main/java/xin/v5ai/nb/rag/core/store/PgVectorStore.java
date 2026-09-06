@@ -4,9 +4,6 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
-import xin.v5ai.nb.rag.core.store.VectorStore.RetrievalHit;
-import xin.v5ai.nb.rag.core.store.VectorStore.VectorChunk;
 import xin.v5ai.nb.rag.service.IKnowledgeChunkService;
 
 import javax.sql.DataSource;
@@ -23,17 +20,28 @@ import java.util.List;
  * {@link KeywordStore} 兜底实现。
  */
 @Slf4j
-@Component
 public class PgVectorStore implements VectorStore, KeywordStore {
 
     private static final String TABLE_PREFIX = "v5ai_vec_";
 
     private final JdbcTemplate jdbcTemplate;
     private final IKnowledgeChunkService chunkService;
+    private final DataSource dataSource;
 
     public PgVectorStore(DataSource dataSource, IKnowledgeChunkService chunkService) {
+        this.dataSource = dataSource;
         this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.chunkService = chunkService;
+    }
+
+    public void close() {
+        if (dataSource instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                throw new IllegalStateException("关闭 PostgreSQL 向量存储连接失败", e);
+            }
+        }
     }
 
     // ---------- VectorStore ----------
@@ -43,9 +51,10 @@ public class PgVectorStore implements VectorStore, KeywordStore {
         if (CollUtil.isEmpty(chunks)) {
             return;
         }
-        Long knowledgeBaseId = chunks.get(0).knowledgeBaseId();
-        int dimension = chunks.get(0).embedding() == null ? 0 : chunks.get(0).embedding().size();
-        if (dimension <= 0) {
+        VectorChunk vc = chunks.getFirst();
+        Long knowledgeBaseId = vc.knowledgeBaseId();
+        int dimension = vc.embedding() == null ? 0 : vc.embedding().size();
+        if (dimension == 0) {
             throw new IllegalArgumentException("向量维度不能为空: kb=" + knowledgeBaseId);
         }
         ensureCollection(knowledgeBaseId, dimension);
