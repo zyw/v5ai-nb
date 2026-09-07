@@ -91,6 +91,12 @@ public interface IKnowledgeBaseService {
     void retryTask(Long taskId);
 
     /**
+     * 重新解析单个文档：状态为「处理完成/失败」时重置其索引任务为 PENDING 并返回 {@code true}；
+     * 待处理/解析中/处理中返回 {@code false}（跳过）；文档不存在抛异常。
+     */
+    boolean reparseDocument(Long documentId);
+
+    /**
      * 查询某知识库的索引任务列表（新任务在前）。
      */
     List<KnowledgeTaskVo> listTasks(Long knowledgeBaseId);

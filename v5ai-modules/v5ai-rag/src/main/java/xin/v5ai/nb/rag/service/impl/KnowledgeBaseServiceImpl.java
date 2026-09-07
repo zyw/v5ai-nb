@@ -417,6 +417,23 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     }
 
     @Override
+    public boolean reparseDocument(Long documentId) {
+        KnowledgeDocument document = documentMapper.selectById(documentId);
+        if (document == null) {
+            throw new IllegalArgumentException("document does not exist: " + documentId);
+        }
+        Integer status = document.getStatus();
+        // 0待处理/1解析中/2处理中：跳过（已在队列或进行中，避免竞态）；3完成/4失败：重置任务重跑
+        if (status == null || status < 3) {
+            return false;
+        }
+        for (KnowledgeTaskVo task : listTasksByDocument(documentId)) {
+            retryTask(task.getId());
+        }
+        return true;
+    }
+
+    @Override
     public List<KnowledgeTaskVo> listTasksByDocument(Long documentId) {
         return taskMapper.selectList(new LambdaQueryWrapper<KnowledgeTask>()
                         .eq(KnowledgeTask::getDocumentId, documentId))

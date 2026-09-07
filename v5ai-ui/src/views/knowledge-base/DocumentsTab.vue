@@ -25,11 +25,14 @@ import {
 } from 'naive-ui'
 import { CloudUpload, Link as LinkIcon, Plus, Upload as UploadIcon } from 'lucide-vue-next'
 import {
+  batchDeleteDocuments,
+  batchReparseDocuments,
   deleteDocument,
   importUrl,
   listDocuments,
   retryDocument,
   uploadDocument,
+  type DocumentBatchResult,
   type DocumentResponse
 } from '../../api/client'
 import { adminToken } from '../../stores/session'
@@ -48,6 +51,7 @@ const dialog = useDialog()
 const loading = ref(false)
 const documents = ref<DocumentResponse[]>([])
 const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+const checkedRowKeys = ref<Array<string | number>>([])
 
 const DOC_STATUS_MAP: Record<number, { type: 'default' | 'success' | 'info' | 'warning' | 'error'; label: string }> = {
   0: { type: 'warning', label: '待处理' },
@@ -213,6 +217,59 @@ function handleDelete(row: DocumentResponse) {
   })
 }
 
+function onCheckedKeysChange(keys: Array<string | number>) {
+  checkedRowKeys.value = keys
+}
+
+function formatBatchSummary(action: string, result: DocumentBatchResult): string {
+  const parts = [`成功 ${result.succeeded}`]
+  if (result.skipped) parts.push(`跳过 ${result.skipped}`)
+  if (result.failures?.length) parts.push(`失败 ${result.failures.length}`)
+  return `${action}：${parts.join('，')}`
+}
+
+async function handleBatchReparse() {
+  const ids = checkedRowKeys.value.map((k) => Number(k))
+  if (ids.length === 0) return
+  dialog.warning({
+    title: '批量重新解析确认',
+    content: `确认重新解析选中的 ${ids.length} 个文档？仅「处理完成 / 处理失败」的文档会被重新解析，其余跳过。`,
+    positiveText: '重新解析',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const result = await batchReparseDocuments(adminToken.value, ids)
+        message.success(formatBatchSummary('批量重新解析', result))
+        checkedRowKeys.value = []
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '批量重新解析失败')
+      }
+    }
+  })
+}
+
+async function handleBatchDelete() {
+  const ids = checkedRowKeys.value.map((k) => Number(k))
+  if (ids.length === 0) return
+  dialog.error({
+    title: '批量删除确认',
+    content: `确认删除选中的 ${ids.length} 个文档？将同步清理其全部切片与向量，且不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const result = await batchDeleteDocuments(adminToken.value, ids)
+        message.success(formatBatchSummary('批量删除', result))
+        checkedRowKeys.value = []
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '批量删除失败')
+      }
+    }
+  })
+}
+
 async function reload() {
   loading.value = true
   try {
@@ -244,7 +301,17 @@ onMounted(() => {
 <template>
   <div class="doc-tab">
     <div class="toolbar">
-      <span class="count">共 {{ pagination.itemCount }} 个文档</span>
+      <n-space :size="8" align="center">
+        <span class="count">共 {{ pagination.itemCount }} 个文档</span>
+        <template v-if="checkedRowKeys.length > 0">
+          <n-button size="small" secondary type="primary" @click="handleBatchReparse">
+            批量重新解析（{{ checkedRowKeys.length }}）
+          </n-button>
+          <n-button size="small" secondary type="error" @click="handleBatchDelete">
+            批量删除（{{ checkedRowKeys.length }}）
+          </n-button>
+        </template>
+      </n-space>
       <n-button type="primary" size="small" @click="openImport">
         <template #icon><n-icon :component="Plus" /></template>
         导入文档
@@ -256,7 +323,10 @@ onMounted(() => {
       :columns="columns"
       :data="documents"
       :bordered="false"
+      :row-key="(row: DocumentResponse) => row.id"
+      :checked-row-keys="checkedRowKeys"
       :scroll-x="columns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
+      @update:checked-row-keys="onCheckedKeysChange"
     />
     <n-empty v-if="!loading && documents.length === 0" description="暂无文档，点击右上角导入" style="padding: 32px 0" />
     <n-pagination

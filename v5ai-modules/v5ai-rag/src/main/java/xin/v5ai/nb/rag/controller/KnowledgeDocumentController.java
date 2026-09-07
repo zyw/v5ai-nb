@@ -16,12 +16,16 @@ import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
+import xin.v5ai.nb.rag.domain.bo.DocumentIdsBo;
 import xin.v5ai.nb.rag.domain.bo.ImportUrlBo;
+import xin.v5ai.nb.rag.domain.vo.DocumentBatchResultVo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -80,6 +84,48 @@ public class KnowledgeDocumentController extends BaseController {
             knowledgeBaseService.retryTask(task.getId());
         }
         return R.ok();
+    }
+
+    @PostMapping("/documents/batch-reparse")
+    public R<DocumentBatchResultVo> batchReparse(@RequestBody DocumentIdsBo bo) {
+        var failures = new ArrayList<DocumentBatchResultVo.Failure>();
+        int succeeded = 0;
+        int skipped = 0;
+        for (Long id : safeIds(bo)) {
+            try {
+                if (knowledgeBaseService.reparseDocument(id)) {
+                    succeeded++;
+                } else {
+                    skipped++;
+                }
+            } catch (Exception exception) {
+                failures.add(new DocumentBatchResultVo.Failure(id, reason(exception)));
+            }
+        }
+        return R.ok(new DocumentBatchResultVo(succeeded, skipped, failures));
+    }
+
+    @PostMapping("/documents/batch-delete")
+    public R<DocumentBatchResultVo> batchDelete(@RequestBody DocumentIdsBo bo) {
+        var failures = new ArrayList<DocumentBatchResultVo.Failure>();
+        int succeeded = 0;
+        for (Long id : safeIds(bo)) {
+            try {
+                knowledgeBaseService.deleteDocument(id);
+                succeeded++;
+            } catch (Exception exception) {
+                failures.add(new DocumentBatchResultVo.Failure(id, reason(exception)));
+            }
+        }
+        return R.ok(new DocumentBatchResultVo(succeeded, 0, failures));
+    }
+
+    private static List<Long> safeIds(DocumentIdsBo bo) {
+        return bo == null || bo.ids() == null ? List.of() : bo.ids();
+    }
+
+    private static String reason(Exception exception) {
+        return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
     }
 
     private DocumentFileType detectFileType(String filename) {

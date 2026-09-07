@@ -1047,6 +1047,26 @@ export function retryDocument(adminToken: string, documentId: number): Promise<v
   return requestJson<void>(`/api/admin/documents/${documentId}/retry`, { method: 'POST' }, adminToken)
 }
 
+export interface DocumentBatchResult {
+  succeeded: number
+  skipped: number
+  failures: { documentId: number; reason: string }[]
+}
+
+export function batchReparseDocuments(adminToken: string, ids: number[]): Promise<DocumentBatchResult> {
+  return requestJson<DocumentBatchResult>(`/api/admin/documents/batch-reparse`, {
+    method: 'POST',
+    body: JSON.stringify({ ids })
+  }, adminToken)
+}
+
+export function batchDeleteDocuments(adminToken: string, ids: number[]): Promise<DocumentBatchResult> {
+  return requestJson<DocumentBatchResult>(`/api/admin/documents/batch-delete`, {
+    method: 'POST',
+    body: JSON.stringify({ ids })
+  }, adminToken)
+}
+
 export function listTasks(adminToken: string, kbId: number): Promise<PageResult<TaskResponse>> {
   return requestJson<PageResult<TaskResponse>>(`/api/admin/knowledge-bases/${kbId}/tasks`, {}, adminToken)
 }
