@@ -2,7 +2,9 @@ package xin.v5ai.nb.rag.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +38,10 @@ import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -122,7 +127,60 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         Page<KnowledgeBase> page = pageQuery.build();
         List<KnowledgeBase> list = knowledgeBaseMapper.selectList(page, lqw);
         List<KnowledgeBaseVo> vos = list.stream().map(this::toVo).toList();
+        enrichList(vos, list);
         return PageResult.build(vos, page.getTotal());
+    }
+
+    /**
+     * 列表页批量回填文档数 / 切片数 / 被引用 Agent：各一次按知识库 ID 的聚合查询，避免逐库 N+1。
+     */
+    private void enrichList(List<KnowledgeBaseVo> vos, List<KnowledgeBase> list) {
+        if (list.isEmpty()) {
+            return;
+        }
+        List<Long> ids = list.stream().map(KnowledgeBase::getId).toList();
+        Map<Long, Long> docCounts = countByKnowledgeBaseId(documentMapper, ids);
+        Map<Long, Long> chunkCounts = countByKnowledgeBaseId(chunkMapper, ids);
+        Map<Long, List<String>> references = new HashMap<>();
+        for (AgentKnowledgeBinding binding : bindingMapper.selectList(
+                new LambdaQueryWrapper<AgentKnowledgeBinding>()
+                        .in(AgentKnowledgeBinding::getKnowledgeBaseId, ids))) {
+            references.computeIfAbsent(binding.getKnowledgeBaseId(), k -> new ArrayList<>())
+                    .add(binding.getAgentKey());
+        }
+        for (KnowledgeBaseVo vo : vos) {
+            vo.setDocCount(docCounts.getOrDefault(vo.getId(), 0L));
+            vo.setChunkCount(chunkCounts.getOrDefault(vo.getId(), 0L));
+            vo.setReferencedAgentKeys(references.getOrDefault(vo.getId(), List.of()));
+        }
+    }
+
+    /**
+     * 按知识库 ID 列表统计行数（id → 数量；无匹配返回空 Map，缺省视为 0）。
+     */
+    private static <T> Map<Long, Long> countByKnowledgeBaseId(BaseMapper<T> mapper, List<Long> ids) {
+        QueryWrapper<T> qw = new QueryWrapper<T>()
+                .select("knowledge_base_id AS kb_id", "COUNT(*) AS cnt")
+                .in("knowledge_base_id", ids)
+                .groupBy("knowledge_base_id");
+        Map<Long, Long> counts = new HashMap<>();
+        for (Map<String, Object> row : mapper.selectMaps(qw)) {
+            if (row.get("kb_id") instanceof Number kbId && row.get("cnt") instanceof Number cnt) {
+                counts.put(kbId.longValue(), cnt.longValue());
+            }
+        }
+        return counts;
+    }
+
+    /**
+     * 查询绑定某知识库的 Agent 标识列表（删除前校验引用用）。
+     */
+    private List<String> findReferencingAgentKeys(Long knowledgeBaseId) {
+        return bindingMapper.selectList(new LambdaQueryWrapper<AgentKnowledgeBinding>()
+                        .eq(AgentKnowledgeBinding::getKnowledgeBaseId, knowledgeBaseId))
+                .stream()
+                .map(AgentKnowledgeBinding::getAgentKey)
+                .toList();
     }
 
     @Override
@@ -189,6 +247,52 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         update.setId(id);
         update.setStatus(STATUS_DISABLED);
         knowledgeBaseMapper.updateById(update);
+    }
+
+    @Override
+    public void enableKnowledgeBase(Long id) {
+        requireKnowledgeBase(id);
+        var update = new KnowledgeBase();
+        update.setId(id);
+        update.setStatus(STATUS_ACTIVE);
+        knowledgeBaseMapper.updateById(update);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteKnowledgeBase(Long id) {
+        KnowledgeBase base = requireKnowledgeBase(id);
+        List<String> referencingAgents = findReferencingAgentKeys(id);
+        if (!referencingAgents.isEmpty()) {
+            throw new ServiceException(
+                    "该知识库正被 Agent（" + String.join(", ", referencingAgents) + "）绑定，请先解除绑定后再删除");
+        }
+        // 1) 逐文档清理切片业务行与向量（含关键词后端），再删文档行
+        List<KnowledgeDocument> documents = documentMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeDocument>().eq(KnowledgeDocument::getKnowledgeBaseId, id));
+        for (KnowledgeDocument document : documents) {
+            chunkService.deleteByDocumentId(id, document.getId());
+            if (base.getVectorStoreInstanceId() != null) {
+                vectorStoreResolver.vectorStore(base.getVectorStoreInstanceId())
+                        .deleteByDocumentId(id, document.getId());
+                if (Boolean.TRUE.equals(base.getSearchEngineEnable())
+                        && base.getSearchEngineInstanceId() != null
+                        && !base.getSearchEngineInstanceId().equals(base.getVectorStoreInstanceId())) {
+                    var keywordStore = vectorStoreResolver.keywordStore(base.getSearchEngineInstanceId());
+                    if (keywordStore != null) {
+                        keywordStore.deleteByDocumentId(id, document.getId());
+                    }
+                }
+            }
+        }
+        // 2) 清理索引任务与绑定、文档行，最后删知识库本体
+        taskMapper.delete(new LambdaQueryWrapper<KnowledgeTask>()
+                .eq(KnowledgeTask::getKnowledgeBaseId, id));
+        bindingMapper.delete(new LambdaQueryWrapper<AgentKnowledgeBinding>()
+                .eq(AgentKnowledgeBinding::getKnowledgeBaseId, id));
+        documentMapper.delete(new LambdaQueryWrapper<KnowledgeDocument>()
+                .eq(KnowledgeDocument::getKnowledgeBaseId, id));
+        knowledgeBaseMapper.deleteById(id);
     }
 
     @Override

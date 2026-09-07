@@ -55,6 +55,16 @@ public interface IKnowledgeBaseService {
     void disableKnowledgeBase(Long id);
 
     /**
+     * 启用知识库。
+     */
+    void enableKnowledgeBase(Long id);
+
+    /**
+     * 删除知识库（级联清理文档/切片/任务/绑定与向量数据）。
+     */
+    void deleteKnowledgeBase(Long id);
+
+    /**
      * 上传文档：落库文档行（来源 UPLOAD，含原始内容/大小/SHA-256）并提交一个 PENDING 索引任务。
      */
     KnowledgeDocumentVo uploadDocument(Long knowledgeBaseId, String title, DocumentFileType fileType,

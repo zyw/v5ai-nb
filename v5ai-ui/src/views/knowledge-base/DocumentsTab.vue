@@ -78,6 +78,7 @@ const FILE_TYPE_TEXT: Record<string, string> = {
 }
 
 const columns: DataTableColumns<DocumentResponse> = [
+  { type: 'selection' },
   { title: '文档名称', key: 'title', minWidth: 220, ellipsis: { tooltip: true } },
   {
     title: '文件状态',

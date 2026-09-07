@@ -7,6 +7,7 @@ import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * <p>
@@ -98,12 +99,17 @@ public class KnowledgeBaseVo implements Serializable {
     private OffsetDateTime updatedAt;
 
     /**
-     * 库内文档数（详情接口统计填充，列表接口为空）
+     * 库内文档数（列表 / 详情接口均统计填充）
      */
     private Long docCount;
 
     /**
-     * 库内切片数（详情接口统计填充，列表接口为空）
+     * 库内切片数（列表 / 详情接口均统计填充）
      */
     private Long chunkCount;
+
+    /**
+     * 引用该知识库的 Agent 标识列表（列表接口批量回填；被引用时删除须拦截、禁用仅警告）
+     */
+    private List<String> referencedAgentKeys;
 }

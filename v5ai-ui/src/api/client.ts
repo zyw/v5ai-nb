@@ -211,6 +211,8 @@ export interface KnowledgeBaseResponse {
   docCount?: number
   /** 库内切片数（详情接口返回） */
   chunkCount?: number
+  /** 引用该知识库的 Agent 标识（列表接口返回；非空则删除须解绑、禁用仅警告） */
+  referencedAgentKeys?: string[]
 }
 
 export interface RagChunkParams {
@@ -984,8 +986,8 @@ export function dimensionCheck(adminToken: string, embeddingModelId: number, vec
     {}, adminToken)
 }
 
-export function listKnowledgeBases(adminToken: string, query?: PageQuery): Promise<PageResult<KnowledgeBaseResponse>> {
-  return requestJson<PageResult<KnowledgeBaseResponse>>(`/api/admin/knowledge-bases${pageQueryString(query)}`, {}, adminToken)
+export function listKnowledgeBases(adminToken: string, query?: PageQuery & { name?: string; status?: string }): Promise<PageResult<KnowledgeBaseResponse>> {
+  return requestJson<PageResult<KnowledgeBaseResponse>>(`/api/admin/knowledge-bases${paramString(query)}`, {}, adminToken)
 }
 
 export function createKnowledgeBase(adminToken: string, request: CreateKnowledgeBaseRequest): Promise<KnowledgeBaseResponse> {
@@ -1003,6 +1005,14 @@ export function updateKnowledgeBase(adminToken: string, request: CreateKnowledge
 }
 
 export function disableKnowledgeBase(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/knowledge-bases/${id}/disable`, { method: 'PUT' }, adminToken)
+}
+
+export function enableKnowledgeBase(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/knowledge-bases/${id}/enable`, { method: 'PUT' }, adminToken)
+}
+
+export function deleteKnowledgeBase(adminToken: string, id: number): Promise<void> {
   return requestJson<void>(`/api/admin/knowledge-bases/${id}`, { method: 'DELETE' }, adminToken)
 }
 

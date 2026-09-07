@@ -76,10 +76,24 @@ public class KnowledgeBaseController extends BaseController {
         return R.ok(knowledgeBaseService.getKnowledgeBaseDetail(id));
     }
 
-    @DeleteMapping("/{id}")
+    @PutMapping("/{id}/disable")
     @Log(title = "禁用知识库", businessType = BusinessType.DISABLE)
     public R<Void> disableKnowledgeBase(@PathVariable("id") Long id) {
         knowledgeBaseService.disableKnowledgeBase(id);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}/enable")
+    @Log(title = "启用知识库", businessType = BusinessType.ENABLE)
+    public R<Void> enableKnowledgeBase(@PathVariable("id") Long id) {
+        knowledgeBaseService.enableKnowledgeBase(id);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    @Log(title = "删除知识库", businessType = BusinessType.DELETE)
+    public R<Void> deleteKnowledgeBase(@PathVariable("id") Long id) {
+        knowledgeBaseService.deleteKnowledgeBase(id);
         return R.ok();
     }
 

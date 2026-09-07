@@ -2,7 +2,7 @@
 /**
  * 知识库管理（列表页）：
  * 点击「名称」进入知识库详情页（四 tab：原始文档/切片详情/知识检索/知识问答）。
- * 文档管理能力已整体迁入详情页，本页只保留库级列表与创建/编辑/禁用。
+ * 文档管理能力已整体迁入详情页，本页只保留库级列表与创建/编辑/启停/删除。
  */
 import { h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -32,13 +32,14 @@ import {
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { CircleQuestionMark, Plus } from 'lucide-vue-next'
+import { CircleQuestionMark, Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
-import StatusTag from '../components/StatusTag.vue'
 import {
   createKnowledgeBase,
+  deleteKnowledgeBase,
   dimensionCheck,
   disableKnowledgeBase,
+  enableKnowledgeBase,
   listKnowledgeBases,
   listModelOptions,
   listStoreInstances,
@@ -50,13 +51,23 @@ import {
   type StoreInstanceResponse, DimensionCheckResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { formatDateTime } from '../utils/dateUtils'
 
 const router = useRouter()
 const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
+const togglingId = ref<number | null>(null)
 const knowledgeBases = ref<KnowledgeBaseResponse[]>([])
 const kbPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+
+// ---- 列表搜索（名称模糊 / 状态）----
+const kbSearch = reactive({ name: '', status: null as string | null })
+
+const kbStatusOptions = [
+  { label: '启用', value: 'ACTIVE' },
+  { label: '停用', value: 'DISABLED' }
+]
 
 const LIST_STATE_KEY = 'kb-list-state'
 
@@ -115,6 +126,11 @@ const chunkModeOptions: { label: string; value: ChunkMode }[] = [
 ]
 
 const quickMaxTokens = [200, 600, 1000, 2000]
+
+/** 列表列使用的切片策略文案（未知值原样显示）。 */
+function chunkModeLabel(mode?: string): string {
+  return chunkModeOptions.find((o) => o.value === mode)?.label ?? mode ?? '—'
+}
 
 function vectorStoreOptions() {
   return vectorStores.value.map((s) => ({ value: s.id, label: s.name }))
@@ -308,6 +324,7 @@ const kbColumns: DataTableColumns<KnowledgeBaseResponse> = [
   {
     title: '名称',
     key: 'name',
+    width: 150,
     render: (row) =>
       h(NButton, {
         size: 'small',
@@ -316,18 +333,34 @@ const kbColumns: DataTableColumns<KnowledgeBaseResponse> = [
         onClick: () => openDetail(row)
       }, { default: () => (row.icon ? `${row.icon} ${row.name}` : row.name) })
   },
-  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
+  { title: '描述', key: 'description',width: 180, ellipsis: { tooltip: true } },
+  { title: '文档数', key: 'docCount', width: 80, render: (row) => row.docCount ?? 0 },
+  { title: '切片数', key: 'chunkCount', width: 80, render: (row) => row.chunkCount ?? 0 },
+  { title: '切片策略', key: 'chunkMode', width: 110, render: (row) => chunkModeLabel(row.config?.chunkParams?.mode) },
   { title: '向量维度', key: 'dimensionOfVectorModel', width: 100, render: (row) => row.dimensionOfVectorModel ?? '—' },
-  { title: '状态', key: 'status', width: 100, render: (row) => h(StatusTag, { status: row.status }) },
+  {
+    title: '状态',
+    key: 'status',
+    width: 90,
+    render: (row) =>
+      h(NSwitch, {
+        value: row.status === 'ACTIVE',
+        loading: togglingId.value === row.id,
+        onUpdateValue: () => handleToggleStatus(row)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '禁')
+      })
+  },
+  { title: '修改时间', key: 'updatedAt', width: 185, render: (row) => formatDateTime(row.updatedAt) ?? '—' },
   {
     title: '操作',
     key: 'actions',
     width: 180,
     render: (row) =>
       h(NSpace, { size: 6 }, { default: () => [
-        h(NButton, { size: 'small', type: 'primary', secondary: true, onClick: () => openDetail(row) }, { default: () => '详情' }),
         h(NButton, { size: 'small', secondary: true, onClick: () => openEdit(row) }, { default: () => '编辑' }),
-        h(NButton, { size: 'small', secondary: true, type: 'error', disabled: row.status !== 'ACTIVE', onClick: () => handleDisableKb(row) }, { default: () => '禁用' })
+        h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDeleteKb(row) }, { default: () => '删除' })
       ] })
   }
 ]
@@ -338,19 +371,50 @@ function openDetail(row: KnowledgeBaseResponse) {
   void router.push({ name: 'knowledge-base-detail', params: { id: row.id } })
 }
 
-async function handleDisableKb(row: KnowledgeBaseResponse) {
+async function handleToggleStatus(row: KnowledgeBaseResponse) {
+  const next = row.status === 'ACTIVE' ? '禁用' : '启用'
+  const bound = row.referencedAgentKeys ?? []
+  // 禁用时若被 Agent 引用：只警告不阻断，明确影响范围后仍允许继续
+  const content = next === '禁用' && bound.length > 0
+    ? `该知识库正被 Agent（${bound.join(', ')}）绑定，禁用后其检索将停用。确认禁用「${row.name}」？`
+    : `确认${next}知识库「${row.name}」？`
   dialog.warning({
-    title: '禁用确认',
-    content: `确认禁用知识库「${row.name}」？禁用后其绑定 Agent 的检索将停用。`,
-    positiveText: '禁用',
+    title: `${next}确认`,
+    content,
+    positiveText: next,
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      togglingId.value = row.id
+      try {
+        if (row.status === 'ACTIVE') {
+          await disableKnowledgeBase(adminToken.value, row.id)
+        } else {
+          await enableKnowledgeBase(adminToken.value, row.id)
+        }
+        message.success(`「${row.name}」已${next}`)
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : `${next}失败`)
+      } finally {
+        togglingId.value = null
+      }
+    }
+  })
+}
+
+async function handleDeleteKb(row: KnowledgeBaseResponse) {
+  dialog.error({
+    title: '删除确认',
+    content: `确认删除知识库「${row.name}」？将删除其下所有文档、切片与向量数据，且不可恢复。`,
+    positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        await disableKnowledgeBase(adminToken.value, row.id)
-        message.success('知识库已禁用')
+        await deleteKnowledgeBase(adminToken.value, row.id)
+        message.success('知识库已删除')
         await reload()
       } catch (e) {
-        message.error(e instanceof Error ? e.message : '禁用失败')
+        message.error(e instanceof Error ? e.message : '删除失败')
       }
     }
   })
@@ -359,7 +423,12 @@ async function handleDisableKb(row: KnowledgeBaseResponse) {
 async function reload() {
   loading.value = true
   try {
-    const rows = await listKnowledgeBases(adminToken.value, { pageNum: kbPagination.page, pageSize: kbPagination.pageSize })
+    const rows = await listKnowledgeBases(adminToken.value, {
+      pageNum: kbPagination.page,
+      pageSize: kbPagination.pageSize,
+      name: kbSearch.name || undefined,
+      status: kbSearch.status ?? undefined
+    })
     knowledgeBases.value = rows.rows
     kbPagination.itemCount = rows.total
   } catch (e) {
@@ -367,6 +436,11 @@ async function reload() {
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  kbPagination.page = 1
+  void reload()
 }
 
 function handleKbPageChange(page: number) {
@@ -408,7 +482,20 @@ onMounted(() => {
       </template>
     </PageHeader>
 
-    <n-card title="知识库列表" :bordered="true">
+    <n-card :bordered="true">
+      <n-space style="margin-bottom: 12px" :size="8" align="center">
+        <n-input v-model:value="kbSearch.name" placeholder="名称（模糊搜索）" clearable style="width: 220px" @keyup.enter="handleSearch" />
+        <n-select v-model:value="kbSearch.status" placeholder="状态" clearable style="width: 130px" :options="kbStatusOptions" />
+        <n-button size="small" type="primary" secondary @click="handleSearch">
+          <template #icon><n-icon :component="Search" /></template>
+          查询
+        </n-button>
+        <n-button size="small" quaternary @click="handleSearch">
+          <template #icon><n-icon :component="RefreshCw" /></template>
+          刷新
+        </n-button>
+      </n-space>
+
       <n-data-table
         :loading="loading"
         :columns="kbColumns"
