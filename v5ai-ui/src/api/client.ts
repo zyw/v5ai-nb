@@ -1047,6 +1047,21 @@ export function retryDocument(adminToken: string, documentId: number): Promise<v
   return requestJson<void>(`/api/admin/documents/${documentId}/retry`, { method: 'POST' }, adminToken)
 }
 
+/** 预览文档源文件（inline 内容）。 */
+export function previewDocument(adminToken: string, documentId: number): Promise<Blob> {
+  return fetchResourceBlob(adminToken, `/api/admin/documents/${documentId}/preview`)
+}
+
+/** 下载文档源文件（attachment 内容）。 */
+export function downloadDocument(adminToken: string, documentId: number): Promise<Blob> {
+  return fetchResourceBlob(adminToken, `/api/admin/documents/${documentId}/download`)
+}
+
+/** 重新解析单个文档：返回 true=已重置任务，false=进行中已跳过。 */
+export function reparseDocument(adminToken: string, documentId: number): Promise<boolean> {
+  return requestJson<boolean>(`/api/admin/documents/${documentId}/reparse`, { method: 'POST' }, adminToken)
+}
+
 export interface DocumentBatchResult {
   succeeded: number
   skipped: number

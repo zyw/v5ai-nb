@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * 知识库详情页「原始文档」tab：库内文档管理（从原列表页内联卡片迁移）。
- * 不含原文预览；行「查看切片」跳到切片 tab 并按该文档预选。
+ * 知识库详情页「原始文档」tab：库内文档管理。
+ * 行操作：预览（pdf/docx/md/txt）、下载源文档、重新解析、查看切片、删除；支持多选批量操作。
  */
-import { h, onMounted, reactive, ref, watch } from 'vue'
+import { defineAsyncComponent, h, onMounted, reactive, ref, watch } from 'vue'
 import {
   NButton,
   NDataTable,
@@ -14,6 +14,7 @@ import {
   NPagination,
   NSelect,
   NSpace,
+  NSpin,
   NTag,
   NTabs,
   NTabPane,
@@ -24,19 +25,30 @@ import {
   type UploadFileInfo
 } from 'naive-ui'
 import { CloudUpload, Link as LinkIcon, Plus, Upload as UploadIcon } from 'lucide-vue-next'
+import MarkdownPreview from '../../components/MarkdownPreview.vue'
+import MonacoTextView from '../../components/MonacoTextView.vue'
+import RowActions from '../../components/RowActions.vue'
 import {
   batchDeleteDocuments,
   batchReparseDocuments,
   deleteDocument,
+  downloadDocument,
   importUrl,
   listDocuments,
-  retryDocument,
+  previewDocument,
+  reparseDocument,
   uploadDocument,
   type DocumentBatchResult,
   type DocumentResponse
 } from '../../api/client'
 import { adminToken } from '../../stores/session'
 import { formatDateTime } from '../../utils/dateUtils'
+
+// vue-office：docx / pdf 在线预览组件（懒加载，仅在预览对应类型时拉取解析库）
+// 注：@vue-office/pdf 不导出独立 CSS，无需额外样式引入
+import '@vue-office/docx/lib/index.css'
+const VueOfficeDocx = defineAsyncComponent(() => import('@vue-office/docx'))
+const VueOfficePdf = defineAsyncComponent(() => import('@vue-office/pdf'))
 
 const props = defineProps<{
   kbId: number
@@ -83,7 +95,7 @@ const FILE_TYPE_TEXT: Record<string, string> = {
 
 const columns: DataTableColumns<DocumentResponse> = [
   { type: 'selection' },
-  { title: '文档名称', key: 'title', minWidth: 220, ellipsis: { tooltip: true } },
+  { title: '文档名称', key: 'title', minWidth: 100, maxWidth: 180, ellipsis: { tooltip: true } },
   {
     title: '文件状态',
     key: 'status',
@@ -100,19 +112,12 @@ const columns: DataTableColumns<DocumentResponse> = [
     render: (row) => h(NTag, { size: 'small', bordered: false, round: true, type: row.sourceType === 'URL' ? 'info' : 'default' }, { default: () => (row.sourceType === 'URL' ? 'URL 导入' : '本地上传') })
   },
   { title: '文件类型', key: 'fileType', width: 90, render: (row) => FILE_TYPE_TEXT[row.fileType] ?? row.fileType },
-  { title: '上传时间', key: 'createdAt', width: 170, render: (row) => formatDateTime(row.createdAt) ?? '—' },
+  { title: '上传时间', key: 'createdAt', width: 185, render: (row) => formatDateTime(row.createdAt) ?? '—' },
   {
     title: '操作',
     key: 'actions',
-    width: 220,
-    render: (row) =>
-      h(NSpace, { size: 6 }, { default: () => [
-        h(NButton, { size: 'small', type: 'primary', secondary: true, onClick: () => emit('go-chunks', row.id) }, { default: () => '查看切片' }),
-        row.status === 4
-          ? h(NButton, { size: 'small', secondary: true, onClick: () => handleRetry(row.id) }, { default: () => '重试' })
-          : null,
-        h(NButton, { size: 'small', secondary: true, type: 'error', onClick: () => handleDelete(row) }, { default: () => '删除' })
-      ] })
+    width: 150,
+    render: (row) => h(RowActions, { maxInline: 1, actions: buildActions(row) })
   }
 ]
 
@@ -189,32 +194,111 @@ function handlePageSize(pageSize: number) {
   void reload()
 }
 
-async function handleRetry(documentId: number) {
+// ---- 预览 / 下载 / 重新解析 / 删除 ----
+
+const showPreviewModal = ref(false)
+const previewName = ref('')
+/** 预览加载中：拉取文件 + 文档渲染（office 渲染完成或出错后置 false） */
+const previewLoading = ref(false)
+/** 预览类型：docx/pdf 用 vue-office，markdown 用 vditor，text 用 monaco */
+const previewKind = ref<'pdf' | 'docx' | 'markdown' | 'text' | null>(null)
+const previewBlob = ref<Blob | null>(null)
+const previewText = ref('')
+
+/** 按 fileType 判定预览类型；文档仅 pdf/docx/markdown/text 四类。 */
+function previewKindOf(row: DocumentResponse): 'pdf' | 'docx' | 'markdown' | 'text' | null {
+  const ft = (row.fileType ?? '').toUpperCase()
+  if (ft === 'PDF') return 'pdf'
+  if (ft === 'DOCX') return 'docx'
+  if (ft === 'MARKDOWN') return 'markdown'
+  if (ft === 'TXT' || ft === 'URL') return 'text'
+  return null
+}
+
+async function handlePreview(row: DocumentResponse) {
+  const kind = previewKindOf(row)
+  if (!kind) {
+    message.info('该类型不支持在线预览，已转为下载')
+    await handleDownload(row)
+    return
+  }
+  previewLoading.value = true
   try {
-    await retryDocument(adminToken.value, documentId)
-    message.success('已重置任务为待处理')
-    await reload()
+    const blob = await previewDocument(adminToken.value, row.id)
+    previewName.value = row.title
+    previewKind.value = kind
+    previewBlob.value = blob
+    previewText.value = kind === 'markdown' || kind === 'text' ? await blob.text() : ''
+    // markdown/text 内容即时可用；office 由组件 rendered/error 事件关闭 loading
+    if (kind === 'markdown' || kind === 'text') {
+      previewLoading.value = false
+    }
+    showPreviewModal.value = true
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '重试失败')
+    previewLoading.value = false
+    message.error(e instanceof Error ? e.message : '预览失败')
   }
 }
 
-function handleDelete(row: DocumentResponse) {
-  dialog.warning({
-    title: '删除确认',
-    content: `确认删除文档「${row.title}」（#${row.id}）？将同步清理其全部切片与向量。`,
-    positiveText: '删除',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await deleteDocument(adminToken.value, row.id)
-        message.success('文档已删除')
-        await reload()
-      } catch (e) {
-        message.error(e instanceof Error ? e.message : '删除失败')
-      }
+function closePreview() {
+  showPreviewModal.value = false
+  previewLoading.value = false
+  previewKind.value = null
+  previewBlob.value = null
+  previewText.value = ''
+}
+
+async function handleDownload(row: DocumentResponse) {
+  try {
+    const blob = await downloadDocument(adminToken.value, row.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = row.title || `document-${row.id}`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '下载失败')
+  }
+}
+
+async function handleReparse(row: DocumentResponse) {
+  try {
+    const requeued = await reparseDocument(adminToken.value, row.id)
+    if (requeued) {
+      message.success('已提交重新解析')
+      await reload()
+    } else {
+      message.info('该文档正在处理中，已跳过')
     }
-  })
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '重新解析失败')
+  }
+}
+
+async function deleteOne(row: DocumentResponse) {
+  try {
+    await deleteDocument(adminToken.value, row.id)
+    message.success('文档已删除')
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '删除失败')
+  }
+}
+
+function buildActions(row: DocumentResponse) {
+  const list = [
+    { key: 'preview', label: '预览', secondary: true, type: 'primary' as const, onClick: () => handlePreview(row) },
+    { key: 'download', label: '下载源文档', secondary: true, onClick: () => handleDownload(row) },
+    { key: 'reparse', label: '重新解析', secondary: true, disabled: row.status !== 3 && row.status !== 4, onClick: () => handleReparse(row) },
+    { key: 'chunks', label: '查看切片', secondary: true, onClick: () => emit('go-chunks', row.id) },
+    { key: 'delete', label: '删除', secondary: true, type: 'error' as const, confirm: `确认删除文档「${row.title}」？将同步清理其全部切片与向量。`, onClick: () => deleteOne(row) }
+  ]
+  // URL 导入无源文件，隐藏「下载源文档」
+  if (row.sourceType === 'URL') {
+    return list.filter((a) => a.key !== 'download')
+  }
+  return list
 }
 
 function onCheckedKeysChange(keys: Array<string | number>) {
@@ -374,16 +458,31 @@ onMounted(() => {
             <div class="muted">服务端抓取网页正文后按文档处理，同样走异步索引任务。</div>
           </div>
         </n-tab-pane>
-        <n-tab-pane name="cloud" tab="云存储" :disabled="true">
-          <div class="muted cloud-hint">
-            <n-icon :component="CloudUpload" style="margin-right: 6px" />OSS / S3（即将支持）
-          </div>
-        </n-tab-pane>
+<!--        <n-tab-pane name="cloud" tab="云存储" :disabled="true">-->
+<!--          <div class="muted cloud-hint">-->
+<!--            <n-icon :component="CloudUpload" style="margin-right: 6px" />OSS / S3（即将支持）-->
+<!--          </div>-->
+<!--        </n-tab-pane>-->
       </n-tabs>
       <template #footer>
         <n-space justify="end">
           <n-button @click="showImport = false">取消</n-button>
           <n-button type="primary" :loading="importing" :disabled="importMethod === 'cloud'" @click="doImport">导入</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <!-- 预览弹窗：pdf/docx 用 vue-office，markdown 用 vditor，text 用 monaco -->
+    <n-modal v-model:show="showPreviewModal" preset="card" :title="previewName" style="width: 80%" :bordered="false" @after-leave="closePreview">
+      <n-spin :show="previewLoading" description="文档加载中...">
+        <vue-office-pdf v-if="previewKind === 'pdf'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <vue-office-docx v-else-if="previewKind === 'docx'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <markdown-preview v-else-if="previewKind === 'markdown'" :content="previewText" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <monaco-text-view v-else-if="previewKind === 'text'" :content="previewText" :file-name="previewName" @rendered="previewLoading = false" @error="previewLoading = false" />
+      </n-spin>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="closePreview">关闭</n-button>
         </n-space>
       </template>
     </n-modal>
@@ -408,6 +507,17 @@ onMounted(() => {
   color: rgba(60, 60, 60, 0.85);
 }
 
+/* Naive 的 n-upload 及其 trigger 默认 inline-block，改为块级占满弹窗宽度 */
+.drop-zone {
+  display: block;
+  width: 100%;
+}
+
+.drop-zone :deep(.n-upload-trigger) {
+  display: block;
+  width: 100%;
+}
+
 .upload-box {
   border: 1px dashed #c8c8c8;
   border-radius: 8px;
@@ -419,6 +529,8 @@ onMounted(() => {
   gap: 8px;
   color: #333;
   cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .selected-file {

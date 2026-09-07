@@ -1,6 +1,9 @@
 package xin.v5ai.nb.rag.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,14 +19,18 @@ import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
+import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.bo.DocumentIdsBo;
 import xin.v5ai.nb.rag.domain.bo.ImportUrlBo;
 import xin.v5ai.nb.rag.domain.vo.DocumentBatchResultVo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
+import xin.v5ai.nb.rag.service.IKnowledgeDocumentService;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +47,7 @@ import java.util.Locale;
 public class KnowledgeDocumentController extends BaseController {
 
     private final IKnowledgeBaseService knowledgeBaseService;
+    private final IKnowledgeDocumentService documentService;
 
     @PostMapping(value = "/knowledge-bases/{kbId}/documents", consumes = "multipart/form-data")
     public R<KnowledgeDocumentVo> uploadDocument(
@@ -86,6 +94,31 @@ public class KnowledgeDocumentController extends BaseController {
         return R.ok();
     }
 
+    @PostMapping("/documents/{id}/reparse")
+    public R<Boolean> reparse(@PathVariable("id") Long id) {
+        return R.ok(knowledgeBaseService.reparseDocument(id));
+    }
+
+    @GetMapping("/documents/{id}/preview")
+    public ResponseEntity<byte[]> preview(@PathVariable("id") Long id) {
+        var document = requireDocument(id);
+        return ResponseEntity.ok()
+                .contentType(resolvePreviewMediaType(document.getFileType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                .body(contentOf(document));
+    }
+
+    @GetMapping("/documents/{id}/download")
+    public ResponseEntity<byte[]> download(@PathVariable("id") Long id) {
+        var document = requireDocument(id);
+        String encoded = URLEncoder.encode(resolveDownloadName(document), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(contentOf(document));
+    }
+
     @PostMapping("/documents/batch-reparse")
     public R<DocumentBatchResultVo> batchReparse(@RequestBody DocumentIdsBo bo) {
         var failures = new ArrayList<DocumentBatchResultVo.Failure>();
@@ -126,6 +159,50 @@ public class KnowledgeDocumentController extends BaseController {
 
     private static String reason(Exception exception) {
         return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
+    }
+
+    private KnowledgeDocument requireDocument(Long id) {
+        var document = documentService.findById(id);
+        if (document == null) {
+            throw new IllegalArgumentException("document does not exist: " + id);
+        }
+        return document;
+    }
+
+    private static byte[] contentOf(KnowledgeDocument document) {
+        var content = document.getContent();
+        return content == null ? new byte[0] : content;
+    }
+
+    private static MediaType resolvePreviewMediaType(String fileType) {
+        return switch (fileType == null ? "" : fileType.toUpperCase(Locale.ROOT)) {
+            case "PDF" -> MediaType.APPLICATION_PDF;
+            case "DOCX" -> MediaType.parseMediaType(
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            case "MARKDOWN" -> MediaType.parseMediaType("text/markdown");
+            case "TXT" -> MediaType.TEXT_PLAIN;
+            default -> MediaType.APPLICATION_OCTET_STREAM;
+        };
+    }
+
+    private static String resolveDownloadName(KnowledgeDocument document) {
+        String title = document.getTitle() == null || document.getTitle().isBlank()
+                ? "document" : document.getTitle().trim();
+        String extension = extensionOf(document.getFileType());
+        if (extension.isEmpty()) {
+            return title;
+        }
+        return title.toLowerCase(Locale.ROOT).endsWith(extension) ? title : title + extension;
+    }
+
+    private static String extensionOf(String fileType) {
+        return switch (fileType == null ? "" : fileType.toUpperCase(Locale.ROOT)) {
+            case "PDF" -> ".pdf";
+            case "DOCX" -> ".docx";
+            case "MARKDOWN" -> ".md";
+            case "TXT" -> ".txt";
+            default -> "";
+        };
     }
 
     private DocumentFileType detectFileType(String filename) {
