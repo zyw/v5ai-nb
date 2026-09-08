@@ -30,16 +30,16 @@ DELETE /api/admin/knowledge-bases/{id}        # 禁用
   "dedupStrategy": 2,
   "dedupAction": 0,
   "config": {
-    "chunkParams": { "mode": "length", "maxChunkTokens": 2000, "chunkOverlap": null, "mergeShortSegments": false },
+    "chunkParams": { "sliceStrategy": "length", "maxChunkLength": 2000, "chunkOverlap": null, "mergeShortSegments": false },
     "parseParams": { "engine": "default" }
   }
 }
 ```
 
 - 向量库实例 `category=1`、搜索引擎实例 `category=2`（启用混合检索时必填），由后端校验分类；
-- `config` 为 `RagConfigDO`（searchParams/modelParams/chunkParams/parseParams），切片模式
+- `config` 为 `RagConfigDO`（searchParams/modelParams/chunkParams/parseParams），切片策略
   length/delimiter/regex/smart；`delimiter` 列缺省 `\n\n`，去重策略/冲突动作缺省 2/0；
-- Worker 索引时按知识库 `config.chunkParams` 与 `delimiter` 执行切片：按长度/智能切片先按空行粗分段落，再对超长段落按最大长度切分（带重叠）；
+- Worker 索引时按知识库 `config.chunkParams` 与 `delimiter` 执行切片：每种切片策略由独立实现类负责一级切分（按长度/智能按空行粗分段落、按分隔符/正则按其规则），再经共享流水线按最大长度切分（带重叠）；
   智能切片接入对话模型时改由模型语义切分，调用失败回退段落切分。
 - **维度校验（保存时权威执行）**：`dimensionOfVectorModel` 须 ≤ `min(模型维度, 向量库上限)`；
   固定维度模型（config 未声明 `dimensionAdjustable=true`）的冻结维度必须等于模型输出维度，否则拒绝；

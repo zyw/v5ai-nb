@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.utils.ObjectUtils;
+import xin.v5ai.nb.rag.core.ChunkMode;
 import xin.v5ai.nb.rag.core.ChunkingOptions;
 import xin.v5ai.nb.rag.core.chunker.DocumentChunker;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
@@ -188,8 +189,9 @@ public class KnowledgeIndexingService {
         // 分隔符可能是纯空白（如 \n\n），不能用 isBlank 判空
         String customDelimiter = StrUtil.isEmpty(chunkParams.getCustomDelimiter())
                 ? base.getDelimiter() : chunkParams.getCustomDelimiter();
-        return new ChunkingOptions(chunkParams.getMode(), chunkParams.getMaxChunkTokens(),
-                chunkParams.getChunkOverlap(), customDelimiter, chunkParams.getChunkRegex(),
+        return new ChunkingOptions(ChunkMode.from(chunkParams.getSliceStrategy()),
+                chunkParams.getMaxChunkLength(), chunkParams.getChunkOverlap(),
+                customDelimiter, chunkParams.getChunkRegex(),
                 Boolean.TRUE.equals(chunkParams.getMergeShortSegments()));
     }
 

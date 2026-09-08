@@ -207,7 +207,7 @@ class KnowledgeBaseServiceImplTest {
         seedStore(1L, "pg", 1, 1);
         var bo = validBo("Docs", 11L, 1L, 1536);
         var chunkParams = RagConfigDO.ChunkParams.builder()
-                .mode("delimiter").maxChunkTokens(2000).chunkOverlap(100)
+                .sliceStrategy("delimiter").maxChunkLength(2000).chunkOverlap(100)
                 .customDelimiter("\n\n").mergeShortSegments(true).build();
         bo.setConfig(RagConfigDO.builder()
                 .chunkParams(chunkParams)
@@ -217,8 +217,8 @@ class KnowledgeBaseServiceImplTest {
         var created = service.createKnowledgeBase(bo);
 
         assertThat(created.getConfig()).isNotNull();
-        assertThat(created.getConfig().getChunkParams().getMode()).isEqualTo("delimiter");
-        assertThat(created.getConfig().getChunkParams().getMaxChunkTokens()).isEqualTo(2000);
+        assertThat(created.getConfig().getChunkParams().getSliceStrategy()).isEqualTo("delimiter");
+        assertThat(created.getConfig().getChunkParams().getMaxChunkLength()).isEqualTo(2000);
         assertThat(created.getConfig().getParseParams().getEngine()).isEqualTo("docling");
     }
 
@@ -277,12 +277,12 @@ class KnowledgeBaseServiceImplTest {
         seedStore(1L, "pg", 1, 1);
         var bo = validBo("Docs", 11L, 1L, 1536);
         bo.setConfig(RagConfigDO.builder()
-                .chunkParams(RagConfigDO.ChunkParams.builder().mode("bogus").build())
+                .chunkParams(RagConfigDO.ChunkParams.builder().sliceStrategy("bogus").build())
                 .build());
 
         assertThatThrownBy(() -> service.createKnowledgeBase(bo))
                 .isInstanceOf(ServiceException.class)
-                .hasMessageContaining("切片模式不合法");
+                .hasMessageContaining("切片策略不合法");
     }
 
     @Test
@@ -292,7 +292,7 @@ class KnowledgeBaseServiceImplTest {
         var bo = validBo("renamed", 12L, 1L, 768);
         bo.setId(1L);
         bo.setConfig(RagConfigDO.builder()
-                .chunkParams(RagConfigDO.ChunkParams.builder().mode("length").maxChunkTokens(600).build())
+                .chunkParams(RagConfigDO.ChunkParams.builder().sliceStrategy("length").maxChunkLength(600).build())
                 .build());
 
         var updated = service.updateKnowledgeBase(bo);
@@ -300,7 +300,7 @@ class KnowledgeBaseServiceImplTest {
         assertThat(updated.getName()).isEqualTo("renamed");
         assertThat(updated.getEmbeddingModelId()).isEqualTo(12L);
         assertThat(updated.getDimensionOfVectorModel()).isEqualTo(768);
-        assertThat(updated.getConfig().getChunkParams().getMaxChunkTokens()).isEqualTo(600);
+        assertThat(updated.getConfig().getChunkParams().getMaxChunkLength()).isEqualTo(600);
         assertThat(updated.getStatus()).isEqualTo("ACTIVE");
     }
 

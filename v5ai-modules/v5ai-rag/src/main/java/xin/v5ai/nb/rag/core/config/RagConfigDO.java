@@ -115,27 +115,27 @@ public class RagConfigDO {
     @AllArgsConstructor
     public static class ChunkParams {
         /**
-         * length | delimiter | regex | smart
+         * 切片策略：length | delimiter | regex | smart
          */
-        private String mode;
+        private String sliceStrategy;
         /**
-         * 单片段最大 token/字符量级（与 recursive splitter 一致）
+         * 单片段最大字符数
          */
-        private Integer maxChunkTokens;
+        private Integer maxChunkLength;
         /**
          * 重叠部分的 token/字符量级
          */
         private Integer chunkOverlap;
         /**
-         * mode=delimiter 时作为一级切分符
+         * sliceStrategy=delimiter 时作为一级切分符
          */
         private String customDelimiter;
         /**
-         * mode=regex 时的一级切分正则（Java Pattern）
+         * sliceStrategy=regex 时的一级切分正则（Java Pattern）
          */
         private String chunkRegex;
         /**
-         * mode=smart 时用于语义切片的对话模型配置 ID
+         * sliceStrategy=smart 时用于语义切片的对话模型配置 ID
          */
         private Long chunkModelId;
         /**

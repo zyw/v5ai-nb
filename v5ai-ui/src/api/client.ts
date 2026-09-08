@@ -216,8 +216,8 @@ export interface KnowledgeBaseResponse {
 }
 
 export interface RagChunkParams {
-  mode?: 'length' | 'delimiter' | 'regex' | 'smart'
-  maxChunkTokens?: number
+  sliceStrategy?: 'length' | 'delimiter' | 'regex' | 'smart'
+  maxChunkLength?: number
   chunkOverlap?: number
   customDelimiter?: string
   chunkRegex?: string

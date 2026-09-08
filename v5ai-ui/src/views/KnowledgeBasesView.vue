@@ -81,7 +81,7 @@ const searchEngines = ref<StoreInstanceResponse[]>([])
 const chatModels = ref<OptionResponse[]>([])
 const capability = ref<DimensionCheckResponse>()
 
-type ChunkMode = 'length' | 'delimiter' | 'regex' | 'smart'
+type SliceStrategy = 'length' | 'delimiter' | 'regex' | 'smart'
 
 const form = reactive({
   id: null as number | null,
@@ -94,8 +94,8 @@ const form = reactive({
   searchEngineInstanceId: null as number | null,
   dedupStrategy: 2,
   dedupAction: 0,
-  chunkMode: 'length' as ChunkMode,
-  maxChunkTokens: 2000,
+  sliceStrategy: 'length' as SliceStrategy,
+  maxChunkLength: 2000,
   chunkOverlap: null as number | null,
   chunkRegex: '',
   chunkModelId: null as number | null,
@@ -117,7 +117,7 @@ const dedupActionOptions = [
   { label: '覆盖（替换旧文档）', value: 2 }
 ]
 
-const chunkModeOptions: { label: string; value: ChunkMode, describe: string }[] = [
+const sliceStrategyOptions: { label: string; value: SliceStrategy, describe: string }[] = [
   { label: '按长度切片', value: 'length', describe: '可配置切片最大长度（字符数）、片段重叠等；先按空行粗分段落，再对超长段落按最大长度切分（带重叠），短段落保持独立。' },
   { label: '按分隔符', value: 'delimiter', describe: '先按所选分隔符做一级切分，再按下方「按长度切片」同款的最大长度与重叠做递归切分（与旧版 delimiter 行为一致）。' },
   { label: '正则切片', value: 'regex', describe: '使用 Java 正则对全文做一级切分（Pattern 语法），再对每个片段按最大长度递归切分。请谨慎编写正则，避免过度切分或性能问题。' },
@@ -200,8 +200,8 @@ function renderDelimiterLabel(option: SelectOption) {
 const quickMaxTokens = [200, 600, 1000, 2000]
 
 /** 列表列使用的切片策略文案（未知值原样显示）。 */
-function chunkModeLabel(mode?: string): string {
-  return chunkModeOptions.find((o) => o.value === mode)?.label ?? mode ?? '—'
+function sliceStrategyLabel(strategy?: string): string {
+  return sliceStrategyOptions.find((o) => o.value === strategy)?.label ?? strategy ?? '—'
 }
 
 function vectorStoreOptions() {
@@ -264,8 +264,8 @@ function resetForm() {
   form.searchEngineInstanceId = null
   form.dedupStrategy = 2
   form.dedupAction = 0
-  form.chunkMode = 'length'
-  form.maxChunkTokens = 2000
+  form.sliceStrategy = 'length'
+  form.maxChunkLength = 2000
   form.chunkOverlap = null
   selectedDelimiters.value = ['\n\n']
   form.chunkRegex = ''
@@ -293,8 +293,8 @@ function openEdit(kb: KnowledgeBaseResponse) {
   form.dedupStrategy = kb.dedupStrategy ?? 2
   form.dedupAction = kb.dedupAction ?? 0
   const chunk = kb.config?.chunkParams
-  form.chunkMode = chunk?.mode ?? 'length'
-  form.maxChunkTokens = chunk?.maxChunkTokens ?? 2000
+  form.sliceStrategy = chunk?.sliceStrategy ?? 'length'
+  form.maxChunkLength = chunk?.maxChunkLength ?? 2000
   form.chunkOverlap = chunk?.chunkOverlap ?? null
   selectedDelimiters.value = parseDelimiters(chunk?.customDelimiter)
   form.chunkRegex = chunk?.chunkRegex ?? ''
@@ -313,15 +313,15 @@ function openEdit(kb: KnowledgeBaseResponse) {
 
 function buildRequest(): CreateKnowledgeBaseRequest {
   const chunkParams: NonNullable<RagConfig['chunkParams']> = {
-    mode: form.chunkMode,
-    maxChunkTokens: form.maxChunkTokens,
+    sliceStrategy: form.sliceStrategy,
+    maxChunkLength: form.maxChunkLength,
     chunkOverlap: form.chunkOverlap ?? undefined,
     mergeShortSegments: form.mergeShortSegments,
     imageOcr: form.parseEngine === 'docling' && form.docling.imageOcr ? true : undefined
   }
-  if (form.chunkMode === 'delimiter') chunkParams.customDelimiter = JSON.stringify(selectedDelimiters.value)
-  if (form.chunkMode === 'regex') chunkParams.chunkRegex = form.chunkRegex
-  if (form.chunkMode === 'smart') chunkParams.chunkModelId = form.chunkModelId ?? undefined
+  if (form.sliceStrategy === 'delimiter') chunkParams.customDelimiter = JSON.stringify(selectedDelimiters.value)
+  if (form.sliceStrategy === 'regex') chunkParams.chunkRegex = form.chunkRegex
+  if (form.sliceStrategy === 'smart') chunkParams.chunkModelId = form.chunkModelId ?? undefined
   const parseParams: NonNullable<RagConfig['parseParams']> = { engine: form.parseEngine }
   if (form.parseEngine === 'docling') {
     parseParams.docling = {
@@ -358,15 +358,15 @@ async function handleSaveKb() {
     message.warning('请选择搜索引擎实例')
     return
   }
-  if (form.chunkMode === 'delimiter' && selectedDelimiters.value.length === 0) {
+  if (form.sliceStrategy === 'delimiter' && selectedDelimiters.value.length === 0) {
     message.warning('请选择至少一个分隔符')
     return
   }
-  if (form.chunkMode === 'regex' && !form.chunkRegex.trim()) {
+  if (form.sliceStrategy === 'regex' && !form.chunkRegex.trim()) {
     message.warning('请配置一级切分正则')
     return
   }
-  if (form.chunkMode === 'smart' && form.chunkModelId == null) {
+  if (form.sliceStrategy === 'smart' && form.chunkModelId == null) {
     message.warning('请选择用于语义切片的对话模型')
     return
   }
@@ -407,7 +407,7 @@ const kbColumns: DataTableColumns<KnowledgeBaseResponse> = [
   { title: '描述', key: 'description',width: 180, ellipsis: { tooltip: true } },
   { title: '文档数', key: 'docCount', width: 80, render: (row) => row.docCount ?? 0 },
   { title: '切片数', key: 'chunkCount', width: 80, render: (row) => row.chunkCount ?? 0 },
-  { title: '切片策略', key: 'chunkMode', width: 110, render: (row) => chunkModeLabel(row.config?.chunkParams?.mode) },
+  { title: '切片策略', key: 'sliceStrategy', width: 110, render: (row) => sliceStrategyLabel(row.config?.chunkParams?.sliceStrategy) },
   { title: '向量维度', key: 'dimensionOfVectorModel', width: 100, render: (row) => row.dimensionOfVectorModel ?? '—' },
   {
     title: '状态',
@@ -653,13 +653,13 @@ onMounted(() => {
         <div class="form-section">
           <div class="section-title">切片策略</div>
           <div class="muted section-hint">选择文档如何被拆成向量片段；可随时在后台调整（需重新解析文档后生效）。</div>
-          <n-tabs v-model:value="form.chunkMode" type="line" animated>
-            <n-tab-pane v-for="opt in chunkModeOptions" :key="opt.value" :name="opt.value" :tab="opt.label">
+          <n-tabs v-model:value="form.sliceStrategy" type="line" animated>
+            <n-tab-pane v-for="opt in sliceStrategyOptions" :key="opt.value" :name="opt.value" :tab="opt.label">
               <n-alert type="info" style="margin-bottom: 10px;">
                 {{ opt.describe }}
               </n-alert>
               <n-form label-placement="top">
-                <n-form-item v-if="form.chunkMode === 'delimiter'" label="分隔符">
+                <n-form-item v-if="form.sliceStrategy === 'delimiter'" label="分隔符">
                   <n-select
                       v-model:value="selectedDelimiters"
                       :options="delimiterSelectOptions"
@@ -674,18 +674,18 @@ onMounted(() => {
                   />
                   <span class="muted" style="margin-left: 8px">一级切分按所选符号拆分；后续递归切片使用下方最大长度与重叠</span>
                 </n-form-item>
-                <n-form-item v-if="form.chunkMode === 'regex'" label="一级切分正则">
+                <n-form-item v-if="form.sliceStrategy === 'regex'" label="一级切分正则">
                   <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法" type="textarea" :maxlength="2048" show-count :autosize="{ minRows: 3, maxRows: 4 }" style="width: 60%" />
                   <span class="muted" style="margin-left: 8px">全文将按该正则 split 得到多段，再对每段做最大长度递归切分。</span>
                 </n-form-item>
-                <n-form-item v-if="form.chunkMode === 'smart'" label="对话模型">
+                <n-form-item v-if="form.sliceStrategy === 'smart'" label="对话模型">
                   <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable class="chunk-inp" />
                   <span class="muted" style="margin-left: 8px">模型将输出 JSON 字符串数组；调用失败时回退为按段落切分</span>
                 </n-form-item>
                 <n-form-item label="切片最大长度">
-                  <n-input-number v-model:value="form.maxChunkTokens" :min="1" class="chunk-inp" />
+                  <n-input-number v-model:value="form.maxChunkLength" :min="1" class="chunk-inp" />
                   <n-space :size="6" style="margin-left: 10px">
-                    <n-button v-for="v in quickMaxTokens" :key="v" size="tiny" quaternary :type="form.maxChunkTokens === v ? 'primary' : 'default'" @click="form.maxChunkTokens = v">
+                    <n-button v-for="v in quickMaxTokens" :key="v" size="tiny" quaternary :type="form.maxChunkLength === v ? 'primary' : 'default'" @click="form.maxChunkLength = v">
                       {{ v }}
                     </n-button>
                   </n-space>
@@ -695,7 +695,7 @@ onMounted(() => {
                   <n-input-number v-model:value="form.chunkOverlap" :min="0" placeholder="留空" class="chunk-inp" />
                   <span class="muted" style="margin-left: 8px">留空则使用服务端默认</span>
                 </n-form-item>
-                <n-form-item v-if="form.chunkMode === 'length'" label="合并短文本片">
+                <n-form-item v-if="form.sliceStrategy === 'length'" label="合并短文本片">
                   <n-switch v-model:value="form.mergeShortSegments" />
                 </n-form-item>
               </n-form>

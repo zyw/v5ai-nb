@@ -16,6 +16,7 @@ import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.rag.core.ChunkMode;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
@@ -42,7 +43,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -107,8 +107,6 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
      * 冲突动作默认值: 0=REJECT
      */
     private static final int DEFAULT_DEDUP_ACTION = 0;
-
-    private static final Set<String> CHUNK_MODES = Set.of("length", "delimiter", "regex", "smart");
 
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final KnowledgeDocumentMapper documentMapper;
@@ -560,16 +558,16 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
      * 校验切片参数：模式取值、必填项与正则合法性。
      */
     private void validateChunkParams(RagConfigDO.ChunkParams chunkParams) {
-        if (chunkParams.getMaxChunkTokens() != null && chunkParams.getMaxChunkTokens() <= 0) {
+        if (chunkParams.getMaxChunkLength() != null && chunkParams.getMaxChunkLength() <= 0) {
             throw new ServiceException("切片最大长度必须大于 0");
         }
         if (chunkParams.getChunkOverlap() != null && chunkParams.getChunkOverlap() < 0) {
             throw new ServiceException("片段重叠不能为负数");
         }
-        String mode = chunkParams.getMode() == null ? "" : chunkParams.getMode().trim().toLowerCase();
-        if (!CHUNK_MODES.contains(mode)) {
-            throw new ServiceException("切片模式不合法: length/delimiter/regex/smart");
+        if (ChunkMode.from(chunkParams.getSliceStrategy()) == null) {
+            throw new ServiceException("切片策略不合法: length/delimiter/regex/smart");
         }
+        String mode = chunkParams.getSliceStrategy().trim().toLowerCase();
         if ("delimiter".equals(mode) && StrUtil.isEmpty(chunkParams.getCustomDelimiter())) {
             throw new ServiceException("按分隔符切片必须配置分隔符");
         }
