@@ -65,13 +65,16 @@ public interface IKnowledgeBaseService {
     void deleteKnowledgeBase(Long id);
 
     /**
-     * 上传文档：落库文档行（来源 UPLOAD，含原始内容/大小/SHA-256）并提交一个 PENDING 索引任务。
+     * 上传文档：落库文档行（源文件写入资源存储，BYTEA 不写）并提交一个 PENDING 索引任务。
+     *
+     * @param originalFilename 原始文件名（用于资源存储 original_name 与扩展名/去重）
+     * @param contentType      MIME 类型（写入资源存储）
      */
-    KnowledgeDocumentVo uploadDocument(Long knowledgeBaseId, String title, DocumentFileType fileType,
-                                       byte[] content);
+    KnowledgeDocumentVo uploadDocument(Long knowledgeBaseId, String title, String originalFilename,
+                                       DocumentFileType fileType, byte[] content, String contentType);
 
     /**
-     * URL 导入：抓取网页内容后按 URL 类型文档处理。
+     * URL 导入：抓取网页内容后按 URL 类型文档处理（内容写入资源存储，BYTEA 不写）。
      */
     KnowledgeDocumentVo importUrl(Long knowledgeBaseId, String title, String url);
 

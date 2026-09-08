@@ -7,6 +7,7 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
 import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -50,6 +52,7 @@ class KnowledgeBaseServiceImplTest {
     private final List<StoreInstance> stores = new ArrayList<>();
 
     private KnowledgeBaseServiceImpl service;
+    private ResourceContentPort resourceContentPort;
 
     @BeforeEach
     void setUp() {
@@ -76,6 +79,9 @@ class KnowledgeBaseServiceImplTest {
                 mock(xin.v5ai.nb.rag.service.IKnowledgeChunkService.class);
         xin.v5ai.nb.rag.core.VectorDimensionService vectorDimensionService =
                 mock(xin.v5ai.nb.rag.core.VectorDimensionService.class);
+        ResourceContentPort resourceContentPort = mock(ResourceContentPort.class);
+        this.resourceContentPort = resourceContentPort;
+        when(resourceContentPort.save(any(), any(byte[].class), any(), any(), any())).thenReturn(123L);
 
         when(knowledgeBaseMapper.selectById(any())).thenAnswer(inv -> findById(knowledgeBases, inv.getArgument(0)));
         when(knowledgeBaseMapper.selectList(any(Wrapper.class))).thenAnswer(inv -> new ArrayList<>(knowledgeBases));
@@ -116,6 +122,15 @@ class KnowledgeBaseServiceImplTest {
             return 1;
         }).when(documentMapper).insert(any(KnowledgeDocument.class));
         when(documentMapper.selectById(any())).thenAnswer(inv -> findById(documents, inv.getArgument(0)));
+        doAnswer(inv -> {
+            KnowledgeDocument update = inv.getArgument(0, KnowledgeDocument.class);
+            documents.stream().filter(d -> d.getId().equals(update.getId())).forEach(d -> {
+                if (update.getResourceId() != null) {
+                    d.setResourceId(update.getResourceId());
+                }
+            });
+            return 1;
+        }).when(documentMapper).updateById(any(KnowledgeDocument.class));
 
         doAnswer(inv -> {
             var task = inv.getArgument(0, KnowledgeTask.class);
@@ -149,7 +164,7 @@ class KnowledgeBaseServiceImplTest {
 
         service = new KnowledgeBaseServiceImpl(knowledgeBaseMapper, documentMapper, taskMapper,
                 bindingMapper, storeInstanceMapper, chunkMapper, vectorStoreResolver, urlFetcher,
-                chunkService, vectorDimensionService);
+                chunkService, vectorDimensionService, resourceContentPort);
     }
 
     @Test
@@ -324,18 +339,22 @@ class KnowledgeBaseServiceImplTest {
     @Test
     void uploadDocumentStoresRowAndSubmitsPendingTask() {
         seedKnowledgeBase(1L, "docs", "ACTIVE");
+        var bytes = "hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-        var document = service.uploadDocument(1L, "guide.md", DocumentFileType.MARKDOWN,
-                "hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var document = service.uploadDocument(1L, "guide.md", "guide.md", DocumentFileType.MARKDOWN,
+                bytes, "text/markdown");
 
         assertThat(document.getId()).isEqualTo(10L);
         assertThat(document.getStatus()).isEqualTo(0);
         assertThat(document.getSourceType()).isEqualTo("UPLOAD");
         assertThat(document.getFileType()).isEqualTo("MARKDOWN");
-        assertThat(document.getFileSize()).isEqualTo("hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+        assertThat(document.getFileSize()).isEqualTo(bytes.length);
         assertThat(document.getContentHash()).isEqualTo(
                 "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
-        assertThat(documents.get(0).getContent()).isEqualTo("hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        // BYTEA 不再写入源文件；源文件写入资源存储并回填 resource_id
+        assertThat(documents.get(0).getContent()).isNull();
+        assertThat(documents.get(0).getResourceId()).isEqualTo(123L);
+        verify(resourceContentPort).save("guide.md", bytes, "text/markdown", "DOCUMENT", 10L);
         assertThat(tasks).hasSize(1);
         assertThat(tasks.get(0).getStatus()).isEqualTo("PENDING");
         assertThat(tasks.get(0).getTaskType()).isEqualTo("PARSE_AND_INDEX");
@@ -345,16 +364,16 @@ class KnowledgeBaseServiceImplTest {
 
     @Test
     void uploadDocumentRejectsUnknownKnowledgeBase() {
-        assertThatThrownBy(() -> service.uploadDocument(99L, "a.txt", DocumentFileType.TXT,
-                new byte[]{1}))
+        assertThatThrownBy(() -> service.uploadDocument(99L, "a.txt", "a.txt", DocumentFileType.TXT,
+                new byte[]{1}, "text/plain"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("knowledge base does not exist");
     }
 
     @Test
     void uploadDocumentWithLegacySnowflakeIdIncludesMigrationHint() {
-        assertThatThrownBy(() -> service.uploadDocument(2088154694704398300L, "a.txt", DocumentFileType.TXT,
-                new byte[]{1}))
+        assertThatThrownBy(() -> service.uploadDocument(2088154694704398300L, "a.txt", "a.txt", DocumentFileType.TXT,
+                new byte[]{1}, "text/plain"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("knowledge base does not exist")
                 .hasMessageContaining("JavaScript 安全整数");
@@ -369,7 +388,11 @@ class KnowledgeBaseServiceImplTest {
         assertThat(document.getTitle()).isEqualTo("https://example.com/doc");
         assertThat(document.getFileType()).isEqualTo("URL");
         assertThat(document.getSourceType()).isEqualTo("URL");
-        assertThat(documents.get(0).getContent()).isEqualTo("hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        // BYTEA 不写；内容以 .html 资源写入资源存储
+        assertThat(documents.get(0).getContent()).isNull();
+        assertThat(documents.get(0).getResourceId()).isEqualTo(123L);
+        verify(resourceContentPort).save("https://example.com/doc.html",
+                "hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8), "text/html", "DOCUMENT", 10L);
     }
 
     @Test

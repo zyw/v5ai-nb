@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.exception.ServiceException;
+import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
@@ -74,9 +75,9 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     private static final String SOURCE_TYPE_URL = "URL";
 
     /**
-     * 文档存储类型: 本地
+     * 源文件资源业务类型: DOCUMENT（写入 plm_resource）
      */
-    private static final String STORAGE_TYPE_LOCAL = "LOCAL";
+    private static final String RESOURCE_BIZ_TYPE_DOCUMENT = "DOCUMENT";
 
     /**
      * 文档索引状态: 0-待处理
@@ -120,6 +121,7 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     private final UrlContentFetcher urlContentFetcher;
     private final xin.v5ai.nb.rag.service.IKnowledgeChunkService chunkService;
     private final xin.v5ai.nb.rag.core.VectorDimensionService vectorDimensionService;
+    private final ResourceContentPort resourceContentPort;
 
     @Override
     public PageResult<KnowledgeBaseVo> queryPageList(KnowledgeBaseBo bo, PageQuery pageQuery) {
@@ -284,6 +286,8 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
                     }
                 }
             }
+            // 源文件存资源存储：知识库级联删除时同步清理关联资源（幂等、失败不阻断）
+            deleteLinkedResourceQuietly(document.getResourceId());
         }
         // 2) 清理索引任务与绑定、文档行，最后删知识库本体
         taskMapper.delete(new LambdaQueryWrapper<KnowledgeTask>()
@@ -297,9 +301,11 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public KnowledgeDocumentVo uploadDocument(Long knowledgeBaseId, String title, DocumentFileType fileType,
-                                              byte[] content) {
-        return createDocument(knowledgeBaseId, title, fileType, content, SOURCE_TYPE_UPLOAD);
+    public KnowledgeDocumentVo uploadDocument(Long knowledgeBaseId, String title, String originalFilename,
+                                              DocumentFileType fileType, byte[] content, String contentType) {
+        return createResourceBackedDocument(knowledgeBaseId, title,
+                StrUtil.isBlank(originalFilename) ? title : originalFilename,
+                fileType, SOURCE_TYPE_UPLOAD, contentType, content);
     }
 
     @Override
@@ -309,17 +315,21 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("url is required");
         }
-        var content = urlContentFetcher.fetch(url);
-        return createDocument(knowledgeBaseId,
-                title == null || title.isBlank() ? url : title,
-                DocumentFileType.URL, content.getBytes(StandardCharsets.UTF_8), SOURCE_TYPE_URL);
+        var text = urlContentFetcher.fetch(url);
+        var resolvedTitle = title == null || title.isBlank() ? url : title;
+        var bytes = text.getBytes(StandardCharsets.UTF_8);
+        return createResourceBackedDocument(knowledgeBaseId, resolvedTitle,
+                resolveUrlResourceName(resolvedTitle),
+                DocumentFileType.URL, SOURCE_TYPE_URL, "text/html", bytes);
     }
 
     /**
-     * 落库文档行（含原始内容/大小/SHA-256）并提交一个 PENDING 索引任务。
+     * 落库文档行（BYTEA 不再写入源文件）→ 提交 PENDING 任务 → 源文件写入资源存储（DOCUMENT）→ 回填 resource_id。
+     * 资源写入失败抛异常，由调用方 {@code @Transactional} 回滚文档行与任务。
      */
-    private KnowledgeDocumentVo createDocument(Long knowledgeBaseId, String title, DocumentFileType fileType,
-                                               byte[] content, String sourceType) {
+    private KnowledgeDocumentVo createResourceBackedDocument(Long knowledgeBaseId, String title, String resourceName,
+                                                             DocumentFileType fileType, String sourceType,
+                                                             String contentType, byte[] content) {
         requireKnowledgeBase(knowledgeBaseId);
         if (title == null || title.isBlank() || content == null || content.length == 0) {
             throw new IllegalArgumentException("document title and content are required");
@@ -330,13 +340,27 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         document.setFileType(fileType.name());
         document.setSourceType(sourceType);
         document.setStatus(DOC_STATUS_PENDING);
-        document.setContent(content);
-        document.setStorageType(STORAGE_TYPE_LOCAL);
         document.setFileSize((long) content.length);
         document.setContentHash(sha256Hex(content));
         documentMapper.insert(document);
         submitIndexTask(document);
+        Long resourceId = resourceContentPort.save(resourceName, content, contentType,
+                RESOURCE_BIZ_TYPE_DOCUMENT, document.getId());
+        var update = new KnowledgeDocument();
+        update.setId(document.getId());
+        update.setResourceId(resourceId);
+        documentMapper.updateById(update);
+        document.setResourceId(resourceId);
         return toDocumentVo(document);
+    }
+
+    /**
+     * URL 文档源文件文件名：以标题为名、缺省补 .html 后缀（网页文档）。
+     */
+    private static String resolveUrlResourceName(String title) {
+        String base = StrUtil.isBlank(title) ? "document" : title;
+        String lower = base.toLowerCase(java.util.Locale.ROOT);
+        return lower.endsWith(".html") || lower.endsWith(".htm") ? base : base + ".html";
     }
 
     /**
@@ -390,6 +414,17 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         taskMapper.delete(new LambdaQueryWrapper<KnowledgeTask>()
                 .eq(KnowledgeTask::getDocumentId, documentId));
         documentMapper.deleteById(documentId);
+        deleteLinkedResourceQuietly(document.getResourceId());
+    }
+
+    /**
+     * 删除文档关联的源文件资源（幂等、尽力而为：{@link ResourceContentPort#delete} 内部吞异常，不阻断文档删除）。
+     */
+    private void deleteLinkedResourceQuietly(Long resourceId) {
+        if (resourceId == null) {
+            return;
+        }
+        resourceContentPort.delete(resourceId);
     }
 
     @Override

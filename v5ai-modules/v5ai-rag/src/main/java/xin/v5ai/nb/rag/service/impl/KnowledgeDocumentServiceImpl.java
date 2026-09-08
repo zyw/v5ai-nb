@@ -3,6 +3,7 @@ package xin.v5ai.nb.rag.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.rag.core.KnowledgeDocumentContentStore;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.mapper.KnowledgeDocumentMapper;
@@ -22,6 +23,7 @@ import java.util.List;
 public class KnowledgeDocumentServiceImpl implements IKnowledgeDocumentService, KnowledgeDocumentContentStore {
 
     private final KnowledgeDocumentMapper baseMapper;
+    private final ResourceContentPort resourceContentPort;
 
     @Override
     public KnowledgeDocument save(KnowledgeDocument document) {
@@ -53,7 +55,14 @@ public class KnowledgeDocumentServiceImpl implements IKnowledgeDocumentService, 
     @Override
     public byte[] loadContent(Long documentId) {
         var document = baseMapper.selectById(documentId);
-        return document == null ? new byte[0] : document.getContent();
+        if (document == null) {
+            return new byte[0];
+        }
+        // 新上传/URL 导入的源文件统一存资源存储（resource_id 指向）；BYTEA 列仅作存量兜底
+        if (document.getResourceId() != null) {
+            return resourceContentPort.read(document.getResourceId()).bytes();
+        }
+        return document.getContent();
     }
 
     @Override
