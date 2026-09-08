@@ -3,7 +3,7 @@
  * 知识库详情页「原始文档」tab：库内文档管理。
  * 行操作：预览（pdf/docx/md/txt）、下载源文档、重新解析、查看切片、删除；支持多选批量操作。
  */
-import { defineAsyncComponent, h, onMounted, reactive, ref, watch } from 'vue'
+import { defineAsyncComponent, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   NButton,
   NDataTable,
@@ -354,8 +354,8 @@ async function handleBatchDelete() {
   })
 }
 
-async function reload() {
-  loading.value = true
+async function reload(silent = false) {
+  if (!silent) loading.value = true
   try {
     const rows = await listDocuments(adminToken.value, props.kbId, {
       pageNum: pagination.page,
@@ -364,9 +364,35 @@ async function reload() {
     documents.value = rows.rows
     pagination.itemCount = rows.total
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '加载文档失败')
+    if (!silent) message.error(e instanceof Error ? e.message : '加载文档失败')
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
+    syncPolling()
+  }
+}
+
+// ---- 定时刷新：当前页存在进行中（0待处理/1解析中/2处理中）时每 5s 静默刷新；全终态则停 ----
+const POLL_INTERVAL_MS = 5_000
+let pollTimer: number | null = null
+
+function hasInFlight(): boolean {
+  return documents.value.some((d) => d.status === 0 || d.status === 1 || d.status === 2)
+}
+
+function stopPolling() {
+  if (pollTimer != null) {
+    window.clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function syncPolling() {
+  if (props.active && hasInFlight()) {
+    if (pollTimer == null) {
+      pollTimer = window.setInterval(() => void reload(true), POLL_INTERVAL_MS)
+    }
+  } else {
+    stopPolling()
   }
 }
 
@@ -374,12 +400,15 @@ watch(
   () => props.active,
   (active) => {
     if (active) void reload()
+    else stopPolling()
   }
 )
 
 onMounted(() => {
   if (props.active) void reload()
 })
+
+onBeforeUnmount(stopPolling)
 </script>
 
 <template>

@@ -128,6 +128,9 @@ class KnowledgeBaseServiceImplTest {
                 if (update.getResourceId() != null) {
                     d.setResourceId(update.getResourceId());
                 }
+                if (update.getStatus() != null) {
+                    d.setStatus(update.getStatus());
+                }
             });
             return 1;
         }).when(documentMapper).updateById(any(KnowledgeDocument.class));
@@ -139,6 +142,7 @@ class KnowledgeBaseServiceImplTest {
             return 1;
         }).when(taskMapper).insert(any(KnowledgeTask.class));
         when(taskMapper.selectById(any())).thenAnswer(inv -> findById(tasks, inv.getArgument(0)));
+        when(taskMapper.selectList(any(Wrapper.class))).thenAnswer(inv -> new ArrayList<>(tasks));
         doAnswer(inv -> {
             KnowledgeTask update = inv.getArgument(0, KnowledgeTask.class);
             tasks.stream().filter(t -> t.getId().equals(update.getId())).forEach(t -> {
@@ -418,6 +422,42 @@ class KnowledgeBaseServiceImplTest {
         assertThatThrownBy(() -> service.retryTask(99L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("task does not exist");
+    }
+
+    @Test
+    void reparseDocumentResetsDocumentStatusToPendingAndRequeuesTask() {
+        var document = new KnowledgeDocument();
+        document.setId(10L);
+        document.setKnowledgeBaseId(1L);
+        document.setStatus(3);
+        documents.add(document);
+        var task = new KnowledgeTask();
+        task.setId(7L);
+        task.setKnowledgeBaseId(1L);
+        task.setDocumentId(10L);
+        task.setTaskType("PARSE_AND_INDEX");
+        task.setStatus("COMPLETED");
+        tasks.add(task);
+
+        boolean result = service.reparseDocument(10L);
+
+        assertThat(result).isTrue();
+        assertThat(documents.get(0).getStatus()).isEqualTo(0);
+        assertThat(tasks.get(0).getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void reparseDocumentSkipsInFlightDocument() {
+        var document = new KnowledgeDocument();
+        document.setId(10L);
+        document.setKnowledgeBaseId(1L);
+        document.setStatus(1);
+        documents.add(document);
+
+        boolean result = service.reparseDocument(10L);
+
+        assertThat(result).isFalse();
+        assertThat(documents.get(0).getStatus()).isEqualTo(1);
     }
 
     @Test

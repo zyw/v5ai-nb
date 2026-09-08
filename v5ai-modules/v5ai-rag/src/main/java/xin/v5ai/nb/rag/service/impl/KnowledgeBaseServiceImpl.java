@@ -452,19 +452,25 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean reparseDocument(Long documentId) {
         KnowledgeDocument document = documentMapper.selectById(documentId);
         if (document == null) {
             throw new IllegalArgumentException("document does not exist: " + documentId);
         }
         Integer status = document.getStatus();
-        // 0待处理/1解析中/2处理中：跳过（已在队列或进行中，避免竞态）；3完成/4失败：重置任务重跑
+        // 0待处理/1解析中/2处理中：跳过（已在队列或进行中，避免竞态）；3完成/4失败：重置任务并回置状态后重跑
         if (status == null || status < 3) {
             return false;
         }
         for (KnowledgeTaskVo task : listTasksByDocument(documentId)) {
             retryTask(task.getId());
         }
+        // 文档状态同步回置为「待处理」，使前端重新解析后立即反映排队状态（Worker 启动后再推进解析状态）
+        var docUpdate = new KnowledgeDocument();
+        docUpdate.setId(documentId);
+        docUpdate.setStatus(DOC_STATUS_PENDING);
+        documentMapper.updateById(docUpdate);
         return true;
     }
 
