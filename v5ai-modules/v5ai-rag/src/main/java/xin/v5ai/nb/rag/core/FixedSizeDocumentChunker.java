@@ -1,6 +1,7 @@
 package xin.v5ai.nb.rag.core;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 /**
  * 固定长度切片（默认 800 字符、100 重叠），支持按配置的分隔符/正则/智能（段落回退）一级切分。
@@ -51,14 +53,38 @@ public class FixedSizeDocumentChunker implements DocumentChunker {
     }
 
     /**
-     * 按分隔符做一级切分（分隔符按字面量匹配），再逐段做最大长度递归切分。
+     * 按分隔符做一级切分（多分隔符为「任一命中即切」），再逐段做最大长度递归切分。
+     * 分隔符以 JSON 字符串数组编码（如 {@code ["\n\n","。"]}）；非法/空回退 {@link #DEFAULT_DELIMITER}。
      */
-    private List<String> splitByDelimiter(String text, String delimiter) {
-        // 分隔符可能是纯空白（如 \n\n），不能用 isBlank 判空
-        String delim = StrUtil.isEmpty(delimiter) ? DEFAULT_DELIMITER : delimiter;
-        return Arrays.stream(text.split(Pattern.quote(delim), -1))
+    private List<String> splitByDelimiter(String text, String delimiterSpec) {
+        List<String> delimiters = parseDelimiters(delimiterSpec);
+        if (delimiters.isEmpty()) {
+            delimiters = List.of(DEFAULT_DELIMITER);
+        }
+        String alternation = delimiters.stream()
+                .map(Pattern::quote)
+                .collect(Collectors.joining("|"));
+        return Arrays.stream(text.split(alternation, -1))
                 .filter(s -> !s.isBlank())
                 .toList();
+    }
+
+    private List<String> parseDelimiters(String spec) {
+        if (StrUtil.isEmpty(spec)) {
+            return List.of();
+        }
+        try {
+            var array = JSONUtil.parseArray(spec);
+            var result = new ArrayList<String>();
+            for (var item : array) {
+                if (item != null && !item.toString().isEmpty()) {
+                    result.add(item.toString());
+                }
+            }
+            return result;
+        } catch (Exception exception) {
+            return List.of();
+        }
     }
 
     /**

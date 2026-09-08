@@ -62,6 +62,25 @@ class FixedSizeDocumentChunkerTest {
     }
 
     @Test
+    void delimiterModeSplitsByAnyOfJsonDelimiters() {
+        var json = "[\"\\n\\n\",\"。\"]";
+        var options = new ChunkingOptions("delimiter", 1000, 100, json, null, false);
+
+        var chunks = chunker.chunk("one\n\ntwo。three\n\nfour", options);
+
+        assertThat(chunks).containsExactly("one", "two", "three", "four");
+    }
+
+    @Test
+    void delimiterModeFallsBackToDefaultWhenInvalidJson() {
+        var options = new ChunkingOptions("delimiter", 1000, 100, "not-a-json", null, false);
+
+        var chunks = chunker.chunk("a\n\nb", options);
+
+        assertThat(chunks).containsExactly("a", "b");
+    }
+
+    @Test
     void regexModeSplitsByJavaPattern() {
         var options = new ChunkingOptions("regex", 1000, 100, null, "\\n{2,}", false);
 

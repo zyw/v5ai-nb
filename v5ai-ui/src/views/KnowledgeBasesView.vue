@@ -4,7 +4,7 @@
  * 点击「名称」进入知识库详情页（四 tab：原始文档/切片详情/知识检索/知识问答）。
  * 文档管理能力已整体迁入详情页，本页只保留库级列表与创建/编辑/启停/删除。
  */
-import { h, onMounted, reactive, ref } from 'vue'
+import {computed, h, onMounted, reactive, ref} from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NButton,
@@ -30,7 +30,7 @@ import {
   NTag,
   useDialog,
   useMessage,
-  type DataTableColumns
+  type DataTableColumns, SelectOption
 } from 'naive-ui'
 import { CircleQuestionMark, Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
@@ -97,7 +97,6 @@ const form = reactive({
   chunkMode: 'length' as ChunkMode,
   maxChunkTokens: 2000,
   chunkOverlap: null as number | null,
-  customDelimiter: '\n\n',
   chunkRegex: '',
   chunkModelId: null as number | null,
   mergeShortSegments: false,
@@ -106,7 +105,7 @@ const form = reactive({
 })
 
 const dedupStrategyOptions = [
-  { label: '不处理', value: 0 },
+  { label: '不去重', value: 0 },
   { label: '按文件名', value: 1 },
   { label: '按文件内容', value: 2 },
   { label: '按文件名或内容', value: 3 }
@@ -114,16 +113,89 @@ const dedupStrategyOptions = [
 
 const dedupActionOptions = [
   { label: '拒绝（报错）', value: 0 },
-  { label: '跳过', value: 1 },
+  { label: '跳过（不入库）', value: 1 },
   { label: '覆盖（替换旧文档）', value: 2 }
 ]
 
-const chunkModeOptions: { label: string; value: ChunkMode }[] = [
-  { label: '按长度切片', value: 'length' },
-  { label: '按分隔符', value: 'delimiter' },
-  { label: '正则切片', value: 'regex' },
-  { label: '智能切片', value: 'smart' }
+const chunkModeOptions: { label: string; value: ChunkMode, describe: string }[] = [
+  { label: '按长度切片', value: 'length', describe: '可配置切片最大长度、片段重叠等；先按段落粗分，再按最大长度递归切分。' },
+  { label: '按分隔符', value: 'delimiter', describe: '先按所选分隔符做一级切分，再按下方「按长度切片」同款的最大长度与重叠做递归切分（与旧版 delimiter 行为一致）。' },
+  { label: '正则切片', value: 'regex', describe: '使用 Java 正则对全文做一级切分（Pattern 语法），再对每个片段按最大长度递归切分。请谨慎编写正则，避免过度切分或性能问题。' },
+  { label: '智能切片', value: 'smart', describe: '由所选对话模型将全文切分为 JSON 字符串数组（语义片段），再对每段按最大长度递归切分。模型调用失败时会回退为按段落切分。' }
 ]
+
+/** 分隔符多选（value 为真实切分字符串，提交时 JSON 序列化给后端） */
+const delimiterSelectOptions = computed<Array<SelectOption & { sym: string; sub: string }>>(() => [
+  { value: '\n', sym: '\\n', sub: '换行符', label: `\\n 换行符` },
+  {
+    value: '\n\n',
+    sym: '\\n\\n',
+    sub: '换行符×2',
+    label: `\\n\\n 换行符×2`
+  },
+  {
+    value: '。',
+    sym: '。',
+    sub: '中文句号',
+    label: `。 中文句号`
+  },
+  {
+    value: '！',
+    sym: '！',
+    sub: '中文感叹号',
+    label: `！ 中文感叹号`
+  },
+  {
+    value: '？',
+    sym: '？',
+    sub: '中文问号',
+    label: `？ 中文问号`
+  },
+  {
+    value: '.',
+    sym: '.',
+    sub: '英文句号',
+    label: `. 英文字号`
+  },
+  { value: '!', sym: '!', sub: '英文感叹号', label: `! 英文字号` },
+  {
+    value: '?',
+    sym: '?',
+    sub: '英文问号',
+    label: `? 英文字号`
+  },
+  {
+    value: ';',
+    sym: ';',
+    sub: '英文分号',
+    label: `; 英文字号`
+  }
+]);
+
+const selectedDelimiters = ref<string[]>(['\n\n']);
+
+/** 回显：解析后端存的自定义分隔符 JSON 数组；失败/空回退默认换行×2 */
+function parseDelimiters(raw?: string): string[] {
+  if (!raw) return ['\n\n']
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      const values = parsed.filter((v): v is string => typeof v === 'string')
+      return values.length > 0 ? values : ['\n\n']
+    }
+  } catch {
+    // 非法 JSON → 回退默认
+  }
+  return ['\n\n']
+}
+
+function renderDelimiterLabel(option: SelectOption) {
+  const o = option as SelectOption & { sym?: string; sub?: string };
+  return h('div', { class: 'delimiter-option-row' }, [
+    h('span', { class: 'delimiter-option-row__sym' }, o.sym ?? ''),
+    h('span', { class: 'delimiter-option-row__sub' }, o.sub ?? '')
+  ]);
+}
 
 const quickMaxTokens = [200, 600, 1000, 2000]
 
@@ -195,7 +267,7 @@ function resetForm() {
   form.chunkMode = 'length'
   form.maxChunkTokens = 2000
   form.chunkOverlap = null
-  form.customDelimiter = '\n\n'
+  selectedDelimiters.value = ['\n\n']
   form.chunkRegex = ''
   form.chunkModelId = null
   form.mergeShortSegments = false
@@ -224,7 +296,7 @@ function openEdit(kb: KnowledgeBaseResponse) {
   form.chunkMode = chunk?.mode ?? 'length'
   form.maxChunkTokens = chunk?.maxChunkTokens ?? 2000
   form.chunkOverlap = chunk?.chunkOverlap ?? null
-  form.customDelimiter = chunk?.customDelimiter ?? kb.delimiter ?? '\n\n'
+  selectedDelimiters.value = parseDelimiters(chunk?.customDelimiter)
   form.chunkRegex = chunk?.chunkRegex ?? ''
   form.chunkModelId = chunk?.chunkModelId ?? null
   form.mergeShortSegments = !!chunk?.mergeShortSegments
@@ -247,7 +319,7 @@ function buildRequest(): CreateKnowledgeBaseRequest {
     mergeShortSegments: form.mergeShortSegments,
     imageOcr: form.parseEngine === 'docling' && form.docling.imageOcr ? true : undefined
   }
-  if (form.chunkMode === 'delimiter') chunkParams.customDelimiter = form.customDelimiter
+  if (form.chunkMode === 'delimiter') chunkParams.customDelimiter = JSON.stringify(selectedDelimiters.value)
   if (form.chunkMode === 'regex') chunkParams.chunkRegex = form.chunkRegex
   if (form.chunkMode === 'smart') chunkParams.chunkModelId = form.chunkModelId ?? undefined
   const parseParams: NonNullable<RagConfig['parseParams']> = { engine: form.parseEngine }
@@ -267,7 +339,6 @@ function buildRequest(): CreateKnowledgeBaseRequest {
     dimensionOfVectorModel: form.dimensionOfVectorModel!,
     searchEngineEnable: form.searchEngineEnable,
     searchEngineInstanceId: form.searchEngineEnable ? form.searchEngineInstanceId ?? undefined : undefined,
-    delimiter: form.chunkMode === 'delimiter' ? form.customDelimiter : undefined,
     config: { chunkParams, parseParams },
     dedupStrategy: form.dedupStrategy,
     dedupAction: form.dedupAction
@@ -287,8 +358,8 @@ async function handleSaveKb() {
     message.warning('请选择搜索引擎实例')
     return
   }
-  if (form.chunkMode === 'delimiter' && !form.customDelimiter.trim()) {
-    message.warning('请配置分隔符')
+  if (form.chunkMode === 'delimiter' && selectedDelimiters.value.length === 0) {
+    message.warning('请选择至少一个分隔符')
     return
   }
   if (form.chunkMode === 'regex' && !form.chunkRegex.trim()) {
@@ -584,9 +655,22 @@ onMounted(() => {
           <div class="muted section-hint">选择文档如何被拆成向量片段；可随时在后台调整（需重新解析文档后生效）。</div>
           <n-tabs v-model:value="form.chunkMode" type="line" animated>
             <n-tab-pane v-for="opt in chunkModeOptions" :key="opt.value" :name="opt.value" :tab="opt.label">
+              <n-alert type="info" style="margin-bottom: 10px;">
+                {{ opt.describe }}
+              </n-alert>
               <n-form label-placement="top">
                 <n-form-item v-if="form.chunkMode === 'delimiter'" label="分隔符">
-                  <n-input v-model:value="form.customDelimiter" placeholder="如：\n\n（换行符×2）" class="chunk-inp" />
+                  <n-select
+                      v-model:value="selectedDelimiters"
+                      :options="delimiterSelectOptions"
+                      multiple
+                      filterable
+                      clearable
+                      placeholder="选择一级切分符，可多选"
+                      :max-tag-count="3"
+                      class="delimiter-multi-select"
+                      :render-label="renderDelimiterLabel"
+                  />
                   <span class="muted" style="margin-left: 8px">一级切分按所选符号拆分；后续递归切片使用下方最大长度与重叠</span>
                 </n-form-item>
                 <n-form-item v-if="form.chunkMode === 'regex'" label="一级切分正则">
