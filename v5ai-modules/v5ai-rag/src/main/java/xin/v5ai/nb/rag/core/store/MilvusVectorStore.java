@@ -4,14 +4,19 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.common.DataType;
+import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.collection.request.AddFieldReq;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
 import io.milvus.v2.service.collection.request.HasCollectionReq;
+import io.milvus.v2.service.collection.request.LoadCollectionReq;
+import io.milvus.v2.service.index.request.CreateIndexReq;
+import io.milvus.v2.service.index.request.ListIndexesReq;
 import io.milvus.v2.service.vector.request.DeleteReq;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.request.data.FloatVec;
 import io.milvus.v2.service.vector.response.SearchResp;
+import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.nb.common.milvus.domain.MilvusVectorConfigDO;
 
 import java.util.ArrayList;
@@ -21,9 +26,13 @@ import java.util.Map;
 
 /**
  * Milvus 向量存储：collection 按知识库隔离（{@code {collectionPrefix}_{knowledgeBaseId}}），
- * 集合主键 = 业务生成的 {@code vector_id}(VarChar)，首次写入惰性建 collection
- * （显式 schema：vector_id 主键 + vector 字段 + 动态字段承载定位信息）。
+ * 集合主键 = 业务生成的 {@code vector_id}(VarChar)，首次写入惰性建 collection。
+ *
+ * <p>首次写入顺序为「建 collection → 建索引 → 插入 → 载入内存」，删除/检索对不存在的
+ * collection 均幂等降级（删除跳过、检索按空处理），保证 Worker 幂等重建（先删旧向量再写）不会
+ * 在首篇文档上因 collection 未建而失败。</p>
  */
+@Slf4j
 public class MilvusVectorStore implements VectorStore {
 
     private final MilvusClientV2 client;
@@ -48,10 +57,15 @@ public class MilvusVectorStore implements VectorStore {
             rows.add(rowJson(chunk));
         }
         client.insert(InsertReq.builder().collectionName(collectionName(knowledgeBaseId)).data(rows).build());
+        // 载入内存后检索才可用（幂等，重复调用无副作用）
+        loadCollection(knowledgeBaseId);
     }
 
     @Override
     public void deleteByDocumentId(Long knowledgeBaseId, Long documentId) {
+        if (!collectionExists(knowledgeBaseId)) {
+            return;
+        }
         client.delete(DeleteReq.builder()
                 .collectionName(collectionName(knowledgeBaseId))
                 .filter("documentId == " + documentId)
@@ -60,6 +74,9 @@ public class MilvusVectorStore implements VectorStore {
 
     @Override
     public void deleteByVectorId(Long knowledgeBaseId, String vectorId) {
+        if (!collectionExists(knowledgeBaseId)) {
+            return;
+        }
         client.delete(DeleteReq.builder()
                 .collectionName(collectionName(knowledgeBaseId))
                 .filter("vector_id == '" + escape(vectorId) + "'")
@@ -86,8 +103,9 @@ public class MilvusVectorStore implements VectorStore {
                         hits.add(toHit(knowledgeBaseId, result));
                     }
                 }
-            } catch (Exception ignored) {
-                // 集合不存在或后端不可用：该知识库降级为空，继续其余知识库
+            } catch (Exception exception) {
+                // 集合不存在或后端不可用：该知识库降级为空，继续其余知识库（记录原因便于排查）
+                log.warn("Milvus 检索降级为空: kb={}, reason={}", knowledgeBaseId, exception.getMessage());
             }
         }
         hits.sort(Comparator.comparingDouble(RetrievalHit::score).reversed());
@@ -95,13 +113,13 @@ public class MilvusVectorStore implements VectorStore {
     }
 
     /**
-     * 幂等建 collection：显式 schema 以业务 {@code vector_id} 为主键（关 autoID），
+     * 幂等建 collection 并建向量索引：显式 schema 以业务 {@code vector_id} 为主键（关 autoID），
      * 动态字段承载 documentId/chunkIndex/content 等定位信息。
      */
     private void ensureCollection(Long knowledgeBaseId, int dimension) {
         String name = collectionName(knowledgeBaseId);
-        Boolean exists = client.hasCollection(HasCollectionReq.builder().collectionName(name).build());
-        if (Boolean.TRUE.equals(exists)) {
+        if (Boolean.TRUE.equals(client.hasCollection(HasCollectionReq.builder().collectionName(name).build()))) {
+            ensureIndex(name);
             return;
         }
         var vectorField = AddFieldReq.builder()
@@ -135,6 +153,57 @@ public class MilvusVectorStore implements VectorStore {
                 .metricType(config.getMetricType() == null ? "COSINE" : config.getMetricType())
                 .collectionSchema(schema)
                 .build());
+        ensureIndex(name);
+    }
+
+    /**
+     * 幂等建向量索引：已存在索引则跳过；未实现的索引类型回退 AUTOINDEX（维度无关、零参数）。
+     */
+    private void ensureIndex(String collectionName) {
+        var existing = client.listIndexes(ListIndexesReq.builder().collectionName(collectionName).build());
+        if (existing != null && !existing.isEmpty()) {
+            return;
+        }
+        IndexParam.IndexType indexType = indexType();
+        client.createIndex(CreateIndexReq.builder()
+                .collectionName(collectionName)
+                .indexParams(List.of(IndexParam.builder()
+                        .fieldName("vector")
+                        .indexName("vector_idx")
+                        .indexType(indexType)
+                        .metricType(metricType())
+                        .build()))
+                .build());
+    }
+
+    private void loadCollection(Long knowledgeBaseId) {
+        client.loadCollection(LoadCollectionReq.builder()
+                .collectionName(collectionName(knowledgeBaseId))
+                .build());
+    }
+
+    private boolean collectionExists(Long knowledgeBaseId) {
+        return Boolean.TRUE.equals(client.hasCollection(
+                HasCollectionReq.builder().collectionName(collectionName(knowledgeBaseId)).build()));
+    }
+
+    private IndexParam.IndexType indexType() {
+        String configured = config.getIndexType();
+        if (configured == null || "AUTOINDEX".equalsIgnoreCase(configured)) {
+            return IndexParam.IndexType.AUTOINDEX;
+        }
+        log.warn("Milvus 索引类型 {} 尚未实现，回退 AUTOINDEX", configured);
+        return IndexParam.IndexType.AUTOINDEX;
+    }
+
+    private IndexParam.MetricType metricType() {
+        if ("L2".equalsIgnoreCase(config.getMetricType())) {
+            return IndexParam.MetricType.L2;
+        }
+        if ("IP".equalsIgnoreCase(config.getMetricType())) {
+            return IndexParam.MetricType.IP;
+        }
+        return IndexParam.MetricType.COSINE;
     }
 
     private JsonObject rowJson(VectorChunk chunk) {
