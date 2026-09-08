@@ -58,6 +58,9 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
 
     @Override
     public void deleteByDocumentId(Long knowledgeBaseId, Long documentId) {
+        if (!indexExists(knowledgeBaseId)) {
+            return;
+        }
         JSONObject query = new JSONObject().set("query", new JSONObject().set("term",
                 new JSONObject().set("documentId", documentId)));
         Request request = new Request("POST", "/" + indexName(knowledgeBaseId) + "/_delete_by_query");
@@ -67,6 +70,9 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
 
     @Override
     public void deleteByVectorId(Long knowledgeBaseId, String vectorId) {
+        if (!indexExists(knowledgeBaseId)) {
+            return;
+        }
         Request request = new Request("DELETE", "/" + indexName(knowledgeBaseId) + "/_doc/" + vectorId);
         perform(request);
     }
@@ -123,14 +129,7 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
 
     private void ensureIndex(Long knowledgeBaseId, int dimension) {
         String index = indexName(knowledgeBaseId);
-        int status;
-        try {
-            status = client.performRequest(new Request("HEAD", "/" + index)).getStatusLine().getStatusCode();
-        } catch (ResponseException e) {
-            status = e.getResponse().getStatusLine().getStatusCode();
-        } catch (IOException e) {
-            throw new IllegalStateException("检查 ES 索引失败: " + index, e);
-        }
+        int status = indexStatus(index);
         if (status == 404) {
             Request put = new Request("PUT", "/" + index);
             put.setJsonEntity(mappingJson(dimension).toString());
@@ -138,6 +137,23 @@ public class ElasticsearchVectorStore implements VectorStore, KeywordStore {
         } else if (status >= 300) {
             throw new IllegalStateException("ES 索引检查失败: " + index + " 状态码 " + status);
         }
+    }
+
+    /**
+     * HEAD 检查索引状态码（404=不存在，200=已存在）。
+     */
+    private int indexStatus(String index) {
+        try {
+            return client.performRequest(new Request("HEAD", "/" + index)).getStatusLine().getStatusCode();
+        } catch (ResponseException e) {
+            return e.getResponse().getStatusLine().getStatusCode();
+        } catch (IOException e) {
+            throw new IllegalStateException("检查 ES 索引失败: " + index, e);
+        }
+    }
+
+    private boolean indexExists(Long knowledgeBaseId) {
+        return indexStatus(indexName(knowledgeBaseId)) == 200;
     }
 
     private JSONObject mappingJson(int dimension) {
