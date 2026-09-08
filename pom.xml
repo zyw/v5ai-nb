@@ -31,6 +31,8 @@
         <okio.version>3.16.4</okio.version>
         <agentscope.version>2.0.2-subagent-bugfix</agentscope.version>
         <pdfbox.version>3.0.7</pdfbox.version>
+        <poi.version>5.4.1</poi.version>
+        <jsoup.version>1.20.1</jsoup.version>
         <hutool.version>5.8.47</hutool.version>
         <mapstruct-plus.version>1.5.1</mapstruct-plus.version>
         <lombok.version>1.18.46</lombok.version>
@@ -253,6 +255,16 @@
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
                 <version>${pdfbox.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>${jsoup.version}</version>
             </dependency>
 
             <!-- JavaDoc 运行时读取 -->

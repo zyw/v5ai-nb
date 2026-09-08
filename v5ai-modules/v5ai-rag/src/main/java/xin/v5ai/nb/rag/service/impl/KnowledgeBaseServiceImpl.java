@@ -38,7 +38,6 @@ import xin.v5ai.nb.rag.mapper.KnowledgeTaskMapper;
 import xin.v5ai.nb.rag.mapper.StoreInstanceMapper;
 import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -315,12 +314,15 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("url is required");
         }
-        var text = urlContentFetcher.fetch(url);
+        var downloaded = urlContentFetcher.fetch(url);
+        var bytes = downloaded.bytes() == null ? new byte[0] : downloaded.bytes();
+        var fileType = DocumentFileType.fromUrl(url, downloaded.contentType());
         var resolvedTitle = title == null || title.isBlank() ? url : title;
-        var bytes = text.getBytes(StandardCharsets.UTF_8);
+        var contentType = downloaded.contentType() == null || downloaded.contentType().isBlank()
+                ? fileType.defaultContentType() : downloaded.contentType();
         return createResourceBackedDocument(knowledgeBaseId, resolvedTitle,
-                resolveUrlResourceName(resolvedTitle),
-                DocumentFileType.URL, SOURCE_TYPE_URL, "text/html", bytes);
+                resolveUrlResourceName(resolvedTitle, fileType),
+                fileType, SOURCE_TYPE_URL, contentType, bytes);
     }
 
     /**
@@ -355,12 +357,15 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     }
 
     /**
-     * URL 文档源文件文件名：以标题为名、缺省补 .html 后缀（网页文档）。
+     * URL 文档源文件文件名：以标题为名、按判定类型补对应扩展名。
      */
-    private static String resolveUrlResourceName(String title) {
+    private static String resolveUrlResourceName(String title, DocumentFileType fileType) {
         String base = StrUtil.isBlank(title) ? "document" : title;
-        String lower = base.toLowerCase(java.util.Locale.ROOT);
-        return lower.endsWith(".html") || lower.endsWith(".htm") ? base : base + ".html";
+        String ext = fileType.extension();
+        if (ext.isEmpty()) {
+            return base;
+        }
+        return base.toLowerCase(java.util.Locale.ROOT).endsWith(ext) ? base : base + ext;
     }
 
     /**

@@ -19,7 +19,7 @@ public class HttpUrlContentFetcher implements UrlContentFetcher {
             .build();
 
     @Override
-    public String fetch(String url) {
+    public UrlContent fetch(String url) {
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             throw new IllegalArgumentException("url must be http(s): " + url);
         }
@@ -34,10 +34,11 @@ public class HttpUrlContentFetcher implements UrlContentFetcher {
             if (response.statusCode() != 200) {
                 throw new IllegalStateException("url fetch failed with status " + response.statusCode());
             }
-            if (response.body().length > MAX_BYTES) {
+            var bytes = response.body();
+            if (bytes.length > MAX_BYTES) {
                 throw new IllegalStateException("url content exceeds " + MAX_BYTES + " bytes");
             }
-            return new String(response.body(), java.nio.charset.StandardCharsets.UTF_8);
+            return new UrlContent(bytes, response.headers().firstValue("Content-Type").orElse(null));
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("url fetch interrupted", exception);

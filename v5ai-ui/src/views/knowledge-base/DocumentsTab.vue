@@ -44,11 +44,14 @@ import {
 import { adminToken } from '../../stores/session'
 import { formatDateTime } from '../../utils/dateUtils'
 
-// vue-office：docx / pdf 在线预览组件（懒加载，仅在预览对应类型时拉取解析库）
-// 注：@vue-office/pdf 不导出独立 CSS，无需额外样式引入
+// vue-office：docx / pdf / excel / pptx 在线预览组件（懒加载，仅在预览对应类型时拉取解析库）
+// 注：@vue-office/pdf、@vue-office/pptx 不导出独立 CSS，无需额外样式引入
 import '@vue-office/docx/lib/index.css'
+import '@vue-office/excel/lib/index.css'
 const VueOfficeDocx = defineAsyncComponent(() => import('@vue-office/docx'))
 const VueOfficePdf = defineAsyncComponent(() => import('@vue-office/pdf'))
+const VueOfficeExcel = defineAsyncComponent(() => import('@vue-office/excel'))
+const VueOfficePptx = defineAsyncComponent(() => import('@vue-office/pptx'))
 
 const props = defineProps<{
   kbId: number
@@ -90,6 +93,10 @@ const FILE_TYPE_TEXT: Record<string, string> = {
   MARKDOWN: 'MD',
   PDF: 'PDF',
   DOCX: 'DOCX',
+  XLSX: 'XLSX',
+  PPTX: 'PPTX',
+  HTML: 'HTML',
+  CSV: 'CSV',
   URL: '网页'
 }
 
@@ -129,7 +136,7 @@ const selectedFile = ref<File | null>(null)
 const urlForm = reactive({ url: '', title: '' })
 const importing = ref(false)
 
-const ACCEPT_EXTS = '.txt,.md,.markdown,.pdf,.docx'
+const ACCEPT_EXTS = '.txt,.md,.markdown,.pdf,.docx,.xlsx,.pptx,.html,.htm,.csv'
 
 function onFileChange(options: { file: UploadFileInfo }) {
   const raw = options.file.file
@@ -200,18 +207,20 @@ const showPreviewModal = ref(false)
 const previewName = ref('')
 /** 预览加载中：拉取文件 + 文档渲染（office 渲染完成或出错后置 false） */
 const previewLoading = ref(false)
-/** 预览类型：docx/pdf 用 vue-office，markdown 用 vditor，text 用 monaco */
-const previewKind = ref<'pdf' | 'docx' | 'markdown' | 'text' | null>(null)
+/** 预览类型：docx/pdf/excel/pptx 用 vue-office，markdown 用 vditor，text 用 monaco */
+const previewKind = ref<'pdf' | 'docx' | 'excel' | 'pptx' | 'markdown' | 'text' | null>(null)
 const previewBlob = ref<Blob | null>(null)
 const previewText = ref('')
 
-/** 按 fileType 判定预览类型；文档仅 pdf/docx/markdown/text 四类。 */
-function previewKindOf(row: DocumentResponse): 'pdf' | 'docx' | 'markdown' | 'text' | null {
+/** 按 fileType 判定预览类型；文档仅 pdf/docx/xlsx/pptx/markdown/text 类。 */
+function previewKindOf(row: DocumentResponse): 'pdf' | 'docx' | 'excel' | 'pptx' | 'markdown' | 'text' | null {
   const ft = (row.fileType ?? '').toUpperCase()
   if (ft === 'PDF') return 'pdf'
   if (ft === 'DOCX') return 'docx'
+  if (ft === 'XLSX') return 'excel'
+  if (ft === 'PPTX') return 'pptx'
   if (ft === 'MARKDOWN') return 'markdown'
-  if (ft === 'TXT' || ft === 'URL') return 'text'
+  if (ft === 'TXT' || ft === 'URL' || ft === 'HTML' || ft === 'CSV') return 'text'
   return null
 }
 
@@ -468,7 +477,7 @@ onBeforeUnmount(stopPolling)
             <div class="upload-box">
               <n-icon :component="UploadIcon" size="28" />
               <div>点击或拖拽文件到此区域上传</div>
-              <div class="muted">支持 TXT、Markdown、PDF、DOCX 格式（与后端解析器能力一致）</div>
+              <div class="muted">支持 TXT、Markdown、PDF、DOCX、XLSX、PPTX、HTML、CSV 格式（与后端解析器能力一致）</div>
               <div class="muted">导入后由 Worker 异步解析 → 切片 → 向量入库</div>
             </div>
           </n-upload>
@@ -477,14 +486,14 @@ onBeforeUnmount(stopPolling)
             <n-button size="tiny" quaternary type="error" @click="selectedFile = null">移除</n-button>
           </div>
           <div class="fmt-row">
-            <n-tag v-for="f in ['PDF', 'DOCX', 'MD', 'TXT']" :key="f" size="small" :bordered="false">{{ f }}</n-tag>
+            <n-tag v-for="f in ['PDF', 'DOCX', 'XLSX', 'PPTX', 'MD', 'TXT', 'HTML', 'CSV']" :key="f" size="small" :bordered="false">{{ f }}</n-tag>
           </div>
         </n-tab-pane>
         <n-tab-pane name="url" tab="URL 导入">
           <div class="url-import">
             <n-input v-model:value="urlForm.url" placeholder="输入在线文档地址，如 https://example.com/doc.html" clearable />
             <n-input v-model:value="urlForm.title" placeholder="标题（可选）" clearable />
-            <div class="muted">服务端抓取网页正文后按文档处理，同样走异步索引任务。</div>
+            <div class="muted">服务端下载网页/远程文件后按类型解析，同样走异步索引任务。</div>
           </div>
         </n-tab-pane>
 <!--        <n-tab-pane name="cloud" tab="云存储" :disabled="true">-->
@@ -506,6 +515,8 @@ onBeforeUnmount(stopPolling)
       <n-spin :show="previewLoading" description="文档加载中...">
         <vue-office-pdf v-if="previewKind === 'pdf'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
         <vue-office-docx v-else-if="previewKind === 'docx'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <vue-office-excel v-else-if="previewKind === 'excel'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
+        <vue-office-pptx v-else-if="previewKind === 'pptx'" :src="previewBlob" style="height: 70vh" @rendered="previewLoading = false" @error="previewLoading = false" />
         <markdown-preview v-else-if="previewKind === 'markdown'" :content="previewText" @rendered="previewLoading = false" @error="previewLoading = false" />
         <monaco-text-view v-else-if="previewKind === 'text'" :content="previewText" :file-name="previewName" @rendered="previewLoading = false" @error="previewLoading = false" />
       </n-spin>

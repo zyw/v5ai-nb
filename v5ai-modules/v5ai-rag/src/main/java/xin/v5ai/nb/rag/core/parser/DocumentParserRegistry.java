@@ -18,9 +18,13 @@ public class DocumentParserRegistry implements DocumentParser {
     public DocumentParserRegistry() {
         parsers.put(DocumentFileType.TXT, new TextDocumentParser());
         parsers.put(DocumentFileType.MARKDOWN, new TextDocumentParser());
+        parsers.put(DocumentFileType.CSV, new TextDocumentParser());
         parsers.put(DocumentFileType.URL, new TextDocumentParser());
         parsers.put(DocumentFileType.PDF, new PdfBoxDocumentParser());
         parsers.put(DocumentFileType.DOCX, new DocxDocumentParser());
+        parsers.put(DocumentFileType.XLSX, new PoiXlsxDocumentParser());
+        parsers.put(DocumentFileType.PPTX, new PoiPptxDocumentParser());
+        parsers.put(DocumentFileType.HTML, new HtmlDocumentParser());
     }
 
     @Override

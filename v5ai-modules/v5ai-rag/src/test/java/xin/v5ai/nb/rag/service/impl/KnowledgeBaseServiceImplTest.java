@@ -10,6 +10,7 @@ import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
+import xin.v5ai.nb.rag.core.fetcher.UrlContent;
 import xin.v5ai.nb.rag.core.fetcher.UrlContentFetcher;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
 import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
@@ -164,7 +165,8 @@ class KnowledgeBaseServiceImplTest {
         }).when(bindingMapper).delete(any(Wrapper.class));
         when(bindingMapper.selectList(any(Wrapper.class))).thenAnswer(inv -> new ArrayList<>(bindings));
 
-        when(urlFetcher.fetch("https://example.com/doc")).thenReturn("hello world");
+        when(urlFetcher.fetch("https://example.com/doc")).thenReturn(new UrlContent(
+                "hello world".getBytes(java.nio.charset.StandardCharsets.UTF_8), "text/html"));
 
         service = new KnowledgeBaseServiceImpl(knowledgeBaseMapper, documentMapper, taskMapper,
                 bindingMapper, storeInstanceMapper, chunkMapper, vectorStoreResolver, urlFetcher,
@@ -390,7 +392,7 @@ class KnowledgeBaseServiceImplTest {
         var document = service.importUrl(1L, null, "https://example.com/doc");
 
         assertThat(document.getTitle()).isEqualTo("https://example.com/doc");
-        assertThat(document.getFileType()).isEqualTo("URL");
+        assertThat(document.getFileType()).isEqualTo("HTML");
         assertThat(document.getSourceType()).isEqualTo("URL");
         // BYTEA 不写；内容以 .html 资源写入资源存储
         assertThat(documents.get(0).getContent()).isNull();

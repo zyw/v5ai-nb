@@ -214,14 +214,12 @@ public class KnowledgeDocumentController extends BaseController {
     }
 
     private static MediaType resolvePreviewMediaType(String fileType) {
-        return switch (fileType == null ? "" : fileType.toUpperCase(Locale.ROOT)) {
-            case "PDF" -> MediaType.APPLICATION_PDF;
-            case "DOCX" -> MediaType.parseMediaType(
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-            case "MARKDOWN" -> MediaType.parseMediaType("text/markdown");
-            case "TXT" -> MediaType.TEXT_PLAIN;
-            default -> MediaType.APPLICATION_OCTET_STREAM;
-        };
+        try {
+            var type = DocumentFileType.valueOf((fileType == null ? "" : fileType).toUpperCase(Locale.ROOT));
+            return MediaType.parseMediaType(type.defaultContentType());
+        } catch (Exception e) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 
     private static String resolveDownloadName(KnowledgeDocument document) {
@@ -235,26 +233,14 @@ public class KnowledgeDocumentController extends BaseController {
     }
 
     private static String extensionOf(String fileType) {
-        return switch (fileType == null ? "" : fileType.toUpperCase(Locale.ROOT)) {
-            case "PDF" -> ".pdf";
-            case "DOCX" -> ".docx";
-            case "MARKDOWN" -> ".md";
-            case "TXT" -> ".txt";
-            default -> "";
-        };
+        try {
+            return DocumentFileType.valueOf((fileType == null ? "" : fileType).toUpperCase(Locale.ROOT)).extension();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private DocumentFileType detectFileType(String filename) {
-        var lower = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
-        if (lower.endsWith(".pdf")) {
-            return DocumentFileType.PDF;
-        }
-        if (lower.endsWith(".docx")) {
-            return DocumentFileType.DOCX;
-        }
-        if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
-            return DocumentFileType.MARKDOWN;
-        }
-        return DocumentFileType.TXT;
+        return DocumentFileType.fromFilename(filename);
     }
 }
