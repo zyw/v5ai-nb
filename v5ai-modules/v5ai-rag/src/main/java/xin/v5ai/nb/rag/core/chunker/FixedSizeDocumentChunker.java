@@ -1,8 +1,10 @@
-package xin.v5ai.nb.rag.core;
+package xin.v5ai.nb.rag.core.chunker;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import org.springframework.stereotype.Component;
+import xin.v5ai.nb.common.core.utils.StringUtils;
+import xin.v5ai.nb.rag.core.ChunkingOptions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,7 +14,8 @@ import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 /**
- * 固定长度切片（默认 800 字符、100 重叠），支持按配置的分隔符/正则/智能（段落回退）一级切分。
+ * 固定长度切片（默认 800 字符、100 重叠）：先按空行粗分段落，再逐段按最大长度滑动切分（带重叠）。
+ * 支持按配置的分隔符/正则/智能一级切分。
  */
 @Component
 public class FixedSizeDocumentChunker implements DocumentChunker {
@@ -27,7 +30,7 @@ public class FixedSizeDocumentChunker implements DocumentChunker {
 
     @Override
     public List<String> chunk(String text, ChunkingOptions options) {
-        if (text == null || text.isBlank()) {
+        if (StringUtils.isBlank(text)) {
             return List.of();
         }
         int maxTokens = options.maxChunkTokens() == null || options.maxChunkTokens() <= 0
@@ -40,7 +43,8 @@ public class FixedSizeDocumentChunker implements DocumentChunker {
             case "regex" -> splitByRegex(text, options.chunkRegex());
             // 智能切片需对话模型语义切分；未配置模型调用时回退为按段落粗分再递归切分
             case "smart" -> splitByParagraphs(text);
-            default -> List.of(text);
+            // 按长度切片（含空配置）：先按段落粗分，再逐段做最大长度切分，避免滑动窗口跨越段落边界
+            default -> splitByParagraphs(text);
         };
         List<String> chunks = new ArrayList<>();
         for (String segment : segments) {
@@ -106,7 +110,7 @@ public class FixedSizeDocumentChunker implements DocumentChunker {
     }
 
     /**
-     * 按空行划分段落（智能切分的回退路径）。
+     * 按空行划分段落（按长度/智能切分的一级粗分路径）。
      */
     private List<String> splitByParagraphs(String text) {
         return Arrays.stream(text.split("\\n\\s*\\n"))

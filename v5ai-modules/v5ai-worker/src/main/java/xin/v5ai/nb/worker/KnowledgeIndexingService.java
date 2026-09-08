@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.utils.ObjectUtils;
 import xin.v5ai.nb.rag.core.ChunkingOptions;
-import xin.v5ai.nb.rag.core.DocumentChunker;
+import xin.v5ai.nb.rag.core.chunker.DocumentChunker;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
 import xin.v5ai.nb.rag.core.KnowledgeDocumentContentStore;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;

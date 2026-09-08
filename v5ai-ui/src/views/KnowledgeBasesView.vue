@@ -118,7 +118,7 @@ const dedupActionOptions = [
 ]
 
 const chunkModeOptions: { label: string; value: ChunkMode, describe: string }[] = [
-  { label: '按长度切片', value: 'length', describe: '可配置切片最大长度、片段重叠等；先按段落粗分，再按最大长度递归切分。' },
+  { label: '按长度切片', value: 'length', describe: '可配置切片最大长度（字符数）、片段重叠等；先按空行粗分段落，再对超长段落按最大长度切分（带重叠），短段落保持独立。' },
   { label: '按分隔符', value: 'delimiter', describe: '先按所选分隔符做一级切分，再按下方「按长度切片」同款的最大长度与重叠做递归切分（与旧版 delimiter 行为一致）。' },
   { label: '正则切片', value: 'regex', describe: '使用 Java 正则对全文做一级切分（Pattern 语法），再对每个片段按最大长度递归切分。请谨慎编写正则，避免过度切分或性能问题。' },
   { label: '智能切片', value: 'smart', describe: '由所选对话模型将全文切分为 JSON 字符串数组（语义片段），再对每段按最大长度递归切分。模型调用失败时会回退为按段落切分。' }
@@ -670,11 +670,13 @@ onMounted(() => {
                       :max-tag-count="3"
                       class="delimiter-multi-select"
                       :render-label="renderDelimiterLabel"
+                      style="width: 60%"
                   />
                   <span class="muted" style="margin-left: 8px">一级切分按所选符号拆分；后续递归切片使用下方最大长度与重叠</span>
                 </n-form-item>
                 <n-form-item v-if="form.chunkMode === 'regex'" label="一级切分正则">
-                  <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法，如：\\n\\n" class="chunk-inp" />
+                  <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法" type="textarea" :maxlength="2048" show-count :autosize="{ minRows: 3, maxRows: 4 }" style="width: 60%" />
+                  <span class="muted" style="margin-left: 8px">全文将按该正则 split 得到多段，再对每段做最大长度递归切分。</span>
                 </n-form-item>
                 <n-form-item v-if="form.chunkMode === 'smart'" label="对话模型">
                   <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable class="chunk-inp" />
@@ -772,6 +774,6 @@ onMounted(() => {
 }
 
 .chunk-inp {
-  width: 300px;
+  width: 350px;
 }
 </style>

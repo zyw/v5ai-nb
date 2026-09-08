@@ -1,8 +1,7 @@
 package xin.v5ai.nb.rag.core;
 
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
+import xin.v5ai.nb.rag.core.chunker.FixedSizeDocumentChunker;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -105,6 +104,26 @@ class FixedSizeDocumentChunkerTest {
         var chunks = chunker.chunk("para one\n\npara two\n\npara three", options);
 
         assertThat(chunks).containsExactly("para one", "para two", "para three");
+    }
+
+    @Test
+    void lengthModeSplitsByParagraphsFirstThenByMaxLength() {
+        // 按长度切片：先按空行粗分段落，短段落保持完整，不跨段落边界滑动切分
+        var options = new ChunkingOptions("length", 1000, 100, null, null, false);
+
+        var chunks = chunker.chunk("para one\n\npara two\n\npara three", options);
+
+        assertThat(chunks).containsExactly("para one", "para two", "para three");
+    }
+
+    @Test
+    void lengthModeSplitsLongParagraphBeyondMax() {
+        // 超长段落再按最大长度滑动切分（带重叠），其余段落保持独立
+        var options = new ChunkingOptions("length", 10, 2, null, null, false);
+
+        var chunks = chunker.chunk("aaaa bbbb cccc\n\ndddd", options);
+
+        assertThat(chunks).containsExactly("aaaa bbbb ", "b cccc", "dddd");
     }
 
     @Test
