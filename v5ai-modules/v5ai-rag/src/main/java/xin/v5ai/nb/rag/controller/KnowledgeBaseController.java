@@ -20,6 +20,7 @@ import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
+import xin.v5ai.nb.rag.domain.bo.KbConfigUpdateBo;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeBaseVo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeTaskVo;
@@ -59,6 +60,14 @@ public class KnowledgeBaseController extends BaseController {
     @Log(title = "编辑知识库", businessType = BusinessType.UPDATE)
     public R<KnowledgeBaseVo> updateKnowledgeBase(@Validated(EditGroup.class) @RequestBody KnowledgeBaseBo bo) {
         return R.ok(knowledgeBaseService.updateKnowledgeBase(bo));
+    }
+
+    @PutMapping("/{id}/config")
+    @Log(title = "更新知识库检索/问答配置", businessType = BusinessType.UPDATE)
+    public R<Void> updateRagConfig(@PathVariable("id") Long id,
+                                   @RequestBody(required = false) KbConfigUpdateBo bo) {
+        knowledgeBaseService.updateRagConfig(id, bo);
+        return R.ok();
     }
 
     @GetMapping

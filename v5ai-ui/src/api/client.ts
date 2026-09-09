@@ -261,6 +261,12 @@ export interface RagModelParams {
   prompt?: string
 }
 
+/** 轻量更新知识库检索/问答配置的请求体（仅 searchParams / modelParams，空键保留存量）。 */
+export interface KbConfigUpdateRequest {
+  searchParams?: RagSearchParams
+  modelParams?: RagModelParams
+}
+
 export interface RagConfig {
   searchParams?: RagSearchParams
   modelParams?: RagModelParams
@@ -1001,6 +1007,18 @@ export function createKnowledgeBase(adminToken: string, request: CreateKnowledge
 
 export function updateKnowledgeBase(adminToken: string, request: CreateKnowledgeBaseRequest): Promise<KnowledgeBaseResponse> {
   return requestJson<KnowledgeBaseResponse>('/api/admin/knowledge-bases', {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  }, adminToken)
+}
+
+/** 轻量更新知识库检索/问答配置：只整对象替换 config 中的 searchParams / modelParams，不做全量校验。 */
+export function updateKnowledgeBaseConfig(
+  adminToken: string,
+  kbId: number,
+  request: KbConfigUpdateRequest
+): Promise<void> {
+  return requestJson<void>(`/api/admin/knowledge-bases/${kbId}/config`, {
     method: 'PUT',
     body: JSON.stringify(request)
   }, adminToken)

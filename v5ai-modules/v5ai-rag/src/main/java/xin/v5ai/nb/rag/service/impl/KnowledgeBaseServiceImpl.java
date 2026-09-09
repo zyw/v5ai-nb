@@ -27,6 +27,7 @@ import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
 import xin.v5ai.nb.rag.domain.StoreInstance;
+import xin.v5ai.nb.rag.domain.bo.KbConfigUpdateBo;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeBaseVo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
@@ -222,6 +223,30 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         applyConfig(update, bo);
         knowledgeBaseMapper.updateById(update);
         return toVo(update);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateRagConfig(Long id, KbConfigUpdateBo bo) {
+        KnowledgeBase existing = requireKnowledgeBase(id);
+        if (bo == null || (bo.searchParams() == null && bo.modelParams() == null)) {
+            throw new ServiceException("searchParams / modelParams 至少提供一项");
+        }
+        RagConfigDO config = RagConfigDO.fromJson(existing.getConfig());
+        if (config == null) {
+            config = new RagConfigDO();
+        }
+        // 整对象替换（null 键保留存量，与 updateKnowledgeBase 的「null 不覆盖」约定一致）
+        if (bo.searchParams() != null) {
+            config.setSearchParams(bo.searchParams());
+        }
+        if (bo.modelParams() != null) {
+            config.setModelParams(bo.modelParams());
+        }
+        var update = new KnowledgeBase();
+        update.setId(id);
+        update.setConfig(RagConfigDO.toJson(config));
+        knowledgeBaseMapper.updateById(update);
     }
 
     @Override

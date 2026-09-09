@@ -19,6 +19,7 @@ import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.KnowledgeTask;
 import xin.v5ai.nb.rag.domain.StoreInstance;
+import xin.v5ai.nb.rag.domain.bo.KbConfigUpdateBo;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.mapper.AgentKnowledgeBindingMapper;
 import xin.v5ai.nb.rag.mapper.KnowledgeBaseMapper;
@@ -337,6 +338,69 @@ class KnowledgeBaseServiceImplTest {
         bo.setId(99L);
 
         assertThatThrownBy(() -> service.updateKnowledgeBase(bo))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("knowledge base does not exist");
+    }
+
+    @Test
+    void updateRagConfigReplacesSearchAndModelKeepingChunkAndParse() {
+        seedKnowledgeBase(1L, "docs", "ACTIVE");
+        knowledgeBases.get(0).setConfig(RagConfigDO.toJson(RagConfigDO.builder()
+                .chunkParams(RagConfigDO.ChunkParams.builder().sliceStrategy("length").maxChunkLength(600).build())
+                .parseParams(RagConfigDO.ParseParams.builder().engine("default").build())
+                .searchParams(RagConfigDO.SearchParams.builder().resultCount(20).rrfK(60).build())
+                .modelParams(RagConfigDO.ModelParams.builder().modelId(1L).nearbySliceCount(5).build())
+                .build()));
+
+        service.updateRagConfig(1L, new KbConfigUpdateBo(
+                RagConfigDO.SearchParams.builder().resultCount(50).denseWeight(0.6).build(),
+                RagConfigDO.ModelParams.builder().modelId(7L).nearbySliceCount(3).build()));
+
+        var config = RagConfigDO.fromJson(knowledgeBases.get(0).getConfig());
+        // chunkParams / parseParams 原样保留
+        assertThat(config.getChunkParams().getSliceStrategy()).isEqualTo("length");
+        assertThat(config.getChunkParams().getMaxChunkLength()).isEqualTo(600);
+        assertThat(config.getParseParams().getEngine()).isEqualTo("default");
+        // searchParams / modelParams 整对象替换（未提供的键被抹掉）
+        assertThat(config.getSearchParams().getResultCount()).isEqualTo(50);
+        assertThat(config.getSearchParams().getDenseWeight()).isEqualTo(0.6);
+        assertThat(config.getSearchParams().getRrfK()).isNull();
+        assertThat(config.getModelParams().getModelId()).isEqualTo(7L);
+        assertThat(config.getModelParams().getNearbySliceCount()).isEqualTo(3);
+        // 基本信息不受影响
+        assertThat(knowledgeBases.get(0).getName()).isEqualTo("docs");
+        assertThat(knowledgeBases.get(0).getStatus()).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void updateRagConfigNullBlockKeepsExisting() {
+        seedKnowledgeBase(1L, "docs", "ACTIVE");
+        knowledgeBases.get(0).setConfig(RagConfigDO.toJson(RagConfigDO.builder()
+                .searchParams(RagConfigDO.SearchParams.builder().resultCount(30).build())
+                .modelParams(RagConfigDO.ModelParams.builder().modelId(1L).build())
+                .build()));
+
+        service.updateRagConfig(1L, new KbConfigUpdateBo(null,
+                RagConfigDO.ModelParams.builder().modelId(9L).build()));
+
+        var config = RagConfigDO.fromJson(knowledgeBases.get(0).getConfig());
+        assertThat(config.getSearchParams().getResultCount()).isEqualTo(30);
+        assertThat(config.getModelParams().getModelId()).isEqualTo(9L);
+    }
+
+    @Test
+    void updateRagConfigRejectsEmptyBody() {
+        seedKnowledgeBase(1L, "docs", "ACTIVE");
+
+        assertThatThrownBy(() -> service.updateRagConfig(1L, new KbConfigUpdateBo(null, null)))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("至少提供一项");
+    }
+
+    @Test
+    void updateRagConfigRejectsUnknownKnowledgeBase() {
+        assertThatThrownBy(() -> service.updateRagConfig(99L, new KbConfigUpdateBo(
+                RagConfigDO.SearchParams.builder().resultCount(10).build(), null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("knowledge base does not exist");
     }

@@ -61,7 +61,7 @@ watch(
 )
 
 onMounted(() => {
-  if (props.active) void search()
+  // if (props.active) void search()
 })
 
 function excerpt(content: string, max = 280): string {

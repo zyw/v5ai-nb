@@ -4,6 +4,7 @@ import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
+import xin.v5ai.nb.rag.domain.bo.KbConfigUpdateBo;
 import xin.v5ai.nb.rag.domain.bo.KnowledgeBaseBo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeBaseVo;
 import xin.v5ai.nb.rag.domain.vo.KnowledgeDocumentVo;
@@ -38,6 +39,13 @@ public interface IKnowledgeBaseService {
      * 编辑知识库（覆盖写入配置类字段）。
      */
     KnowledgeBaseVo updateKnowledgeBase(KnowledgeBaseBo bo);
+
+    /**
+     * 轻量更新知识库检索/问答配置：仅整对象替换 {@code config} 中的 searchParams / modelParams
+     * （对应键为空则保留存量），chunkParams / parseParams 与基本信息不受影响；
+     * 不做维度/向量库/范围校验。两个键均为空时抛 {@link IllegalArgumentException}。
+     */
+    void updateRagConfig(Long id, KbConfigUpdateBo bo);
 
     /**
      * 查询单个知识库。

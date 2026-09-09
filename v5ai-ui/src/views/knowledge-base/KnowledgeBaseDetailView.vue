@@ -11,8 +11,7 @@ import { ArrowLeft, CircleQuestionMark, Library } from 'lucide-vue-next'
 import {
   getKnowledgeBaseDetail,
   listModelOptions,
-  updateKnowledgeBase,
-  type CreateKnowledgeBaseRequest,
+  updateKnowledgeBaseConfig,
   type KnowledgeBaseResponse,
   type OptionResponse
 } from '../../api/client'
@@ -102,32 +101,14 @@ async function load() {
   }
 }
 
-function buildWriteBackRequest(): CreateKnowledgeBaseRequest {
-  const k = kb.value!
-  return {
-    id: k.id,
-    name: k.name,
-    description: k.description ?? undefined,
-    embeddingModelId: k.embeddingModelId,
-    vectorStoreInstanceId: k.vectorStoreInstanceId!,
-    dimensionOfVectorModel: k.dimensionOfVectorModel,
-    searchEngineEnable: k.searchEngineEnable,
-    searchEngineInstanceId: k.searchEngineInstanceId ?? undefined,
-    delimiter: k.delimiter ?? undefined,
-    dedupStrategy: k.dedupStrategy,
-    dedupAction: k.dedupAction,
-    config: {
-      ...k.config,
-      searchParams: toRagSearchParams(searchParams),
-      modelParams: toRagModelParams(modelParams)
-    }
-  }
-}
-
 async function persistParams() {
   if (!kb.value) return
   try {
-    await updateKnowledgeBase(adminToken.value, buildWriteBackRequest())
+    // 轻量接口：仅整对象替换 searchParams / modelParams，不做维度/向量库等全量校验
+    await updateKnowledgeBaseConfig(adminToken.value, kb.value.id, {
+      searchParams: toRagSearchParams(searchParams),
+      modelParams: toRagModelParams(modelParams)
+    })
   } catch (e) {
     message.error(e instanceof Error ? e.message : '参数自动保存失败')
   }
