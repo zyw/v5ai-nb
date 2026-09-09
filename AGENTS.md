@@ -174,7 +174,7 @@ cd v5ai-ui && npm install && npm run build
 
 ### Issue tracker
 
-Issues and specs live as local Markdown files under `.scratch/<feature-slug>/`. See `docs/agents/issue-tracker.md`.
+Issues live in the repo's OneDev Issues (`https://onedev.v5ai.xin/v5ai-nb`), read/written via the OneDev REST API with a personal access token. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
