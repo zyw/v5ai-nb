@@ -93,11 +93,11 @@ const rewriteDisabled = computed(() => !canRewrite.value)
           </n-tooltip>
         </span>
         <div class="param-control">
-          <n-input-number v-model:value="params.resultCount" :min="0" :max="500" size="small" style="width: 100px" />
+          <n-input-number v-model:value="params.resultCount" :min="1" :max="100" size="small" style="width: 100px" />
         </div>
       </div>
       <div class="param-row">
-        <n-slider v-model:value="params.resultCount" :min="0" :max="500" />
+        <n-slider v-model:value="params.resultCount" :min="1" :max="100" />
       </div>
       <n-divider class="param-divider" />
       <div class="param-row">

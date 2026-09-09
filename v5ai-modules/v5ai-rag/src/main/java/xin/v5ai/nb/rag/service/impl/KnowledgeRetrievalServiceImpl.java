@@ -9,7 +9,10 @@ import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
+import xin.v5ai.nb.rag.core.RetrievalHitEnricher;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
+import xin.v5ai.nb.rag.core.fusion.FusionStrategy;
+import xin.v5ai.nb.rag.core.fusion.RetrievalFusion;
 import xin.v5ai.nb.rag.core.store.KeywordStore;
 import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
@@ -21,8 +24,6 @@ import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 import xin.v5ai.nb.rag.service.IKnowledgeRetrievalService;
 
 import java.time.Duration;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +33,11 @@ import java.util.Map;
  * <p>
  * 语义口径：
  * <ul>
- *   <li>向量路得分 = 余弦相似度（0~1）；关键词路恒为 1.0（ILIKE 粗检，无相关度）。</li>
+ *   <li>向量路得分 = 余弦相似度（0~1）；关键词路得分按存储实现（pgvector ILIKE 粗检恒 1.0 / ES 用 _score）。</li>
  *   <li>阈值过滤仅作用于向量相似度（关键词命中的粗检语义无阈值意义）。</li>
- *   <li>RRF 融合按两路名次计分 {@code sum(1/(rrfK + rank))}，与参考稿「RRF 倒数排名融合」一致；
- *       仅一路有结果时直接返回该路（保留其原始得分口径）。</li>
+ *   <li>融合策略经 {@link FusionStrategy#parse} 校验：未知取值直接抛 {@link ServiceException}（不静默降级）；
+ *       融合实现复用 {@link RetrievalFusion}（与运行时注入同一套逻辑）。</li>
+ *   <li>RRF 策略下 rrfK 须在 1~200（{@link RetrievalFusion#requireRrfK}），越界拒绝；非 RRF 策略不校验。</li>
  *   <li>问题改写为「半真」能力：需要可用对话模型（请求 modelId 或知识库 ModelParams.modelId）；
  *       模型缺失或调用失败时自动跳过改写并告警，不影响检索主流程。</li>
  * </ul>
@@ -51,10 +53,6 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
     private static final int DEFAULT_RESULT_COUNT = 20;
     private static final int DEFAULT_RRF_K = 60;
     private static final double DEFAULT_DENSE_WEIGHT = 0.5;
-    private static final String FUSION_RRF = "RRF";
-    private static final String FUSION_VECTOR = "VECTOR";
-    private static final String FUSION_KEYWORD = "KEYWORD";
-    private static final String FUSION_WEIGHTED_SUM = "WEIGHTED_SUM";
     private static final Duration REWRITE_TIMEOUT = Duration.ofSeconds(20);
 
     private final IKnowledgeBaseService knowledgeBaseService;
@@ -62,7 +60,7 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
     private final VectorStoreResolver vectorStoreResolver;
     private final KnowledgeDocumentMapper documentMapper;
     private final ModelChatClient modelChatClient;
-    private final xin.v5ai.nb.rag.core.RetrievalHitEnricher hitEnricher;
+    private final RetrievalHitEnricher hitEnricher;
 
     @Override
     public List<KbHitVo> retrieve(Long knowledgeBaseId, KbRetrieveBo request) {
@@ -71,7 +69,7 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
                 ? null : base.getConfig().getSearchParams();
         Long rewriteModelId = resolveRewriteModelId(request, base);
         String query = requireQuery(request == null ? null : request.query());
-        int resultCount = clamp(optional(request == null ? null : request.resultCount(),
+        int resultCount = RetrievalFusion.clamp(optional(request == null ? null : request.resultCount(),
                 stored == null ? null : stored.getResultCount(), DEFAULT_RESULT_COUNT), 1, 100);
         boolean rewriteEnabled = optional(request == null ? null : request.questionRewrite(),
                 stored == null ? null : stored.getQuestionRewrite(), false);
@@ -81,11 +79,10 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
         if (threshold == null && stored != null) {
             threshold = stored.getThreshold();
         }
-        String fusionStrategy = normalize(optional(request == null ? null : request.fusionStrategy(),
-                stored == null ? null : stored.getFusionStrategy(), FUSION_RRF));
-        int rrfK = optional(request == null ? null : request.rrfK(),
-                stored == null ? null : stored.getRrfK(), DEFAULT_RRF_K);
-        double denseWeight = clampWeight(optional(request == null ? null : request.denseWeight(),
+        FusionStrategy strategy = FusionStrategy.parse(optional(request == null ? null : request.fusionStrategy(),
+                stored == null ? null : stored.getFusionStrategy(), FusionStrategy.DEFAULT.name()));
+        int rrfK = resolveRrfK(request, stored, strategy);
+        double denseWeight = RetrievalFusion.clampWeight(optional(request == null ? null : request.denseWeight(),
                 stored == null ? null : stored.getDenseWeight(), DEFAULT_DENSE_WEIGHT));
 
         String effectiveQuery = rewriteEnabled ? rewrite(query, rewriteModelId) : query;
@@ -99,10 +96,11 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
         List<VectorStore.RetrievalHit> vectorHits = vectorHits(base, store, effectiveQuery, candidates);
         List<VectorStore.RetrievalHit> keywordHits = keywordHits(base, store, effectiveQuery, candidates);
         if (thresholdEnabled && threshold != null) {
-            vectorHits = filterByThreshold(vectorHits, threshold);
+            vectorHits = RetrievalFusion.filterByThreshold(vectorHits, threshold);
         }
 
-        List<VectorStore.RetrievalHit> merged = fuse(vectorHits, keywordHits, fusionStrategy, rrfK, denseWeight);
+        List<VectorStore.RetrievalHit> merged = RetrievalFusion.fuse(
+                vectorHits, keywordHits, strategy, rrfK, denseWeight);
         if (merged.size() > resultCount) {
             merged = merged.subList(0, resultCount);
         }
@@ -136,109 +134,19 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
         }
     }
 
-    private static List<VectorStore.RetrievalHit> filterByThreshold(
-            List<VectorStore.RetrievalHit> hits, double threshold) {
-        return hits.stream()
-                .filter(hit -> hit.score() >= threshold)
-                .toList();
-    }
+    // ---------- params ----------
 
     /**
-     * 融合两路命中。语义见类注释。
+     * rrfK 取值链：请求 → 知识库配置 → 默认 60。
+     * 仅 RRF 策略下参与并校验（越界抛 {@link ServiceException}）；其余策略该值不生效、不校验。
      */
-    private static List<VectorStore.RetrievalHit> fuse(List<VectorStore.RetrievalHit> vector,
-                                                       List<VectorStore.RetrievalHit> keyword,
-                                                       String strategy, int rrfK, double denseWeight) {
-        if (FUSION_VECTOR.equals(strategy)) {
-            return vector;
+    private static int resolveRrfK(KbRetrieveBo request, RagConfigDO.SearchParams stored, FusionStrategy strategy) {
+        Integer value = request == null ? null : request.rrfK();
+        if (value == null && stored != null) {
+            value = stored.getRrfK();
         }
-        if (FUSION_KEYWORD.equals(strategy)) {
-            return keyword;
-        }
-        if (FUSION_WEIGHTED_SUM.equals(strategy)) {
-            return weightedSum(vector, keyword, denseWeight);
-        }
-        if (vector.isEmpty()) {
-            return keyword;
-        }
-        if (keyword.isEmpty()) {
-            return vector;
-        }
-        // RRF：以两路名次融合；去重键与运行时 merge 一致（库+文档+片序号）
-        Map<String, Ranked> fused = new HashMap<>();
-        for (int i = 0; i < vector.size(); i++) {
-            VectorStore.RetrievalHit hit = vector.get(i);
-            fused.computeIfAbsent(key(hit), k -> new Ranked(hit)).add(i + 1, rrfK);
-        }
-        for (int i = 0; i < keyword.size(); i++) {
-            VectorStore.RetrievalHit hit = keyword.get(i);
-            fused.computeIfAbsent(key(hit), k -> new Ranked(hit)).add(i + 1, rrfK);
-        }
-        return fused.values().stream()
-                .sorted(Comparator.comparingDouble((Ranked r) -> r.score).reversed())
-                .map(r -> new VectorStore.RetrievalHit(
-                        r.hit.vectorId(), r.hit.knowledgeBaseId(), r.hit.documentId(), r.hit.chunkIndex(),
-                        r.hit.content(), r.hit.metadata(), r.score))
-                .toList();
-    }
-
-    /**
-     * WEIGHTED_SUM 融合：合并分 = denseWeight×向量相似度 + (1-denseWeight)×关键词分。
-     * 去重键与 RRF 一致（库+文档+片序号）；仅一路有结果时直接返回该路（保留原始得分口径）。
-     */
-    private static List<VectorStore.RetrievalHit> weightedSum(List<VectorStore.RetrievalHit> vector,
-                                                              List<VectorStore.RetrievalHit> keyword,
-                                                              double denseWeight) {
-        if (vector.isEmpty()) {
-            return keyword;
-        }
-        if (keyword.isEmpty()) {
-            return vector;
-        }
-        Map<String, WeightedHit> acc = new HashMap<>();
-        for (VectorStore.RetrievalHit hit : vector) {
-            acc.computeIfAbsent(key(hit), k -> new WeightedHit(hit)).vectorScore = hit.score();
-        }
-        for (VectorStore.RetrievalHit hit : keyword) {
-            acc.computeIfAbsent(key(hit), k -> new WeightedHit(hit)).keywordScore = hit.score();
-        }
-        return acc.values().stream()
-                .map(w -> new VectorStore.RetrievalHit(
-                        w.hit.vectorId(), w.hit.knowledgeBaseId(), w.hit.documentId(), w.hit.chunkIndex(),
-                        w.hit.content(), w.hit.metadata(),
-                        denseWeight * w.vectorScore + (1 - denseWeight) * w.keywordScore))
-                .sorted(Comparator.comparingDouble((VectorStore.RetrievalHit h) -> h.score()).reversed())
-                .toList();
-    }
-
-    private static String key(VectorStore.RetrievalHit hit) {
-        return hit.knowledgeBaseId() + ":" + hit.documentId() + ":" + hit.chunkIndex();
-    }
-
-    /** WEIGHTED_SUM 累计项：记录两路得分（缺失一路计 0）。 */
-    private static final class WeightedHit {
-        private final VectorStore.RetrievalHit hit;
-        private double vectorScore;
-        private double keywordScore;
-
-        private WeightedHit(VectorStore.RetrievalHit hit) {
-            this.hit = hit;
-        }
-    }
-
-    private static final class Ranked {
-        private final String key;
-        private final VectorStore.RetrievalHit hit;
-        private double score;
-
-        private Ranked(VectorStore.RetrievalHit hit) {
-            this.key = key(hit);
-            this.hit = hit;
-        }
-
-        private void add(int rank, int rrfK) {
-            score += 1.0 / (rrfK + rank);
-        }
+        int rrfK = value == null ? DEFAULT_RRF_K : value;
+        return strategy == FusionStrategy.RRF ? RetrievalFusion.requireRrfK(rrfK) : rrfK;
     }
 
     // ---------- output ----------
@@ -314,20 +222,8 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
         return query.trim();
     }
 
-    private static String normalize(String strategy) {
-        return strategy == null || strategy.isBlank() ? FUSION_RRF : strategy.trim().toUpperCase();
-    }
-
     private static <T> T optional(T value, T fallback, T defaultValue) {
         return value != null ? value : (fallback != null ? fallback : defaultValue);
-    }
-
-    private static int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private static double clampWeight(double weight) {
-        return Math.max(0.0, Math.min(1.0, weight));
     }
 
     private static double round(double score) {

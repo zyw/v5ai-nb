@@ -7,6 +7,7 @@ import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
 import xin.v5ai.nb.rag.core.RetrievalHitEnricher;
+import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.store.KeywordStore;
 import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
@@ -178,5 +179,57 @@ class KnowledgeRetrievalServiceImplTest {
         assertThatThrownBy(() -> service.retrieve(1L, new KbRetrieveBo("  ", null, null, null, null, null, null, null, null)))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("请输入检索内容");
+    }
+
+    @Test
+    void retrieve_rejectsUnknownFusionStrategy() {
+        when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
+
+        assertThatThrownBy(() -> service.retrieve(1L,
+                new KbRetrieveBo("问题", null, null, null, null, "MIX", null, null, null)))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("不支持的融合策略");
+    }
+
+    @Test
+    void retrieve_rejectsUnknownFusionStrategyFromStoredConfig() {
+        when(baseService.getKnowledgeBase(1L)).thenReturn(baseWithSearchParams(1L,
+                RagConfigDO.SearchParams.builder().fusionStrategy("MIX").build()));
+
+        assertThatThrownBy(() -> service.retrieve(1L,
+                new KbRetrieveBo("问题", null, null, null, null, null, null, null, null)))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("不支持的融合策略");
+    }
+
+    @Test
+    void retrieve_rejectsRrfKOutOfRangeOnRrfStrategy() {
+        when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
+        // fusionStrategy=null → 默认 RRF；rrfK 越界（0 / 201）拒绝
+        assertThatThrownBy(() -> service.retrieve(1L,
+                new KbRetrieveBo("问题", null, null, null, null, null, 0, null, null)))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("RRF K 值须在 1~200 之间");
+        assertThatThrownBy(() -> service.retrieve(1L,
+                new KbRetrieveBo("问题", null, null, null, null, null, 201, null, null)))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("RRF K 值须在 1~200 之间");
+    }
+
+    @Test
+    void retrieve_ignoresOutOfRangeRrfKOnNonRrfStrategy() {
+        when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
+        when(resolver.vectorStore(null)).thenReturn(vectorStore);
+        // WEIGHTED_SUM 下 rrfK 不参与融合，越界也不校验（仅 RRF 校验）
+        List<KbHitVo> hits = service.retrieve(1L,
+                new KbRetrieveBo("问题", 10, null, null, null, "WEIGHTED_SUM", 999, null, 0.5));
+
+        assertThat(hits).isEmpty();
+    }
+
+    private KnowledgeBaseVo baseWithSearchParams(Long id, RagConfigDO.SearchParams searchParams) {
+        KnowledgeBaseVo base = base(id);
+        base.setConfig(RagConfigDO.builder().searchParams(searchParams).build());
+        return base;
     }
 }

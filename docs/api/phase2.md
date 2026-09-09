@@ -166,7 +166,7 @@ Content-Type: application/json
 Accept: text/event-stream
 ```
 
-`retrieve` 请求体（空字段按知识库 `config.searchParams` → 默认值补齐，仅本次会话生效、不回写）：
+`retrieve` 请求体（除 `query` 必填外均可省；取值按 请求 → 知识库 `config.searchParams` → 内置默认 依次补齐，请求本身不回写配置。知识库默认配置由详情页参数区自动保存维护——`PUT /api/admin/knowledge-bases/{kbId}/config`（500ms 防抖），调试改动即成为该库的检索/问答默认值）：
 
 ```json
 {
@@ -181,8 +181,10 @@ Accept: text/event-stream
 }
 ```
 
-- 融合策略：`RRF`（倒数排名融合，默认）/ `VECTOR` / `KEYWORD`；向量路得分 = 余弦相似度（0~1），关键词路为 ILIKE 粗检（得分 1.0）；
-- 阈值过滤仅作用于向量相似度；RRF 两路候选数 = `max(resultCount*3, 30)`，按 `sum(1/(rrfK+rank))` 融合后取前 `resultCount`；
+- 融合策略：`RRF`（倒数排名融合，默认）/ `WEIGHTED_SUM`（加权求和）/ `VECTOR`（仅向量）/ `KEYWORD`（仅关键词）；未知取值报 400（不静默降级）。向量路得分 = 余弦相似度（0~1）；关键词路得分按存储实现：pgvector 为 ILIKE 粗检（命中恒 1.0，BM25 细打分规划中）、Elasticsearch 用 `_score`；
+- 参数范围与默认：`resultCount` 1~100（默认 20，越界钳制）；`rrfK` 1~200（默认 60，仅 RRF，越界/非法拒绝）；`denseWeight` 0~1（默认 0.5，仅 WEIGHTED_SUM，关键词权重 = 1 − denseWeight）；`threshold` 0~1（默认 0.5）；
+- 阈值过滤仅作用于向量相似度；两路候选数 = `max(resultCount*3, 30)`：RRF 按 `sum(1/(rrfK+rank))` 融合名次后取前 `resultCount`；WEIGHTED_SUM 按 `denseWeight×向量分 + (1−denseWeight)×关键词分` 合并排序后取前 `resultCount`；
+- 重排（`rerankEnabled` / `rerankModelId` / `enterRerankCount`）当前仅为知识库配置项（`config.searchParams`），调试请求暂不携带、检索链路接入规划中；
 - 问题改写为「半真」：需要 `modelId`（或知识库 `config.modelParams.modelId`），模型缺失/调用失败时自动跳过改写并走原问题，不影响检索；
 - `chat/stream` 请求体为 `KbChatBo`：`modelId` / `nearbySliceCount`（拼接邻近文本片数量，默认 5，= 每个命中前后补片数）/ `prompt`（可含 `<Documents>` 变量，缺省用内置模板）/ 检索参数同 retrieve / `messages`（`[{role: user|assistant, content}]`，末条为当前问题）。
   问答链路：检索 → 邻近补全 → Prompt 注入 → 对话模型流式回答；**无状态**（历史由前端携带，不落库、不占运行配额、不计 Agent 用量），对话模型经运行时 `AgentModelResolver` 解析（仅 CHAT 模型可用）。
@@ -221,6 +223,8 @@ DELETE /api/admin/agents/{agentKey}/api-keys
 2. 查询绑定的知识库，对用户问题做向量检索（无 EMBEDDING 模型时回退 Hash 嵌入；向量为空回退关键词检索）；
 3. 命中时先发出 `RETRIEVAL` 事件（payload 为引用上下文），再把上下文注入 System Prompt；
 4. 之后发出 `MODEL_CALL` / `TEXT_DELTA` / `MESSAGE_COMPLETED` / `RUN_COMPLETED`（失败为 `RUN_FAILED`）。
+
+运行时检索默认「向量优先、向量为空回退关键词、简单去重取 top 4」（快速路径，不执行融合、不引入双路检索开销）。当该 Agent 绑定的知识库**全部**显式配置一致（`config.searchParams.fusionStrategy` = `RRF` 或 `WEIGHTED_SUM`，含 `rrfK` / `denseWeight`）时，运行时执行双路融合：候选数 = `max(注入条数×3, 30)`，融合后截断至注入预算（注入条数保持独立默认 4，**不读 `resultCount`**，避免上下文膨胀）；任一库未显式配置或配置不一致时回退快速路径。效果：调试里显式选融合并保存的库，线上即按同一融合口径检索；阈值过滤 / 问题改写 / 重排仍仅作用于调试链路（重排接入规划中）。
 
 ## 会话历史与恢复
 
