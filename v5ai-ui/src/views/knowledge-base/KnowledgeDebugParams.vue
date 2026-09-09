@@ -55,8 +55,8 @@ const props = defineProps<{
 const fusionOptions: SelectOption[] = [
   { label: 'RRF (倒数排名融合)', value: 'RRF' },
   { label: '加权求和 (WEIGHTED_SUM)', value: 'WEIGHTED_SUM' },
-  { label: '向量检索 (VECTOR)', value: 'VECTOR' },
-  { label: '关键词检索 (KEYWORD)', value: 'KEYWORD' }
+  // { label: '向量检索 (VECTOR)', value: 'VECTOR' },
+  // { label: '关键词检索 (KEYWORD)', value: 'KEYWORD' }
 ]
 
 const modelOptions = computed<SelectOption[]>(() =>
