@@ -19,7 +19,7 @@ import {
   NSwitch,
   NTooltip
 } from 'naive-ui'
-import { CircleQuestionMark } from 'lucide-vue-next'
+import { CircleQuestionMark,FileSearch2Icon } from 'lucide-vue-next'
 import type { OptionResponse } from '../../api/client'
 import type { SelectOption } from 'naive-ui'
 
@@ -76,46 +76,52 @@ const rewriteDisabled = computed(() => !canRewrite.value)
 
 <template>
   <div class="kb-params">
+    <div class="params-title">
+      <n-icon color="#2f6bff" style="margin-right: 5px"><FileSearch2Icon/></n-icon>
+      知识检索
+    </div>
     <!-- 检索参数 -->
-    <div class="params-section">
-      <div class="params-title">检索参数</div>
-      <div class="muted hint">调整检索参数，预览和调试 RAG 命中效果</div>
+    <n-card class="params-section" content-style="padding: 5px;">
+      <div class="params-title search-title">检索参数</div>
+      <div class="muted hint">调整检索参数，预览和调试RAG命中效果</div>
       <div class="param-row">
         <span class="param-label">
           结果返回数量
           <n-tooltip placement="top">
             <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-            返回的命中数量上限（topK）
+            设置检索返回的结果数量
           </n-tooltip>
         </span>
         <div class="param-control">
-          <n-button size="tiny" quaternary circle @click="params.resultCount = Math.max(1, params.resultCount - 1)">−</n-button>
-          <n-input-number v-model:value="params.resultCount" :min="1" :max="100" size="small" style="width: 64px" />
-          <n-button size="tiny" quaternary circle @click="params.resultCount = Math.min(100, params.resultCount + 1)">+</n-button>
+          <n-input-number v-model:value="params.resultCount" :min="0" :max="500" size="small" style="width: 100px" />
         </div>
       </div>
+      <div class="param-row">
+        <n-slider v-model:value="params.resultCount" :min="0" :max="500" />
+      </div>
+      <n-divider class="param-divider" />
       <div class="param-row">
         <span class="param-label">
           问题改写
           <n-tooltip placement="top">
             <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-            用对话模型把问题改写为更适合检索的表达（需可用对话模型）
+            对用户问题进行改写优化，提升检索效果
           </n-tooltip>
         </span>
         <n-switch v-model:value="params.questionRewrite" size="small" :disabled="rewriteDisabled" />
       </div>
+      <n-divider class="param-divider" />
       <div class="param-row">
         <span class="param-label">
           重排模型
           <n-tooltip placement="top">
             <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-            重排序能力暂未接入，配置保存备用
+            启用重排模型对检索结果二次排序
           </n-tooltip>
         </span>
         <n-switch v-model:value="params.rerankEnabled" size="small" />
       </div>
       <div v-if="params.rerankEnabled" class="param-row sub">
-        <span class="param-label">重排模型</span>
         <n-select
           v-model:value="params.rerankModelId"
           :options="rerankOptions"
@@ -126,31 +132,52 @@ const rewriteDisabled = computed(() => !canRewrite.value)
           class="fusion-select"
         />
       </div>
-      <div v-if="params.rerankEnabled" class="param-row sub">
-        <span class="param-label">进入重排数量</span>
+      <n-divider class="param-divider" />
+      <div class="param-row">
+        <span class="param-label">
+          进入重排数量
+          <n-tooltip placement="top">
+            <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+            参与重排的结果数量
+          </n-tooltip>
+        </span>
         <div class="param-control">
-          <n-button size="tiny" quaternary circle @click="params.enterRerankCount = Math.max(1, params.enterRerankCount - 1)">−</n-button>
-          <n-input-number v-model:value="params.enterRerankCount" :min="1" :max="200" size="small" style="width: 64px" />
-          <n-button size="tiny" quaternary circle @click="params.enterRerankCount = Math.min(200, params.enterRerankCount + 1)">+</n-button>
+          <n-input-number v-model:value="params.enterRerankCount" :min="0" :max="500" size="small" style="width: 100px" />
         </div>
       </div>
+      <div class="param-row">
+        <n-slider v-model:value="params.enterRerankCount" :min="0" :max="500" />
+      </div>
+      <n-divider class="param-divider" />
       <div class="param-row">
         <span class="param-label">
           阈值过滤
           <n-tooltip placement="top">
             <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-            按向量相似度过滤低相关命中
+            只返回相似度高于阈值的结果
           </n-tooltip>
         </span>
         <n-switch v-model:value="params.thresholdEnabled" size="small" />
       </div>
       <div v-if="params.thresholdEnabled" class="param-row sub">
-        <span class="param-label">相似度阈值</span>
-        <div class="slider-wrap">
-          <n-slider v-model:value="params.threshold" :min="0" :max="1" :step="0.05" />
-          <span class="slider-value">{{ params.threshold.toFixed(2) }}</span>
+        <span class="param-label">
+          相似度阈值
+        </span>
+        <div class="param-control">
+          <n-input-number v-model:value="params.threshold" :min="0" :max="1" :step="0.01" size="small" style="width: 100px" />
         </div>
       </div>
+      <div v-if="params.thresholdEnabled" class="param-row">
+        <n-slider v-model:value="params.threshold" :min="0" :max="1" :step="0.01" />
+      </div>
+<!--      <div v-if="params.thresholdEnabled" class="param-row sub">-->
+<!--        <span class="param-label">相似度阈值</span>-->
+<!--        <div class="slider-wrap">-->
+<!--          <n-slider v-model:value="params.threshold" :min="0" :max="1" :step="0.05" />-->
+<!--          <span class="slider-value">{{ params.threshold.toFixed(2) }}</span>-->
+<!--        </div>-->
+<!--      </div>-->
+      <n-divider class="param-divider" />
       <n-collapse :default-expanded-names="['more']" arrow-placement="right">
         <n-collapse-item name="more" title="更多参数" class="more-item">
           <div class="param-row">
@@ -158,41 +185,47 @@ const rewriteDisabled = computed(() => !canRewrite.value)
               融合策略
               <n-tooltip placement="top">
                 <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-                向量 + 关键词两路召回结果的融合方式
+                选择向量检索与BM25检索结果的融合方式
               </n-tooltip>
             </span>
+          </div>
+          <div class="param-row">
             <n-select v-model:value="params.fusionStrategy" :options="fusionOptions" size="small" class="fusion-select" />
           </div>
+          <n-divider class="param-divider" />
           <div v-if="params.fusionStrategy === 'WEIGHTED_SUM'" class="param-row sub">
             <span class="param-label">
               向量权重
               <n-tooltip placement="top">
                 <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-                稠密向量路在加权求和中的权重（1 - 权重为关键词路权重）
+                稠密向量检索的权重（1 - denseWeight 为BM25权重）
               </n-tooltip>
             </span>
-            <div class="slider-wrap">
-              <n-slider v-model:value="params.denseWeight" :min="0" :max="1" :step="0.05" />
-              <span class="slider-value">{{ params.denseWeight.toFixed(2) }}</span>
+            <div class="param-control">
+              <n-input-number v-model:value="params.denseWeight" :min="0" :max="1" :step="0.01" size="small" style="width: 100px" />
             </div>
           </div>
-          <div class="param-row">
+          <div v-if="params.fusionStrategy === 'WEIGHTED_SUM'" class="param-row">
+            <n-slider v-model:value="params.denseWeight" :min="0" :max="1" :step="0.01" />
+          </div>
+          <div v-if="params.fusionStrategy === 'RRF'" class="param-row">
             <span class="param-label">
               RRF K 值
               <n-tooltip placement="top">
                 <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-                倒数排名融合中的平滑系数，越小越重视前列命中
+                RRF 公式中的常数 k，值越大排名差距越平滑，默认 60
               </n-tooltip>
             </span>
             <div class="param-control">
-              <n-button size="tiny" quaternary circle @click="params.rrfK = Math.max(1, params.rrfK - 1)">−</n-button>
-              <n-input-number v-model:value="params.rrfK" :min="1" :max="200" size="small" style="width: 64px" />
-              <n-button size="tiny" quaternary circle @click="params.rrfK = Math.min(200, params.rrfK + 1)">+</n-button>
+              <n-input-number v-model:value="params.rrfK" :min="1" :max="200" size="small" style="width: 100px" />
             </div>
+          </div>
+          <div v-if="params.fusionStrategy === 'RRF'" class="param-row">
+            <n-slider v-model:value="params.rrfK" :min="1" :max="200" />
           </div>
         </n-collapse-item>
       </n-collapse>
-    </div>
+    </n-card>
 
     <!-- 模型回答参数（仅问答） -->
     <div v-if="mode === 'qa' && modelParams" class="params-section">
@@ -260,14 +293,29 @@ const rewriteDisabled = computed(() => !canRewrite.value)
   border-radius: 8px;
 }
 
+.search-title {
+  font-size: 15px;
+  font-weight: 700;
+  padding-left: 10px;
+  border-left: 3px solid #1890ff;
+  line-height: 1;
+}
+
 .params-title {
   font-weight: 600;
   margin-bottom: 2px;
+  font-size: 16px;
 }
+
+.param-divider {
+  margin: 12px 0;
+}
+
 
 .hint {
   color: rgba(120, 120, 120, 0.9);
   margin-bottom: 10px;
+  font-size: 13px;
 }
 
 .param-row {
@@ -312,7 +360,7 @@ const rewriteDisabled = computed(() => !canRewrite.value)
 }
 
 .fusion-select {
-  width: 170px;
+  width: 100%;
 }
 
 .slider-wrap {
@@ -329,7 +377,7 @@ const rewriteDisabled = computed(() => !canRewrite.value)
 }
 
 .more-item :deep(.n-collapse-item__header) {
-  font-size: 13px;
+  font-size: 14px;
   padding: 4px 0;
 }
 </style>

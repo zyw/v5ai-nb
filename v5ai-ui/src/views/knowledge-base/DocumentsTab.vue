@@ -449,8 +449,11 @@ onBeforeUnmount(stopPolling)
       :checked-row-keys="checkedRowKeys"
       :scroll-x="columns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
       @update:checked-row-keys="onCheckedKeysChange"
-    />
-    <n-empty v-if="!loading && documents.length === 0" description="暂无文档，点击右上角导入" style="padding: 32px 0" />
+    >
+    <template #empty>
+      <n-empty description="暂无文档，点击右上角导入" style="padding: 32px 0" />
+    </template>
+    </n-data-table>
     <n-pagination
       v-if="pagination.itemCount > pagination.pageSize"
       :page="pagination.page"
