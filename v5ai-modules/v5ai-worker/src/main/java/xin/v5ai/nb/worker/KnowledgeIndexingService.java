@@ -192,7 +192,8 @@ public class KnowledgeIndexingService {
         return new ChunkingOptions(ChunkMode.from(chunkParams.getSliceStrategy()),
                 chunkParams.getMaxChunkLength(), chunkParams.getChunkOverlap(),
                 customDelimiter, chunkParams.getChunkRegex(),
-                Boolean.TRUE.equals(chunkParams.getMergeShortSegments()));
+                Boolean.TRUE.equals(chunkParams.getMergeShortSegments()),
+                chunkParams.getChunkModelId());
     }
 
     private String metadata(KnowledgeDocument document, int chunkIndex) {

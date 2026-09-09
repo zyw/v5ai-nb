@@ -9,11 +9,21 @@ package xin.v5ai.nb.rag.core;
  * @param customDelimiter   sliceStrategy=delimiter 时的一级切分符
  * @param chunkRegex        sliceStrategy=regex 时的一级切分正则（Java Pattern）
  * @param mergeShortSegments 是否将过短片段并入相邻片段
+ * @param chunkModelId      sliceStrategy=smart 时用于语义切片的对话模型配置 ID；为空回退按段落切分
  * @author ZYW
  * @since 2026-08-30
  */
 public record ChunkingOptions(ChunkMode sliceStrategy, Integer maxChunkLength, Integer chunkOverlap,
-                              String customDelimiter, String chunkRegex, boolean mergeShortSegments) {
+                              String customDelimiter, String chunkRegex, boolean mergeShortSegments,
+                              Long chunkModelId) {
+
+    /**
+     * 不含智能切片模型的便捷构造：{@code chunkModelId} 置空（非 smart 策略默认走此构造）。
+     */
+    public ChunkingOptions(ChunkMode sliceStrategy, Integer maxChunkLength, Integer chunkOverlap,
+                           String customDelimiter, String chunkRegex, boolean mergeShortSegments) {
+        this(sliceStrategy, maxChunkLength, chunkOverlap, customDelimiter, chunkRegex, mergeShortSegments, null);
+    }
 
     /**
      * 空配置：使用实现默认行为。

@@ -581,6 +581,9 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
                 throw new ServiceException("切片正则不合法: " + e.getMessage());
             }
         }
+        if ("smart".equals(mode) && chunkParams.getChunkModelId() == null) {
+            throw new ServiceException("智能切片必须配置对话模型");
+        }
     }
 
     /**

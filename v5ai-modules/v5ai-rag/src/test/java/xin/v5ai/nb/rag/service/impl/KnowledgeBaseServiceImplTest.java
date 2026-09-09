@@ -286,6 +286,32 @@ class KnowledgeBaseServiceImplTest {
     }
 
     @Test
+    void createKnowledgeBaseRejectsSmartWithoutModel() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 1536);
+        bo.setConfig(RagConfigDO.builder()
+                .chunkParams(RagConfigDO.ChunkParams.builder().sliceStrategy("smart").build())
+                .build());
+
+        assertThatThrownBy(() -> service.createKnowledgeBase(bo))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("智能切片必须配置对话模型");
+    }
+
+    @Test
+    void createKnowledgeBaseAcceptsSmartWithModel() {
+        seedStore(1L, "pg", 1, 1);
+        var bo = validBo("Docs", 11L, 1L, 1536);
+        bo.setConfig(RagConfigDO.builder()
+                .chunkParams(RagConfigDO.ChunkParams.builder().sliceStrategy("smart").chunkModelId(42L).build())
+                .build());
+
+        var created = service.createKnowledgeBase(bo);
+
+        assertThat(created.getConfig().getChunkParams().getChunkModelId()).isEqualTo(42L);
+    }
+
+    @Test
     void updateKnowledgeBaseOverwritesConfigFields() {
         seedStore(1L, "pg", 1, 1);
         seedKnowledgeBase(1L, "docs", "ACTIVE");

@@ -1,12 +1,14 @@
 package xin.v5ai.nb.rag.core.chunker;
 
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.rag.core.ChunkMode;
 import xin.v5ai.nb.rag.core.ChunkingOptions;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * {@link DocumentChunkerRegistry} 单测：按切片策略路由到对应实现类。
@@ -20,7 +22,7 @@ class DocumentChunkerRegistryTest {
             new LengthDocumentChunker(pipeline()),
             new DelimiterDocumentChunker(pipeline()),
             new RegexDocumentChunker(pipeline()),
-            new SmartDocumentChunker(pipeline())));
+            new SmartDocumentChunker(pipeline(), mock(ModelChatClient.class))));
 
     private static ChunkPipeline pipeline() {
         return new ChunkPipeline(new FixedLengthSplitter(), new ChunkMerger());
