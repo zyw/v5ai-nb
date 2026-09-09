@@ -26,12 +26,15 @@ import type { SelectOption } from 'naive-ui'
 export interface KbSearchParamsState {
   resultCount: number
   questionRewrite: boolean
-  /** 重排模型：未接入真实算法，仅保留控件位置（置灰） */
+  /** 重排序能力暂未接入，配置保存备用 */
   rerankEnabled: boolean
+  rerankModelId: number | null
+  enterRerankCount: number
   thresholdEnabled: boolean
   threshold: number
-  fusionStrategy: 'RRF' | 'VECTOR' | 'KEYWORD'
+  fusionStrategy: 'RRF' | 'WEIGHTED_SUM' | 'VECTOR' | 'KEYWORD'
   rrfK: number
+  denseWeight: number
 }
 
 export interface KbModelParamsState {
@@ -44,18 +47,24 @@ const props = defineProps<{
   params: KbSearchParamsState
   modelParams?: KbModelParamsState | null
   chatModels: OptionResponse[]
+  rerankModels?: OptionResponse[]
   /** retrieval=仅检索参数；qa=检索参数 + 模型回答参数 */
   mode: 'retrieval' | 'qa'
 }>()
 
 const fusionOptions: SelectOption[] = [
   { label: 'RRF (倒数排名融合)', value: 'RRF' },
-  { label: '向量检索', value: 'VECTOR' },
-  { label: '关键词检索', value: 'KEYWORD' }
+  { label: '加权求和 (WEIGHTED_SUM)', value: 'WEIGHTED_SUM' },
+  { label: '向量检索 (VECTOR)', value: 'VECTOR' },
+  { label: '关键词检索 (KEYWORD)', value: 'KEYWORD' }
 ]
 
 const modelOptions = computed<SelectOption[]>(() =>
   props.chatModels.map((m) => ({ label: m.label, value: m.value }) as SelectOption)
+)
+
+const rerankOptions = computed<SelectOption[]>(() =>
+  (props.rerankModels ?? []).map((m) => ({ label: m.label, value: m.value }) as SelectOption)
 )
 
 const hasChatModel = computed(() => props.chatModels.length > 0)
@@ -100,10 +109,30 @@ const rewriteDisabled = computed(() => !canRewrite.value)
           重排模型
           <n-tooltip placement="top">
             <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-            重排序能力暂未接入，本开关为占位
+            重排序能力暂未接入，配置保存备用
           </n-tooltip>
         </span>
-        <n-switch v-model:value="params.rerankEnabled" size="small" disabled />
+        <n-switch v-model:value="params.rerankEnabled" size="small" />
+      </div>
+      <div v-if="params.rerankEnabled" class="param-row sub">
+        <span class="param-label">重排模型</span>
+        <n-select
+          v-model:value="params.rerankModelId"
+          :options="rerankOptions"
+          placeholder="请选择重排模型"
+          filterable
+          clearable
+          size="small"
+          class="fusion-select"
+        />
+      </div>
+      <div v-if="params.rerankEnabled" class="param-row sub">
+        <span class="param-label">进入重排数量</span>
+        <div class="param-control">
+          <n-button size="tiny" quaternary circle @click="params.enterRerankCount = Math.max(1, params.enterRerankCount - 1)">−</n-button>
+          <n-input-number v-model:value="params.enterRerankCount" :min="1" :max="200" size="small" style="width: 64px" />
+          <n-button size="tiny" quaternary circle @click="params.enterRerankCount = Math.min(200, params.enterRerankCount + 1)">+</n-button>
+        </div>
       </div>
       <div class="param-row">
         <span class="param-label">
@@ -133,6 +162,19 @@ const rewriteDisabled = computed(() => !canRewrite.value)
               </n-tooltip>
             </span>
             <n-select v-model:value="params.fusionStrategy" :options="fusionOptions" size="small" class="fusion-select" />
+          </div>
+          <div v-if="params.fusionStrategy === 'WEIGHTED_SUM'" class="param-row sub">
+            <span class="param-label">
+              向量权重
+              <n-tooltip placement="top">
+                <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+                稠密向量路在加权求和中的权重（1 - 权重为关键词路权重）
+              </n-tooltip>
+            </span>
+            <div class="slider-wrap">
+              <n-slider v-model:value="params.denseWeight" :min="0" :max="1" :step="0.05" />
+              <span class="slider-value">{{ params.denseWeight.toFixed(2) }}</span>
+            </div>
           </div>
           <div class="param-row">
             <span class="param-label">

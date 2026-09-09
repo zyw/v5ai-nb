@@ -48,10 +48,13 @@ import {
   type KnowledgeBaseResponse,
   type OptionResponse,
   type RagConfig,
+  type RagModelParams,
+  type RagSearchParams,
   type StoreInstanceResponse, DimensionCheckResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
 import { formatDateTime } from '../utils/dateUtils'
+import { defaultModelParams, defaultSearchParams, toRagModelParams, toRagSearchParams } from './knowledge-base/params'
 
 const router = useRouter()
 const message = useMessage()
@@ -79,6 +82,7 @@ const embeddingModels = ref<OptionResponse[]>([])
 const vectorStores = ref<StoreInstanceResponse[]>([])
 const searchEngines = ref<StoreInstanceResponse[]>([])
 const chatModels = ref<OptionResponse[]>([])
+const rerankModels = ref<OptionResponse[]>([])
 const capability = ref<DimensionCheckResponse>()
 
 type SliceStrategy = 'length' | 'delimiter' | 'regex' | 'smart'
@@ -101,7 +105,10 @@ const form = reactive({
   chunkModelId: null as number | null,
   mergeShortSegments: false,
   parseEngine: 'default' as 'default' | 'docling',
-  docling: { doOcr: false, doTableStructure: false, saveImages: false, imageOcr: false }
+  docling: { doOcr: false, doTableStructure: false, saveImages: false, imageOcr: false },
+  // 检索/模型回答参数：本页不直接编辑（编辑在详情页 tab 完成），仅用于新建默认值 / 编辑回写 round-trip。
+  searchParams: {} as RagSearchParams,
+  modelParams: {} as RagModelParams
 })
 
 const dedupStrategyOptions = [
@@ -241,16 +248,18 @@ async function handleEmbeddingConfigChange() {
 }
 
 async function loadFormOptions() {
-  const [models, vectorRows, engineRows, chatRows] = await Promise.all([
+  const [models, vectorRows, engineRows, chatRows, rerankRows] = await Promise.all([
     listModelOptions(adminToken.value, 'EMBEDDING'),
     listStoreInstances(adminToken.value, { category: 1, status: 1 }),
     listStoreInstances(adminToken.value, { category: 2, status: 1 }),
-    listModelOptions(adminToken.value, 'CHAT')
+    listModelOptions(adminToken.value, 'CHAT'),
+    listModelOptions(adminToken.value, 'RERANK')
   ])
   embeddingModels.value = models
   vectorStores.value = vectorRows.rows
   searchEngines.value = engineRows.rows
   chatModels.value = chatRows
+  rerankModels.value = rerankRows
 }
 
 function resetForm() {
@@ -273,6 +282,15 @@ function resetForm() {
   form.mergeShortSegments = false
   form.parseEngine = 'default'
   form.docling = { doOcr: false, doTableStructure: false, saveImages: false, imageOcr: false }
+  // 新建：对话模型 / 重排模型默认取同类型首个（若有），其余走共享默认值。
+  form.searchParams = {
+    ...toRagSearchParams(defaultSearchParams()),
+    rerankModelId: rerankModels.value[0]?.value
+  }
+  form.modelParams = {
+    ...toRagModelParams(defaultModelParams()),
+    modelId: chatModels.value[0]?.value
+  }
 }
 
 function openCreate() {
@@ -308,6 +326,9 @@ function openEdit(kb: KnowledgeBaseResponse) {
     saveImages: !!parse?.docling?.saveImages,
     imageOcr: !!chunk?.imageOcr
   }
+  // 编辑：原样保留已存检索/模型回答参数（这些参数在详情页 tab 中编辑，本页不做改动）。
+  form.searchParams = kb.config?.searchParams ?? toRagSearchParams(defaultSearchParams())
+  form.modelParams = kb.config?.modelParams ?? toRagModelParams(defaultModelParams())
   showKbModal.value = true
 }
 
@@ -339,7 +360,7 @@ function buildRequest(): CreateKnowledgeBaseRequest {
     dimensionOfVectorModel: form.dimensionOfVectorModel!,
     searchEngineEnable: form.searchEngineEnable,
     searchEngineInstanceId: form.searchEngineEnable ? form.searchEngineInstanceId ?? undefined : undefined,
-    config: { chunkParams, parseParams },
+    config: { chunkParams, parseParams, searchParams: form.searchParams, modelParams: form.modelParams },
     dedupStrategy: form.dedupStrategy,
     dedupAction: form.dedupAction
   }

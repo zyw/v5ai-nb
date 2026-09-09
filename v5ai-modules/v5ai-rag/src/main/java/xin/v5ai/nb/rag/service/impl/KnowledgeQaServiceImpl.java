@@ -113,7 +113,8 @@ public class KnowledgeQaServiceImpl implements IKnowledgeQaService {
                 request.threshold(),
                 request.fusionStrategy(),
                 request.rrfK(),
-                modelId));
+                modelId,
+                request.denseWeight()));
         // 2) 邻近文本补全 + 组装知识块
         List<String> contextLines = new ArrayList<>();
         int order = 1;

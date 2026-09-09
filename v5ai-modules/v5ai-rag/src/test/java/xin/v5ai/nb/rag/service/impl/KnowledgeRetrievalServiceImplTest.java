@@ -102,7 +102,7 @@ class KnowledgeRetrievalServiceImplTest {
                 .thenReturn(List.of(keywordHit(1L, 1, "关键词命中B")));
         stubDocs();
 
-        List<KbHitVo> hits = service.retrieve(1L, new KbRetrieveBo("硅片", 1, null, null, null, null, null, null));
+        List<KbHitVo> hits = service.retrieve(1L, new KbRetrieveBo("硅片", 1, null, null, null, null, null, null, null));
 
         // resultCount=1 → 候选数 = max(1*3, 30) = 30；RRF 下 B 向量 rank2 + 关键词 rank1 分更高 → 取 top1（内容按向量路去重）
         verify(vectorStore).search(anyList(), any(), eq(30));
@@ -123,11 +123,33 @@ class KnowledgeRetrievalServiceImplTest {
         stubDocs();
 
         List<KbHitVo> hits = service.retrieve(1L,
-                new KbRetrieveBo("问题", 10, null, true, 0.85, "VECTOR", null, null));
+                new KbRetrieveBo("问题", 10, null, true, 0.85, "VECTOR", null, null, null));
 
         assertThat(hits).hasSize(1);
         assertThat(hits.get(0).content()).isEqualTo("高相关");
         assertThat(hits.get(0).documentTitle()).isEqualTo("单晶硅拉晶");
+    }
+
+    @Test
+    void retrieve_weightedSumCombinesScoresByDenseWeight() {
+        when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
+        when(resolver.vectorStore(null)).thenReturn(vectorStore);
+        when(embeddingClient.embed("加权", 1L, 3)).thenReturn(List.of(0.1f));
+        when(vectorStore.search(anyList(), any(), eq(30))).thenReturn(List.of(
+                vectorHit(1L, 0, "仅向量A", 0.9),
+                vectorHit(1L, 1, "两路B", 0.8)));
+        when(((KeywordStore) vectorStore).keywordSearch(anyList(), eq("加权"), eq(30)))
+                .thenReturn(List.of(keywordHit(1L, 1, "两路B"), keywordHit(2L, 0, "仅关键词C")));
+        stubDocs();
+
+        List<KbHitVo> hits = service.retrieve(1L,
+                new KbRetrieveBo("加权", 10, null, null, null, "WEIGHTED_SUM", null, null, 0.5));
+
+        // 分 = denseWeight×向量 + (1-denseWeight)×关键词：B(0.9) > C(0.5) > A(0.45)
+        assertThat(hits).extracting(KbHitVo::content)
+                .containsExactly("两路B", "仅关键词C", "仅向量A");
+        assertThat(hits.get(0).score()).isGreaterThan(hits.get(1).score());
+        assertThat(hits.get(1).score()).isGreaterThan(hits.get(2).score());
     }
 
     @Test
@@ -140,7 +162,7 @@ class KnowledgeRetrievalServiceImplTest {
         stubDocs();
 
         List<KbHitVo> hits = service.retrieve(1L,
-                new KbRetrieveBo("原问题", 30, true, null, null, null, null, 7L));
+                new KbRetrieveBo("原问题", 30, true, null, null, null, null, 7L, null));
 
         assertThat(hits).hasSize(1);
         // 改写失败不中断检索：仍按原问题走向量路（嵌入模型/维度随 KB 冻结）
@@ -153,7 +175,7 @@ class KnowledgeRetrievalServiceImplTest {
     void retrieve_rejectsBlankQuery() {
         when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
 
-        assertThatThrownBy(() -> service.retrieve(1L, new KbRetrieveBo("  ", null, null, null, null, null, null, null)))
+        assertThatThrownBy(() -> service.retrieve(1L, new KbRetrieveBo("  ", null, null, null, null, null, null, null, null)))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("请输入检索内容");
     }

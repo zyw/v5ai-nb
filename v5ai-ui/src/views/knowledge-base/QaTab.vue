@@ -16,6 +16,7 @@ const props = defineProps<{
   params: KbSearchParamsState
   modelParams: KbModelParamsState
   chatModels: { value: number; label: string; isDefault?: boolean }[]
+  rerankModels: { value: number; label: string; isDefault?: boolean }[]
 }>()
 
 const message = useMessage()
@@ -70,6 +71,7 @@ async function send() {
         threshold: props.params.thresholdEnabled ? props.params.threshold : undefined,
         fusionStrategy: props.params.fusionStrategy,
         rrfK: props.params.fusionStrategy === 'RRF' ? props.params.rrfK : undefined,
+        denseWeight: props.params.fusionStrategy === 'WEIGHTED_SUM' ? props.params.denseWeight : undefined,
         messages: [...history, { role: 'user', content: text }]
       },
       (event, data) => {
@@ -109,7 +111,7 @@ function clearChat() {
 <template>
   <div class="qa-tab">
     <aside class="qa-side">
-      <KnowledgeDebugParams :params="params" :chat-models="chatModels" :model-params="modelParams" mode="qa" />
+      <KnowledgeDebugParams :params="params" :chat-models="chatModels" :rerank-models="rerankModels" :model-params="modelParams" mode="qa" />
     </aside>
     <main class="qa-main">
       <div v-if="messages.length === 0" class="qa-welcome">

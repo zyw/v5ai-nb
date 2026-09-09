@@ -17,6 +17,7 @@ import java.util.List;
  * @param threshold        相似度阈值
  * @param fusionStrategy   融合策略
  * @param rrfK             RRF K 值
+ * @param denseWeight      WEIGHTED_SUM 融合时稠密向量路权重（0~1，默认 0.5）
  * @param messages         会话消息（按序：历史 + 最后一条为当前用户问题）
  */
 public record KbChatBo(
@@ -29,6 +30,7 @@ public record KbChatBo(
         Double threshold,
         String fusionStrategy,
         Integer rrfK,
+        Double denseWeight,
         List<Message> messages
 ) {
 

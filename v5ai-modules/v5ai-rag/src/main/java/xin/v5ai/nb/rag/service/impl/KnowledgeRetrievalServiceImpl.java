@@ -50,9 +50,11 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
 
     private static final int DEFAULT_RESULT_COUNT = 20;
     private static final int DEFAULT_RRF_K = 60;
+    private static final double DEFAULT_DENSE_WEIGHT = 0.5;
     private static final String FUSION_RRF = "RRF";
     private static final String FUSION_VECTOR = "VECTOR";
     private static final String FUSION_KEYWORD = "KEYWORD";
+    private static final String FUSION_WEIGHTED_SUM = "WEIGHTED_SUM";
     private static final Duration REWRITE_TIMEOUT = Duration.ofSeconds(20);
 
     private final IKnowledgeBaseService knowledgeBaseService;
@@ -83,6 +85,8 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
                 stored == null ? null : stored.getFusionStrategy(), FUSION_RRF));
         int rrfK = optional(request == null ? null : request.rrfK(),
                 stored == null ? null : stored.getRrfK(), DEFAULT_RRF_K);
+        double denseWeight = clampWeight(optional(request == null ? null : request.denseWeight(),
+                stored == null ? null : stored.getDenseWeight(), DEFAULT_DENSE_WEIGHT));
 
         String effectiveQuery = rewriteEnabled ? rewrite(query, rewriteModelId) : query;
         if (!effectiveQuery.equals(query)) {
@@ -98,7 +102,7 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
             vectorHits = filterByThreshold(vectorHits, threshold);
         }
 
-        List<VectorStore.RetrievalHit> merged = fuse(vectorHits, keywordHits, fusionStrategy, rrfK);
+        List<VectorStore.RetrievalHit> merged = fuse(vectorHits, keywordHits, fusionStrategy, rrfK, denseWeight);
         if (merged.size() > resultCount) {
             merged = merged.subList(0, resultCount);
         }
@@ -144,12 +148,15 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
      */
     private static List<VectorStore.RetrievalHit> fuse(List<VectorStore.RetrievalHit> vector,
                                                        List<VectorStore.RetrievalHit> keyword,
-                                                       String strategy, int rrfK) {
+                                                       String strategy, int rrfK, double denseWeight) {
         if (FUSION_VECTOR.equals(strategy)) {
             return vector;
         }
         if (FUSION_KEYWORD.equals(strategy)) {
             return keyword;
+        }
+        if (FUSION_WEIGHTED_SUM.equals(strategy)) {
+            return weightedSum(vector, keyword, denseWeight);
         }
         if (vector.isEmpty()) {
             return keyword;
@@ -175,8 +182,48 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
                 .toList();
     }
 
+    /**
+     * WEIGHTED_SUM 融合：合并分 = denseWeight×向量相似度 + (1-denseWeight)×关键词分。
+     * 去重键与 RRF 一致（库+文档+片序号）；仅一路有结果时直接返回该路（保留原始得分口径）。
+     */
+    private static List<VectorStore.RetrievalHit> weightedSum(List<VectorStore.RetrievalHit> vector,
+                                                              List<VectorStore.RetrievalHit> keyword,
+                                                              double denseWeight) {
+        if (vector.isEmpty()) {
+            return keyword;
+        }
+        if (keyword.isEmpty()) {
+            return vector;
+        }
+        Map<String, WeightedHit> acc = new HashMap<>();
+        for (VectorStore.RetrievalHit hit : vector) {
+            acc.computeIfAbsent(key(hit), k -> new WeightedHit(hit)).vectorScore = hit.score();
+        }
+        for (VectorStore.RetrievalHit hit : keyword) {
+            acc.computeIfAbsent(key(hit), k -> new WeightedHit(hit)).keywordScore = hit.score();
+        }
+        return acc.values().stream()
+                .map(w -> new VectorStore.RetrievalHit(
+                        w.hit.vectorId(), w.hit.knowledgeBaseId(), w.hit.documentId(), w.hit.chunkIndex(),
+                        w.hit.content(), w.hit.metadata(),
+                        denseWeight * w.vectorScore + (1 - denseWeight) * w.keywordScore))
+                .sorted(Comparator.comparingDouble((VectorStore.RetrievalHit h) -> h.score()).reversed())
+                .toList();
+    }
+
     private static String key(VectorStore.RetrievalHit hit) {
         return hit.knowledgeBaseId() + ":" + hit.documentId() + ":" + hit.chunkIndex();
+    }
+
+    /** WEIGHTED_SUM 累计项：记录两路得分（缺失一路计 0）。 */
+    private static final class WeightedHit {
+        private final VectorStore.RetrievalHit hit;
+        private double vectorScore;
+        private double keywordScore;
+
+        private WeightedHit(VectorStore.RetrievalHit hit) {
+            this.hit = hit;
+        }
     }
 
     private static final class Ranked {
@@ -277,6 +324,10 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private static double clampWeight(double weight) {
+        return Math.max(0.0, Math.min(1.0, weight));
     }
 
     private static double round(double score) {

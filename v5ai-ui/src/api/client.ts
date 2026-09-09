@@ -394,6 +394,7 @@ export interface KbRetrieveRequest {
   fusionStrategy?: string
   rrfK?: number
   modelId?: number
+  denseWeight?: number
 }
 
 export interface KbQaMessage {
@@ -411,6 +412,7 @@ export interface KbQaRequest {
   threshold?: number
   fusionStrategy?: string
   rrfK?: number
+  denseWeight?: number
   messages: KbQaMessage[]
 }
 

@@ -4,14 +4,22 @@
  * 头部（返回 + 库名 + ID + 嵌入模型 + 更新时间）与四个 tab 共用；
  * 调试参数为页内会话状态（四 tab 间共享、不回写），初始值读知识库已存配置。
  */
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NIcon, NPopover, NSkeleton, NSpin, NSpace, NTabs, NTabPane, NText, useMessage } from 'naive-ui'
 import { ArrowLeft, CircleQuestionMark, Library } from 'lucide-vue-next'
-import { getKnowledgeBaseDetail, listModelOptions, type KnowledgeBaseResponse, type OptionResponse } from '../../api/client'
+import {
+  getKnowledgeBaseDetail,
+  listModelOptions,
+  updateKnowledgeBase,
+  type CreateKnowledgeBaseRequest,
+  type KnowledgeBaseResponse,
+  type OptionResponse
+} from '../../api/client'
 import { adminToken } from '../../stores/session'
 import { formatDateTime } from '../../utils/dateUtils'
 import { type KbModelParamsState, type KbSearchParamsState } from './KnowledgeDebugParams.vue'
+import { DEFAULT_PROMPT, defaultModelParams, defaultSearchParams, toRagModelParams, toRagSearchParams } from './params'
 import DocumentsTab from './DocumentsTab.vue'
 import ChunksTab from './ChunksTab.vue'
 import RetrieveTab from './RetrieveTab.vue'
@@ -29,25 +37,11 @@ const chatModels = ref<OptionResponse[]>([])
 const tab = ref<'documents' | 'chunks' | 'retrieve' | 'qa'>('documents')
 const presetDocId = ref<number | null>(null)
 
-const searchParams = reactive<KbSearchParamsState>({
-  resultCount: 20,
-  questionRewrite: false,
-  rerankEnabled: false,
-  thresholdEnabled: false,
-  threshold: 0.5,
-  fusionStrategy: 'RRF',
-  rrfK: 60
-})
-
-const DEFAULT_PROMPT = `你是一位在线知识库问答助手。你的首要任务是根据『参考资料』回答用户问题，这些信息可以帮助你生成更准确的回复；如果参考资料没有覆盖用户问题，请明确说明不知道，不要编造。请使用与用户问题一致的语言作答。
-
-<Documents>`
-
-const modelParams = reactive<KbModelParamsState>({
-  modelId: null,
-  nearbySliceCount: 5,
-  prompt: DEFAULT_PROMPT
-})
+const searchParams = reactive<KbSearchParamsState>(defaultSearchParams())
+const modelParams = reactive<KbModelParamsState>(defaultModelParams())
+const rerankModels = ref<OptionResponse[]>([])
+const initializing = ref(false)
+let saveTimer: number | undefined
 
 const embeddingName = computed(() => {
   const found = embeddingOptions.value.find((o) => o.value === kb.value?.embeddingModelId)
@@ -55,14 +49,24 @@ const embeddingName = computed(() => {
 })
 
 function applyConfig(config: KnowledgeBaseResponse['config']) {
+  Object.assign(searchParams, defaultSearchParams())
+  Object.assign(modelParams, defaultModelParams())
   const sp = config?.searchParams
   if (sp) {
     searchParams.resultCount = sp.resultCount ?? 20
     searchParams.questionRewrite = !!sp.questionRewrite
+    searchParams.rerankEnabled = !!sp.rerankEnabled
+    searchParams.rerankModelId = sp.rerankModelId ?? null
+    searchParams.enterRerankCount = sp.enterRerankCount ?? 30
     searchParams.thresholdEnabled = !!sp.thresholdEnabled
     searchParams.threshold = sp.threshold ?? 0.5
-    if (sp.fusionStrategy) searchParams.fusionStrategy = (sp.fusionStrategy.toUpperCase() === 'VECTOR' || sp.fusionStrategy.toUpperCase() === 'KEYWORD') ? (sp.fusionStrategy.toUpperCase() as KbSearchParamsState['fusionStrategy']) : 'RRF'
+    if (sp.fusionStrategy) {
+      const up = sp.fusionStrategy.toUpperCase()
+      searchParams.fusionStrategy = (up === 'WEIGHTED_SUM' || up === 'VECTOR' || up === 'KEYWORD')
+        ? (up as KbSearchParamsState['fusionStrategy']) : 'RRF'
+    }
     searchParams.rrfK = sp.rrfK ?? 60
+    searchParams.denseWeight = sp.denseWeight ?? 0.5
   }
   const mp = config?.modelParams
   if (mp) {
@@ -74,15 +78,18 @@ function applyConfig(config: KnowledgeBaseResponse['config']) {
 
 async function load() {
   loading.value = true
+  initializing.value = true
   try {
-    const [detail, chatRows, embedRows] = await Promise.all([
+    const [detail, chatRows, embedRows, rerankRows] = await Promise.all([
       getKnowledgeBaseDetail(adminToken.value, kbId.value),
       listModelOptions(adminToken.value, 'CHAT'),
-      listModelOptions(adminToken.value, 'EMBEDDING')
+      listModelOptions(adminToken.value, 'EMBEDDING'),
+      listModelOptions(adminToken.value, 'RERANK')
     ])
     kb.value = detail
     chatModels.value = chatRows
     embeddingOptions.value = embedRows
+    rerankModels.value = rerankRows
     applyConfig(detail.config)
     if (modelParams.modelId == null && chatModels.value.length > 0) {
       modelParams.modelId = chatModels.value[0].value
@@ -90,9 +97,59 @@ async function load() {
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载知识库详情失败')
   } finally {
+    initializing.value = false
     loading.value = false
   }
 }
+
+function buildWriteBackRequest(): CreateKnowledgeBaseRequest {
+  const k = kb.value!
+  return {
+    id: k.id,
+    name: k.name,
+    description: k.description ?? undefined,
+    embeddingModelId: k.embeddingModelId,
+    vectorStoreInstanceId: k.vectorStoreInstanceId!,
+    dimensionOfVectorModel: k.dimensionOfVectorModel,
+    searchEngineEnable: k.searchEngineEnable,
+    searchEngineInstanceId: k.searchEngineInstanceId ?? undefined,
+    delimiter: k.delimiter ?? undefined,
+    dedupStrategy: k.dedupStrategy,
+    dedupAction: k.dedupAction,
+    config: {
+      ...k.config,
+      searchParams: toRagSearchParams(searchParams),
+      modelParams: toRagModelParams(modelParams)
+    }
+  }
+}
+
+async function persistParams() {
+  if (!kb.value) return
+  try {
+    await updateKnowledgeBase(adminToken.value, buildWriteBackRequest())
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '参数自动保存失败')
+  }
+}
+
+function scheduleSave() {
+  if (saveTimer) window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(() => {
+    saveTimer = undefined
+    void persistParams()
+  }, 500)
+}
+
+// 「知识检索 / 知识问答」tab 参数变更即自动回写知识库配置（防抖 500ms）。
+watch([searchParams, modelParams], () => {
+  if (initializing.value) return
+  scheduleSave()
+}, { deep: true })
+
+onBeforeUnmount(() => {
+  if (saveTimer) window.clearTimeout(saveTimer)
+})
 
 function goToChunks(documentId: number) {
   presetDocId.value = documentId
@@ -145,7 +202,7 @@ onMounted(load)
                 <n-icon :component="CircleQuestionMark" size="14" class="head-help" />
               </template>
               <div style="max-width: 300px">
-                本页 4 个 tab 均围绕该知识库调试。左侧检索/问答参数为本次会话状态，不回写知识库配置。
+                本页 4 个 tab 均围绕该知识库调试。左侧「知识检索 / 知识问答」参数变更后会自动保存回该知识库配置（防抖）。
               </div>
             </n-popover>
           </div>
@@ -164,10 +221,10 @@ onMounted(load)
             <ChunksTab :kb-id="kb.id" :active="tab === 'chunks'" :preset-document-id="presetDocId" />
           </n-tab-pane>
           <n-tab-pane name="retrieve" tab="知识检索">
-            <RetrieveTab :kb-id="kb.id" :active="tab === 'retrieve'" :params="searchParams" :model-params="modelParams" :chat-models="chatModels" />
+            <RetrieveTab :kb-id="kb.id" :active="tab === 'retrieve'" :params="searchParams" :model-params="modelParams" :chat-models="chatModels" :rerank-models="rerankModels" />
           </n-tab-pane>
           <n-tab-pane name="qa" tab="知识问答">
-            <QaTab :kb-id="kb.id" :active="tab === 'qa'" :params="searchParams" :model-params="modelParams" :chat-models="chatModels" />
+            <QaTab :kb-id="kb.id" :active="tab === 'qa'" :params="searchParams" :model-params="modelParams" :chat-models="chatModels" :rerank-models="rerankModels" />
           </n-tab-pane>
         </n-tabs>
       </template>

@@ -15,6 +15,7 @@ const props = defineProps<{
   params: KbSearchParamsState
   modelParams: KbModelParamsState
   chatModels: { value: number; label: string; isDefault?: boolean }[]
+  rerankModels: { value: number; label: string; isDefault?: boolean }[]
 }>()
 
 const message = useMessage()
@@ -37,7 +38,8 @@ async function search() {
       thresholdEnabled: props.params.thresholdEnabled,
       threshold: props.params.thresholdEnabled ? props.params.threshold : undefined,
       fusionStrategy: props.params.fusionStrategy,
-      rrfK: props.params.fusionStrategy === 'RRF' ? props.params.rrfK : undefined
+      rrfK: props.params.fusionStrategy === 'RRF' ? props.params.rrfK : undefined,
+      denseWeight: props.params.fusionStrategy === 'WEIGHTED_SUM' ? props.params.denseWeight : undefined
     }
     if (props.params.questionRewrite && props.modelParams.modelId != null) {
       request.modelId = props.modelParams.modelId
@@ -71,7 +73,7 @@ function excerpt(content: string, max = 280): string {
 <template>
   <div class="retrieve-tab">
     <aside class="retrieve-side">
-      <KnowledgeDebugParams :params="params" :chat-models="chatModels" :model-params="modelParams" mode="retrieval" />
+      <KnowledgeDebugParams :params="params" :chat-models="chatModels" :rerank-models="rerankModels" :model-params="modelParams" mode="retrieval" />
     </aside>
     <main class="retrieve-main">
       <div class="search-bar">
