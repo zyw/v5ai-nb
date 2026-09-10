@@ -176,16 +176,25 @@ function clearChat() {
   min-height: 520px;
 }
 
+/* 参数面板实测高约 1370px，远超视口：限高后内部滚动。
+   高度不再写死 calc(100vh - Npx)——那是固定高度链建立之前的兜底，会把 .qa-tab 顶到 702px
+   从而重新产生整页滚动条；现在由 KnowledgeBaseDetailView 的 .kb-detail-fixed 链算出可用高度，
+   min-height:0 让本项能被压缩到实际可用高度。 */
 .qa-side {
   width: 300px;
   flex-shrink: 0;
   border-right: 1px solid rgba(128, 128, 128, 0.18);
   padding-right: 16px;
+  min-height: 0;
+  overflow: hidden auto;
 }
 
 .qa-main {
   flex: 1;
   min-width: 0;
+  /* flex 行(item) 自动最小尺寸是内容高：不归零，消息列表会把 .qa-main 顶出 .qa-tab 的定高，
+     整页就会出现滚动条。归零后 .qa-list 才在自身内部滚动、输入条固定在底部。 */
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }

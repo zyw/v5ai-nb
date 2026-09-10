@@ -121,11 +121,14 @@ function excerpt(content: string, max = 280): string {
   min-height: 420px;
 }
 
+/* 与 QaTab 的 .qa-side 保持一致：参数面板限高后内部滚动（检索 tab 面板较短，通常不出现滚动条）。 */
 .retrieve-side {
   width: 300px;
   flex-shrink: 0;
   border-right: 1px solid rgba(128, 128, 128, 0.18);
   padding-right: 16px;
+  max-height: calc(100vh - 100px);
+  overflow: hidden auto;
 }
 
 .retrieve-main {

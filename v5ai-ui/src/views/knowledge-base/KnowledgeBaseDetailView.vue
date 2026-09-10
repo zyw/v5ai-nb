@@ -151,7 +151,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="page kb-detail-page">
+  <div class="page kb-detail-page" :class="{ 'kb-detail-fixed': tab === 'qa' }">
     <n-spin :show="loading">
       <div v-if="!kb" class="detail-loading">
         <n-skeleton v-if="loading" text :repeat="4" style="max-width: 600px" />
@@ -284,7 +284,80 @@ onMounted(load)
   margin-top: 10px;
 }
 
+/* tab 链：让 tab 内容能按可用高度收缩（min-height:0 用来解除 flex 子项的 min-content 下限）。
+   只加这些不会改变任何 tab 的观感：没有确定高度时它们都按内容自然高度排版。 */
 .kb-tabs {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-tabs > :deep(.n-tabs-pane-wrapper) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-tabs :deep(.n-tab-pane) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 「知识问答」tab 独占视口高度，从而不产生整页滚动条：
+   左侧参数栏在 QaTab 内部滚动，右侧消息列表在 .qa-list 内部滚动、输入框始终可见。
+   只在问答 tab 生效——原始文档/切片详情 tab 依赖整页滚动，被固定高度会裁掉内容。 */
+.kb-detail-fixed {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 整条链的根因：n-layout-content 的父级 .n-layout-scroll-container 是 display:block，
+   所以它是普通块级子元素——flex 属性无效，块级子元素也不会自动取父级高度，
+   于是它随内容长高（实测 1640px，可用只有 738px），下面整条链都压不下去。
+   这里给 height:100%（父级是滚动容器，高度确定），只改文档流、不动滚动容器本身；
+   用 :has() 限定只作用于「当前挂着 .kb-detail-fixed」的详情页，其它页面完全不受影响。 */
+:global(.n-layout-content:has(.kb-detail-fixed)) {
+  height: 100%;
+}
+
+/* n-layout-content 自身是 overflow:hidden，真正滚动的是它内部的 n-scrollbar 两层包裹 */
+.kb-detail-fixed :deep(.n-scrollbar) {
+  height: 100%;
+  min-height: 0;
+}
+
+.kb-detail-fixed :deep(.n-layout-content > .n-scrollbar > .n-scrollbar-container) {
+  height: 100%;
+  min-height: 0;
+}
+
+/* n-spin 会插入 .n-spin-container/.n-spin-content 两层包裹，高度要一路穿过去。
+   注意：一个选择器里只能有一个 :deep()——第二个会被 Vue 原样透传成字面量 :deep(...)，
+   那条规则就永远不会命中（.n-spin-content 会退回 block + min-height:auto 的内容高底限）。 */
+.kb-detail-fixed :deep(.n-spin-container) {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-detail-fixed :deep(.n-spin-container > .n-spin-content) {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-detail-fixed :deep(.kb-tabs) {
+  flex: 1;
+  min-height: 0;
+}
+
+.kb-detail-fixed .kb-head {
+  flex-shrink: 0;
 }
 </style>
