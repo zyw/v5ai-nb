@@ -88,7 +88,11 @@ class KnowledgeRetrievalServiceImplTest {
     }
 
     private VectorStore.RetrievalHit keywordHit(Long docId, int index, String content) {
-        return new VectorStore.RetrievalHit("v" + docId + "-" + index, 1L, docId, index, content, "{}", 1.0);
+        return keywordHit(docId, index, content, 1.0);
+    }
+
+    private VectorStore.RetrievalHit keywordHit(Long docId, int index, String content, double score) {
+        return new VectorStore.RetrievalHit("v" + docId + "-" + index, 1L, docId, index, content, "{}", score);
     }
 
     @Test
@@ -132,23 +136,26 @@ class KnowledgeRetrievalServiceImplTest {
     }
 
     @Test
-    void retrieve_weightedSumCombinesScoresByDenseWeight() {
+    void retrieve_weightedSumNormalizesChannelsBeforeWeighting() {
         when(baseService.getKnowledgeBase(1L)).thenReturn(base(1L));
         when(resolver.vectorStore(null)).thenReturn(vectorStore);
         when(embeddingClient.embed("加权", 1L, 3)).thenReturn(List.of(0.1f));
         when(vectorStore.search(anyList(), any(), eq(30))).thenReturn(List.of(
                 vectorHit(1L, 0, "仅向量A", 0.9),
-                vectorHit(1L, 1, "两路B", 0.8)));
+                vectorHit(1L, 1, "两路B", 0.5),
+                vectorHit(1L, 2, "低向量C", 0.4)));
         when(((KeywordStore) vectorStore).keywordSearch(anyList(), eq("加权"), eq(30)))
-                .thenReturn(List.of(keywordHit(1L, 1, "两路B"), keywordHit(2L, 0, "仅关键词C")));
+                .thenReturn(List.of(keywordHit(1L, 1, "两路B", 4.0), keywordHit(2L, 0, "仅关键词D", 3.5)));
         stubDocs();
 
         List<KbHitVo> hits = service.retrieve(1L,
                 new KbRetrieveBo("加权", 10, null, null, null, "WEIGHTED_SUM", null, null, 0.5));
 
-        // 分 = denseWeight×向量 + (1-denseWeight)×关键词：B(0.9) > C(0.5) > A(0.45)
+        // 两路先按通道 min-max 归一（量纲不同）再加权：
+        // 向量 0.9/0.5/0.4 → 1.0/0.2/0.0；关键词 4.0/3.5 → 1.0/0.0
+        // B = 0.5×0.2 + 0.5×1.0 = 0.6；A = 0.5×1.0 = 0.5；C = 0；D = 0.5×0.0 = 0
         assertThat(hits).extracting(KbHitVo::content)
-                .containsExactly("两路B", "仅关键词C", "仅向量A");
+                .containsExactly("两路B", "仅向量A", "低向量C", "仅关键词D");
         assertThat(hits.get(0).score()).isGreaterThan(hits.get(1).score());
         assertThat(hits.get(1).score()).isGreaterThan(hits.get(2).score());
     }

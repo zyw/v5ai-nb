@@ -60,23 +60,73 @@ class RetrievalFusionTest {
     }
 
     @Test
-    void fuse_weightedSumCombinesScoresWithMissingChannelZero() {
+    void fuse_weightedSumNormalizesEachChannelBeforeWeighting() {
+        // 两路量纲不同（向量 0~1 / BM25 无上界），先按通道 min-max 归一再加权：
+        // 向量 0.9/0.5/0.4 → 1.0/0.2/0.0；关键词 4.0/3.5 → 1.0/0.0
         List<VectorStore.RetrievalHit> vector = List.of(
                 hit(1L, 0, "仅向量A", 0.9),
-                hit(2L, 0, "两路B", 0.8));
+                hit(2L, 0, "两路B", 0.5),
+                hit(3L, 0, "低向量C", 0.4));
         List<VectorStore.RetrievalHit> keyword = List.of(
-                hit(2L, 0, "两路B", 1.0),
-                hit(3L, 0, "仅关键词C", 1.0));
+                hit(2L, 0, "两路B", 4.0),
+                hit(4L, 0, "仅关键词D", 3.5));
 
         List<VectorStore.RetrievalHit> fused =
                 RetrievalFusion.fuse(vector, keyword, FusionStrategy.WEIGHTED_SUM, 60, 0.5);
 
-        // B = 0.5×0.8 + 0.5×1.0 = 0.9；C = 0.5×0 + 0.5×1.0 = 0.5；A = 0.5×0.9 + 0.5×0 = 0.45
+        // B = 0.5×0.2 + 0.5×1.0 = 0.6；A = 0.5×1.0 = 0.5；C = 0；D = 0.5×0.0 = 0
+        // C 与 D 同分（0）时按向量原分降序 → C(0.4) 在 D(0) 之前
         assertThat(fused).extracting(VectorStore.RetrievalHit::documentId)
-                .containsExactly(2L, 3L, 1L);
-        assertThat(fused.get(0).score()).isCloseTo(0.9, org.assertj.core.data.Offset.offset(1e-9));
+                .containsExactly(2L, 1L, 3L, 4L);
+        assertThat(fused.get(0).score()).isCloseTo(0.6, org.assertj.core.data.Offset.offset(1e-9));
         assertThat(fused.get(1).score()).isCloseTo(0.5, org.assertj.core.data.Offset.offset(1e-9));
-        assertThat(fused.get(2).score()).isCloseTo(0.45, org.assertj.core.data.Offset.offset(1e-9));
+        assertThat(fused.get(2).score()).isCloseTo(0.0, org.assertj.core.data.Offset.offset(1e-9));
+        assertThat(fused.get(3).score()).isCloseTo(0.0, org.assertj.core.data.Offset.offset(1e-9));
+    }
+
+    @Test
+    void fuse_weightedSumGivesFullChannelValueWhenChannelScoresAreEqual() {
+        // 通道内得分全相同（max==min）时该通道归一为 1；命中缺失的通道按 0 计
+        List<VectorStore.RetrievalHit> vector = List.of(hit(1L, 0, "两路A", 0.7));
+        List<VectorStore.RetrievalHit> keyword = List.of(
+                hit(1L, 0, "两路A", 5.0),
+                hit(2L, 0, "仅关键词B", 5.0));
+
+        List<VectorStore.RetrievalHit> fused =
+                RetrievalFusion.fuse(vector, keyword, FusionStrategy.WEIGHTED_SUM, 60, 0.5);
+
+        // A = 0.5×1.0 + 0.5×1.0 = 1.0；B = 0 + 0.5×1.0 = 0.5
+        assertThat(fused).extracting(VectorStore.RetrievalHit::documentId).containsExactly(1L, 2L);
+        assertThat(fused.get(0).score()).isCloseTo(1.0, org.assertj.core.data.Offset.offset(1e-9));
+        assertThat(fused.get(1).score()).isCloseTo(0.5, org.assertj.core.data.Offset.offset(1e-9));
+    }
+
+    @Test
+    void fuse_weightedSumTieBreaksDeterministically() {
+        // 向量路同分（归一均 1.0）；关键词路 A 最低（归一 0.0）
+        List<VectorStore.RetrievalHit> vector = List.of(
+                hit(1L, 0, "A", 0.5),
+                hit(2L, 0, "B", 0.5));
+        List<VectorStore.RetrievalHit> keyword = List.of(
+                hit(1L, 0, "A", 1.0),
+                hit(2L, 0, "B", 4.0),
+                hit(3L, 0, "C", 4.0));
+
+        // B = 0.5×1.0 + 0.5×1.0 = 0.75；A = 0.5×1.0 + 0 = 0.5；C = 0 + 0.5×1.0 = 0.5
+        // A 与 C 同分 → 向量原分降序：A(0.5) 在 C(0) 之前
+        List<VectorStore.RetrievalHit> fused =
+                RetrievalFusion.fuse(vector, keyword, FusionStrategy.WEIGHTED_SUM, 60, 0.5);
+        assertThat(fused).extracting(VectorStore.RetrievalHit::documentId).containsExactly(2L, 1L, 3L);
+        assertThat(RetrievalFusion.fuse(vector, keyword, FusionStrategy.WEIGHTED_SUM, 60, 0.5))
+                .isEqualTo(fused);
+
+        // 合并分与两路原分全等时按分片键升序（与入参顺序无关）
+        List<VectorStore.RetrievalHit> sameScore =
+                RetrievalFusion.fuse(
+                        List.of(hit(2L, 0, "B", 0.5), hit(1L, 0, "A", 0.5)),
+                        List.of(hit(1L, 0, "A", 3.0), hit(2L, 0, "B", 3.0)),
+                        FusionStrategy.WEIGHTED_SUM, 60, 0.5);
+        assertThat(sameScore).extracting(VectorStore.RetrievalHit::documentId).containsExactly(1L, 2L);
     }
 
     @Test

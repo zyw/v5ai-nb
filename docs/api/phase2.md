@@ -84,7 +84,7 @@ PUT    /api/admin/store-instances/{id}/default    # 切换默认（body: { "isDe
 
 连接测试请求体（`StoreConnectionTestBo`）：`{ "type": 1, "config": "{...}", "id": 1 }`。`id` 仅编辑态传入，用于合并库中已脱敏的敏感字段（`password`/`token` 留空沿用原值）。支持全部类型：1-PG_VECTOR / 4-PG_FULLTEXT 走 JDBC `SELECT 1`（PG_VECTOR 额外校验 `pgvector` 扩展），2-MILVUS 走 `listCollections`，3-ELASTICSEARCH 走 `GET /`。响应 `{ ok, message }` 始终 200，不落库测试结果。
 
-> 运行时存储后端（Phase 2 增强）：知识库按 `vectorStoreInstanceId` 路由向量写入/检索（PG pgvector / Milvus / Elasticsearch kNN），按 `searchEngineInstanceId`（启用 `searchEngineEnable` 时）双写并路由关键词检索（ES match / PG ILIKE）；Milvus 不提供关键词，PG_FULLTEXT 本期未接线。实现位于 `v5ai-common-elasticsearch`、`v5ai-common-milvus`（客户端+配置+连接测试）与 `v5ai-rag` 的 `VectorStoreResolver` / `ElasticsearchVectorStore` / `MilvusVectorStore`。
+> 运行时存储后端（Phase 2 增强）：知识库按 `vectorStoreInstanceId` 路由向量写入/检索（PG pgvector / Milvus / Elasticsearch kNN），按 `searchEngineInstanceId`（启用 `searchEngineEnable` 时）双写并路由关键词检索（ES match / PG jieba 分词 + Okapi BM25，查询文本无法分词时回退 ILIKE 粗检）；Milvus 不提供关键词，PG_FULLTEXT 本期未接线。实现位于 `v5ai-common-elasticsearch`、`v5ai-common-milvus`（客户端+配置+连接测试）与 `v5ai-rag` 的 `VectorStoreResolver` / `ElasticsearchVectorStore` / `MilvusVectorStore` / `PgBm25KeywordSearch`。
 
 请求体（`StoreInstanceBo`）：
 
@@ -132,15 +132,18 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 `sourceType` 标识来源（`UPLOAD`=上传 / `URL`=网络），另含存储元数据列
 （`storageType`/`storagePath`/`fileSize`/`chunkCount`/`parseTime`/`contentHash`）与资源库关联列 `resourceId`（见迁移 V25）。
 
-分片业务表 `v5ai_knowledge_chunk`（迁移 V24 扩展 + V30 存储解耦改造）：
+分片业务表 `v5ai_knowledge_chunk`（迁移 V24 扩展 + V30 存储解耦改造 + V31 关键词索引）：
 - 内容/元数据列：`paragraph_index`（段落索引）、`token_count`（分片 token 数量）、`vector_id`（向量 id）、
   `content_hash`（chunk 内容 SHA-256，用于向量去重）、`source_type`（TEXT=文本 / IMAGE=图片）、`updated_at`（更新时间），
   并新增 `(knowledge_base_id)`、`(knowledge_base_id, content_hash)`、`(knowledge_base_id, source_type)` 组合索引；
 - **向量与业务行解耦（V30）**：`embedding` 列与 ivfflat 索引已删除，向量落在知识库绑定的存储实例集合
   （pgvector=每知识库独立向量表 `v5ai_vec_{kbId}` / Milvus=collection / ES=index），集合主键 = 业务生成的
   `vector_id`(UUID，唯一索引)；切片内容/元数据以业务行为准，向量检索召回 `(vector_id, score)` 后回业务表批量取内容；
+- **关键词索引（V31）**：新增 `keyword_tokens text[]`（jieba INDEX 模式分词，保留重复词 → 词频现算）与 GIN 索引，
+  服务 PG 原生关键词路的 BM25 打分；由 Worker 重建与手工切片增改维护（删除随行清理），df/avgdl 检索时按库集合现算；
 - 存量处理：V30 清空存量 chunk 数据，存量文档行保留、索引任务重置为 PENDING 由 Worker 重建（不做数据迁移）；
-- Worker 写入时按空白切分估算 `token_count` 并计算 `content_hash`，同时写业务行（含 `vector_id`）与存储实例集合向量。
+  V31 沿用同一策略重建以填充 `keyword_tokens`（重建窗口内未重建行对关键词路短暂不可见，向量路/RRF 不受影响）；
+- Worker 写入时按空白切分估算 `token_count` 并计算 `content_hash`，同时写业务行（含 `vector_id`、`keyword_tokens`）与存储实例集合向量。
 
 ## 知识库详情页（调试：切片 / 知识检索 / 知识问答）
 
@@ -181,9 +184,9 @@ Accept: text/event-stream
 }
 ```
 
-- 融合策略：`RRF`（倒数排名融合，默认）/ `WEIGHTED_SUM`（加权求和）/ `VECTOR`（仅向量）/ `KEYWORD`（仅关键词）；未知取值报 400（不静默降级）。向量路得分 = 余弦相似度（0~1）；关键词路得分按存储实现：pgvector 为 ILIKE 粗检（命中恒 1.0，BM25 细打分规划中）、Elasticsearch 用 `_score`；
+- 融合策略：`RRF`（倒数排名融合，默认）/ `WEIGHTED_SUM`（加权求和）/ `VECTOR`（仅向量）/ `KEYWORD`（仅关键词）；未知取值报 400（不静默降级）。向量路得分 = 余弦相似度（0~1）；关键词路得分按存储实现：pgvector 为 jieba 分词 + Okapi BM25 连续相关度（k1=1.2、b=0.75；查询文本全为停用词/标点时回退 ILIKE 粗检恒 1.0）、Elasticsearch 用 `_score`；
 - 参数范围与默认：`resultCount` 1~100（默认 20，越界钳制）；`rrfK` 1~200（默认 60，仅 RRF，越界/非法拒绝）；`denseWeight` 0~1（默认 0.5，仅 WEIGHTED_SUM，关键词权重 = 1 − denseWeight）；`threshold` 0~1（默认 0.5）；
-- 阈值过滤仅作用于向量相似度；两路候选数 = `max(resultCount*3, 30)`：RRF 按 `sum(1/(rrfK+rank))` 融合名次后取前 `resultCount`；WEIGHTED_SUM 按 `denseWeight×向量分 + (1−denseWeight)×关键词分` 合并排序后取前 `resultCount`；
+- 阈值过滤仅作用于向量相似度；两路候选数 = `max(resultCount*3, 30)`：RRF 按 `sum(1/(rrfK+rank))` 融合名次后取前 `resultCount`；WEIGHTED_SUM 先按通道做查询内 min-max 归一到 0~1（通道内得分全相同归 1、缺失通道计 0），再按 `denseWeight×向量归一分 + (1−denseWeight)×关键词归一分` 合并排序（tie-break：合并分 → 向量原分 → 关键词原分 → 分片键）后取前 `resultCount`；
 - 重排（`rerankEnabled` / `rerankModelId` / `enterRerankCount`）当前仅为知识库配置项（`config.searchParams`），调试请求暂不携带、检索链路接入规划中；
 - 问题改写为「半真」：需要 `modelId`（或知识库 `config.modelParams.modelId`），模型缺失/调用失败时自动跳过改写并走原问题，不影响检索；
 - `chat/stream` 请求体为 `KbChatBo`：`modelId` / `nearbySliceCount`（拼接邻近文本片数量，默认 5，= 每个命中前后补片数）/ `prompt`（可含 `<Documents>` 变量，缺省用内置模板）/ 检索参数同 retrieve / `messages`（`[{role: user|assistant, content}]`，末条为当前问题）。

@@ -13,6 +13,7 @@ import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
 import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
+import xin.v5ai.nb.rag.core.tokenizer.TextTokenizer;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
@@ -62,6 +63,7 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final EmbeddingClient embeddingClient;
     private final VectorStoreResolver vectorStoreResolver;
+    private final TextTokenizer textTokenizer;
 
     @Override
     public PageResult<KnowledgeChunkVo> listChunks(Long knowledgeBaseId, Long documentId, Long chunkId,
@@ -112,6 +114,7 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         row.setMetadata(MANUAL_METADATA);
         row.setContentHash(sha256Hex(content));
         row.setSourceType("TEXT");
+        row.setKeywordTokens(keywordTokens(content));
         chunkMapper.batchSaveChunks(List.of(row));
 
         // 2) 向量写入知识库绑定的存储实例集合（主键 = vector_id）
@@ -136,11 +139,12 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         KnowledgeDocument document = documentMapper.selectById(chunk.getDocumentId());
         KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
 
-        // 业务行更新内容（向量列已解耦，无需再写 embedding 字面量）
+        // 业务行更新内容（向量列已解耦，无需再写 embedding 字面量）；关键词索引随内容同步刷新
         var update = new KnowledgeChunk();
         update.setId(chunk.getId());
         update.setContent(content);
         update.setContentHash(sha256Hex(content));
+        update.setKeywordTokens(keywordTokens(content));
         chunkMapper.updateById(update);
 
         // 集合内向量重嵌：删旧写新，保持 vector_id 主键不变
@@ -204,6 +208,11 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
             throw new ServiceException("切片内容超过上限（" + MAX_CHUNK_CHARS + " 字符）");
         }
         return content;
+    }
+
+    /** 关键词索引（jieba INDEX 分词，与 Worker 重建同一口径） */
+    private String[] keywordTokens(String content) {
+        return textTokenizer.tokenizeForIndex(content).toArray(String[]::new);
     }
 
     private List<Float> embed(KnowledgeBase base, String content) {

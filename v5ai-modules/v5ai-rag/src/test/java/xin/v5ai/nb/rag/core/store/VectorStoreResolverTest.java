@@ -25,12 +25,13 @@ class VectorStoreResolverTest {
     private final StoreInstanceMapper mapper = mock(StoreInstanceMapper.class);
     private final IKnowledgeChunkService chunkService = mock(IKnowledgeChunkService.class);
     private final PgVectorDataSourceFactory pgDataSourceFactory = mock(PgVectorDataSourceFactory.class);
+    private final PgBm25KeywordSearch pgBm25KeywordSearch = mock(PgBm25KeywordSearch.class);
     private final DataSource pgDataSource = mock(DataSource.class);
     private VectorStoreResolver resolver;
 
     @BeforeEach
     void setUp() {
-        resolver = new VectorStoreResolver(mapper, chunkService, pgDataSourceFactory);
+        resolver = new VectorStoreResolver(mapper, chunkService, pgDataSourceFactory, pgBm25KeywordSearch);
         when(pgDataSourceFactory.create(org.mockito.ArgumentMatchers.any(PgVectorConfigDO.class)))
                 .thenReturn(pgDataSource);
     }

@@ -16,8 +16,8 @@ import java.util.List;
  * 维度在建表时按该知识库冻结（向量承载与 chunk 业务表解耦，业务行只保留 {@code vector_id}）。
  * <p>
  * 向量检索按余弦相似度（{@code <=>}）召回并返回 {@code (vectorId, score)}，内容由调用方回业务表补齐；
- * 关键词检索走业务表 ILIKE（PG 的 chunk 行即关键词索引，由 Worker/Admin 维护），作为
- * {@link KeywordStore} 兜底实现。
+ * 关键词检索走 {@link PgBm25KeywordSearch}（jieba 分词 + Okapi BM25，索引列为业务表
+ * {@code keyword_tokens}，由 Worker/Admin 维护），查询文本无法分词时回退 {@code content ILIKE} 粗检。
  */
 @Slf4j
 public class PgVectorStore implements VectorStore, KeywordStore {
@@ -26,12 +26,15 @@ public class PgVectorStore implements VectorStore, KeywordStore {
 
     private final JdbcTemplate jdbcTemplate;
     private final IKnowledgeChunkService chunkService;
+    private final PgBm25KeywordSearch bm25KeywordSearch;
     private final DataSource dataSource;
 
-    public PgVectorStore(DataSource dataSource, IKnowledgeChunkService chunkService) {
+    public PgVectorStore(DataSource dataSource, IKnowledgeChunkService chunkService,
+                         PgBm25KeywordSearch bm25KeywordSearch) {
         this.dataSource = dataSource;
         this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.chunkService = chunkService;
+        this.bm25KeywordSearch = bm25KeywordSearch;
     }
 
     public void close() {
@@ -166,13 +169,23 @@ public class PgVectorStore implements VectorStore, KeywordStore {
         }
     }
 
-    // ---------- KeywordStore（PG 兜底：业务表 ILIKE） ----------
+    // ---------- KeywordStore（PG：jieba 分词 + BM25，词项为空时回退 ILIKE 粗检） ----------
 
     @Override
     public List<RetrievalHit> keywordSearch(List<Long> knowledgeBaseIds, String keyword, int topK) {
         if (CollUtil.isEmpty(knowledgeBaseIds) || StrUtil.isBlank(keyword)) {
             return List.of();
         }
+        // 查询文本分词后无有效词项（全停用词/标点）时保持原 ILIKE 行为，不返回空错
+        return bm25KeywordSearch.search(knowledgeBaseIds, keyword, topK)
+                .orElseGet(() -> ilikeKeywordSearch(knowledgeBaseIds, keyword, topK));
+    }
+
+    /**
+     * 关键词粗检回退：业务表 {@code content ILIKE %}（命中恒 1.0、无相关度排序）。
+     * 仅在查询文本无法分词时使用（BM25 需要词项才能取候选）。
+     */
+    private List<RetrievalHit> ilikeKeywordSearch(List<Long> knowledgeBaseIds, String keyword, int topK) {
         var result = chunkService.findChunkByIdsAndLinkKeyword(knowledgeBaseIds, "%" + keyword.trim() + "%", topK);
         if (CollUtil.isEmpty(result)) {
             return List.of();

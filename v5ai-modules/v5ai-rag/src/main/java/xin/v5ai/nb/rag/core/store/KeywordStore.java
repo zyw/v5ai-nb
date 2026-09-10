@@ -3,7 +3,7 @@ package xin.v5ai.nb.rag.core.store;
 import java.util.List;
 
 /**
- * 关键词检索端口：负责 chunk 文本的写入与关键词召回（搜索引擎后端，如 ES match / PG ILIKE）。
+ * 关键词检索端口：负责 chunk 文本的写入与关键词召回（搜索引擎后端，如 ES match / PG jieba 分词 + Okapi BM25）。
  * 与 {@link VectorStore} 分离，以支持异构后端：Milvus 仅实现向量检索，ES/PG 可同时实现两者。
  */
 public interface KeywordStore {

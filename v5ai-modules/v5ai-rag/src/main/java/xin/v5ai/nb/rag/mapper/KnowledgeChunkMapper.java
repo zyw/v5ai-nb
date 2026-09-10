@@ -51,4 +51,43 @@ public interface KnowledgeChunkMapper extends BaseMapperPlus<KnowledgeChunk, Kno
             @Param("ids") List<Long> ids,
             @Param("keyword") String keyword,
             @Param("limit") int limit);
+
+    /**
+     * BM25 关键词候选召回：GIN 索引取「分词数组与查询词项有交集」的切片行
+     * （{@code keyword_tokens && terms}），按命中词覆盖度粗排后截断；
+     * 候选集的真实相关度排序由 BM25 计分侧决定，故候选数应大于返回条数。
+     *
+     * @param ids   限定的知识库 ID 集合
+     * @param terms 查询词项（分词后去重，作为 {@code text[]} 绑定）
+     * @param limit 候选条数上限
+     * @return 候选切片行（含 {@code keyword_tokens}，用于现算词频与文档长度）
+     */
+    List<KnowledgeChunkDO> findChunksByKeywordTokens(@Param("ids") List<Long> ids,
+                                                     @Param("terms") String[] terms,
+                                                     @Param("limit") int limit);
+
+    /**
+     * 已建立分词索引的切片行数（BM25 的语料规模 N；未重建/无有效分词的行不计入）。
+     *
+     * @param ids 限定的知识库 ID 集合
+     * @return 行数
+     */
+    long countIndexedChunks(@Param("ids") List<Long> ids);
+
+    /**
+     * 平均文档长度 avgdl（分词数组元素个数均值；无已索引行时为 0）。
+     *
+     * @param ids 限定的知识库 ID 集合
+     * @return 平均长度
+     */
+    double avgKeywordTokenLength(@Param("ids") List<Long> ids);
+
+    /**
+     * 词项文档频率 df：包含该词项的切片行数（BM25 的 idf 用）。
+     *
+     * @param ids  限定的知识库 ID 集合
+     * @param term 单个查询词项
+     * @return 行数
+     */
+    long countChunksByKeywordToken(@Param("ids") List<Long> ids, @Param("term") String term);
 }

@@ -6,6 +6,7 @@ import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.rag.core.EmbeddingClient;
 import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
+import xin.v5ai.nb.rag.core.tokenizer.TextTokenizer;
 import xin.v5ai.nb.rag.domain.KnowledgeBase;
 import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
@@ -41,6 +42,7 @@ class KnowledgeChunkAdminServiceImplTest {
     private KnowledgeBaseMapper knowledgeBaseMapper;
     private EmbeddingClient embeddingClient;
     private VectorStoreResolver vectorStoreResolver;
+    private TextTokenizer textTokenizer;
     private VectorStore vectorStore;
     private KnowledgeChunkAdminServiceImpl service;
 
@@ -52,8 +54,11 @@ class KnowledgeChunkAdminServiceImplTest {
         embeddingClient = mock(EmbeddingClient.class);
         vectorStoreResolver = mock(VectorStoreResolver.class);
         vectorStore = mock(VectorStore.class);
+        textTokenizer = mock(TextTokenizer.class);
+        when(textTokenizer.tokenizeForIndex(any())).thenReturn(List.of("新", "切片", "内容"));
         service = new KnowledgeChunkAdminServiceImpl(
-                chunkMapper, documentMapper, knowledgeBaseMapper, embeddingClient, vectorStoreResolver);
+                chunkMapper, documentMapper, knowledgeBaseMapper, embeddingClient, vectorStoreResolver,
+                textTokenizer);
     }
 
     private KnowledgeBase base(Long id) {
@@ -101,8 +106,12 @@ class KnowledgeChunkAdminServiceImplTest {
         assertThat(vo.getDocumentTitle()).isEqualTo("操作手册");
         // 追加到文档末尾：index = max + 1
         verify(chunkMapper).nextChunkIndex(1L, 2L);
-        // 业务行先落（batchSaveChunks，含 vector_id、metadata），再回查
-        verify(chunkMapper).batchSaveChunks(anyList());
+        // 业务行先落（batchSaveChunks，含 vector_id、metadata、关键词分词索引），再回查
+        var rows = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(chunkMapper).batchSaveChunks(rows.capture());
+        @SuppressWarnings("unchecked")
+        List<KnowledgeChunk> savedRows = (List<KnowledgeChunk>) rows.getValue();
+        assertThat(savedRows.get(0).getKeywordTokens()).containsExactly("新", "切片", "内容");
         verify(chunkMapper).selectOne(any());
         var captor = org.mockito.ArgumentCaptor.forClass(List.class);
         verify(vectorStore).store(captor.capture());
@@ -144,7 +153,10 @@ class KnowledgeChunkAdminServiceImplTest {
 
         var vo = service.updateChunk(1L, 5L, new KbChunkEditBo("新内容"));
 
-        verify(chunkMapper).updateById(any(KnowledgeChunk.class));
+        var updated = org.mockito.ArgumentCaptor.forClass(KnowledgeChunk.class);
+        verify(chunkMapper).updateById(updated.capture());
+        // 改内容同步刷新关键词分词索引（否则 BM25 仍按旧内容召回）
+        assertThat(updated.getValue().getKeywordTokens()).containsExactly("新", "切片", "内容");
         // 集合内向量：先按 vector_id 删旧，再写新
         verify(vectorStore).deleteByVectorId(1L, "vec-5");
         verify(vectorStore).store(anyList());

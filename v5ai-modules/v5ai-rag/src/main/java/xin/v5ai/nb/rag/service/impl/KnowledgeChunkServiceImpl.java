@@ -3,6 +3,7 @@ package xin.v5ai.nb.rag.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import xin.v5ai.nb.rag.core.tokenizer.TextTokenizer;
 import xin.v5ai.nb.rag.domain.KnowledgeChunk;
 import xin.v5ai.nb.rag.domain.KnowledgeChunkDO;
 import xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper;
@@ -15,9 +16,14 @@ import java.util.List;
 public class KnowledgeChunkServiceImpl implements IKnowledgeChunkService {
 
     private final KnowledgeChunkMapper baseMapper;
+    private final TextTokenizer textTokenizer;
 
     @Override
     public boolean saveBatch(List<KnowledgeChunk> knowledgeChunks) {
+        // 关键词索引随内容同步生成（jieba INDEX 分词，PG text[]），BM25 检索依赖该列
+        for (KnowledgeChunk chunk : knowledgeChunks) {
+            chunk.setKeywordTokens(textTokenizer.tokenizeForIndex(chunk.getContent()).toArray(String[]::new));
+        }
         return baseMapper.batchSaveChunks(knowledgeChunks);
     }
 

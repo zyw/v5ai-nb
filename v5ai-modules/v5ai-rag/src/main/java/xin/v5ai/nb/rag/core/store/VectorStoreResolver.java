@@ -32,6 +32,7 @@ public class VectorStoreResolver {
     private final StoreInstanceMapper storeInstanceMapper;
     private final IKnowledgeChunkService chunkService;
     private final PgVectorDataSourceFactory pgDataSourceFactory;
+    private final PgBm25KeywordSearch pgBm25KeywordSearch;
 
     private final Map<Long, Object> resolved = new ConcurrentHashMap<>();
 
@@ -96,7 +97,7 @@ public class VectorStoreResolver {
             }
             case TYPE_PG_VECTOR -> {
                 var config = toConfig(instance.getConfig(), PgVectorConfigDO.class);
-                yield new PgVectorStore(pgDataSourceFactory.create(config), chunkService);
+                yield new PgVectorStore(pgDataSourceFactory.create(config), chunkService, pgBm25KeywordSearch);
             }
             default -> null;
         };
