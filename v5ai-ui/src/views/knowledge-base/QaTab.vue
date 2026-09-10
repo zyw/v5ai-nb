@@ -170,10 +170,15 @@ function clearChat() {
 </template>
 
 <style scoped>
+/* 占满 .n-tab-pane 的可用高度（详情页问答 tab 下 .kb-detail-page 是定高的）。
+   左侧参数栏、右侧消息列表各自内部滚动，页面本身不再出滚动条。
+   父级已是 flex column + min-height:0，这里 flex:1 才接得住；
+   原来是 min-height:520px 的固定下限，会把 .qa-tab 顶出可用高度、重新撑出整页滚动条。 */
 .qa-tab {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 20px;
-  min-height: 520px;
 }
 
 /* 参数面板实测高约 1370px，远超视口：限高后内部滚动。

@@ -311,28 +311,35 @@ onMounted(load)
    左侧参数栏在 QaTab 内部滚动，右侧消息列表在 .qa-list 内部滚动、输入框始终可见。
    只在问答 tab 生效——原始文档/切片详情 tab 依赖整页滚动，被固定高度会裁掉内容。 */
 .kb-detail-fixed {
-  flex: 1;
+  /* 父级 .n-scrollbar-content 是 display:block，flex 属性无效，只能靠 height 取父级高度 */
+  height: 100%;
   min-height: 0;
 }
 
 /* 整条链的根因：n-layout-content 的父级 .n-layout-scroll-container 是 display:block，
    所以它是普通块级子元素——flex 属性无效，块级子元素也不会自动取父级高度，
-   于是它随内容长高（实测 1640px，可用只有 738px），下面整条链都压不下去。
-   这里给 height:100%（父级是滚动容器，高度确定），只改文档流、不动滚动容器本身；
-   用 :has() 限定只作用于「当前挂着 .kb-detail-fixed」的详情页，其它页面完全不受影响。 */
+   于是它随内容长高（实测 1640px），下面整条链都压不下去。
+   这里给它一个确定高度，只改文档流、不动滚动容器本身；
+   用 :has() 限定只作用于「当前挂着 .kb-detail-fixed」的详情页，其它页面完全不受影响。
+
+   注意必须减掉顶栏高度：这个滚动容器里是 [顶栏(64px) + n-layout-content] 顺序排布，
+   写 height:100% 会让 content 拿满整个 802px，于是它的底边落到 866px——
+   既让父级 .n-layout-scroll-container（overflow-y:auto）多出 64px 整页滚动条，
+   又把输入条裁掉 32px。可用高度是 802-64=738，正好是 var(--app-topbar-height)。 */
 :global(.n-layout-content:has(.kb-detail-fixed)) {
-  height: 100%;
+  height: calc(100% - var(--app-topbar-height, 64px));
 }
 
-/* n-layout-content 自身是 overflow:hidden，真正滚动的是它内部的 n-scrollbar 两层包裹 */
-.kb-detail-fixed :deep(.n-scrollbar) {
+/* 高度还要再走两级才到「内容盒」：n-layout-content > .n-scrollbar > .n-scrollbar-container，
+   这两层 naive 自带 height:100%，会一直取到上面的可用高度；真正断在 .n-scrollbar-content——
+   它是 height:auto 的普通块，随内容长到 1619px，于是 .n-scrollbar-container（overflow:scroll）
+   冒出整页竖向滚动条。补 height:100% 即可（naive 已给该元素 border-box，
+   AppLayout 的 content-style 内边距 20/24/32 会算在高度内，不会多撑出去）。
+   注意：这几层都是 .kb-detail-fixed 的「祖先」，只能用 :global() 写；写成
+   .kb-detail-fixed :deep(.n-scrollbar) 是后代选择器，永远不可能命中——
+   naive 自带的 height:100% 曾经掩盖了这一点，让死规则看起来是生效的。 */
+:global(.n-layout-content:has(.kb-detail-fixed) > .n-scrollbar > .n-scrollbar-container > .n-scrollbar-content) {
   height: 100%;
-  min-height: 0;
-}
-
-.kb-detail-fixed :deep(.n-layout-content > .n-scrollbar > .n-scrollbar-container) {
-  height: 100%;
-  min-height: 0;
 }
 
 /* n-spin 会插入 .n-spin-container/.n-spin-content 两层包裹，高度要一路穿过去。

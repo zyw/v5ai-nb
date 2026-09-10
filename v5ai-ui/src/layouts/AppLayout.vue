@@ -326,13 +326,17 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  /* 顶栏高度在这里定义一次，往下继承：需要「页面可用高度」的子页面（如知识库详情页
+     问答 tab）用 calc(100% - var(--app-topbar-height)) 就能拿到，不必各自写死 64px。
+     变量挂在 .main 上，router-view 里的页面都是它的后代，能自然继承到。 */
+  --app-topbar-height: 64px;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
+  height: var(--app-topbar-height);
   padding: 0 20px;
   flex-shrink: 0;
 }
