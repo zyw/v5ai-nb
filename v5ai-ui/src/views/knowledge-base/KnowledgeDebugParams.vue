@@ -19,7 +19,7 @@ import {
   NSwitch,
   NTooltip
 } from 'naive-ui'
-import { CircleQuestionMark,FileSearch2Icon } from 'lucide-vue-next'
+import { CircleQuestionMark,FileSearch2Icon,MessagesSquare } from 'lucide-vue-next'
 import type { OptionResponse } from '../../api/client'
 import type { SelectOption } from 'naive-ui'
 
@@ -72,11 +72,29 @@ const canRewrite = computed(() => hasChatModel.value && (props.modelParams?.mode
 
 /** 无对话模型可用时：问题改写开关禁用 */
 const rewriteDisabled = computed(() => !canRewrite.value)
+
+/**
+ * 拼接邻近文本片数量写入口：清空数字框时 naive-ui 会 emit `null`，直接写回模型会让滑块把
+ * `null` 夹成 min（`Math.max(min, null)` ⇒ 0）而与输入框脱钩，故归一化到区间下限。
+ */
+function writeNearbySliceCount(value: number | null) {
+  if (props.modelParams) {
+    props.modelParams.nearbySliceCount = value ?? 0
+  }
+}
 </script>
 
 <template>
   <div class="kb-params">
-    <div class="params-title">
+    <div v-if="mode === 'qa' && modelParams" class="params-title">
+      <n-icon color="#2f6bff" style="margin-right: 5px"><MessagesSquare/></n-icon>
+      知识问答
+      <n-tooltip placement="top">
+        <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+        适合用RAG进行大模型多轮问答的场景，基于历史对话信息和参考知识，进行专业回答
+      </n-tooltip>
+    </div>
+    <div v-else class="params-title">
       <n-icon color="#2f6bff" style="margin-right: 5px"><FileSearch2Icon/></n-icon>
       知识检索
     </div>
@@ -228,47 +246,64 @@ const rewriteDisabled = computed(() => !canRewrite.value)
     </n-card>
 
     <!-- 模型回答参数（仅问答） -->
-    <div v-if="mode === 'qa' && modelParams" class="params-section">
-      <div class="params-title">模型回答参数</div>
+    <n-card v-if="mode === 'qa' && modelParams" class="params-section" content-style="padding: 5px;">
+      <div class="params-title search-title">模型回答参数</div>
       <div class="muted hint">调整大模型参数，预览和调试模型回答效果</div>
       <div class="param-row">
         <span class="param-label">选择模型</span>
+      </div>
+      <div class="param-row">
         <n-select
-          v-model:value="modelParams.modelId"
-          :options="modelOptions"
-          placeholder="请选择对话模型"
-          filterable
-          size="small"
-          class="fusion-select"
+            v-model:value="modelParams.modelId"
+            :options="modelOptions"
+            placeholder="请选择对话模型"
+            filterable
+            size="small"
+            class="fusion-select"
         />
       </div>
+      <n-divider class="param-divider" />
       <div class="param-row">
         <span class="param-label">
           拼接邻近文本片数量
           <n-tooltip placement="top">
             <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
-            每个命中切片前后补足的邻近文本片数，让答案上下文更连贯
+            将检索到的文本片与其邻近文本片拼接，扩展上下文
           </n-tooltip>
         </span>
         <div class="param-control">
-          <n-button size="tiny" quaternary circle @click="modelParams.nearbySliceCount = Math.max(0, modelParams.nearbySliceCount - 1)">−</n-button>
-          <n-input-number v-model:value="modelParams.nearbySliceCount" :min="0" :max="20" size="small" style="width: 64px" />
-          <n-button size="tiny" quaternary circle @click="modelParams.nearbySliceCount = Math.min(20, modelParams.nearbySliceCount + 1)">+</n-button>
+          <!-- 清空数字框 emit null 的归一化见 writeNearbySliceCount -->
+          <n-input-number
+            :value="modelParams.nearbySliceCount"
+            :min="0"
+            :max="20"
+            :step="1"
+            :precision="0"
+            size="small"
+            style="width: 84px"
+            @update:value="writeNearbySliceCount"
+          />
         </div>
       </div>
+      <div class="param-row">
+        <n-slider v-model:value="modelParams.nearbySliceCount" :min="0" :max="20" :step="1" />
+      </div>
+      <n-divider class="param-divider" />
       <div class="param-row vertical">
         <div class="param-label-row">
           <span class="param-label">编写 Prompt</span>
+        </div>
+        <div class="muted hint">
+          Prompt 用于定义大模型的人设和回答框架。可引入 1 项变量：&lt;Documents> 代表引用RAG。点击即可插入变量：
           <n-button
-            size="tiny"
-            quaternary
-            type="primary"
-            @click="modelParams.prompt = modelParams.prompt ? modelParams.prompt + '\n\n<Documents>' : '<Documents>'"
+              size="tiny"
+              quaternary
+              type="primary"
+              @click="modelParams.prompt = modelParams.prompt ? modelParams.prompt + '\n\n<Documents>' : '<Documents>'"
           >
-            插入 &lt;Documents&gt;
+            &lt;Documents&gt;
           </n-button>
         </div>
-        <div class="muted hint">Prompt 用于定义大模型的人设和回答框架；&lt;Documents&gt; 代表引用 RAG 命中。</div>
         <n-input
           v-model:value="modelParams.prompt"
           type="textarea"
@@ -276,7 +311,7 @@ const rewriteDisabled = computed(() => !canRewrite.value)
           placeholder="输入 Prompt 模板…"
         />
       </div>
-    </div>
+    </n-card>
   </div>
 </template>
 
@@ -353,6 +388,7 @@ const rewriteDisabled = computed(() => !canRewrite.value)
   cursor: help;
 }
 
+/* 只放按钮/定宽输入框：inline-flex 是 shrink-to-fit 容器，100% 宽的子元素（slider/select/textarea）会塌成 0 宽 */
 .param-control {
   display: inline-flex;
   align-items: center;

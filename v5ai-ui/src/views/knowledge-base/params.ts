@@ -4,9 +4,7 @@
 import type { KbModelParamsState, KbSearchParamsState } from './KnowledgeDebugParams.vue'
 import type { RagModelParams, RagSearchParams } from '../../api/client'
 
-export const DEFAULT_PROMPT = `你是一位在线知识库问答助手。你的首要任务是根据『参考资料』回答用户问题，这些信息可以帮助你生成更准确的回复；如果参考资料没有覆盖用户问题，请明确说明不知道，不要编造。请使用与用户问题一致的语言作答。
-
-<Documents>`
+export const DEFAULT_PROMPT = `# 任务\n你是一位在线知识库问答助手。你的首要任务是根据『参考资料』回答用户问题，这些信息可以帮助你生成更准确的回复；\n\n# 参考资料\n<Documents>\n\n# 注意事项\n1. 请根据参考资料回答用户问题\n2. 如果参考资料中没有相关内容，请诚实告知用户\n3. 回答要简洁明了，避免冗余。`
 
 export function defaultSearchParams(): KbSearchParamsState {
   return {
@@ -50,7 +48,8 @@ export function toRagSearchParams(s: KbSearchParamsState): RagSearchParams {
 export function toRagModelParams(m: KbModelParamsState): RagModelParams {
   return {
     modelId: m.modelId ?? undefined,
-    nearbySliceCount: m.nearbySliceCount,
+    // 数字框清空会 emit null（见 KnowledgeDebugParams 的归一化）：兜底为默认值，不把 null 写进配置
+    nearbySliceCount: Number.isFinite(m.nearbySliceCount) ? m.nearbySliceCount : 5,
     prompt: m.prompt
   }
 }
