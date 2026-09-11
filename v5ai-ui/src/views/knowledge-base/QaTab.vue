@@ -4,7 +4,7 @@
  * 事件流：RETRIEVAL（引用）→ REASONING_DELTA*（思考）→ TEXT_DELTA*（回答）→ RUN_COMPLETED / RUN_FAILED；
  * 思考与回答分开展示（思考默认折叠），页内会话不落库。
  */
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { NButton, NCollapse, NCollapseItem, NIcon, NInput, NSpin, useMessage } from 'naive-ui'
 import { Eraser, FileText, Send } from 'lucide-vue-next'
 import { kbQaStream, type KbHitResponse, type KbQaMessage } from '../../api/client'
@@ -56,7 +56,9 @@ async function send() {
     .filter((m) => m.content && !m.error)
     .map((m) => ({ role: m.role, content: m.content }))
   messages.value.push({ role: 'user', content: text })
-  const assistant: ChatMsg = { role: 'assistant', content: '', loading: true }
+  // 必须是 reactive 代理：SSE 回调里直接改内容，靠代理触发增量渲染；
+  // 裸对象写属性不走 setter，会等 finally 里 streaming 变更才整段刷出（表现为"不流式"）。
+  const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true })
   messages.value.push(assistant)
   input.value = ''
   streaming.value = true
