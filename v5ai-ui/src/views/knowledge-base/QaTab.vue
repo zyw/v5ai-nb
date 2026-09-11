@@ -2,10 +2,10 @@
 /**
  * 知识库详情页「知识问答」tab：左参数面板（检索参数 + 模型回答参数）+ 右侧多轮会话。
  * 事件流：RETRIEVAL（引用）→ REASONING_DELTA*（思考）→ TEXT_DELTA*（回答）→ RUN_COMPLETED / RUN_FAILED；
- * 思考与回答分开展示（思考默认折叠），页内会话不落库。
+ * 思考与回答分开展示（思考默认展开，思考期间标题显示"思考中..."），页内会话不落库。
  */
-import { computed, reactive, ref } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NIcon, NInput, NSpin, useMessage } from 'naive-ui'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { NButton, NCollapse, NCollapseItem, NIcon, NInput, useMessage } from 'naive-ui'
 import { Eraser, FileText, Send } from 'lucide-vue-next'
 import { kbQaStream, type KbHitResponse, type KbQaMessage } from '../../api/client'
 import { adminToken } from '../../stores/session'
@@ -27,6 +27,8 @@ interface ChatMsg {
   content: string
   /** 模型推理内容（REASONING_DELTA 累积），与 content 分开展示 */
   reasoning?: string
+  /** 思考折叠是否展开：初始展开，回答开始后自动收起一次；之后用户手动开合不再干预 */
+  reasoningOpen?: boolean
   citations?: KbHitResponse[]
   error?: string
   loading?: boolean
@@ -35,6 +37,8 @@ interface ChatMsg {
 const messages = ref<ChatMsg[]>([])
 const input = ref('')
 const streaming = ref(false)
+const listRef = ref<HTMLElement | null>(null)
+const BOTTOM_THRESHOLD = 40
 
 const canSend = computed(() => {
   if (streaming.value) return false
@@ -58,10 +62,14 @@ async function send() {
   messages.value.push({ role: 'user', content: text })
   // 必须是 reactive 代理：SSE 回调里直接改内容，靠代理触发增量渲染；
   // 裸对象写属性不走 setter，会等 finally 里 streaming 变更才整段刷出（表现为"不流式"）。
-  const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true })
+  const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true, reasoningOpen: true })
   messages.value.push(assistant)
   input.value = ''
   streaming.value = true
+  // 主动发问时无视当前滚动位置，直接到底（用户刚发完就想看回答）。
+  // 消息从 0 到 1 时 .qa-list 还是刚挂载的，这里等一拍再量高度。
+  await nextTick()
+  if (listRef.value) listRef.value.scrollTop = listRef.value.scrollHeight
   try {
     await kbQaStream(
       adminToken.value,
@@ -85,6 +93,8 @@ async function send() {
         } else if (event === 'REASONING_DELTA' && data) {
           assistant.reasoning = (assistant.reasoning ?? '') + data
         } else if (event === 'TEXT_DELTA' && data) {
+          // 回答开始的第一个片段：思考自动收起（只此一次，之后用户手动开合不再干预）
+          if (!assistant.content) assistant.reasoningOpen = false
           assistant.content += data
         } else if (event === 'RUN_FAILED') {
           assistant.error = data || '问答失败，请稍后重试'
@@ -110,6 +120,40 @@ function parseHits(data: string): KbHitResponse[] | undefined {
   }
 }
 
+/** 流式内容（回答 + 思考）总长度：任一片段到达即变化，作为「该滚到底了」的触发源。 */
+const streamedLength = computed(() =>
+  messages.value.reduce((n, m) => n + m.content.length + (m.reasoning?.length ?? 0), 0)
+)
+
+/**
+ * 自动贴底。默认 flush（pre）时刻 DOM 还是「增长前」的旧高度，正好用来判断用户当前是否停在底部：
+ * 停在底部就顺势跟到底，往上翻看历史则不动滚动条，等他滚回底部后下次判定自动恢复。
+ * 不用 scroll 事件判断——浏览器把同帧内的多次滚动合并成一个 scroll 事件且只报最终位置，
+ * 用户上翻后紧跟一个增量片的强制贴底会把它覆盖掉，表现为「上翻被拽回底部」。
+ */
+watch(streamedLength, async () => {
+  const el = listRef.value
+  if (!el) return
+  if (el.scrollHeight - el.scrollTop - el.clientHeight > BOTTOM_THRESHOLD) return
+  await nextTick()
+  el.scrollTop = el.scrollHeight
+})
+
+/** 思考折叠开合（受控）：用户点击时同步回消息状态。 */
+function onReasoningToggle(m: ChatMsg, names: string | number | Array<string | number> | null) {
+  m.reasoningOpen = Array.isArray(names) ? names.includes('thinking') : names === 'thinking'
+}
+
+/** 首个 token 之前的等待（此阶段还没有任何思考内容可展示）。 */
+function awaitingFirstToken(m: ChatMsg): boolean {
+  return !!m.loading && !m.reasoning && !m.content && !m.error
+}
+
+/** 思考仍在进行：回答（或错误）尚未开始。 */
+function isThinking(m: ChatMsg): boolean {
+  return !!m.loading && !m.content && !m.error
+}
+
 function clearChat() {
   messages.value = []
 }
@@ -129,14 +173,24 @@ function clearChat() {
         </div>
       </div>
 
-      <div v-else class="qa-list">
+      <div v-else ref="listRef" class="qa-list">
         <div v-for="(m, i) in messages" :key="i" class="qa-row" :class="m.role">
           <div class="bubble" :class="m.role">
             <template v-if="m.role === 'user'">{{ m.content }}</template>
             <template v-else>
-              <n-spin v-if="m.loading && !m.content && !m.reasoning" size="small" />
-              <n-collapse v-if="m.reasoning" class="reasoning">
-                <n-collapse-item title="思考过程" name="thinking">
+              <!-- 首 token 等待：DeepSeek 风格"思考中..."（已有思考内容时改由折叠标题承担） -->
+              <div v-if="awaitingFirstToken(m)" class="thinking-wait"><span class="shimmer">思考中...</span></div>
+              <!-- 思考过程默认展开；思考期间标题为"思考中..."，回答开始后自动收起并恢复"思考过程" -->
+              <n-collapse
+                v-if="m.reasoning"
+                class="reasoning"
+                :expanded-names="m.reasoningOpen ? ['thinking'] : []"
+                @update:expanded-names="(names) => onReasoningToggle(m, names)"
+              >
+                <n-collapse-item name="thinking">
+                  <template #header>
+                    <span :class="{ shimmer: isThinking(m) }">{{ isThinking(m) ? '思考中...' : '思考过程' }}</span>
+                  </template>
                   <div class="reasoning-text">{{ m.reasoning }}</div>
                 </n-collapse-item>
               </n-collapse>
@@ -291,7 +345,47 @@ function clearChat() {
   font-size: 13.5px;
 }
 
-/* 思考过程：与回答同气泡但视觉降级，默认折叠 */
+.thinking-wait {
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: rgba(120, 120, 120, 0.95);
+}
+
+/* DeepSeek 式"思考中..."：灰字上掠过一道高光的渐变动画（background-clip:text）。 */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(130, 130, 130, 0.9) 0%,
+    rgba(130, 130, 130, 0.9) 35%,
+    #2f6bff 50%,
+    rgba(130, 130, 130, 0.9) 65%,
+    rgba(130, 130, 130, 0.9) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: thinking-shimmer 1.5s linear infinite;
+}
+
+@keyframes thinking-shimmer {
+  from {
+    background-position-x: 150%;
+  }
+  to {
+    background-position-x: -150%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    color: rgba(120, 120, 120, 0.95);
+    background: none;
+  }
+}
+
+/* 思考过程：与回答同气泡但视觉降级；默认展开，思考进行中标题走 .shimmer 动画 */
 .reasoning {
   margin-bottom: 8px;
 }
