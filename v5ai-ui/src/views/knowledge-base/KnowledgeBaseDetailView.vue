@@ -178,14 +178,14 @@ onMounted(load)
                 <span>更新时间 {{ formatDateTime(kb.updatedAt) ?? '—' }}</span>
               </div>
             </div>
-            <n-popover trigger="hover" placement="bottom">
-              <template #trigger>
-                <n-icon :component="CircleQuestionMark" size="14" class="head-help" />
-              </template>
-              <div style="max-width: 300px">
-                本页 4 个 tab 均围绕该知识库调试。左侧「知识检索 / 知识问答」参数变更后会自动保存回该知识库配置（防抖）。
-              </div>
-            </n-popover>
+<!--            <n-popover trigger="hover" placement="bottom">-->
+<!--              <template #trigger>-->
+<!--                <n-icon :component="CircleQuestionMark" size="14" class="head-help" />-->
+<!--              </template>-->
+<!--              <div style="max-width: 300px">-->
+<!--                本页 4 个 tab 均围绕该知识库调试。左侧「知识检索 / 知识问答」参数变更后会自动保存回该知识库配置（防抖）。-->
+<!--              </div>-->
+<!--            </n-popover>-->
           </div>
           <n-space :size="8" class="kb-head-stats">
             <n-tag :bordered="false" type="default">文档 {{ kb.docCount ?? 0 }}</n-tag>
