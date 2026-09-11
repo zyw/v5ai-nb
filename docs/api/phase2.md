@@ -163,7 +163,10 @@ DELETE /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}   # 删除业务行并
 POST /api/admin/knowledge-bases/{kbId}/retrieve
 Content-Type: application/json
 
-# 问答调试（SSE，事件名 = RuntimeEventType：RETRIEVAL / TEXT_DELTA / RUN_COMPLETED / RUN_FAILED）
+# 问答调试（SSE，事件名 = RuntimeEventType：RETRIEVAL / REASONING_DELTA / TEXT_DELTA / RUN_COMPLETED / RUN_FAILED）
+# data 为 RuntimeEvent JSON 包体（{runId,type,payload,createdAt}），页面取其中 payload：
+#   RETRIEVAL.payload = 命中数组 JSON 串；REASONING_DELTA.payload = 思考文本片段；
+#   TEXT_DELTA.payload = 回答文本片段；RUN_FAILED.payload = 错误信息
 POST /api/admin/knowledge-bases/{kbId}/chat/stream
 Content-Type: application/json
 Accept: text/event-stream
@@ -191,6 +194,7 @@ Accept: text/event-stream
 - 问题改写为「半真」：需要 `modelId`（或知识库 `config.modelParams.modelId`），模型缺失/调用失败时自动跳过改写并走原问题，不影响检索；
 - `chat/stream` 请求体为 `KbChatBo`：`modelId` / `nearbySliceCount`（拼接邻近文本片数量，默认 5，= 每个命中前后补片数）/ `prompt`（可含 `<Documents>` 变量，缺省用内置模板）/ 检索参数同 retrieve / `messages`（`[{role: user|assistant, content}]`，末条为当前问题）。
   问答链路：检索 → 邻近补全 → Prompt 注入 → 对话模型流式回答；**无状态**（历史由前端携带，不落库、不占运行配额、不计 Agent 用量），对话模型经运行时 `AgentModelResolver` 解析（仅 CHAT 模型可用）。
+  推理模型（返回 `reasoning_content`）的思考内容经 AgentScope `ThinkingBlock` 分流为 `REASONING_DELTA`，回答走 `TEXT_DELTA`，前端「知识问答」tab 把思考折叠展示、与回答分开；思考不计入回传给模型的历史（历史只带回答）。
 
 注意事项：
 - 手工切片写入与 Worker 索引共用同一条 Embedding→VectorStore 链路；单切片编辑/删除为行级操作，仅默认 PgVectorStore 保证索引同步（ES/Milvus 实例无单条更新 API，编辑后需重新索引文档保持一致）；

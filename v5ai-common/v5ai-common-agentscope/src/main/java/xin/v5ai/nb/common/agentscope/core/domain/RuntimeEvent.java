@@ -26,6 +26,11 @@ public record RuntimeEvent(String runId, RuntimeEventType type, String payload, 
         return new RuntimeEvent(runId, RuntimeEventType.MODEL_CALL, modelName, Instant.now());
     }
 
+    /** 思考增量片段（模型推理内容，与回答分流，供前端单独展示） */
+    public static RuntimeEvent reasoningDelta(String runId, String payload) {
+        return new RuntimeEvent(runId, RuntimeEventType.REASONING_DELTA, payload, Instant.now());
+    }
+
     /** 文本增量片段（用于流式拼装回答） */
     public static RuntimeEvent textDelta(String runId, String payload) {
         return new RuntimeEvent(runId, RuntimeEventType.TEXT_DELTA, payload, Instant.now());

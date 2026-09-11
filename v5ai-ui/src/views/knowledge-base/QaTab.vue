@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * 知识库详情页「知识问答」tab：左参数面板（检索参数 + 模型回答参数）+ 右侧多轮会话。
- * 事件流：RETRIEVAL（引用）→ TEXT_DELTA* → RUN_COMPLETED / RUN_FAILED；页内会话不落库。
+ * 事件流：RETRIEVAL（引用）→ REASONING_DELTA*（思考）→ TEXT_DELTA*（回答）→ RUN_COMPLETED / RUN_FAILED；
+ * 思考与回答分开展示（思考默认折叠），页内会话不落库。
  */
 import { computed, ref } from 'vue'
 import { NButton, NCollapse, NCollapseItem, NIcon, NInput, NSpin, useMessage } from 'naive-ui'
@@ -24,6 +25,8 @@ const message = useMessage()
 interface ChatMsg {
   role: 'user' | 'assistant'
   content: string
+  /** 模型推理内容（REASONING_DELTA 累积），与 content 分开展示 */
+  reasoning?: string
   citations?: KbHitResponse[]
   error?: string
   loading?: boolean
@@ -77,6 +80,8 @@ async function send() {
       (event, data) => {
         if (event === 'RETRIEVAL') {
           assistant.citations = parseHits(data)
+        } else if (event === 'REASONING_DELTA' && data) {
+          assistant.reasoning = (assistant.reasoning ?? '') + data
         } else if (event === 'TEXT_DELTA' && data) {
           assistant.content += data
         } else if (event === 'RUN_FAILED') {
@@ -127,7 +132,12 @@ function clearChat() {
           <div class="bubble" :class="m.role">
             <template v-if="m.role === 'user'">{{ m.content }}</template>
             <template v-else>
-              <n-spin v-if="m.loading && !m.content" size="small" />
+              <n-spin v-if="m.loading && !m.content && !m.reasoning" size="small" />
+              <n-collapse v-if="m.reasoning" class="reasoning">
+                <n-collapse-item title="思考过程" name="thinking">
+                  <div class="reasoning-text">{{ m.reasoning }}</div>
+                </n-collapse-item>
+              </n-collapse>
               <div v-if="m.content" class="answer-text">{{ m.content }}</div>
               <div v-if="m.error" class="answer-error">{{ m.error }}</div>
               <n-collapse v-if="m.citations && m.citations.length > 0" class="citations">
@@ -277,6 +287,20 @@ function clearChat() {
   white-space: pre-wrap;
   line-height: 1.8;
   font-size: 13.5px;
+}
+
+/* 思考过程：与回答同气泡但视觉降级，默认折叠 */
+.reasoning {
+  margin-bottom: 8px;
+}
+
+.reasoning-text {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-size: 12.5px;
+  color: rgba(105, 105, 105, 0.95);
+  border-left: 2px solid rgba(128, 128, 128, 0.3);
+  padding-left: 10px;
 }
 
 .answer-error {

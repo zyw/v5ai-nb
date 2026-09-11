@@ -1,6 +1,7 @@
 package xin.v5ai.nb.common.agentscope.core;
 
 import io.agentscope.core.message.TextBlock;
+import io.agentscope.core.message.ThinkingBlock;
 import io.agentscope.core.model.ChatResponse;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
@@ -34,5 +35,22 @@ class ChatResponseTextsTest {
         var response = ChatResponse.builder().content(List.of()).build();
 
         assertThat(ChatResponseTexts.textOf(response)).isEmpty();
+    }
+
+    @Test
+    void thinkingOfExtractsReasoningBlocksOnly() {
+        var response = ChatResponse.builder().content(List.of(
+                ThinkingBlock.builder().thinking("先看资料，").build(),
+                ThinkingBlock.builder().thinking("再作答").build(),
+                TextBlock.builder().text("回答").build())).build();
+
+        assertThat(ChatResponseTexts.thinkingOf(response)).isEqualTo("先看资料，再作答");
+        assertThat(ChatResponseTexts.textOf(response)).isEqualTo("回答");
+    }
+
+    @Test
+    void thinkingOfReturnsNullForNullResponseOrContent() {
+        assertThat(ChatResponseTexts.thinkingOf(null)).isNull();
+        assertThat(ChatResponseTexts.thinkingOf(ChatResponse.builder().content(null).build())).isNull();
     }
 }

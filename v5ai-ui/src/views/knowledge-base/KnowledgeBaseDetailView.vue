@@ -151,7 +151,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="page kb-detail-page" :class="{ 'kb-detail-fixed': tab === 'qa' }">
+  <div class="page kb-detail-page" :class="{ 'kb-detail-fixed': tab === 'qa' || tab === 'retrieve' }">
     <n-spin :show="loading">
       <div v-if="!kb" class="detail-loading">
         <n-skeleton v-if="loading" text :repeat="4" style="max-width: 600px" />
@@ -307,9 +307,10 @@ onMounted(load)
   flex-direction: column;
 }
 
-/* 「知识问答」tab 独占视口高度，从而不产生整页滚动条：
-   左侧参数栏在 QaTab 内部滚动，右侧消息列表在 .qa-list 内部滚动、输入框始终可见。
-   只在问答 tab 生效——原始文档/切片详情 tab 依赖整页滚动，被固定高度会裁掉内容。 */
+/* 「知识检索」「知识问答」tab 独占视口高度，从而不产生整页滚动条：
+   左侧参数栏在各自 tab 内部滚动，右侧命中列表/消息列表内部滚动
+   （检索 tab 搜索条、问答 tab 输入条始终可见）。
+   只在这两个 tab 生效——原始文档/切片详情 tab 依赖整页滚动，被固定高度会裁掉内容。 */
 .kb-detail-fixed {
   /* 父级 .n-scrollbar-content 是 display:block，flex 属性无效，只能靠 height 取父级高度 */
   height: 100%;

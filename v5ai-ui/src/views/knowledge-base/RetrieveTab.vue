@@ -2,7 +2,7 @@
 /**
  * 知识库详情页「知识检索」tab：左检索参数面板 + 主区输入检索 → 命中卡片。
  */
-import { onMounted, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { NButton, NEmpty, NIcon, NInput, NSpin, useMessage } from 'naive-ui'
 import { FileText, Search } from 'lucide-vue-next'
 import { retrieveKnowledgeBase, type KbHitResponse } from '../../api/client'
@@ -60,10 +60,6 @@ watch(
   }
 )
 
-onMounted(() => {
-  // if (props.active) void search()
-})
-
 function excerpt(content: string, max = 280): string {
   const collapsed = content.replace(/\s+/g, ' ').trim()
   return collapsed.length > max ? `${collapsed.slice(0, max)}…` : collapsed
@@ -116,39 +112,67 @@ function excerpt(content: string, max = 280): string {
 
 <style scoped>
 .retrieve-tab {
+  /* 详情页检索 tab 是定高的（.kb-detail-fixed 链），这里接住可用高度：
+     搜索条固定在顶部，命中列表在 .hit-list 内部滚动，整页不再出现滚动条。 */
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 20px;
-  min-height: 420px;
 }
 
-/* 与 QaTab 的 .qa-side 保持一致：参数面板限高后内部滚动（检索 tab 面板较短，通常不出现滚动条）。 */
+/* 与 QaTab 的 .qa-side 保持一致：参数面板限高后内部滚动。
+   不再写 calc(100vh - Npx)——那是定高链之前的兜底，比实际可用高度更高，会重新撑出整页滚动条。 */
 .retrieve-side {
   width: 300px;
   flex-shrink: 0;
   border-right: 1px solid rgba(128, 128, 128, 0.18);
   padding-right: 16px;
-  max-height: calc(100vh - 100px);
+  min-height: 0;
   overflow: hidden auto;
 }
 
 .retrieve-main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* flex 行(item) 自动最小尺寸是内容高：不归零，命中列表会把 .retrieve-main 顶出定高。 */
+  min-height: 0;
 }
 
 .search-bar {
   display: flex;
   gap: 10px;
   margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+/* n-spin 的容器要能长高，否则里面的 .hit-list 没有可滚动的高度 */
+.retrieve-main :deep(.n-spin-container) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.retrieve-main :deep(.n-spin-content) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-empty {
+  flex: 1;
   padding: 60px 0;
   display: flex;
   justify-content: center;
 }
 
 .hit-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;

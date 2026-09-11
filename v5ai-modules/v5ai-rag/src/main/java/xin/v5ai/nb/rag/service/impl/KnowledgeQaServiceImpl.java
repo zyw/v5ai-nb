@@ -139,12 +139,26 @@ public class KnowledgeQaServiceImpl implements IKnowledgeQaService {
         String retrievalPayload = hitsPayload(hits);
         return Flux.concat(
                         Flux.just(RuntimeEvent.retrieval(runId, retrievalPayload)),
-                        responses
-                                .map(ChatResponseTexts::textOf)
-                                .filter(text -> text != null && !text.isEmpty())
-                                .map(text -> RuntimeEvent.textDelta(runId, text)))
+                        responses.flatMapIterable(response -> deltas(runId, response)))
                 .concatWith(Flux.just(RuntimeEvent.completed(runId)))
                 .onErrorResume(error -> Flux.just(RuntimeEvent.failed(runId, safeMessage(error))));
+    }
+
+    /**
+     * 单个响应分片 → 事件列表：推理内容（ThinkingBlock）与回答（TextBlock）分流为
+     * REASONING_DELTA / TEXT_DELTA，让前端把「思考过程」与「回答」分开展示。
+     */
+    private static List<RuntimeEvent> deltas(String runId, ChatResponse response) {
+        List<RuntimeEvent> events = new ArrayList<>(2);
+        String thinking = ChatResponseTexts.thinkingOf(response);
+        if (thinking != null && !thinking.isEmpty()) {
+            events.add(RuntimeEvent.reasoningDelta(runId, thinking));
+        }
+        String text = ChatResponseTexts.textOf(response);
+        if (text != null && !text.isEmpty()) {
+            events.add(RuntimeEvent.textDelta(runId, text));
+        }
+        return events;
     }
 
     // ---------- context & messages ----------

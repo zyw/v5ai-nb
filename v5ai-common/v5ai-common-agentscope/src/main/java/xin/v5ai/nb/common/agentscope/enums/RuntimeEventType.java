@@ -8,6 +8,8 @@ public enum RuntimeEventType {
     RUN_STARTED,
     /** 模型调用开始 */
     MODEL_CALL,
+    /** 思考增量（模型推理内容，与回答分流推送） */
+    REASONING_DELTA,
     /** 文本增量（回答片段） */
     TEXT_DELTA,
     /** 工具调用 */

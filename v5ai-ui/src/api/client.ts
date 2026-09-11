@@ -908,6 +908,9 @@ async function streamSse(
   const response = await fetch(`${apiBase}${path}`, {
     method: 'POST',
     headers: {
+      // 后端 SecurityConfig 对每个未排除请求都校验 token 内 clientId 与请求头 clientid 一致；
+      // 漏带会被当成 NotLoginException 抛 401，与 doRequest / fetchResourceBlob 保持一致。
+      ...(clientId ? { clientid: clientId } : {}),
       ...headers,
       'Content-Type': 'application/json'
     },
@@ -1173,7 +1176,11 @@ export function retrieveKnowledgeBase(
   }, adminToken)
 }
 
-/** 知识库流式问答（页内调试会话，SSE 事件：RETRIEVAL / TEXT_DELTA / RUN_COMPLETED / RUN_FAILED）。 */
+/**
+ * 知识库流式问答（页内调试会话，SSE 事件：RETRIEVAL / REASONING_DELTA / TEXT_DELTA / RUN_COMPLETED / RUN_FAILED）。
+ * 与其它 SSE 接口不同：服务端推送的是 RuntimeEvent JSON 包体，这里统一取出 payload 再交给页面
+ * （RETRIEVAL 的 payload 是命中数组 JSON 串，REASONING_DELTA / TEXT_DELTA 是文本片段，RUN_FAILED 是错误信息）。
+ */
 export async function kbQaStream(
   adminToken: string,
   kbId: number,
@@ -1184,8 +1191,19 @@ export async function kbQaStream(
     `/api/admin/knowledge-bases/${kbId}/chat/stream`,
     { Authorization: normalizeBearer(adminToken) },
     request,
-    onEvent
+    (event, data) => onEvent(event, runtimeEventPayload(data))
   )
+}
+
+/** 取 SSE data 中 RuntimeEvent 包体的 payload；非 JSON（异常路径）时原样返回。 */
+function runtimeEventPayload(data: string): string {
+  if (!data) return ''
+  try {
+    const payload = (JSON.parse(data) as { payload?: unknown }).payload
+    return typeof payload === 'string' ? payload : data
+  } catch {
+    return data
+  }
 }
 
 // ---- Store instances ----

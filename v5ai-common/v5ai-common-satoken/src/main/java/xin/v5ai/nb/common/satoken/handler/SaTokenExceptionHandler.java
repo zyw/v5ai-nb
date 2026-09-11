@@ -50,6 +50,9 @@ public class SaTokenExceptionHandler {
                  NotLoginException.TOKEN_FREEZE -> "登录已过期，请重新登录";
             case NotLoginException.BE_REPLACED -> "当前账号已在其他设备登录，您已被强制下线";
             case NotLoginException.KICK_OUT -> "账号已被管理员强制下线";
+            // SecurityConfig 校验请求头/参数 clientid 与 token 内不一致时抛出的自定义码，
+            // 单独文案以免被误判成登录态失效。
+            case "-100" -> "客户端标识与令牌不匹配，请重新登录";
             default -> "登录状态异常，请重新登录";
         };
         return R.fail(HttpStatus.HTTP_UNAUTHORIZED, msg);
