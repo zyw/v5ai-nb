@@ -29,7 +29,7 @@
         <minio.version>8.5.17</minio.version>
         <!-- OkHttp 5.3.2（agentscope）需要 Okio >= 3.14 的 Okio.socket；统一到 3.16.4 消除 3.6.0/3.16.4 冲突导致的 NoSuchMethodError -->
         <okio.version>3.16.4</okio.version>
-        <agentscope.version>2.0.2-subagent-bugfix</agentscope.version>
+        <agentscope.version>2.0.3</agentscope.version>
         <pdfbox.version>3.0.7</pdfbox.version>
         <poi.version>5.4.1</poi.version>
         <jsoup.version>1.20.1</jsoup.version>
