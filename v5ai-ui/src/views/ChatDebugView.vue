@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { NButton, NCard, NDivider, NForm, NFormItem, NInput, NSpace, NTag, useMessage } from 'naive-ui'
 import PageHeader from '../components/PageHeader.vue'
+import MarkdownContent from '../components/MarkdownContent.vue'
 import { chat, streamChat } from '../api/client'
 
 const message = useMessage()
@@ -127,12 +128,18 @@ function parseRunFailed(data: string): string {
           <span>Run ID</span>
           <strong>{{ runId || '-' }}</strong>
         </div>
-        <div class="answer">{{ blockingAnswer || '等待阻塞响应...' }}</div>
+        <div class="answer">
+          <MarkdownContent v-if="blockingAnswer" :content="blockingAnswer" />
+          <template v-else>等待阻塞响应...</template>
+        </div>
       </n-card>
     </div>
 
     <n-card title="流式响应" :bordered="true">
-      <div class="answer">{{ streamAnswer || '等待流式响应...' }}</div>
+      <div class="answer">
+        <MarkdownContent v-if="streamAnswer" :content="streamAnswer" />
+        <template v-else>等待流式响应...</template>
+      </div>
       <n-divider title-placement="left">事件列表</n-divider>
       <div class="event-list">
         <n-tag v-for="(event, index) in events" :key="`${event}-${index}`" size="small" :bordered="false">{{ event }}</n-tag>

@@ -24,6 +24,7 @@ import { Plus } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
+import MarkdownContent from '../components/MarkdownContent.vue'
 import {
   adminDebugStream,
   bindKnowledgeBases,
@@ -751,7 +752,10 @@ onMounted(reload)
             </div>
             <div class="chat-window">
               <div v-for="(msg, index) in chatMessages" :key="index" :class="['chat-row', msg.role]">
-                <div class="chat-bubble">{{ msg.content || '…' }}</div>
+                <div class="chat-bubble">
+                  <MarkdownContent v-if="msg.role === 'assistant' && msg.content" :content="msg.content" />
+                  <template v-else>{{ msg.content || '…' }}</template>
+                </div>
               </div>
               <div v-if="chatMessages.length === 0" class="chat-empty">
                 输入问题开始调试（未发布也可调试），回复将在这里显示。

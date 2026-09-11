@@ -9,6 +9,7 @@ import { NButton, NCollapse, NCollapseItem, NIcon, NInput, useMessage } from 'na
 import { Eraser, FileText, Send } from 'lucide-vue-next'
 import { kbQaStream, type KbHitResponse, type KbQaMessage } from '../../api/client'
 import { adminToken } from '../../stores/session'
+import MarkdownContent from '../../components/MarkdownContent.vue'
 import KnowledgeDebugParams, { type KbModelParamsState, type KbSearchParamsState } from './KnowledgeDebugParams.vue'
 
 const props = defineProps<{
@@ -191,10 +192,10 @@ function clearChat() {
                   <template #header>
                     <span :class="{ shimmer: isThinking(m) }">{{ isThinking(m) ? '思考中...' : '思考过程' }}</span>
                   </template>
-                  <div class="reasoning-text">{{ m.reasoning }}</div>
+                  <div class="reasoning-text"><MarkdownContent :content="m.reasoning" /></div>
                 </n-collapse-item>
               </n-collapse>
-              <div v-if="m.content" class="answer-text">{{ m.content }}</div>
+              <MarkdownContent v-if="m.content" :content="m.content" />
               <div v-if="m.error" class="answer-error">{{ m.error }}</div>
               <n-collapse v-if="m.citations && m.citations.length > 0" class="citations">
                 <n-collapse-item title="本次引用的切片" name="refs">
@@ -339,12 +340,6 @@ function clearChat() {
   padding: 12px 14px;
 }
 
-.answer-text {
-  white-space: pre-wrap;
-  line-height: 1.8;
-  font-size: 13.5px;
-}
-
 .thinking-wait {
   font-size: 13.5px;
   line-height: 1.8;
@@ -390,13 +385,17 @@ function clearChat() {
   margin-bottom: 8px;
 }
 
+/* 思考内容同样按 markdown 渲染：块级排版交给 MarkdownContent，这里只保留视觉降级
+   （原先是 pre-wrap 纯文本；不改回 pre-wrap，否则块标签之间的换行会变成可见空行） */
 .reasoning-text {
-  white-space: pre-wrap;
-  line-height: 1.7;
-  font-size: 12.5px;
   color: rgba(105, 105, 105, 0.95);
   border-left: 2px solid rgba(128, 128, 128, 0.3);
   padding-left: 10px;
+}
+
+.reasoning-text :deep(.md-content) {
+  font-size: 12.5px;
+  line-height: 1.7;
 }
 
 .answer-error {
