@@ -89,8 +89,6 @@ public class SecurityConfig implements WebMvcConfigurer {
                     // 对未排除的路径进行检查
                     .check(() -> {
                         HttpServletRequest request = ServletUtils.getRequest();
-                        HttpServletResponse response = ServletUtils.getResponse();
-                        response.setContentType(SaTokenConsts.CONTENT_TYPE_APPLICATION_JSON);
                         // 检查是否登录 是否有token
                         StpUtil.checkLogin();
 
