@@ -359,7 +359,7 @@ export interface KnowledgeChunkResponse {
   id: number
   knowledgeBaseId: number
   documentId: number
-  /** 来源文档标题（列表接口联查返回） */
+  /** 所属文档标题（列表接口联查返回） */
   documentTitle?: string | null
   chunkIndex: number
   content: string

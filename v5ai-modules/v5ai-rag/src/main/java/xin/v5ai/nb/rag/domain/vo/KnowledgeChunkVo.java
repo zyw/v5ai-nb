@@ -29,7 +29,7 @@ public class KnowledgeChunkVo implements Serializable {
     private Long documentId;
 
     /**
-     * 来源文档标题（列表接口联查填充，非实体列）
+     * 所属文档标题（列表接口联查填充，非实体列）
      */
     private String documentTitle;
 

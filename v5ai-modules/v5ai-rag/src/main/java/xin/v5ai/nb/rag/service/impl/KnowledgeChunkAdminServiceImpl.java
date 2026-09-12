@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
  * 手工切片的向量存储走 {@link VectorStore} 端口：业务行（content/metadata/vector_id）先落
  * {@code v5ai_knowledge_chunk}，向量再写入知识库绑定的存储实例集合（主键 = vector_id）。
  * 单切片编辑/删除同步维护业务行与集合内向量。
+ * <p>
+ * 写操作要求所属文档已进入索引终态（否则 Worker 重建会静默覆盖），并同步维护所属文档的分片数量。
  *
  * @author ZYW
  * @since 2026-09-06
@@ -57,6 +59,11 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
      * 手工切片元数据标记
      */
     private static final String MANUAL_METADATA = "{\"source\":\"manual\"}";
+
+    /**
+     * 文档索引终态边界：3-处理完成 / 4-处理失败（0-待处理 1-解析中 2-处理中）
+     */
+    private static final int DOC_STATUS_COMPLETED = 3;
 
     private final KnowledgeChunkMapper chunkMapper;
     private final KnowledgeDocumentMapper documentMapper;
@@ -94,10 +101,11 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
     @Transactional(rollbackFor = Exception.class)
     public KnowledgeChunkVo addChunk(Long knowledgeBaseId, KbChunkAddBo bo) {
         if (bo == null || bo.documentId() == null) {
-            throw new ServiceException("请选择归属文档");
+            throw new ServiceException("请选择所属文档");
         }
         String content = requireContent(bo.content());
         KnowledgeDocument document = requireDocumentOfBase(knowledgeBaseId, bo.documentId());
+        requireDocumentIndexSettled(document);
         KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
 
         String vectorId = java.util.UUID.randomUUID().toString();
@@ -128,6 +136,7 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         if (created == null) {
             throw new ServiceException("切片已写入但回查失败，请刷新列表确认");
         }
+        shiftChunkCount(document, 1);
         return toVo(created, document.getTitle());
     }
 
@@ -137,6 +146,7 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
         String content = requireContent(bo == null ? null : bo.content());
         KnowledgeChunk chunk = requireChunkOfBase(knowledgeBaseId, chunkId);
         KnowledgeDocument document = documentMapper.selectById(chunk.getDocumentId());
+        requireDocumentIndexSettled(document);
         KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
 
         // 业务行更新内容（向量列已解耦，无需再写 embedding 字面量）；关键词索引随内容同步刷新
@@ -165,6 +175,8 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
     @Transactional(rollbackFor = Exception.class)
     public void deleteChunk(Long knowledgeBaseId, Long chunkId) {
         KnowledgeChunk chunk = requireChunkOfBase(knowledgeBaseId, chunkId);
+        KnowledgeDocument document = documentMapper.selectById(chunk.getDocumentId());
+        requireDocumentIndexSettled(document);
         KnowledgeBase base = requireKnowledgeBase(knowledgeBaseId);
         // 先删集合内向量，再删业务行
         if (chunk.getVectorId() != null) {
@@ -172,6 +184,7 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
             store.deleteByVectorId(knowledgeBaseId, chunk.getVectorId());
         }
         chunkMapper.deleteById(chunkId);
+        shiftChunkCount(document, -1);
     }
 
     // ---------- helpers ----------
@@ -198,6 +211,30 @@ public class KnowledgeChunkAdminServiceImpl implements IKnowledgeChunkAdminServi
             throw new ServiceException("切片不存在或不属于该知识库: " + chunkId);
         }
         return chunk;
+    }
+
+    /**
+     * 所属文档未进入索引终态时拒绝手工改动：Worker 重建会先删除该文档的全部切片与向量，
+     * 窗口内的手工增删改会被静默覆盖（分片计数也会永久漂移）。
+     */
+    private static void requireDocumentIndexSettled(KnowledgeDocument document) {
+        if (document != null && (document.getStatus() == null || document.getStatus() < DOC_STATUS_COMPLETED)) {
+            throw new ServiceException("所属文档尚未完成索引（解析中/处理中），暂不可手工增删或修改切片");
+        }
+    }
+
+    /**
+     * 增量维护所属文档的分片数量（Worker 重新索引时会整体重算，此处只做增量）。
+     */
+    private void shiftChunkCount(KnowledgeDocument document, int delta) {
+        if (document == null) {
+            return;
+        }
+        int current = document.getChunkCount() == null ? 0 : document.getChunkCount();
+        var patch = new KnowledgeDocument();
+        patch.setId(document.getId());
+        patch.setChunkCount(Math.max(0, current + delta));
+        documentMapper.updateById(patch);
     }
 
     private static String requireContent(String content) {

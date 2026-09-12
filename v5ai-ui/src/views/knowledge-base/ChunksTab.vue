@@ -2,7 +2,9 @@
 /**
  * 知识库详情页「切片详情」tab：库内切片卡片流。
  * 顶部：共 N 切片 / +新增切片 / 按文档ID筛选 / 搜索切片ID / 搜索片段内容；
- * 卡片：序号 + 切片ID + 内容摘要 + 来源文档·字符数·更新时间；悬停操作：编辑 / 详情 / 删除。
+ * 卡片：序号 + 切片ID + 内容摘要 + 所属文档·字符数·更新时间；悬停操作：编辑 / 详情 / 删除。
+ * 新增切片：所属文档的归属由工具栏筛选决定——筛选选中具体文档时弹窗内锁定为静态文本，
+ * 选中「全部文档」时才在弹窗内手选；文档列表为空/加载失败时分别禁用入口与给出重试。
  */
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
@@ -46,6 +48,9 @@ const dialog = useDialog()
 const loading = ref(false)
 const chunks = ref<KnowledgeChunkResponse[]>([])
 const documents = ref<DocumentResponse[]>([])
+/** 文档列表是否加载失败（与「真的没有文档」区分开，避免误禁用新增入口） */
+const documentsFailed = ref(false)
+/** 0 = 「全部文档」哨兵值（不是 null）；非 0 代表归属已由筛选上下文决定 */
 const filterDocId = ref<number | null>(0)
 const searchChunkId = ref('')
 const searchContent = ref('')
@@ -78,8 +83,10 @@ async function loadDocuments() {
   try {
     const rows = await listDocuments(adminToken.value, props.kbId, { pageNum: 1, pageSize: 200 })
     documents.value = rows.rows
+    documentsFailed.value = false
   } catch {
     documents.value = []
+    documentsFailed.value = true
   }
 }
 
@@ -89,6 +96,14 @@ const docOptions = computed<SelectOption[]>(() => [
 ])
 
 const docTitleOf = (chunk: KnowledgeChunkResponse) => chunk.documentTitle || documents.value.find((d) => d.id === chunk.documentId)?.title || `文档 #${chunk.documentId}`
+
+const docTitleById = (id: number | null) =>
+  (id == null ? undefined : documents.value.find((d) => d.id === id)?.title) ?? (id == null ? '—' : `文档 #${id}`)
+
+/** 工具栏筛选选中了具体文档：新增切片的归属随之确定，弹窗内不再提供选择 */
+const documentLocked = computed(() => filterDocId.value !== 0)
+/** 确实一份文档都没有（加载失败不算）：不存在合法的所属文档，新增入口应关闭 */
+const noDocuments = computed(() => !documentsFailed.value && documents.value.length === 0)
 
 async function reload() {
   loading.value = true
@@ -172,6 +187,8 @@ async function saveChunk() {
     if (modalMode.value === 'add') {
       await addChunk(adminToken.value, props.kbId, { documentId: addDocId.value!, content: editContent.value })
       message.success('切片已新增并向量入库')
+      // 新切片按 ID 倒序落在第 1 页顶端，停在第 2 页及以后会「保存成功却看不见」
+      pagination.page = 1
     } else if (modalMode.value === 'edit' && current.value) {
       await updateChunk(adminToken.value, props.kbId, current.value.id, { content: editContent.value })
       message.success('切片已更新并重新嵌入')
@@ -233,18 +250,20 @@ function handleDetailShow(show: boolean) {
         <n-input v-model:value="searchChunkId" size="small" placeholder="搜索切片 ID" style="width: 150px" clearable @keyup.enter="applyFilters" @clear="applyFilters" />
         <n-input v-model:value="searchContent" size="small" placeholder="搜索片段内容" style="width: 180px" clearable @keyup.enter="applyFilters" @clear="applyFilters" />
         <n-button size="small" secondary @click="applyFilters">查询</n-button>
-        <n-button size="small" type="primary" @click="openAdd">
+        <n-button size="small" type="primary" :disabled="noDocuments" @click="openAdd">
           <template #icon><n-icon :component="Plus" /></template>
           新增切片
         </n-button>
+        <!-- 禁用控件收不到鼠标事件，提示只能常驻 -->
+        <span v-if="noDocuments" class="form-hint">请先导入文档</span>
       </n-space>
     </div>
 
     <n-spin :show="loading">
       <div v-if="chunks.length === 0 && !loading" class="empty-box">
-        <n-empty description="暂无切片数据">
+        <n-empty :description="noDocuments ? '该知识库还没有文档，请先在「原始文档」页导入' : '暂无切片数据'">
           <template #extra>
-            <n-button size="small" secondary @click="openAdd">新增切片</n-button>
+            <n-button v-if="!noDocuments" size="small" secondary @click="openAdd">新增切片</n-button>
           </template>
         </n-empty>
       </div>
@@ -297,15 +316,26 @@ function handleDetailShow(show: boolean) {
       <n-space vertical :size="14">
         <div>
           <div class="form-label">所属文档</div>
+          <div v-if="modalMode === 'edit'" class="doc-static">{{ current ? docTitleOf(current) : '' }}</div>
+          <!-- 归属已由列表筛选决定：渲染静态文本，而不是一个「灰着的」可点控件 -->
+          <template v-else-if="documentLocked">
+            <div class="doc-static">{{ docTitleById(addDocId) }}</div>
+            <div class="form-hint">由列表筛选决定；如需更换，请先在上方筛选器中切换文档</div>
+          </template>
+          <!-- 文档列表没加载出来：给重试入口，而不是让人面对一个空下拉 -->
+          <template v-else-if="documentsFailed">
+            <div class="form-hint">
+              文档列表加载失败
+              <n-button text size="tiny" @click="loadDocuments">重试</n-button>
+            </div>
+          </template>
           <n-select
-            v-if="modalMode === 'add'"
+            v-else
             v-model:value="addDocId"
             :options="addDocOptions"
             placeholder="选择所属文档"
             filterable
-            :disabled="filterDocId != null"
           />
-          <div v-else class="doc-static">{{ current ? docTitleOf(current) : '' }}</div>
         </div>
         <div>
           <div class="form-label-row">
@@ -467,6 +497,12 @@ function handleDetailShow(show: boolean) {
 .char-count {
   font-size: 12px;
   color: rgba(120, 120, 120, 0.9);
+}
+
+.form-hint {
+  font-size: 12px;
+  color: rgba(120, 120, 120, 0.9);
+  margin-top: 4px;
 }
 
 .doc-static {

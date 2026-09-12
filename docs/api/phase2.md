@@ -153,9 +153,9 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 ```http
 GET /api/admin/knowledge-bases/{id}                    # 详情：KnowledgeBaseVo + docCount/chunkCount
 
-# 切片管理（卡片流 / 筛选 / 手工切片 CRUD，写操作同步维护业务行与存储实例集合向量）
+# 切片管理（卡片流 / 筛选 / 手工切片 CRUD，写操作同步维护业务行、集合向量与所属文档分片数量）
 GET    /api/admin/knowledge-bases/{kbId}/chunks        # 分页（documentId / chunkId / content 过滤）
-POST   /api/admin/knowledge-bases/{kbId}/chunks        # { documentId, content } → 业务行落库（vector_id=UUID）并写集合向量
+POST   /api/admin/knowledge-bases/{kbId}/chunks        # { documentId（所属文档，必填且须同库）, content } → 业务行落库（vector_id=UUID）并写集合向量
 PUT    /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}   # { content } → 更新业务行并按 vector_id 重嵌集合向量
 DELETE /api/admin/knowledge-bases/{kbId}/chunks/{chunkId}   # 删除业务行并移除集合内该 vector_id 的向量
 
@@ -198,6 +198,9 @@ Accept: text/event-stream
 
 注意事项：
 - 手工切片写入与 Worker 索引共用同一条 Embedding→VectorStore 链路；单切片编辑/删除为行级操作，仅默认 PgVectorStore 保证索引同步（ES/Milvus 实例无单条更新 API，编辑后需重新索引文档保持一致）；
+- 手工切片的所属文档：新增时 `documentId` 必填（缺失报「请选择所属文档」、跨库报「文档不存在或不属于该知识库」）；切片建立后所属文档不可更改（`PUT` 只接受 `content`）；
+- 手工切片的增/改/删均要求**所属文档已进入索引终态**（3-处理完成 / 4-处理失败）：文档处于待处理/解析中/处理中时，Worker 会先删除该文档的全部切片与向量再重建，窗口内的手工改动会被静默覆盖，故服务端直接拒绝（报「所属文档尚未完成索引」）；
+- 新增/删除切片同步增减所属文档的 `chunk_count`（编辑不动）；存量偏差不回填，随下一次重新解析整体重算；该列按增量读改写维护，同一文档的并发手工增删理论上可丢一次计数（重索引自愈）。
 - 切片列表不返回向量列；命中/引用载荷里切片内容截断至 2000 字符；
 - 知识库被禁用不影响详情浏览；切片写入不校验知识库状态（与文档上传一致）。
 

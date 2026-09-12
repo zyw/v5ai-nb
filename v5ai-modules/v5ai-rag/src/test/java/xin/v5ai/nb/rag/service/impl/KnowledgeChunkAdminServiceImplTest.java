@@ -71,10 +71,16 @@ class KnowledgeChunkAdminServiceImplTest {
     }
 
     private KnowledgeDocument document(Long id, Long kbId, String title) {
+        // 已进入索引终态（3-处理完成），便于聚焦各用例自身的断言
+        return document(id, kbId, title, 3);
+    }
+
+    private KnowledgeDocument document(Long id, Long kbId, String title, Integer status) {
         var document = new KnowledgeDocument();
         document.setId(id);
         document.setKnowledgeBaseId(kbId);
         document.setTitle(title);
+        document.setStatus(status);
         return document;
     }
 
@@ -174,6 +180,103 @@ class KnowledgeChunkAdminServiceImplTest {
 
         verify(vectorStore).deleteByVectorId(1L, "vec-5");
         verify(chunkMapper).deleteById(5L);
+    }
+
+    @Test
+    void addChunk_rejectsDocumentNotIndexedYet() {
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册", 2));
+
+        assertThatThrownBy(() -> service.addChunk(1L, new KbChunkAddBo(2L, "内容")))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("尚未完成索引");
+        verify(chunkMapper, never()).batchSaveChunks(anyList());
+    }
+
+    @Test
+    void updateChunk_rejectsDocumentNotIndexedYet() {
+        when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "旧内容"));
+        when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册", 1));
+
+        assertThatThrownBy(() -> service.updateChunk(1L, 5L, new KbChunkEditBo("新内容")))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("尚未完成索引");
+        verify(chunkMapper, never()).updateById(any(KnowledgeChunk.class));
+    }
+
+    @Test
+    void deleteChunk_rejectsDocumentNotIndexedYet() {
+        when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "内容"));
+        when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册", 0));
+
+        assertThatThrownBy(() -> service.deleteChunk(1L, 5L))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("尚未完成索引");
+        verify(chunkMapper, never()).deleteById(5L);
+        verify(vectorStore, never()).deleteByVectorId(any(), any());
+    }
+
+    @Test
+    void addChunk_incrementsOwningDocumentChunkCount() {
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        var document = document(2L, 1L, "操作手册");
+        document.setChunkCount(6);
+        when(documentMapper.selectById(2L)).thenReturn(document);
+        when(chunkMapper.nextChunkIndex(1L, 2L)).thenReturn(7);
+        when(embeddingClient.embed("新切片内容", 1L, 2)).thenReturn(List.of(0.1f, 0.2f));
+        when(vectorStoreResolver.vectorStore(10L)).thenReturn(vectorStore);
+        when(chunkMapper.selectOne(any())).thenReturn(chunk(88L, 1L, 2L, 7, "新切片内容"));
+
+        service.addChunk(1L, new KbChunkAddBo(2L, "新切片内容"));
+
+        var patch = org.mockito.ArgumentCaptor.forClass(KnowledgeDocument.class);
+        verify(documentMapper).updateById(patch.capture());
+        assertThat(patch.getValue().getId()).isEqualTo(2L);
+        assertThat(patch.getValue().getChunkCount()).isEqualTo(7);
+    }
+
+    @Test
+    void deleteChunk_decrementsOwningDocumentChunkCount() {
+        when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "内容"));
+        var document = document(2L, 1L, "操作手册");
+        document.setChunkCount(4);
+        when(documentMapper.selectById(2L)).thenReturn(document);
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(vectorStoreResolver.vectorStore(10L)).thenReturn(vectorStore);
+
+        service.deleteChunk(1L, 5L);
+
+        var patch = org.mockito.ArgumentCaptor.forClass(KnowledgeDocument.class);
+        verify(documentMapper).updateById(patch.capture());
+        assertThat(patch.getValue().getChunkCount()).isEqualTo(3);
+    }
+
+    @Test
+    void deleteChunk_floorsChunkCountAtZero() {
+        when(chunkMapper.selectById(5L)).thenReturn(chunk(5L, 1L, 2L, 3, "内容"));
+        when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册"));
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(vectorStoreResolver.vectorStore(10L)).thenReturn(vectorStore);
+
+        service.deleteChunk(1L, 5L);
+
+        var patch = org.mockito.ArgumentCaptor.forClass(KnowledgeDocument.class);
+        verify(documentMapper).updateById(patch.capture());
+        assertThat(patch.getValue().getChunkCount()).isZero();
+    }
+
+    @Test
+    void updateChunk_doesNotTouchChunkCount() {
+        when(documentMapper.selectById(2L)).thenReturn(document(2L, 1L, "操作手册"));
+        when(knowledgeBaseMapper.selectById(1L)).thenReturn(base(1L));
+        when(embeddingClient.embed("新内容", 1L, 2)).thenReturn(List.of(0.5f, 0.6f));
+        when(vectorStoreResolver.vectorStore(10L)).thenReturn(vectorStore);
+        var refreshed = chunk(5L, 1L, 2L, 3, "新内容");
+        when(chunkMapper.selectById(eq(5L))).thenReturn(chunk(5L, 1L, 2L, 3, "旧内容"), refreshed);
+
+        service.updateChunk(1L, 5L, new KbChunkEditBo("新内容"));
+
+        verify(documentMapper, never()).updateById(any(KnowledgeDocument.class));
     }
 
     @Test
