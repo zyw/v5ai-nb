@@ -423,12 +423,15 @@ onMounted(load)
 </template>
 
 <style scoped>
-/* 整页固定视口高度：不再出现整页滚动条，改为「左栏内部滚动 + 右栏聊天窗内部滚动」。
-   父级取高方式与知识库详情页一致（n-layout-content 那条链是 display:block，只能靠 :has() 补高度）。 */
+/* 编辑页占满「顶栏下沿 → 视口底部」的整块可用高度：不出现整页滚动条，
+   改为「左栏内部滚动 + 右栏会话区内部滚动」，两栏底部与视口底部齐平。
+   父级取高方式与知识库详情页一致（n-layout-content 那条链是 display:block，只能靠 :has() 补高度）。
+   注意 height 必须是 100%（= .n-scrollbar-content 的内容盒高度，AppLayout 的内边距已含在其中）：
+   若再写成 calc(100% - var(--app-topbar-height))，页面会被压矮 64px，底部留出空白。 */
 .agent-edit-page {
   display: flex;
   flex-direction: column;
-  height: calc(100% - var(--app-topbar-height, 64px));
+  height: 100%;
   min-height: 0;
   gap: 0;
 }
