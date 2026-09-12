@@ -7,7 +7,7 @@
  * - 已开始（点击推荐问题或发送过消息）：首屏信息与推荐问题整体隐藏，面板变成纯会话窗口。
  */
 import { computed, ref } from 'vue'
-import { NButton, NInput, NSpin, useMessage } from 'naive-ui'
+import { NButton, NIcon, NInput, NSpin, NTooltip, useMessage } from 'naive-ui'
 import { Image, Send } from 'lucide-vue-next'
 import MarkdownContent from '../../components/MarkdownContent.vue'
 import { adminDebugStream } from '../../api/client'
@@ -132,8 +132,8 @@ defineExpose({ reset })
       <n-button v-if="started" size="tiny" quaternary @click="reset">清空对话</n-button>
     </div>
 
-    <!-- 首屏信息：仅在会话开始前展示 -->
-    <template v-if="!started">
+    <!-- 首屏信息：仅在会话开始前展示（会话区此时不渲染，这块居中占位） -->
+    <div v-if="!started" class="preview-intro">
       <div class="preview-profile">
         <div class="profile-avatar">
           <img v-if="avatar" :src="avatar" alt="" />
@@ -160,14 +160,10 @@ defineExpose({ reset })
           </button>
         </div>
       </div>
-    </template>
+    </div>
 
-    <!-- 会话区：唯一滚动区域 -->
-    <div class="chat-window">
-      <div v-if="!started" class="chat-idle">
-        <div class="chat-idle-title">开始对话</div>
-        <div class="chat-idle-sub">点击上方推荐问题，或在下方输入内容，回复将在这里显示</div>
-      </div>
+    <!-- 会话区：仅开始对话后存在（未开始时整块不渲染），也是唯一的滚动区域 -->
+    <div v-if="started" class="chat-window">
       <div v-for="(msg, index) in messages" :key="index" :class="['chat-row', msg.role]">
         <div class="chat-bubble">
           <MarkdownContent v-if="msg.role === 'assistant' && msg.content" :content="msg.content" />
@@ -184,12 +180,20 @@ defineExpose({ reset })
       <n-input
         v-model:value="query"
         type="textarea"
-        :autosize="{ minRows: 1, maxRows: 5 }"
+        :autosize="{ minRows: 3, maxRows: 6 }"
         placeholder="问我任何问题"
         @keydown.enter.exact.prevent="send"
       />
       <div class="chat-actions">
-        <n-button quaternary circle :disabled="!imageSupported" :title="imageTip" aria-label="添加图片">
+        <n-tooltip v-if="!imageSupported" trigger="hover">
+          <template #trigger>
+            <n-button quaternary circle disabled :aria-label="imageTip">
+              <template #icon><n-icon :component="Image" /></template>
+            </n-button>
+          </template>
+          {{ imageTip }}
+        </n-tooltip>
+        <n-button v-else quaternary circle :title="imageTip" aria-label="添加图片">
           <template #icon><n-icon :component="Image" /></template>
         </n-button>
         <n-button circle type="primary" :loading="loading" :disabled="!query.trim()" aria-label="发送" @click="send">
@@ -198,7 +202,12 @@ defineExpose({ reset })
       </div>
     </div>
     <div class="chat-foot">
-      <div v-if="runId" class="chat-runid">runId: {{ runId }}</div>
+      <div class="chat-runid" v-if="runId">runId: {{ runId }}</div>
+      <!-- 图片按钮被禁用时把原因直接写出来，避免用户以为「点不动是坏了」 -->
+      <div v-if="!imageSupported" class="chat-image-hint">
+        <n-icon :component="Image" size="13" />
+        <span>当前模型未开启「支持图片输入」，暂不能发送图片</span>
+      </div>
       <div class="chat-disclaimer">AI 生成内容可能有误，请核实重要信息</div>
     </div>
   </div>
@@ -231,6 +240,23 @@ defineExpose({ reset })
 .preview-title {
   font-size: 14px;
   font-weight: 600;
+}
+
+/* 未开始时占满会话区空出来的高度：内容垂直居中；高度不够时居中不会裁切（overflow 由父级 hidden）。
+   用 margin:auto 而不是 justify-content:center —— 空间不足时前者不会把内容顶出容器、也不影响滚动。 */
+.preview-intro {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-intro > .preview-profile {
+  margin-top: auto;
+}
+
+.preview-intro > .preset-block:last-child {
+  margin-bottom: auto;
 }
 
 .preview-profile {
@@ -338,24 +364,6 @@ defineExpose({ reset })
   border-radius: 8px;
 }
 
-.chat-idle {
-  margin: auto;
-  text-align: center;
-  padding: 8px 12px;
-}
-
-.chat-idle-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--n-text-color-2, #667085);
-}
-
-.chat-idle-sub {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--n-text-color-3, #98a2b3);
-}
-
 .chat-row {
   display: flex;
 }
@@ -427,6 +435,16 @@ defineExpose({ reset })
   font-size: 12px;
   color: var(--n-text-color-3, #98a2b3);
   word-break: break-all;
+}
+
+.chat-image-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--n-text-color-3, #98a2b3);
 }
 
 .chat-disclaimer {
