@@ -1,5 +1,11 @@
 <script setup lang="ts">
+/**
+ * 智能体管理（列表页）：
+ * - 「新建智能体」为三步向导弹框：准备（描述需求）→ 生成（AI 生成配置）→ 确认（可编辑）→ 创建并跳转编辑页。
+ * - 创建/编辑的具体配置在独立页面 /agents/:agentKey（左配置 / 右预览调试），与知识库详情页一致的交互。
+ */
 import { computed, h, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   NAlert,
   NButton,
@@ -11,11 +17,9 @@ import {
   NInput,
   NModal,
   NPagination,
-  NSelect,
+  NSpace,
   NStep,
   NSteps,
-  NSwitch,
-  NTag,
   useDialog,
   useMessage,
   type DataTableColumns
@@ -24,9 +28,7 @@ import { Plus } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
-import MarkdownContent from '../components/MarkdownContent.vue'
 import {
-  adminDebugStream,
   bindKnowledgeBases,
   bindMcpServers,
   bindSkills,
@@ -44,12 +46,13 @@ import {
   listModelOptions,
   listSkillOptions,
   publishAgent,
-  updateAgent,
   type AgentResponse,
   type OptionResponse
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import {formatDateTime} from "../utils/dateUtils";
 
+const router = useRouter()
 const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
@@ -66,40 +69,24 @@ const showBindModal = ref(false)
 const showKeyModal = ref(false)
 const saving = ref(false)
 
-// ---- 新建智能体向导：准备 → 生成 → 确认 → 完成 ----
-const mode = ref<'create' | 'edit'>('create')
-type WizardStep = 'prepare' | 'generating' | 'confirm' | 'done'
+// ---- 新建智能体向导：准备 → 生成 → 确认（创建成功后跳转独立编辑页） ----
+type WizardStep = 'prepare' | 'generating' | 'confirm'
 const wizardStep = ref<WizardStep>('prepare')
 const wizardStepIndex = computed(() =>
-  ['prepare', 'generating', 'confirm', 'done'].indexOf(wizardStep.value)
+  (['prepare', 'generating', 'confirm'] as WizardStep[]).indexOf(wizardStep.value)
 )
-const prepareForm = reactive({
-  modelId: null as number | null,
-  description: ''
-})
+const prepareForm = reactive({ description: '' })
+/** 生成失败时停留在「生成」步骤展示错误，可取消或重新生成。 */
 const generatingError = ref('')
-
-// ---- 编辑表单（左栏 + 预览/调试右栏共用） ----
-const form = reactive({
+/** 生成出的配置（确认阶段各字段均可编辑）。 */
+const draft = reactive({
   agentKey: '',
   name: '',
   description: '',
-  avatar: '',
-  systemPrompt: '',
   greeting: '',
   presetQuestions: [] as string[],
-  memoryEnabled: false,
-  mcpEnabled: false,
-  skillEnabled: false,
-  webSearchEnabled: false,
-  ragEnabled: false,
-  modelId: null as number | null,
-  skillIds: [] as number[],
-  mcpServerIds: [] as number[],
-  knowledgeBaseIds: [] as number[]
+  systemPrompt: ''
 })
-const newQuestion = ref('')
-const draftAgentKey = ref('')
 
 const publishForm = reactive({ agentKey: '', description: '' })
 const bindForm = reactive({
@@ -110,21 +97,11 @@ const bindForm = reactive({
 })
 const generatedKey = ref('')
 
-// ---- 调试区（聊天窗口） ----
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-const debug = reactive({
-  query: '',
-  runId: '',
-  loading: false
-})
-const chatMessages = ref<ChatMessage[]>([])
-
 const columns: DataTableColumns<AgentResponse> = [
-  { title: 'App Key', key: 'agentKey' },
-  { title: '名称', key: 'name' },
+  { title: 'ID', key: 'id', width: 64 },
+  { title: '智能体Key', key: 'agentKey', width: 160 },
+  { title: '名称', key: 'name',width: 160 },
+  { title: '描述', key: 'description', width: 200, ellipsis: { tooltip: true } },
   {
     title: '状态',
     key: 'status',
@@ -138,6 +115,8 @@ const columns: DataTableColumns<AgentResponse> = [
     width: 90,
     render: (row) => row.publishedVersion ?? '-'
   },
+  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -169,6 +148,10 @@ async function reload() {
   }
 }
 
+function fmtTime(value?: string | null): string {
+  return value ? (formatDateTime(value) ?? '—') : '—'
+}
+
 function handlePageChange(page: number) {
   pagination.page = page
   void reload()
@@ -180,13 +163,13 @@ function handlePageSizeChange(pageSize: number) {
   void reload()
 }
 
-// ---- 下拉选项按需加载（打开创建/编辑/绑定弹窗时才拉取，Promise 缓存去重） ----
+// ---- 下拉选项按需加载（打开创建/绑定弹窗时才拉取，Promise 缓存去重） ----
 let optionsPromise: Promise<void> | null = null
 
 async function ensureOptions() {
   if (!optionsPromise) {
     optionsPromise = Promise.all([
-      listModelOptions(adminToken.value).then((rows) => (modelOptions.value = rows)),
+      listModelOptions(adminToken.value, 'CHAT').then((rows) => (modelOptions.value = rows)),
       listKnowledgeBaseOptions(adminToken.value).then((rows) => (knowledgeBaseOptions.value = rows)),
       listMcpServerOptions(adminToken.value).then((rows) => (mcpServerOptions.value = rows)),
       listSkillOptions(adminToken.value).then((rows) => (skillOptions.value = rows))
@@ -201,58 +184,44 @@ async function ensureOptions() {
   await optionsPromise
 }
 
-// ---- 表单初始化 ----
-function resetForm() {
-  form.agentKey = ''
-  form.name = ''
-  form.description = ''
-  form.avatar = ''
-  form.systemPrompt = ''
-  form.greeting = ''
-  form.presetQuestions = []
-  form.memoryEnabled = false
-  form.mcpEnabled = false
-  form.skillEnabled = false
-  form.webSearchEnabled = false
-  form.ragEnabled = false
-  form.modelId = modelOptions.value[0]?.value ?? null
-  form.skillIds = []
-  form.mcpServerIds = []
-  form.knowledgeBaseIds = []
-  newQuestion.value = ''
-  draftAgentKey.value = ''
+/** 生成与创建都使用默认对话模型：优先 isDefault，其次第一条。 */
+function resolveDefaultChatModelId(): number | null {
+  return modelOptions.value.find((option) => option.isDefault)?.value ?? modelOptions.value[0]?.value ?? null
 }
 
-function resetDebug() {
-  debug.query = ''
-  debug.runId = ''
-  debug.loading = false
-  chatMessages.value = []
+/** 由名称派生 agentKey（名称可能含中文，派生结果为空时留空由用户填写）。 */
+function slugify(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
 // ---- 新建向导 ----
 async function openCreate() {
-  mode.value = 'create'
   generatingError.value = ''
   wizardStep.value = 'prepare'
-  resetDebug()
+  prepareForm.description = ''
+  Object.assign(draft, {
+    agentKey: '',
+    name: '',
+    description: '',
+    greeting: '',
+    presetQuestions: [],
+    systemPrompt: ''
+  })
   try {
     await ensureOptions()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载下拉选项失败')
   }
-  resetForm()
-  prepareForm.modelId = modelOptions.value[0]?.value ?? null
-  prepareForm.description = ''
-  if (modelOptions.value.length === 0) {
-    message.warning('尚未配置模型，请先在「模型管理」中配置模型')
+  if (!modelOptions.value.length) {
+    message.warning('尚未配置可用的对话模型，请先在「模型管理」中配置模型')
   }
   showModal.value = true
 }
 
 async function handleGenerate() {
-  if (!prepareForm.modelId) {
-    message.warning('请先选择模型')
+  const modelId = resolveDefaultChatModelId()
+  if (modelId == null) {
+    message.warning('尚未配置可用的对话模型，请先在「模型管理」中配置模型')
     return
   }
   if (!prepareForm.description.trim()) {
@@ -263,211 +232,84 @@ async function handleGenerate() {
   generatingError.value = ''
   try {
     const generated = await generateAgentConfig(adminToken.value, {
-      modelId: prepareForm.modelId,
+      modelId,
       description: prepareForm.description
     })
-    // 回填到编辑表单
-    form.modelId = prepareForm.modelId
-    form.name = generated.name ?? ''
-    form.description = generated.description ?? ''
-    form.greeting = generated.greeting ?? ''
-    form.presetQuestions = generated.presetQuestions ?? []
-    form.systemPrompt = generated.systemPrompt ?? ''
-    if (!form.agentKey && form.name) {
-      form.agentKey = form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || ''
+    draft.name = generated.name ?? ''
+    draft.description = generated.description ?? ''
+    draft.greeting = generated.greeting ?? ''
+    draft.presetQuestions = generated.presetQuestions ?? []
+    draft.systemPrompt = generated.systemPrompt ?? ''
+    if (!draft.agentKey) {
+      draft.agentKey = slugify(draft.name)
     }
     wizardStep.value = 'confirm'
   } catch (e) {
     generatingError.value = e instanceof Error ? e.message : '生成失败'
-    wizardStep.value = 'prepare'
   }
 }
 
-// ---- 编辑 ----
-async function openEdit(row: AgentResponse) {
-  mode.value = 'edit'
-  try {
-    await ensureOptions()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '加载下拉选项失败')
-  }
-  resetForm()
-  form.agentKey = row.agentKey
-  form.name = row.name
-  form.description = row.description ?? ''
-  form.systemPrompt = row.systemPrompt ?? ''
-  form.avatar = row.avatar ?? ''
-  form.greeting = row.greeting ?? ''
-  form.presetQuestions = parseQuestions(row.presetQuestions)
-  form.memoryEnabled = row.memoryEnabled ?? false
-  form.mcpEnabled = row.mcpEnabled ?? false
-  form.skillEnabled = row.skillEnabled ?? false
-  form.webSearchEnabled = row.webSearchEnabled ?? false
-  form.ragEnabled = row.ragEnabled ?? false
-  form.modelId = row.modelId
-  try {
-    const [skill, mcp, kb] = await Promise.all([
-      getSkillBindings(adminToken.value, row.agentKey),
-      getMcpServerBindings(adminToken.value, row.agentKey),
-      getKnowledgeBindings(adminToken.value, row.agentKey)
-    ])
-    form.skillIds = skill
-    form.mcpServerIds = mcp
-    form.knowledgeBaseIds = kb
-  } catch {
-    form.skillIds = []
-    form.mcpServerIds = []
-    form.knowledgeBaseIds = []
-  }
-  wizardStep.value = 'confirm'
-  resetDebug()
-  showModal.value = true
+function addDraftQuestion() {
+  draft.presetQuestions.push('')
 }
 
-function parseQuestions(raw: string | null | undefined): string[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((q) => typeof q === 'string') : []
-  } catch {
-    return []
-  }
+function removeDraftQuestion(index: number) {
+  draft.presetQuestions.splice(index, 1)
 }
 
-function addQuestion() {
-  const q = newQuestion.value.trim()
-  if (!q) return
-  form.presetQuestions.push(q)
-  newQuestion.value = ''
-}
-
-function removeQuestion(index: number) {
-  form.presetQuestions.splice(index, 1)
-}
-
-function usePresetQuestion(question: string) {
-  debug.query = question
-}
-
-// ---- 保存 ----
-async function handleSave() {
-  if (!form.agentKey || !form.agentKey.trim()) {
-    message.warning('请填写 App Key')
+/** 确认阶段 → 创建智能体，成功后进入独立编辑页。 */
+async function handleConfirmCreate() {
+  if (!draft.agentKey.trim()) {
+    message.warning('请填写 Agent Key')
     return
   }
-  if (!form.name || !form.name.trim()) {
+  if (!draft.name.trim()) {
     message.warning('请填写名称')
+    return
+  }
+  const modelId = resolveDefaultChatModelId()
+  if (modelId == null) {
+    message.warning('尚未配置可用的对话模型，请先在「模型管理」中配置模型')
     return
   }
   saving.value = true
   try {
-    const payload = {
-      name: form.name,
-      description: form.description || undefined,
-      systemPrompt: form.systemPrompt || undefined,
-      avatar: form.avatar || undefined,
-      greeting: form.greeting || undefined,
-      presetQuestions: JSON.stringify(form.presetQuestions) || undefined,
-      memoryEnabled: form.memoryEnabled,
-      mcpEnabled: form.mcpEnabled,
-      skillEnabled: form.skillEnabled,
-      webSearchEnabled: form.webSearchEnabled,
-      ragEnabled: form.ragEnabled,
-      modelId: form.modelId ?? 1
-    }
-    if (mode.value === 'create') {
-      await createAgent(adminToken.value, { agentKey: form.agentKey, ...payload })
-      await saveBindings(form.agentKey)
-      message.success('Agent 已创建')
-    } else {
-      await updateAgent(adminToken.value, form.agentKey, { ...payload, modelId: form.modelId ?? undefined })
-      await saveBindings(form.agentKey)
-      message.success('Agent 已更新')
-    }
-    draftAgentKey.value = form.agentKey
-    wizardStep.value = 'done'
+    const created = await createAgent(adminToken.value, {
+      agentKey: draft.agentKey.trim(),
+      name: draft.name.trim(),
+      description: draft.description || undefined,
+      systemPrompt: draft.systemPrompt || undefined,
+      greeting: draft.greeting || undefined,
+      presetQuestions: JSON.stringify(draft.presetQuestions) || undefined,
+      modelId
+    })
+    message.success('智能体已创建')
+    showModal.value = false
     await reload()
+    void router.push({ name: 'agent-edit', params: { agentKey: created?.agentKey ?? draft.agentKey.trim() } })
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '保存失败')
+    message.error(e instanceof Error ? e.message : '创建失败')
   } finally {
     saving.value = false
   }
 }
 
-async function saveBindings(agentKey: string) {
-  await Promise.all([
-    bindSkills(adminToken.value, agentKey, form.skillIds),
-    bindMcpServers(adminToken.value, agentKey, form.mcpServerIds),
-    bindKnowledgeBases(adminToken.value, agentKey, form.knowledgeBaseIds)
-  ])
+/** 确认阶段返回：回到「生成」，保留原描述以便重新生成。 */
+function backToGenerate() {
+  generatingError.value = ''
+  wizardStep.value = 'generating'
+  void handleGenerate()
 }
 
-function closeModal() {
-  showModal.value = false
+/** 确认阶段返回准备步骤（保留原描述）。 */
+function backToPrepare() {
+  generatingError.value = ''
+  wizardStep.value = 'prepare'
 }
 
-// ---- 调试 ----
-function parseDelta(data: string): string {
-  if (!data) return ''
-  try {
-    const body = JSON.parse(data) as { payload?: string; answer?: string; text?: string }
-    return body.payload ?? body.answer ?? body.text ?? data
-  } catch {
-    return data
-  }
-}
-
-async function handleDebug() {
-  if (!form.agentKey) {
-    message.warning('请先填写 App Key 并保存 Agent')
-    return
-  }
-  const question = debug.query.trim()
-  if (!question) return
-  debug.query = ''
-  chatMessages.value.push({ role: 'user', content: question })
-  const assistantIndex = chatMessages.value.length
-  chatMessages.value.push({ role: 'assistant', content: '' })
-  debug.loading = true
-  debug.runId = ''
-  try {
-    await adminDebugStream(form.agentKey, adminToken.value, { query: question }, (event, data) => {
-      if (event === 'TEXT_DELTA') {
-        chatMessages.value[assistantIndex].content += parseDelta(data)
-      }
-      if (event === 'RUN_FAILED') {
-        chatMessages.value[assistantIndex].content = `调用失败：${parseRunFailed(data)}`
-      }
-      if (event === 'MESSAGE_COMPLETED' && !chatMessages.value[assistantIndex].content) {
-        chatMessages.value[assistantIndex].content = parseDelta(data)
-      }
-      if (event === 'RUN_STARTED') {
-        debug.runId = parseRunId(data)
-      }
-    })
-  } catch (e) {
-    chatMessages.value[assistantIndex].content = e instanceof Error ? `调用失败：${e.message}` : '调用失败'
-  } finally {
-    debug.loading = false
-  }
-}
-
-function parseRunId(data: string): string {
-  if (!data) return ''
-  try {
-    return (JSON.parse(data) as { runId?: string }).runId ?? ''
-  } catch {
-    return ''
-  }
-}
-
-function parseRunFailed(data: string): string {
-  if (!data) return '未知错误'
-  try {
-    return (JSON.parse(data) as { payload?: string }).payload || '未知错误'
-  } catch {
-    return data
-  }
+// ---- 编辑：跳转独立编辑页 ----
+function openEdit(row: AgentResponse) {
+  void router.push({ name: 'agent-edit', params: { agentKey: row.agentKey } })
 }
 
 async function openPublish(row: AgentResponse) {
@@ -605,175 +447,98 @@ onMounted(reload)
       />
     </n-card>
 
-    <!-- 新建向导 / 编辑：左右分栏 -->
+    <!-- 新建向导：准备 → 生成 → 确认 -->
     <n-modal
       :show="showModal"
       preset="card"
-      :title="mode === 'create' ? '新建 Agent' : `编辑 Agent：${form.agentKey}`"
-      style="width: 1280px"
+      title="新建智能体"
+      style="width: 860px"
       :bordered="false"
-      @update:show="(v: boolean) => {
-        showModal = v
-        if (!v) closeModal()
-      }"
+      :mask-closable="false"
+      @update:show="(v: boolean) => (showModal = v)"
     >
-      <!-- 向导步骤条（仅新建） -->
-      <n-steps v-if="mode === 'create'" :current="wizardStepIndex" style="margin-bottom: 20px">
-        <n-step title="准备" description="选择模型与描述" />
+      <n-steps :current="wizardStepIndex" style="margin-bottom: 20px">
+        <n-step title="准备" description="描述你想要的智能体" />
         <n-step title="生成" description="AI 生成配置" />
-        <n-step title="确认" description="预览与调整" />
-        <n-step title="完成" description="保存成功" />
+        <n-step title="确认" description="确认创建" />
       </n-steps>
 
       <!-- 步骤一：准备 -->
-      <div v-if="mode === 'create' && wizardStep === 'prepare'" class="wizard-panel">
+      <div v-if="wizardStep === 'prepare'" class="wizard-panel">
         <n-form label-placement="top">
-          <n-form-item label="选择模型">
-            <n-select v-model:value="prepareForm.modelId" filterable :options="modelOptions" placeholder="选择用于生成的模型" />
-          </n-form-item>
           <n-form-item label="描述你想要的智能体">
             <n-input
               v-model:value="prepareForm.description"
               type="textarea"
-              :autosize="{ minRows: 4, maxRows: 8 }"
+              :autosize="{ minRows: 5, maxRows: 10 }"
               placeholder="例如：帮我设计一个电商售后客服，能解答退换货、物流、发票问题，语气亲切专业"
             />
           </n-form-item>
         </n-form>
-        <n-alert v-if="generatingError" type="error" :bordered="false" style="margin-bottom: 12px">
-          {{ generatingError }}
+        <n-alert v-if="!modelOptions.length" type="warning" :bordered="false" style="margin-bottom: 12px">
+          尚未配置可用的对话模型，请先在「模型管理」中配置并启用模型。创建将使用默认对话模型。
         </n-alert>
         <n-space justify="end">
-          <n-button @click="closeModal">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="handleGenerate">生成配置</n-button>
+          <n-button @click="showModal = false">取消</n-button>
+          <n-button type="primary" :disabled="!modelOptions.length" @click="handleGenerate">生成</n-button>
         </n-space>
       </div>
 
-      <!-- 步骤二：生成中 -->
-      <div v-else-if="mode === 'create' && wizardStep === 'generating'" class="wizard-panel center">
-        <n-spin size="large" description="AI 正在根据描述生成智能体配置…" />
-      </div>
-
-      <!-- 步骤四：完成 -->
-      <div v-else-if="mode === 'create' && wizardStep === 'done'" class="wizard-panel center">
-        <n-result status="success" title="智能体创建完成" :description="`「${draftAgentKey}」已保存，可发布或继续管理。`">
-          <template #footer>
-            <n-space justify="center">
-              <n-button type="primary" @click="closeModal">完成</n-button>
-            </n-space>
-          </template>
-        </n-result>
-      </div>
-
-      <!-- 步骤三：确认（新建，仅表单）/ 编辑（左右分栏：表单 + 预览与调试） -->
-      <div v-else class="editor-grid" :class="{ single: mode === 'create' }">
-        <!-- 左栏：基本信息与配置 -->
-        <n-card title="基本信息" size="small" :bordered="true" class="editor-left">
-          <n-form label-placement="top" size="small">
-            <n-form-item :label="mode === 'create' ? 'App Key' : 'App Key（不可修改）'">
-              <n-input v-model:value="form.agentKey" :disabled="mode === 'edit'" placeholder="平台内唯一标识" />
-            </n-form-item>
-            <n-form-item label="名称">
-              <n-input v-model:value="form.name" />
-            </n-form-item>
-            <n-form-item label="描述">
-              <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" />
-            </n-form-item>
-            <n-form-item label="头像 URL">
-              <n-input v-model:value="form.avatar" placeholder="可选：Agent 头像图片地址" />
-            </n-form-item>
-            <n-form-item label="模型">
-              <n-select v-model:value="form.modelId" filterable :options="modelOptions" placeholder="选择已配置的模型" />
-            </n-form-item>
-            <n-form-item label="Skill">
-              <n-select v-model:value="form.skillIds" multiple clearable :options="skillOptions" placeholder="选择已发布的 Skill" />
-            </n-form-item>
-            <n-form-item label="MCP Server">
-              <n-select v-model:value="form.mcpServerIds" multiple clearable :options="mcpServerOptions" placeholder="选择已发现的 MCP Server" />
-            </n-form-item>
-            <n-form-item label="知识库">
-              <n-select v-model:value="form.knowledgeBaseIds" multiple clearable :options="knowledgeBaseOptions" placeholder="选择知识库（RAG）" />
-            </n-form-item>
-            <n-form-item label="系统提示词">
-              <n-input v-model:value="form.systemPrompt" type="textarea" :autosize="{ minRows: 3, maxRows: 8 }" placeholder="定义 Agent 的角色与行为" />
-            </n-form-item>
-            <n-form-item label="欢迎语">
-              <n-input v-model:value="form.greeting" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="对话开始时展示的欢迎语" />
-            </n-form-item>
-            <n-form-item label="预设问题">
-              <div class="question-list">
-                <div v-for="(question, index) in form.presetQuestions" :key="index" class="question-row">
-                  <n-input v-model:value="form.presetQuestions[index]" size="small" />
-                  <n-button size="small" quaternary type="error" @click="removeQuestion(index)">删除</n-button>
-                </div>
-                <div class="question-row">
-                  <n-input v-model:value="newQuestion" size="small" placeholder="输入新问题后回车或点击添加" @keyup.enter="addQuestion" />
-                  <n-button size="small" secondary @click="addQuestion">添加</n-button>
-                </div>
-              </div>
-            </n-form-item>
-            <n-form-item label="能力开关">
-              <n-space size="large" wrap>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.memoryEnabled" /><span>记忆库</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.mcpEnabled" /><span>MCP</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.skillEnabled" /><span>Skill</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.webSearchEnabled" /><span>联网搜索</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.ragEnabled" /><span>RAG</span></n-space>
-              </n-space>
-            </n-form-item>
-          </n-form>
-          <n-space justify="end">
-            <n-button @click="closeModal">取消</n-button>
-            <n-button type="primary" :loading="saving" @click="handleSave">
-              {{ mode === 'create' ? '创建' : '保存' }}
-            </n-button>
-          </n-space>
-        </n-card>
-
-        <!-- 右栏：预览与调试（仅编辑模式显示） -->
-        <div v-if="mode === 'edit'" class="editor-right">
-          <n-card size="small" :bordered="true" class="debug-panel">
-            <div class="debug-header">
-              <div class="preview-name">{{ form.name || '未命名 Agent' }}</div>
-              <div v-if="form.description" class="preview-desc">{{ form.description }}</div>
-              <div v-else class="preview-desc muted">暂无描述</div>
-            </div>
-            <div v-if="form.presetQuestions.length" class="preset-questions">
-              <n-tag
-                v-for="(question, index) in form.presetQuestions"
-                :key="index"
-                size="small"
-                :bordered="false"
-                class="preset-tag"
-                @click="usePresetQuestion(question)"
-              >
-                {{ question }}
-              </n-tag>
-            </div>
-            <div class="chat-window">
-              <div v-for="(msg, index) in chatMessages" :key="index" :class="['chat-row', msg.role]">
-                <div class="chat-bubble">
-                  <MarkdownContent v-if="msg.role === 'assistant' && msg.content" :content="msg.content" />
-                  <template v-else>{{ msg.content || '…' }}</template>
-                </div>
-              </div>
-              <div v-if="chatMessages.length === 0" class="chat-empty">
-                输入问题开始调试（未发布也可调试），回复将在这里显示。
-              </div>
-            </div>
-            <div class="chat-input">
-              <n-input
-                v-model:value="debug.query"
-                type="textarea"
-                :autosize="{ minRows: 1, maxRows: 3 }"
-                placeholder="输入内容调试 Agent…（Enter 发送）"
-                @keydown.enter.prevent="handleDebug"
-              />
-              <n-button type="primary" :loading="debug.loading" @click="handleDebug">发送</n-button>
-            </div>
-            <div v-if="debug.runId" class="debug-runid">runId: {{ debug.runId }}</div>
-          </n-card>
+      <!-- 步骤二：生成中 / 生成失败 -->
+      <div v-else-if="wizardStep === 'generating'" class="wizard-panel">
+        <div v-if="!generatingError" class="wizard-center">
+          <n-spin size="large" description="AI 正在根据描述生成智能体配置…" />
         </div>
+        <template v-else>
+          <n-alert type="error" :bordered="false" title="生成失败" style="margin-bottom: 12px">
+            {{ generatingError }}
+          </n-alert>
+          <n-space justify="end">
+            <n-button @click="showModal = false">取消</n-button>
+            <n-button type="primary" :loading="saving" @click="handleGenerate">重新生成</n-button>
+          </n-space>
+        </template>
+        <n-space v-if="!generatingError" justify="end" style="margin-top: 16px">
+          <n-button @click="showModal = false">取消</n-button>
+        </n-space>
+      </div>
+
+      <!-- 步骤三：确认（各字段均可编辑） -->
+      <div v-else class="wizard-panel">
+        <n-form label-placement="top">
+          <n-form-item label="Agent Key">
+            <n-input v-model:value="draft.agentKey" placeholder="平台内唯一标识，默认由名称派生" />
+          </n-form-item>
+          <n-form-item label="名称">
+            <n-input v-model:value="draft.name" />
+          </n-form-item>
+          <n-form-item label="描述">
+            <n-input v-model:value="draft.description" type="textarea" :autosize="{ minRows: 3, maxRows: 8 }" />
+          </n-form-item>
+          <n-form-item label="欢迎语">
+            <n-input v-model:value="draft.greeting" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }" />
+          </n-form-item>
+          <n-form-item label="预设问题">
+            <div class="question-list">
+              <div v-for="(question, index) in draft.presetQuestions" :key="index" class="question-row">
+                <n-input v-model:value="draft.presetQuestions[index]" size="small" />
+                <n-button size="small" quaternary type="error" @click="removeDraftQuestion(index)">删除</n-button>
+              </div>
+              <div class="question-row">
+                <n-button size="small" secondary @click="addDraftQuestion">添加预设问题</n-button>
+              </div>
+            </div>
+          </n-form-item>
+          <n-form-item label="系统指令">
+            <n-input v-model:value="draft.systemPrompt" type="textarea" :autosize="{ minRows: 8, maxRows: 18 }" />
+          </n-form-item>
+        </n-form>
+        <n-space justify="end">
+          <n-button @click="showModal = false">取消</n-button>
+          <n-button secondary @click="backToPrepare">返回修改描述</n-button>
+          <n-button secondary @click="backToGenerate" :loading="saving">重新生成</n-button>
+          <n-button type="primary" :loading="saving" @click="handleConfirmCreate">确认创建</n-button>
+        </n-space>
       </div>
     </n-modal>
 
@@ -855,29 +620,11 @@ onMounted(reload)
   min-height: 260px;
   padding: 8px 4px;
 }
-.wizard-panel.center {
+.wizard-center {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.editor-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.editor-grid.single {
-  grid-template-columns: 1fr;
-}
-.editor-grid.single .editor-left {
-  max-height: none;
-}
-.editor-left {
-  max-height: 640px;
-  overflow-y: auto;
-}
-.editor-right {
-  min-width: 0;
-  display: flex;
+  min-height: 240px;
 }
 .question-list {
   width: 100%;
@@ -889,99 +636,5 @@ onMounted(reload)
 }
 .question-row .n-input {
   flex: 1;
-}
-.debug-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.debug-panel :deep(.n-card__content) {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.debug-header {
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--n-border-color);
-}
-.preset-questions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px 0;
-}
-.preset-tag {
-  cursor: pointer;
-}
-.preview-name {
-  font-size: 18px;
-  font-weight: 600;
-}
-.preview-desc {
-  margin-top: 4px;
-  color: var(--n-text-color-2);
-  font-size: 13px;
-  white-space: pre-wrap;
-}
-.preview-desc.muted {
-  color: var(--n-text-color-3);
-}
-.chat-window {
-  flex: 1;
-  min-height: 200px;
-  max-height: 360px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-  background: var(--n-color-2);
-  border-radius: 6px;
-}
-.chat-empty {
-  margin: auto;
-  color: var(--n-text-color-3);
-  font-size: 13px;
-}
-.chat-row {
-  display: flex;
-}
-.chat-row.user {
-  justify-content: flex-end;
-}
-.chat-row.assistant {
-  justify-content: flex-start;
-}
-.chat-bubble {
-  max-width: 85%;
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.chat-row.user .chat-bubble {
-  background: var(--n-primary-color);
-  color: var(--n-primary-color-suppl);
-  border-bottom-right-radius: 2px;
-}
-.chat-row.assistant .chat-bubble {
-  background: var(--n-color-3);
-  border-bottom-left-radius: 2px;
-}
-.chat-input {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.chat-input .n-input {
-  flex: 1;
-}
-.debug-runid {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--n-text-color-3);
 }
 </style>

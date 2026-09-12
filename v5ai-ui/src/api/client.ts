@@ -120,6 +120,8 @@ export interface AgentResponse {
   skillEnabled?: boolean
   webSearchEnabled?: boolean
   ragEnabled?: boolean
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export interface CreateAgentRequest {
@@ -808,6 +810,10 @@ export function testModelConnection(adminToken: string, id: number): Promise<Tes
 
 export function listAgents(adminToken: string, query?: PageQuery): Promise<PageResult<AgentResponse>> {
   return requestJson<PageResult<AgentResponse>>(`/api/admin/agents${pageQueryString(query)}`, {}, adminToken)
+}
+
+export function getAgent(adminToken: string, agentKey: string): Promise<AgentResponse> {
+  return requestJson<AgentResponse>(`/api/admin/agents/${encodeURIComponent(agentKey)}`, {}, adminToken)
 }
 
 export function createAgent(adminToken: string, request: CreateAgentRequest): Promise<AgentResponse> {

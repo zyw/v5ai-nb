@@ -25,6 +25,7 @@ export const router = createRouter({
         { path: 'dashboard', name: 'dashboard', component: () => import('../views/DashboardView.vue'), meta: { title: '总览' } },
         { path: 'models', name: 'models', component: () => import('../views/ModelsView.vue'), meta: { title: '模型管理' } },
         { path: 'agents', name: 'agents', component: () => import('../views/AgentsView.vue'), meta: { title: 'Agent 管理' } },
+        { path: 'agents/:agentKey', name: 'agent-edit', component: () => import('../views/agent/AgentEditView.vue'), meta: { title: '智能体编辑' } },
         { path: 'knowledge-bases', name: 'knowledge-bases', component: () => import('../views/KnowledgeBasesView.vue'), meta: { title: '知识库管理' } },
         { path: 'knowledge-bases/:id', name: 'knowledge-base-detail', component: () => import('../views/knowledge-base/KnowledgeBaseDetailView.vue'), meta: { title: '知识库详情' } },
         { path: 'store-instances', name: 'store-instances', component: () => import('../views/StoreInstancesView.vue'), meta: { title: '存储实例' } },
