@@ -88,6 +88,11 @@ public class MilvusVectorStore implements VectorStore {
         var hits = new ArrayList<RetrievalHit>();
         for (Long knowledgeBaseId : knowledgeBaseIds) {
             try {
+                // 集合可能在索引后被 Milvus 重启释放：检索前确保已载入内存（load 幂等，已载入为 no-op）。
+                // ponytail: load 是异步的，重启后首次检索仍可能报 not loaded，随后一次即恢复；若需强一致再加 load-state 轮询。
+                if (collectionExists(knowledgeBaseId)) {
+                    loadCollection(knowledgeBaseId);
+                }
                 SearchResp resp = client.search(SearchReq.builder()
                         .collectionName(collectionName(knowledgeBaseId))
                         .data(List.of(new FloatVec(queryVector)))

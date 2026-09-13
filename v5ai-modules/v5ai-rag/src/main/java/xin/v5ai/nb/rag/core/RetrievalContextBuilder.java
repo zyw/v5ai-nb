@@ -77,6 +77,7 @@ public class RetrievalContextBuilder {
             try {
                 hits = vectorSearch(bases, query, INJECT_TOP_K);
             } catch (Exception exception) {
+                log.warn("runtime vector search failed, fallback to keyword: {}", exception.getMessage());
                 hits = List.of();
             }
             if (hits.isEmpty()) {
