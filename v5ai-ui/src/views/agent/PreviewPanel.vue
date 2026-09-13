@@ -6,10 +6,11 @@
  * - 未开始：展示智能体图标/名称/描述 + 推荐问题（用户视角的首屏）。
  * - 已开始（点击推荐问题或发送过消息）：首屏信息与推荐问题整体隐藏，面板变成纯会话窗口。
  */
-import { computed, ref } from 'vue'
-import { NButton, NIcon, NInput, NSpin, NTooltip, useMessage } from 'naive-ui'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { NButton, NIcon, NInput, NTooltip, useMessage } from 'naive-ui'
 import { Image, Send } from 'lucide-vue-next'
-import MarkdownContent from '../../components/MarkdownContent.vue'
+import ChatMessageBody from '../../components/ChatMessageBody.vue'
+import { parseHits, type ChatMsg } from '../../utils/chatStream'
 import { adminDebugStream } from '../../api/client'
 import { adminToken } from '../../stores/session'
 
@@ -26,15 +27,13 @@ const props = defineProps<{
 
 const message = useMessage()
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
 const query = ref('')
 const loading = ref(false)
 const runId = ref('')
-const messages = ref<ChatMessage[]>([])
+const messages = ref<ChatMsg[]>([])
+/** 会话区滚动：贴底判断阈值与知识库问答一致。 */
+const listRef = ref<HTMLElement | null>(null)
+const BOTTOM_THRESHOLD = 40
 
 /** 会话是否已开始：一开始就把首屏信息与推荐问题收起来，避免会话中被占位。 */
 const started = computed(() => messages.value.length > 0)
@@ -47,11 +46,20 @@ const imageTip = computed(() =>
     : '当前模型不支持图片输入，可在「模型管理」中为模型开启「支持图片输入」'
 )
 
+/**
+ * 取出增量文本。SSE 的 data 是整个 RuntimeEvent 的 JSON（{runId,type,payload,createdAt}），
+ * 直接展示会把 JSON 原样打出来，所以必须解出 payload。
+ * 注意用 !== undefined 而不是 ??：payload 为空串时 ?? 会落到 return data，
+ * 把整段 JSON 当成文本拼进去（表现为思考里混进 {"runId":...}）。
+ */
 function parseDelta(data: string): string {
   if (!data) return ''
   try {
-    const body = JSON.parse(data) as { payload?: string; answer?: string; text?: string }
-    return body.payload ?? body.answer ?? body.text ?? data
+    const body = JSON.parse(data) as { payload?: unknown; answer?: unknown; text?: unknown }
+    if (typeof body.payload === 'string') return body.payload
+    if (typeof body.answer === 'string') return body.answer
+    if (typeof body.text === 'string') return body.text
+    return ''
   } catch {
     return data
   }
@@ -87,6 +95,9 @@ function ask(question: string) {
   void send()
 }
 
+/** 流「静默」多久算卡死（期间一条事件都没来）。协议正常结束时流会自行关闭，不会走到这里。 */
+const STREAM_SILENCE_TIMEOUT_MS = 60_000
+
 async function send() {
   const question = query.value.trim()
   if (!question || loading.value) return
@@ -96,31 +107,90 @@ async function send() {
   }
   query.value = ''
   messages.value.push({ role: 'user', content: question })
-  const assistantIndex = messages.value.length
-  messages.value.push({ role: 'assistant', content: '' })
+  // 必须是 reactive 代理：SSE 回调里直接改内容，靠代理触发增量渲染；
+  // 裸对象写属性不走 setter，会等 finally 里 loading 变更才整段刷出（表现为"不流式"）。
+  const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true, reasoningOpen: true })
+  const assistantIndex = messages.value.push(assistant) - 1
   loading.value = true
   runId.value = ''
+  // 主动发问时无视当前滚动位置，直接到底（用户刚发完就想看回答）
+  await nextTick()
+  scrollToBottom()
+
+  // 看门狗：每条事件都重置计时；静默超时说明连接卡死（服务端不再发也不关），
+  // 主动中断，否则发送按钮会永久停在 loading、且 send() 被 loading 守卫挡住无法再发。
+  const controller = new AbortController()
+  let watchdog: ReturnType<typeof setTimeout> | undefined
+  const resetWatchdog = () => {
+    if (watchdog) clearTimeout(watchdog)
+    watchdog = setTimeout(() => controller.abort(), STREAM_SILENCE_TIMEOUT_MS)
+  }
+  resetWatchdog()
+
   try {
     await adminDebugStream(props.agentKey, adminToken.value, { query: question }, (event, data) => {
-      if (event === 'TEXT_DELTA') {
-        messages.value[assistantIndex].content += parseDelta(data)
-      }
-      if (event === 'RUN_FAILED') {
-        messages.value[assistantIndex].content = `调用失败：${parseRunFailed(data)}`
-      }
-      if (event === 'MESSAGE_COMPLETED' && !messages.value[assistantIndex].content) {
-        messages.value[assistantIndex].content = parseDelta(data)
-      }
-      if (event === 'RUN_STARTED') {
+      resetWatchdog()
+      const target = messages.value[assistantIndex]
+      if (event === 'RETRIEVAL') {
+        target.citations = parseHits(data)
+      } else if (event === 'REASONING_DELTA' && data) {
+        // 必须与回答同样解析：SSE 的 data 是整段 RuntimeEvent JSON，直接拼接会把 JSON 显示出来
+        target.reasoning = (target.reasoning ?? '') + parseDelta(data)
+      } else if (event === 'TEXT_DELTA') {
+        // 回答开始的第一个片段：思考自动收起（只此一次，之后用户手动开合不再干预）
+        if (!target.content) target.reasoningOpen = false
+        target.content += parseDelta(data)
+      } else if (event === 'RUN_FAILED') {
+        target.error = parseRunFailed(data)
+      } else if (event === 'MESSAGE_COMPLETED' && !target.content) {
+        target.content = parseDelta(data)
+      } else if (event === 'RUN_STARTED') {
         runId.value = parseRunId(data)
       }
-    })
+    }, controller.signal)
   } catch (e) {
-    messages.value[assistantIndex].content = e instanceof Error ? `调用失败：${e.message}` : '调用失败'
+    const target = messages.value[assistantIndex]
+    // 看门狗主动中断：给出可读原因，避免表现为「莫名其妙失败」
+    target.error =
+      e instanceof DOMException && e.name === 'AbortError'
+        ? `流式响应超时（${STREAM_SILENCE_TIMEOUT_MS / 1000} 秒无数据），已中断`
+        : e instanceof Error
+          ? e.message
+          : '调用失败'
   } finally {
+    if (watchdog) clearTimeout(watchdog)
+    // 无论流如何结束（正常收尾 / 报错 / 超时中断），都必须复位，否则按钮永久 loading
     loading.value = false
+    const target = messages.value[assistantIndex]
+    target.loading = false
+    // 失败且无内容时不留空壳
+    if (!target.content && target.error) target.content = ''
   }
 }
+
+/** 流式内容（回答 + 思考）总长度：任一片段到达即变化，作为「该滚到底了」的触发源。 */
+const streamedLength = computed(() =>
+  messages.value.reduce((n, m) => n + m.content.length + (m.reasoning?.length ?? 0), 0)
+)
+
+function scrollToBottom() {
+  const el = listRef.value
+  if (el) el.scrollTop = el.scrollHeight
+}
+
+/**
+ * 自动贴底。默认 flush（pre）时刻 DOM 还是「增长前」的旧高度，正好用来判断用户当前是否停在底部：
+ * 停在底部就顺势跟到底，往上翻看历史则不动滚动条，等他滚回底部后下次判定自动恢复。
+ * 不用 scroll 事件判断——同帧内多次滚动会被浏览器合并成一次且只报最终位置，
+ * 用户上翻后紧跟一个增量片的强制贴底会把它覆盖掉，表现为「上翻被拽回底部」。
+ */
+watch(streamedLength, async () => {
+  const el = listRef.value
+  if (!el) return
+  if (el.scrollHeight - el.scrollTop - el.clientHeight > BOTTOM_THRESHOLD) return
+  await nextTick()
+  scrollToBottom()
+})
 
 defineExpose({ reset })
 </script>
@@ -170,16 +240,13 @@ defineExpose({ reset })
     </div>
 
     <!-- 会话区：仅开始对话后存在（未开始时整块不渲染），也是唯一的滚动区域 -->
-    <div v-if="started" class="chat-window">
+    <div v-if="started" ref="listRef" class="chat-window">
       <div v-for="(msg, index) in messages" :key="index" :class="['chat-row', msg.role]">
         <div class="chat-bubble">
-          <MarkdownContent v-if="msg.role === 'assistant' && msg.content" :content="msg.content" />
-          <template v-else>{{ msg.content || '…' }}</template>
+          <!-- 助手消息：思考折叠 + 回答 + 引用，与知识库问答 tab 共用同一组件 -->
+          <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
+          <template v-else>{{ msg.content }}</template>
         </div>
-      </div>
-      <div v-if="loading && !messages[messages.length - 1]?.content" class="chat-thinking">
-        <n-spin size="small" />
-        <span>正在生成…</span>
       </div>
     </div>
 
@@ -392,6 +459,12 @@ defineExpose({ reset })
   word-break: break-word;
 }
 
+/* 助手气泡要放折叠面板与引用列表，窄气泡会把它们挤变形：直接撑满会话区宽度。 */
+.chat-row.assistant .chat-bubble {
+  max-width: 100%;
+  width: 100%;
+}
+
 .chat-row.user .chat-bubble {
   background: var(--n-primary-color, #7c3aed);
   color: #fff;
@@ -401,14 +474,6 @@ defineExpose({ reset })
 .chat-row.assistant .chat-bubble {
   background: var(--n-color-3, #f2f4f7);
   border-bottom-left-radius: 2px;
-}
-
-.chat-thinking {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--n-text-color-3, #98a2b3);
 }
 
 .chat-input {

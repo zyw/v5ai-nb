@@ -1,5 +1,7 @@
 package xin.v5ai.nb.common.agentscope.core;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
@@ -7,10 +9,15 @@ import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
+import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
+import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -22,6 +29,9 @@ import java.util.function.Function;
  * 整个执行是惰性的（Flux.defer），订阅时才真正开始运行。
  */
 public class AgentScopeRuntime implements AgentRuntime {
+    /** 单条引用内容截断长度：与知识库问答一致，避免单条 SSE 载荷过大。 */
+    private static final int HIT_CONTENT_CAP = 2_000;
+
     /** Agent 解析器：根据 agentKey 得到 Agent 配置（正式路径要求已发布，调试路径允许草稿） */
     private final Function<String, Agent> applicationResolver;
     /** 底层文本执行器：真正驱动 Agent 跑模型 */
@@ -60,25 +70,25 @@ public class AgentScopeRuntime implements AgentRuntime {
         return Flux.defer(() -> {
             var application = applicationResolver.apply(request.agentKey());
             var runId = UUID.randomUUID().toString();
-            // 若未配置 RAG，则上下文为空串；否则异步构建检索上下文
+            // 若未配置 RAG，则上下文为空；否则异步构建检索上下文（含结构化命中）
             var contextMono = ragContextProvider == null
-                    ? Mono.just("")
+                    ? Mono.just(RagContext.empty())
                     : ragContextProvider.buildContext(application, request);
             return Flux.concat(
                     // 1) 运行开始事件
                     Flux.just(RuntimeEvent.started(runId)),
-                    // 2) 拿到上下文后执行 Agent
-                    contextMono.flatMapMany(context -> {
+                    // 2) 拿到检索结果后执行 Agent
+                    contextMono.flatMapMany(rag -> {
                         // 有有效上下文则拼进请求，否则用原请求
-                        var enriched = (context == null || context.isBlank())
+                        var enriched = rag.isEmpty()
                                 ? request.withRunId(runId)
-                                : request.withRagContext(context).withRunId(runId);
+                                : request.withRagContext(rag.context()).withRunId(runId);
                         // 将内部事件统一映射为平台 RuntimeEvent（工具事件可展开为多个事件）
                         var events = agentTextExecutor.streamText(application, enriched)
                                 .flatMap(event -> toRuntimeEvents(runId, event));
-                        // 有检索上下文时，在 Agent 输出之前先发一个 RETRIEVAL 事件
-                        if (context != null && !context.isBlank()) {
-                            return Flux.concat(Flux.just(RuntimeEvent.retrieval(runId, context)), events);
+                        // 有检索上下文时，在 Agent 输出之前先发一个 RETRIEVAL 事件（载荷为引用列表）
+                        if (!rag.isEmpty()) {
+                            return Flux.concat(Flux.just(RuntimeEvent.retrieval(runId, citationsPayload(rag.hits()))), events);
                         }
                         return events;
                     }),
@@ -101,8 +111,28 @@ public class AgentScopeRuntime implements AgentRuntime {
     /**
      * 把执行器内部事件映射为平台事件流。
      */
+    /**
+     * 引用载荷：与知识库问答（{@code KnowledgeQaServiceImpl.hitsPayload}）逐字同构——
+     * 同一组字段名与截断长度，前端才能复用同一个解析器与渲染组件。
+     */
+    private static String citationsPayload(List<RagHit> hits) {
+        var payload = hits.stream().map(hit -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("knowledgeBaseId", hit.knowledgeBaseId());
+            item.put("documentId", hit.documentId());
+            item.put("documentTitle", hit.documentTitle());
+            item.put("chunkIndex", hit.chunkIndex());
+            item.put("content", StrUtil.maxLength(hit.content(), HIT_CONTENT_CAP));
+            item.put("score", hit.score());
+            return item;
+        }).toList();
+        return JSONUtil.toJsonStr(payload);
+    }
+
     private static Flux<RuntimeEvent> toRuntimeEvents(String runId, AgentTextEvent event) {
         return switch (event) {
+            case AgentTextEvent.Reasoning reasoning ->
+                    Flux.just(RuntimeEvent.reasoningDelta(runId, reasoning.text()));
             case AgentTextEvent.Text text -> Flux.just(RuntimeEvent.textDelta(runId, text.text()));
             case AgentTextEvent.ModelCall call -> Flux.just(RuntimeEvent.modelCall(runId, call.modelName()));
             case AgentTextEvent.ToolCall call -> {

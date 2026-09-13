@@ -32,7 +32,8 @@ cd v5ai-ui && npx vue-tsc --noEmit   # 前端类型检查
   （(server_id, tool_name) 唯一 + permission）、`v5ai_application_mcp`（agent_key 绑定）、
   `v5ai_mcp_tool_call`（run_id/server_id 索引审计表）。
 - `AgentScopeMcpClientFactory` / `AgentScopeMcpConnection`：Streamable HTTP / SSE / Stdio
-  三种传输；Stdio 受 `PropertyStdioCommandPolicy` 白名单 + 纯命令名校验。
+  三种传输；Stdio 受 `PropertyStdioCommandPolicy` 白名单校验（白名单项可为纯文件名或完整路径，
+  并禁止 `..` 路径穿越）。
 - 加密：headers/envVars 经 `CredentialCipher`（AES-GCM）加密落库，读取时解密。
 - `ApplicationMcpToolResolver`：按已发布 Agent 绑定解析 ACTIVE Server 的
   已发现工具（DENY 过滤），单 Server 失败跳过不中断运行。

@@ -5,11 +5,12 @@
  * 思考与回答分开展示（思考默认展开，思考期间标题显示"思考中..."），页内会话不落库。
  */
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NIcon, NInput, useMessage } from 'naive-ui'
-import { Eraser, FileText, Send } from 'lucide-vue-next'
-import { kbQaStream, type KbHitResponse, type KbQaMessage } from '../../api/client'
+import { NButton, NIcon, NInput, useMessage } from 'naive-ui'
+import { Eraser, Send } from 'lucide-vue-next'
+import { kbQaStream, type KbQaMessage } from '../../api/client'
 import { adminToken } from '../../stores/session'
-import MarkdownContent from '../../components/MarkdownContent.vue'
+import ChatMessageBody from '../../components/ChatMessageBody.vue'
+import { awaitingFirstToken, parseHits, type ChatMsg } from '../../utils/chatStream'
 import KnowledgeDebugParams, { type KbModelParamsState, type KbSearchParamsState } from './KnowledgeDebugParams.vue'
 
 const props = defineProps<{
@@ -22,18 +23,6 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
-
-interface ChatMsg {
-  role: 'user' | 'assistant'
-  content: string
-  /** 模型推理内容（REASONING_DELTA 累积），与 content 分开展示 */
-  reasoning?: string
-  /** 思考折叠是否展开：初始展开，回答开始后自动收起一次；之后用户手动开合不再干预 */
-  reasoningOpen?: boolean
-  citations?: KbHitResponse[]
-  error?: string
-  loading?: boolean
-}
 
 const messages = ref<ChatMsg[]>([])
 const input = ref('')
@@ -112,15 +101,6 @@ async function send() {
   }
 }
 
-function parseHits(data: string): KbHitResponse[] | undefined {
-  try {
-    const parsed = JSON.parse(data)
-    return Array.isArray(parsed) ? (parsed as KbHitResponse[]) : undefined
-  } catch {
-    return undefined
-  }
-}
-
 /** 流式内容（回答 + 思考）总长度：任一片段到达即变化，作为「该滚到底了」的触发源。 */
 const streamedLength = computed(() =>
   messages.value.reduce((n, m) => n + m.content.length + (m.reasoning?.length ?? 0), 0)
@@ -139,21 +119,6 @@ watch(streamedLength, async () => {
   await nextTick()
   el.scrollTop = el.scrollHeight
 })
-
-/** 思考折叠开合（受控）：用户点击时同步回消息状态。 */
-function onReasoningToggle(m: ChatMsg, names: string | number | Array<string | number> | null) {
-  m.reasoningOpen = Array.isArray(names) ? names.includes('thinking') : names === 'thinking'
-}
-
-/** 首个 token 之前的等待（此阶段还没有任何思考内容可展示）。 */
-function awaitingFirstToken(m: ChatMsg): boolean {
-  return !!m.loading && !m.reasoning && !m.content && !m.error
-}
-
-/** 思考仍在进行：回答（或错误）尚未开始。 */
-function isThinking(m: ChatMsg): boolean {
-  return !!m.loading && !m.content && !m.error
-}
 
 function clearChat() {
   messages.value = []
@@ -178,35 +143,8 @@ function clearChat() {
         <div v-for="(m, i) in messages" :key="i" class="qa-row" :class="m.role">
           <div class="bubble" :class="m.role">
             <template v-if="m.role === 'user'">{{ m.content }}</template>
-            <template v-else>
-              <!-- 首 token 等待：DeepSeek 风格"思考中..."（已有思考内容时改由折叠标题承担） -->
-              <div v-if="awaitingFirstToken(m)" class="thinking-wait"><span class="shimmer">思考中...</span></div>
-              <!-- 思考过程默认展开；思考期间标题为"思考中..."，回答开始后自动收起并恢复"思考过程" -->
-              <n-collapse
-                v-if="m.reasoning"
-                class="reasoning"
-                :expanded-names="m.reasoningOpen ? ['thinking'] : []"
-                @update:expanded-names="(names) => onReasoningToggle(m, names)"
-              >
-                <n-collapse-item name="thinking">
-                  <template #header>
-                    <span :class="{ shimmer: isThinking(m) }">{{ isThinking(m) ? '思考中...' : '思考过程' }}</span>
-                  </template>
-                  <div class="reasoning-text"><MarkdownContent :content="m.reasoning" /></div>
-                </n-collapse-item>
-              </n-collapse>
-              <MarkdownContent v-if="m.content" :content="m.content" />
-              <div v-if="m.error" class="answer-error">{{ m.error }}</div>
-              <n-collapse v-if="m.citations && m.citations.length > 0" class="citations">
-                <n-collapse-item title="本次引用的切片" name="refs">
-                  <div v-for="(c, ci) in m.citations" :key="ci" class="citation">
-                    <span class="cite-doc"><n-icon :component="FileText" size="12" />{{ c.documentTitle || `文档 #${c.documentId}` }}</span>
-                    <span class="cite-score">相似度 {{ c.score.toFixed(4) }}</span>
-                    <div class="cite-snippet">{{ c.content }}</div>
-                  </div>
-                </n-collapse-item>
-              </n-collapse>
-            </template>
+            <!-- 思考折叠 + 回答 + 引用：与智能体编辑页「预览与调试」共用同一组件 -->
+            <ChatMessageBody v-else :msg="m" />
           </div>
         </div>
       </div>
@@ -340,103 +278,7 @@ function clearChat() {
   padding: 12px 14px;
 }
 
-.thinking-wait {
-  font-size: 13.5px;
-  line-height: 1.8;
-  color: rgba(120, 120, 120, 0.95);
-}
-
-/* DeepSeek 式"思考中..."：灰字上掠过一道高光的渐变动画（background-clip:text）。 */
-.shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(130, 130, 130, 0.9) 0%,
-    rgba(130, 130, 130, 0.9) 35%,
-    #2f6bff 50%,
-    rgba(130, 130, 130, 0.9) 65%,
-    rgba(130, 130, 130, 0.9) 100%
-  );
-  background-size: 250% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: thinking-shimmer 1.5s linear infinite;
-}
-
-@keyframes thinking-shimmer {
-  from {
-    background-position-x: 150%;
-  }
-  to {
-    background-position-x: -150%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .shimmer {
-    animation: none;
-    color: rgba(120, 120, 120, 0.95);
-    background: none;
-  }
-}
-
-/* 思考过程：与回答同气泡但视觉降级；默认展开，思考进行中标题走 .shimmer 动画 */
-.reasoning {
-  margin-bottom: 8px;
-}
-
-/* 思考内容同样按 markdown 渲染：块级排版交给 MarkdownContent，这里只保留视觉降级
-   （原先是 pre-wrap 纯文本；不改回 pre-wrap，否则块标签之间的换行会变成可见空行） */
-.reasoning-text {
-  color: rgba(105, 105, 105, 0.95);
-  border-left: 2px solid rgba(128, 128, 128, 0.3);
-  padding-left: 10px;
-}
-
-.reasoning-text :deep(.md-content) {
-  font-size: 12.5px;
-  line-height: 1.7;
-}
-
-.answer-error {
-  color: #d03050;
-  font-size: 13px;
-}
-
-.citations {
-  margin-top: 10px;
-}
-
-.citation {
-  padding: 6px 0;
-  border-top: 1px dashed rgba(128, 128, 128, 0.25);
-}
-
-.cite-doc {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12.5px;
-  color: #2f6bff;
-}
-
-.cite-score {
-  float: right;
-  font-size: 12px;
-  color: rgba(120, 120, 120, 0.9);
-}
-
-.cite-snippet {
-  font-size: 12px;
-  color: rgba(90, 90, 90, 0.95);
-  line-height: 1.6;
-  margin-top: 2px;
-  max-height: 60px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
+/* 思考折叠 / 回答 / 引用的样式已随渲染逻辑迁到 components/ChatMessageBody.vue（两处共用）。 */
 
 .qa-input-bar {
   display: flex;

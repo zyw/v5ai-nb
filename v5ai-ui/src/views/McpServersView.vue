@@ -432,7 +432,7 @@ onMounted(reload)
           <n-select v-model:value="form.transportType" :options="transportOptions" />
         </n-form-item>
         <n-form-item label="Endpoint（HTTP/SSE 填 URL；Stdio 填可执行命令）">
-          <n-input v-model:value="form.endpoint" />
+          <n-input v-model:value="form.endpoint" :placeholder="form.transportType === 'STDIO' ? 'node 或 D:/nvm/v24.9.0/node.exe' : 'https://mcp.example.com/mcp'" />
         </n-form-item>
         <n-form-item v-if="form.transportType === 'STDIO'" label="Stdio 参数（逗号分隔）">
           <n-input v-model:value="form.args" placeholder="-m, mcp_server_git" />

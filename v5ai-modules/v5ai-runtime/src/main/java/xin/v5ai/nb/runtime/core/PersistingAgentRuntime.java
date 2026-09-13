@@ -131,8 +131,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (event.type() == RuntimeEventType.MODEL_CALL) {
                             modelName[0] = event.payload();
                         }
-                        // 每一条事件都落库
-                        runEventService.save(event);
+                        // 事件落库；唯一例外是思考增量——它是模型的中间产物、不是回答的一部分，
+                        // 落库只会让 v5ai_run_event 随思考长度膨胀，且没有第二个消费方。
+                        // 与「知识库问答整体不持久化」同一口径（见 CONTEXT.md「Agent 调试」）。
+                        if (event.type() != RuntimeEventType.REASONING_DELTA) {
+                            runEventService.save(event);
+                        }
                         if (event.type() == RuntimeEventType.TEXT_DELTA) {
                             answer.append(event.payload());
                         }

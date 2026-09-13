@@ -210,6 +210,10 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
 
     private static AgentTextEvent mapAgentEvent(
             AgentEvent event, Set<String> mcpToolNames, Map<String, McpToolPermission> toolPermissions) {
+        if (event instanceof ThinkingBlockDeltaEvent thinking) {
+            // 模型推理（思考）增量：与回答分流，供前端折叠展示；上游不落库
+            return new AgentTextEvent.Reasoning(thinking.getDelta());
+        }
         if (event instanceof TextBlockDeltaEvent text) {
             return new AgentTextEvent.Text(text.getDelta());
         }

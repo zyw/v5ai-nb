@@ -27,7 +27,9 @@ PUT  /api/admin/mcp-servers/{id}/enable  # 启用（与禁用互逆）
 `/options` 仅查 id/name 列（不解密加载请求头/环境变量密文），供 Agent 编辑/绑定弹窗按需加载。
 
 Stdio 命令受白名单限制（`v5ai.mcp.stdio-command-whitelist`，逗号分隔）；
-命令必须是纯可执行文件名（禁止路径分隔符与 `..`）。
+命令可以是 PATH 上的纯可执行文件名（`node`），也可以是可执行文件路径（`D:/nvm/v24.9.0/node.exe`），
+但禁止 `..` 路径穿越。白名单项写成纯文件名时按可执行文件名匹配（`node.exe` 可匹配任意路径下的 node.exe），
+写成路径时按完整路径匹配；白名单为空表示开发模式不限制。
 
 ## 连接测试
 

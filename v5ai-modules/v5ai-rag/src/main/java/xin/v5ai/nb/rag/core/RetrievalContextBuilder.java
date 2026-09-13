@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
+import xin.v5ai.nb.rag.core.dto.RetrievalCitation;
 import xin.v5ai.nb.rag.core.dto.RetrievalResult;
 import xin.v5ai.nb.rag.core.fusion.FusionStrategy;
 import xin.v5ai.nb.rag.core.fusion.RetrievalFusion;
@@ -87,7 +88,7 @@ public class RetrievalContextBuilder {
         }
         // 向量存储检索只返回 (vectorId, score)：按业务表回填内容/元数据
         hits = hitEnricher.enrich(hits);
-        return new RetrievalResult(formatContext(hits), hits);
+        return formatContext(hits);
     }
 
     /**
@@ -243,15 +244,22 @@ public class RetrievalContextBuilder {
         return merged.size() > topK ? merged.subList(0, topK) : merged;
     }
 
-    private String formatContext(List<VectorStore.RetrievalHit> hits) {
+    /**
+     * 组装注入用的上下文文本，同时把查到的文档标题留下来组成引用列表——
+     * 标题只查一次，引用展示（RETRIEVAL 事件）不需要再查一遍业务表。
+     */
+    private RetrievalResult formatContext(List<VectorStore.RetrievalHit> hits) {
         var lines = new ArrayList<String>();
+        var citations = new ArrayList<RetrievalCitation>();
         lines.add("[Knowledge Base Context]");
         int index = 1;
         for (var hit : hits) {
             var document = documentService.findById(hit.documentId());
             var title = document == null ? "doc-" + hit.documentId() : document.getTitle();
             lines.add("%d. (%s, chunk %d): %s".formatted(index++, title, hit.chunkIndex(), hit.content()));
+            citations.add(new RetrievalCitation(hit.knowledgeBaseId(), hit.documentId(), title,
+                    hit.chunkIndex(), hit.content(), hit.score()));
         }
-        return lines.stream().collect(Collectors.joining("\n"));
+        return new RetrievalResult(lines.stream().collect(Collectors.joining("\n")), citations);
     }
 }

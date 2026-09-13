@@ -895,13 +895,15 @@ export async function adminDebugStream(
   agentKey: string,
   adminToken: string,
   request: ChatRequest,
-  onEvent: (event: string, data: string) => void
+  onEvent: (event: string, data: string) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   await streamSse(
     `/api/admin/agents/${encodeURIComponent(agentKey)}/chat/stream`,
     { Authorization: normalizeBearer(adminToken) },
     request,
-    onEvent
+    onEvent,
+    signal
   )
 }
 
@@ -909,7 +911,8 @@ async function streamSse(
   path: string,
   headers: Record<string, string>,
   body: unknown,
-  onEvent: (event: string, data: string) => void
+  onEvent: (event: string, data: string) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await fetch(`${apiBase}${path}`, {
     method: 'POST',
@@ -920,7 +923,9 @@ async function streamSse(
       ...headers,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    // 可选：调用方用一个「看门狗」在流长时间无数据时中断，避免发送按钮永久停在 loading
+    signal
   })
 
   if (!response.ok || !response.body) {

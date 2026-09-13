@@ -3,20 +3,21 @@ package xin.v5ai.nb.common.agentscope.core;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
 
 /**
- * RAG 上下文构建器：为一次运行请求生成检索上下文（知识库引用）。
+ * RAG 上下文构建器：为一次运行请求生成检索上下文与结构化命中（知识库引用）。
  *
- * 实现约定：当应用未绑定知识库或未配置检索时，可返回空字符串，
+ * 实现约定：当应用未绑定知识库或未配置检索时，返回 {@link RagContext#empty()}，
  * 运行时将直接跳过 RAG，正常执行 Agent。
  */
 public interface RagContextProvider {
     /**
-     * 异步构建检索上下文。
+     * 异步构建检索结果。
      *
      * @param application 已发布的应用配置（用于确定绑定的知识库等）
      * @param request     本次运行请求（可从中取用户提问作为检索 query）
-     * @return 检索到的上下文文本；无知识/无检索时返回空字符串
+     * @return 检索上下文 + 结构化命中；无知识/无命中时返回 {@link RagContext#empty()}
      */
-    Mono<String> buildContext(Agent application, AgentRunRequest request);
+    Mono<RagContext> buildContext(Agent application, AgentRunRequest request);
 }

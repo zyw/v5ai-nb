@@ -3,6 +3,7 @@ package xin.v5ai.nb.rag.core;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
+import xin.v5ai.nb.rag.core.dto.RetrievalCitation;
 import xin.v5ai.nb.rag.core.dto.RetrievalResult;
 import xin.v5ai.nb.rag.core.store.KeywordStore;
 import xin.v5ai.nb.rag.core.store.VectorStore;
@@ -97,7 +98,9 @@ class RetrievalContextBuilderTest {
         RetrievalResult result = builder.build("agent-a", "问题");
 
         assertThat(result.isEmpty()).isFalse();
-        assertThat(result.hits()).extracting(VectorStore.RetrievalHit::documentId).containsExactly(1L);
+        assertThat(result.citations()).extracting(RetrievalCitation::documentId).containsExactly(1L);
+        // 引用必须带标题（文档行缺失时回退 doc-{id}），否则前端无从显示「引用了哪个文件」
+        assertThat(result.citations()).extracting(RetrievalCitation::documentTitle).containsExactly("doc-1");
         // 快速路径：有向量命中不触发关键词检索（默认不引入双路检索）
         verify(vectorStore).search(anyList(), any(), eq(4));
         verify((KeywordStore) vectorStore, never()).keywordSearch(anyList(), eq("问题"), eq(4));
@@ -113,7 +116,7 @@ class RetrievalContextBuilderTest {
         RetrievalResult result = builder.build("agent-a", "问题");
 
         assertThat(result.isEmpty()).isFalse();
-        assertThat(result.hits()).extracting(VectorStore.RetrievalHit::documentId).containsExactly(2L);
+        assertThat(result.citations()).extracting(RetrievalCitation::documentId).containsExactly(2L);
     }
 
     @Test
@@ -133,8 +136,8 @@ class RetrievalContextBuilderTest {
         verify(vectorStore).search(anyList(), any(), eq(30));
         verify((KeywordStore) vectorStore).keywordSearch(anyList(), eq("问题"), eq(30));
         // RRF(k=40)：B = 1/41 + 1/42 > A = 1/41 → 双路融合排序（不是仅取向量路）
-        assertThat(result.hits()).extracting(VectorStore.RetrievalHit::documentId).containsExactly(2L, 1L);
-        assertThat(result.hits().get(0).score())
+        assertThat(result.citations()).extracting(RetrievalCitation::documentId).containsExactly(2L, 1L);
+        assertThat(result.citations().get(0).score())
                 .isCloseTo(1.0 / 41 + 1.0 / 42, org.assertj.core.data.Offset.offset(1e-9));
     }
 
@@ -172,7 +175,7 @@ class RetrievalContextBuilderTest {
         verify(vectorStore).search(anyList(), any(), eq(30));
         verify((KeywordStore) vectorStore).keywordSearch(anyList(), eq("问题"), eq(30));
         // C(kb2) 向量 rank2 + 关键词 rank1 → 融合分高于仅向量的 A(kb1)
-        assertThat(result.hits()).extracting(VectorStore.RetrievalHit::content)
+        assertThat(result.citations()).extracting(RetrievalCitation::content)
                 .containsExactly("向量C", "向量A");
     }
 }
