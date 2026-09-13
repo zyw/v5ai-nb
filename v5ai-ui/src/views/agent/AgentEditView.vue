@@ -343,37 +343,17 @@ onMounted(load)
               </n-form>
             </n-card>
 
-            <n-card title="对话开场白" size="small" :bordered="true">
-              <n-form label-placement="top" size="small">
-                <n-form-item label="欢迎语">
-                  <n-input
-                    v-model:value="form.greeting"
-                    type="textarea"
-                    :autosize="{ minRows: 2, maxRows: 5 }"
-                    placeholder="对话开始时展示的欢迎语"
-                  />
-                </n-form-item>
-                <n-form-item label="预设问题">
-                  <div class="question-list">
-                    <div v-for="(question, index) in form.presetQuestions" :key="index" class="question-row">
-                      <n-input v-model:value="form.presetQuestions[index]" size="small" />
-                      <n-button size="small" quaternary type="error" @click="removeQuestion(index)">删除</n-button>
-                    </div>
-                    <div class="question-row">
-                      <n-input
-                        v-model:value="newQuestion"
-                        size="small"
-                        placeholder="输入新问题后回车或点击添加"
-                        @keyup.enter="addQuestion"
-                      />
-                      <n-button size="small" secondary @click="addQuestion">
-                        <template #icon><n-icon :component="Plus" /></template>
-                        添加
-                      </n-button>
-                    </div>
-                  </div>
-                </n-form-item>
-              </n-form>
+            <n-card title="能力开关" size="small" :bordered="true">
+              <n-alert v-if="!modelOptions.length" type="warning" :bordered="false" style="margin-bottom: 10px">
+                尚未配置可用的对话模型，请先在「模型管理」中配置并启用模型。
+              </n-alert>
+              <n-space size="large" wrap>
+                <n-space align="center" :size="8"><n-switch v-model:value="form.memoryEnabled" /><span>记忆库</span></n-space>
+                <n-space align="center" :size="8"><n-switch v-model:value="form.mcpEnabled" /><span>MCP</span></n-space>
+                <n-space align="center" :size="8"><n-switch v-model:value="form.skillEnabled" /><span>Skill</span></n-space>
+                <n-space align="center" :size="8"><n-switch v-model:value="form.webSearchEnabled" /><span>联网搜索</span></n-space>
+                <n-space align="center" :size="8"><n-switch v-model:value="form.ragEnabled" /><span>RAG</span></n-space>
+              </n-space>
             </n-card>
 
             <n-card title="系统指令" size="small" :bordered="true">
@@ -389,17 +369,37 @@ onMounted(load)
               </n-form>
             </n-card>
 
-            <n-card title="能力开关" size="small" :bordered="true">
-              <n-alert v-if="!modelOptions.length" type="warning" :bordered="false" style="margin-bottom: 10px">
-                尚未配置可用的对话模型，请先在「模型管理」中配置并启用模型。
-              </n-alert>
-              <n-space size="large" wrap>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.memoryEnabled" /><span>记忆库</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.mcpEnabled" /><span>MCP</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.skillEnabled" /><span>Skill</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.webSearchEnabled" /><span>联网搜索</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.ragEnabled" /><span>RAG</span></n-space>
-              </n-space>
+            <n-card title="对话开场白" size="small" :bordered="true">
+              <n-form label-placement="top" size="small">
+                <n-form-item label="欢迎语">
+                  <n-input
+                      v-model:value="form.greeting"
+                      type="textarea"
+                      :autosize="{ minRows: 2, maxRows: 5 }"
+                      placeholder="对话开始时展示的欢迎语"
+                  />
+                </n-form-item>
+                <n-form-item label="预设问题">
+                  <div class="question-list">
+                    <div v-for="(question, index) in form.presetQuestions" :key="index" class="question-row">
+                      <n-input v-model:value="form.presetQuestions[index]" size="small" />
+                      <n-button size="small" quaternary type="error" @click="removeQuestion(index)">删除</n-button>
+                    </div>
+                    <div class="question-row">
+                      <n-input
+                          v-model:value="newQuestion"
+                          size="small"
+                          placeholder="输入新问题后回车或点击添加"
+                          @keyup.enter="addQuestion"
+                      />
+                      <n-button size="small" secondary @click="addQuestion">
+                        <template #icon><n-icon :component="Plus" /></template>
+                        添加
+                      </n-button>
+                    </div>
+                  </div>
+                </n-form-item>
+              </n-form>
             </n-card>
           </div>
 

@@ -148,6 +148,13 @@ defineExpose({ reset })
 
       <div v-if="presetQuestions.length" class="preset-block">
         <div class="preset-label">推荐问题</div>
+<!--        <n-grid :x-gap="12" :y-gap="8" :cols="2">-->
+<!--          <n-grid-item v-for="(question, index) in presetQuestions" :key="index">-->
+<!--            <button class="preset-item" @click="ask(question)">-->
+<!--              {{ question }}-->
+<!--            </button>-->
+<!--          </n-grid-item>-->
+<!--        </n-grid>-->
         <div class="preset-list">
           <button
             v-for="(question, index) in presetQuestions"
@@ -242,38 +249,38 @@ defineExpose({ reset })
   font-weight: 600;
 }
 
-/* 未开始时占满会话区空出来的高度：内容垂直居中；高度不够时居中不会裁切（overflow 由父级 hidden）。
-   用 margin:auto 而不是 justify-content:center —— 空间不足时前者不会把内容顶出容器、也不影响滚动。 */
+/* 未开始时占满会话区空出来的高度：内容水平 + 垂直都居中。
+   justify-content 居中不依赖「推荐问题是否存在」——之前用 margin-top/bottom:auto 的写法，
+   在没有预设问题（.preset-block 因 v-if 不渲染）时会把头像名称整块推到面板底部。
+   居中不会裁切：内容超高时 flex 子项自身收缩（min-height:0），父级 overflow:hidden 只是兜底。 */
 .preview-intro {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.preview-intro > .preview-profile {
-  margin-top: auto;
-}
-
-.preview-intro > .preset-block:last-child {
-  margin-bottom: auto;
-}
-
+/* max-width + width:100%：未超出时横向撑满（内容只占一行时会收缩），超出时限制行长。
+   没有它，宽面板上的描述会拉成很长一行。 */
 .preview-profile {
   flex: none;
   display: flex;
-  gap: 12px;
+  gap: 14px;
+  width: 100%;
+  max-width: 700px;
   padding: 12px 2px 2px;
 }
 
 .profile-avatar {
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: #e9eaee;
   color: #4b5563;
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -311,27 +318,25 @@ defineExpose({ reset })
 
 .preset-block {
   flex: none;
-  padding: 10px 0 0;
+  width: 100%;
+  max-width: 700px;
+  padding: 14px 0 0;
   min-height: 0;
 }
 
 .preset-label {
   font-size: 13px;
-  font-weight: 600;
   margin-bottom: 8px;
 }
 
 .preset-list {
-  display: flex;
+  display: flow;
   flex-direction: column;
   gap: 6px;
-  /* 推荐问题再多也不挤压会话区：超出部分在本区内滚动。 */
-  max-height: 140px;
-  overflow-y: auto;
 }
 
 .preset-item {
-  width: 100%;
+
   text-align: left;
   padding: 8px 12px;
   font-size: 13px;
@@ -342,6 +347,7 @@ defineExpose({ reset })
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
+  margin: 5px;
 }
 
 .preset-item:hover {
