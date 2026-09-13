@@ -10,6 +10,7 @@ import { Eraser, Send } from 'lucide-vue-next'
 import { kbQaStream, type KbQaMessage } from '../../api/client'
 import { adminToken } from '../../stores/session'
 import ChatMessageBody from '../../components/ChatMessageBody.vue'
+import MessageActions from '../../components/MessageActions.vue'
 import { awaitingFirstToken, parseHits, type ChatMsg } from '../../utils/chatStream'
 import KnowledgeDebugParams, { type KbModelParamsState, type KbSearchParamsState } from './KnowledgeDebugParams.vue'
 
@@ -39,25 +40,61 @@ const canSend = computed(() => {
 
 const inputLen = computed(() => input.value.length)
 
+/** 多轮历史口径：只带上「有正文且无错误」的消息（沿用页内既有过滤规则）。 */
+function historyOf(list: ChatMsg[]): KbQaMessage[] {
+  return list.filter((m) => m.content && !m.error).map((m) => ({ role: m.role, content: m.content }))
+}
+
+/** 模型未选时的统一提示：发送与重新生成共用（提示后再动手，避免留下半截消息）。 */
+function ensureModel(): boolean {
+  if (props.modelParams.modelId == null) {
+    message.warning('请先在左侧选择对话模型')
+    return false
+  }
+  return true
+}
+
 async function send() {
   const text = input.value.trim()
   if (!text) return
-  if (props.modelParams.modelId == null) {
-    message.warning('请先在左侧选择对话模型')
-    return
-  }
-  const history: KbQaMessage[] = messages.value
-    .filter((m) => m.content && !m.error)
-    .map((m) => ({ role: m.role, content: m.content }))
+  if (!ensureModel()) return
+  const history = historyOf(messages.value)
   messages.value.push({ role: 'user', content: text })
+  input.value = ''
+  // 主动发问时无视当前滚动位置，直接到底（用户刚发完就想看回答）。
+  // 消息从 0 到 1 时 .qa-list 还是刚挂载的，这里等一拍再量高度。
+  await nextTick()
+  if (listRef.value) listRef.value.scrollTop = listRef.value.scrollHeight
+  await runTurn(text, [...history, { role: 'user', content: text }])
+}
+
+/**
+ * 重新生成第 i 条（助手）回答：丢弃该回答及其之后的全部消息，用上一条提问重跑。
+ * 参数取「当前」左侧面板值——调完检索参数再点一次重新生成，正是这个页面的用法。
+ */
+async function regenerate(i: number) {
+  if (streaming.value) return
+  if (!ensureModel()) return
+  const question = messages.value[i - 1]
+  if (!question || question.role !== 'user' || !question.content) return
+  const history = historyOf(messages.value.slice(0, i - 1))
+  messages.value.splice(i)
+  await nextTick()
+  if (listRef.value) listRef.value.scrollTop = listRef.value.scrollHeight
+  await runTurn(question.content, [...history, { role: 'user', content: question.content }])
+}
+
+/** 跑一轮助手回答：追加助手消息并就地流式填充（发送与重新生成同一条路径）。 */
+async function runTurn(question: string, history: KbQaMessage[]) {
+  // 调用方已用 ensureModel() 拦过；此处再取一次，顺带把 props 上的 number | null 收窄成 number
+  const modelId = props.modelParams.modelId
+  if (modelId == null) return
   // 必须是 reactive 代理：SSE 回调里直接改内容，靠代理触发增量渲染；
   // 裸对象写属性不走 setter，会等 finally 里 streaming 变更才整段刷出（表现为"不流式"）。
   const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true, reasoningOpen: true })
   messages.value.push(assistant)
-  input.value = ''
   streaming.value = true
-  // 主动发问时无视当前滚动位置，直接到底（用户刚发完就想看回答）。
-  // 消息从 0 到 1 时 .qa-list 还是刚挂载的，这里等一拍再量高度。
+  // 重新生成时列表已存在，等一拍是为了让刚插入的助手消息参与本次贴底测量。
   await nextTick()
   if (listRef.value) listRef.value.scrollTop = listRef.value.scrollHeight
   try {
@@ -65,7 +102,7 @@ async function send() {
       adminToken.value,
       props.kbId,
       {
-        modelId: props.modelParams.modelId,
+        modelId,
         nearbySliceCount: props.modelParams.nearbySliceCount,
         prompt: props.modelParams.prompt.trim() || undefined,
         resultCount: props.params.resultCount,
@@ -75,7 +112,7 @@ async function send() {
         fusionStrategy: props.params.fusionStrategy,
         rrfK: props.params.fusionStrategy === 'RRF' ? props.params.rrfK : undefined,
         denseWeight: props.params.fusionStrategy === 'WEIGHTED_SUM' ? props.params.denseWeight : undefined,
-        messages: [...history, { role: 'user', content: text }]
+        messages: [...history, { role: 'user', content: question }]
       },
       (event, data) => {
         if (event === 'RETRIEVAL') {
@@ -146,6 +183,14 @@ function clearChat() {
             <!-- 思考折叠 + 回答 + 引用：与智能体编辑页「预览与调试」共用同一组件 -->
             <ChatMessageBody v-else :msg="m" />
           </div>
+          <!-- 操作栏在气泡外、气泡下方（DeepSeek 的摆法）；生成中复制禁用、「重新生成」隐藏 -->
+          <MessageActions
+            :text="m.content"
+            :can-regenerate="m.role === 'assistant'"
+            :busy="streaming"
+            :align="m.role === 'user' ? 'end' : 'start'"
+            @regenerate="regenerate(i)"
+          />
         </div>
       </div>
 
@@ -261,6 +306,13 @@ function clearChat() {
 
 .qa-row.assistant {
   align-self: stretch;
+}
+
+/* 操作栏默认透明（见 MessageActions.vue），悬停或键盘聚焦该行时显形。
+   注意 .msg-actions 是子组件的根元素，父级 scoped 样式能命中它——改名会静默失效。 */
+.qa-row:hover .msg-actions,
+.qa-row:focus-within .msg-actions {
+  opacity: 1;
 }
 
 .bubble.user {

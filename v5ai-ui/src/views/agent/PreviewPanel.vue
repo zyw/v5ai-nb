@@ -10,6 +10,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { NButton, NIcon, NInput, NTooltip, useMessage } from 'naive-ui'
 import { Image, Send } from 'lucide-vue-next'
 import ChatMessageBody from '../../components/ChatMessageBody.vue'
+import MessageActions from '../../components/MessageActions.vue'
 import { parseHits, type ChatMsg } from '../../utils/chatStream'
 import { adminDebugStream } from '../../api/client'
 import { adminToken } from '../../stores/session'
@@ -106,6 +107,29 @@ async function send() {
     return
   }
   query.value = ''
+  await runTurn(question)
+}
+
+/**
+ * 重新生成第 index 条（助手）回答：丢弃该回答及其之后的全部消息，用上一条提问重跑。
+ * 本页走的是普通流式链路（服务端不读历史、每次新建会话），所以它等价于重发那一条提问。
+ */
+async function regenerate(index: number) {
+  if (loading.value) return
+  if (!props.agentKey) {
+    message.warning('智能体尚未创建，无法调试')
+    return
+  }
+  const question = messages.value[index - 1]
+  if (!question || question.role !== 'user' || !question.content) return
+  messages.value.splice(index)
+  await nextTick()
+  scrollToBottom()
+  await runTurn(question.content)
+}
+
+/** 跑一轮对话：追加用户提问 + 助手占位并就地流式填充（发送与重新生成同一条路径）。 */
+async function runTurn(question: string) {
   messages.value.push({ role: 'user', content: question })
   // 必须是 reactive 代理：SSE 回调里直接改内容，靠代理触发增量渲染；
   // 裸对象写属性不走 setter，会等 finally 里 loading 变更才整段刷出（表现为"不流式"）。
@@ -247,6 +271,14 @@ defineExpose({ reset })
           <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
           <template v-else>{{ msg.content }}</template>
         </div>
+        <!-- 操作栏在气泡外、气泡下方（DeepSeek 的摆法）；生成中复制禁用、「重新生成」隐藏 -->
+        <MessageActions
+          :text="msg.content"
+          :can-regenerate="msg.role === 'assistant'"
+          :busy="loading"
+          :align="msg.role === 'user' ? 'end' : 'start'"
+          @regenerate="regenerate(index)"
+        />
       </div>
     </div>
 
@@ -437,16 +469,27 @@ defineExpose({ reset })
   border-radius: 8px;
 }
 
+/* 纵向排布：气泡在上、操作栏在下（DeepSeek 的摆法）。
+   原本是横向 flex + justify-content 对齐，直接加第二个子节点会让操作栏挤到气泡旁边，
+   故改为 column + align-items 表达左右对齐。 */
 .chat-row {
   display: flex;
+  flex-direction: column;
 }
 
 .chat-row.user {
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .chat-row.assistant {
-  justify-content: flex-start;
+  align-items: stretch;
+}
+
+/* 操作栏默认透明（见 MessageActions.vue），悬停或键盘聚焦该行时显形。
+   注意 .msg-actions 是子组件的根元素，父级 scoped 样式能命中它——改名会静默失效。 */
+.chat-row:hover .msg-actions,
+.chat-row:focus-within .msg-actions {
+  opacity: 1;
 }
 
 .chat-bubble {
