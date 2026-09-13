@@ -132,6 +132,9 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         HarnessAgent.Builder builder = HarnessAgent.builder()
                 .name(application.name())
                 .description("v5ai AgentScope runtime with MCP tools and skills")
+                // MCP/Skill 路径不走 buildMessages，须显式注入系统提示（含 RAG 上下文），
+                // 否则 application.systemPrompt() 与 request.ragContext() 都会丢失
+                .sysPrompt(buildSystemPrompt(application, request))
                 .model(model)
                 // 每次运行使用全新内存状态存储：上一次运行中断（如工具调用未完成）
                 // 残留的 pending tool call 不会泄漏到本次运行，避免
@@ -250,6 +253,23 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      */
     private static List<Msg> buildMessages(Agent application, AgentRunRequest request) {
         List<Msg> messages = new ArrayList<>();
+        messages.add(Msg.builder().role(MsgRole.SYSTEM).textContent(buildSystemPrompt(application, request)).build());
+
+        // 回放历史消息（USER/ASSISTANT 角色映射）
+        for (Message history : request.history()) {
+            var role = history.role() == MessageRole.USER ? MsgRole.USER : MsgRole.ASSISTANT;
+            messages.add(Msg.builder().role(role).textContent(history.content()).build());
+        }
+        // 追加当前提问
+        messages.add(Msg.builder().role(MsgRole.USER).textContent(request.query()).build());
+        return messages;
+    }
+
+    /**
+     * 组装系统提示：应用系统提示词（或默认身份+描述）+ RAG 知识上下文。
+     * 直连路径经 buildMessages 注入，MCP/Skill 路径经 HarnessAgent.sysPrompt 注入，两路共用同一口径。
+     */
+    private static String buildSystemPrompt(Agent application, AgentRunRequest request) {
         var system = new StringBuilder();
         // 配置了系统提示词则优先使用，否则回退默认（应用身份 + 描述）
         if (application.systemPrompt() != null && !application.systemPrompt().isBlank()) {
@@ -264,16 +284,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             system.append("\n\nUse the following knowledge base context when relevant:\n")
                     .append(request.ragContext());
         }
-        messages.add(Msg.builder().role(MsgRole.SYSTEM).textContent(system.toString()).build());
-
-        // 回放历史消息（USER/ASSISTANT 角色映射）
-        for (Message history : request.history()) {
-            var role = history.role() == MessageRole.USER ? MsgRole.USER : MsgRole.ASSISTANT;
-            messages.add(Msg.builder().role(role).textContent(history.content()).build());
-        }
-        // 追加当前提问
-        messages.add(Msg.builder().role(MsgRole.USER).textContent(request.query()).build());
-        return messages;
+        return system.toString();
     }
 
     /**

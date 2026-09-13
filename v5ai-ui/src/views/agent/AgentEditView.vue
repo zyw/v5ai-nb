@@ -32,6 +32,7 @@ import {
   listModelOptions,
   listModels,
   listSkillOptions,
+  loadImagePreview,
   updateAgent,
   bindKnowledgeBases,
   bindMcpServers,
@@ -44,6 +45,7 @@ import { adminToken } from '../../stores/session'
 import { formatDateTime } from '../../utils/dateUtils'
 import StatusTag from '../../components/StatusTag.vue'
 import PreviewPanel from './PreviewPanel.vue'
+import IconPicker from '../../components/IconPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,6 +58,8 @@ const missing = ref(false)
 const detail = ref<AgentResponse | null>(null)
 const previewRef = ref<InstanceType<typeof PreviewPanel> | null>(null)
 const newQuestion = ref('')
+const avatarPreview = ref('')
+const showAvatarPicker = ref(false)
 
 const modelOptions = ref<OptionResponse[]>([])
 const knowledgeBaseOptions = ref<OptionResponse[]>([])
@@ -137,11 +141,37 @@ function removeQuestion(index: number) {
   form.presetQuestions.splice(index, 1)
 }
 
+async function refreshAvatarPreview() {
+  if (avatarPreview.value.startsWith('blob:')) URL.revokeObjectURL(avatarPreview.value)
+  avatarPreview.value = ''
+  if (!form.avatar) return
+  try {
+    avatarPreview.value = await loadImagePreview(adminToken.value, form.avatar)
+  } catch {
+    avatarPreview.value = ''
+  }
+}
+
+function openAvatarPicker() {
+  showAvatarPicker.value = true
+}
+
+function handleAvatarPicked(value: string) {
+  form.avatar = value
+  void refreshAvatarPreview()
+}
+
+function clearAvatar() {
+  form.avatar = ''
+  void refreshAvatarPreview()
+}
+
 function applyAgent(row: AgentResponse) {
   detail.value = row
   form.name = row.name
   form.description = row.description ?? ''
   form.avatar = row.avatar ?? ''
+  void refreshAvatarPreview()
   form.greeting = row.greeting ?? ''
   form.systemPrompt = row.systemPrompt ?? ''
   form.presetQuestions = parseQuestions(row.presetQuestions)
@@ -296,23 +326,34 @@ onMounted(load)
           <div class="agent-edit-left">
             <n-card title="基本信息" size="small" :bordered="true">
               <n-form label-placement="top" size="small">
-                <n-form-item label="Agent Key">
-                  <n-input :value="agentKey" disabled />
-                </n-form-item>
-                <n-form-item label="名称">
-                  <n-input v-model:value="form.name" placeholder="智能体名称" />
-                </n-form-item>
-                <n-form-item label="描述">
-                  <n-input
-                    v-model:value="form.description"
-                    type="textarea"
-                    :autosize="{ minRows: 3, maxRows: 8 }"
-                    placeholder="一句话说明这个智能体是做什么的"
-                  />
-                </n-form-item>
-                <n-form-item label="头像 URL">
-                  <n-input v-model:value="form.avatar" placeholder="可选：智能体头像图片地址" />
-                </n-form-item>
+                <div class="basic-info-row">
+                  <div class="basic-info-avatar">
+                    <n-form-item class="avatar-item">
+                      <div class="avatar-picker" title="点击选择头像" @click="openAvatarPicker">
+                        <img v-if="avatarPreview" :src="avatarPreview" alt="头像" class="avatar-picker-img" />
+                        <span v-else class="avatar-picker-placeholder">选择头像</span>
+                      </div>
+                      <div class="avatar-actions">
+                        <n-button v-if="form.avatar" size="small" quaternary type="error" @click="clearAvatar">移除</n-button>
+                        <span class="field-hint">资源/上传/URL</span>
+                      </div>
+                    </n-form-item>
+                  </div>
+                  <div class="basic-info-fields">
+<!--                    <n-input :value="agentKey" type="hidden" disabled />-->
+                    <n-form-item label="名称">
+                      <n-input v-model:value="form.name" placeholder="智能体名称" />
+                    </n-form-item>
+                    <n-form-item label="描述">
+                      <n-input
+                        v-model:value="form.description"
+                        type="textarea"
+                        :autosize="{ minRows: 3, maxRows: 8 }"
+                        placeholder="一句话说明这个智能体是做什么的"
+                      />
+                    </n-form-item>
+                  </div>
+                </div>
               </n-form>
             </n-card>
 
@@ -420,6 +461,13 @@ onMounted(load)
       </template>
     </n-spin>
   </div>
+
+  <IconPicker
+    v-model:show="showAvatarPicker"
+    :model-value="form.avatar"
+    :admin-token="adminToken"
+    @update:model-value="handleAvatarPicked"
+  />
 </template>
 
 <style scoped>
@@ -597,5 +645,58 @@ onMounted(load)
 .field-hint {
   font-size: 12px;
   color: rgba(120, 120, 120, 0.95);
+}
+
+/* 基本信息：头像居左，Agent Key / 名称 / 描述三项居右。 */
+.basic-info-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.basic-info-avatar {
+  flex: 0 0 auto;
+  width: 104px;
+}
+
+.basic-info-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+.avatar-item :deep(.n-form-item-blank) {
+  display: block;
+}
+
+.avatar-picker {
+  width: 80px;
+  height: 80px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.avatar-picker-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-picker-placeholder {
+  font-size: 12px;
+  color: #999;
+}
+
+.avatar-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 </style>
