@@ -15,11 +15,6 @@ import xin.v5ai.nb.common.encrypt.cipher.Sm4CredentialCipher;
 @Slf4j
 @AutoConfiguration
 public class CipherAutoConfiguration {
-    /**
-     * 加密类型: aes 或 sm4
-     */
-    @Value("${v5ai.crypto.type:aes}")
-    private String cryptoType;
 
     /**
      * 密钥
@@ -28,18 +23,16 @@ public class CipherAutoConfiguration {
     private String secretKey;
 
     /**
-     * 初始化向量
-     */
-    @Value("${v5ai.crypto.iv}")
-    private String iv;
-
-    /**
      * AES 加密器
      *
      * @return AES 加密器
      */
     @Bean
-    @ConditionalOnProperty(name = "v5ai.crypto.type", havingValue = "aes")
+    @ConditionalOnProperty(
+            name = "v5ai.crypto.type",
+            havingValue = "aes",
+            matchIfMissing = true
+    )
     public CredentialCipher aesCredentialCipher() {
         if (StringUtils.isBlank(secretKey)) {
             log.warn("Secret key is blank, using default value.");
@@ -53,8 +46,14 @@ public class CipherAutoConfiguration {
      * @return SM4 加密器
      */
     @Bean
-    @ConditionalOnProperty(name = "v5ai.crypto.type", havingValue = "sm4")
-    public CredentialCipher sm4CredentialCipher() {
+    @ConditionalOnProperty(
+            name = "v5ai.crypto.type",
+            havingValue = "sm4"
+    )
+    public CredentialCipher sm4CredentialCipher(
+            /* 初始化向量 */
+            @Value("${v5ai.crypto.iv}")
+            String iv) {
         if (StringUtils.isBlank(secretKey)) {
             log.warn("Secret key is blank, using default value.");
         }

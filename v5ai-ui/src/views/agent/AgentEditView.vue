@@ -21,7 +21,7 @@ import {
   NText,
   useMessage
 } from 'naive-ui'
-import { ArrowLeft, Bot, Plus } from 'lucide-vue-next'
+import { ArrowLeft, Bot, Plus, X } from 'lucide-vue-next'
 import {
   getAgent,
   getKnowledgeBindings,
@@ -329,12 +329,23 @@ onMounted(load)
                 <div class="basic-info-row">
                   <div class="basic-info-avatar">
                     <n-form-item class="avatar-item">
-                      <div class="avatar-picker" title="点击选择头像" @click="openAvatarPicker">
-                        <img v-if="avatarPreview" :src="avatarPreview" alt="头像" class="avatar-picker-img" />
-                        <span v-else class="avatar-picker-placeholder">选择头像</span>
+                      <div class="avatar-wrap">
+                        <div class="avatar-picker" title="点击选择头像" @click="openAvatarPicker">
+                          <img v-if="avatarPreview" :src="avatarPreview" alt="头像" class="avatar-picker-img" />
+                          <span v-else class="avatar-picker-placeholder">选择头像</span>
+                        </div>
+                        <button
+                          v-if="form.avatar"
+                          type="button"
+                          class="avatar-remove-badge"
+                          title="移除头像"
+                          aria-label="移除头像"
+                          @click.stop="clearAvatar"
+                        >
+                          <n-icon :component="X" size="12" />
+                        </button>
                       </div>
                       <div class="avatar-actions">
-                        <n-button v-if="form.avatar" size="small" quaternary type="error" @click="clearAvatar">移除</n-button>
                         <span class="field-hint">资源/上传/URL</span>
                       </div>
                     </n-form-item>
@@ -668,6 +679,12 @@ onMounted(load)
   display: block;
 }
 
+.avatar-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
 .avatar-picker {
   width: 80px;
   height: 80px;
@@ -679,6 +696,36 @@ onMounted(load)
   cursor: pointer;
   overflow: hidden;
   background: #fafafa;
+}
+
+/* 右上角 × 角标删除：hover 头像框时显现，点击即移除头像。角标放在 .avatar-wrap（无 overflow 裁剪）里，可跨出头像框约半个身位。 */
+.avatar-remove-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+  z-index: 999;
+}
+
+.avatar-wrap:hover .avatar-remove-badge,
+.avatar-remove-badge:focus-visible {
+  opacity: 1;
+}
+
+.avatar-remove-badge:hover {
+  background: rgba(220, 38, 38, 0.9);
 }
 
 .avatar-picker-img {

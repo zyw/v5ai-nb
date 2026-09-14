@@ -6,13 +6,13 @@
  * - 未开始：展示智能体图标/名称/描述 + 推荐问题（用户视角的首屏）。
  * - 已开始（点击推荐问题或发送过消息）：首屏信息与推荐问题整体隐藏，面板变成纯会话窗口。
  */
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue'
 import { NButton, NIcon, NInput, NTooltip, useMessage } from 'naive-ui'
 import { Image, Send } from 'lucide-vue-next'
 import ChatMessageBody from '../../components/ChatMessageBody.vue'
 import MessageActions from '../../components/MessageActions.vue'
 import { parseHits, type ChatMsg } from '../../utils/chatStream'
-import { adminDebugStream } from '../../api/client'
+import { adminDebugStream, loadImagePreview } from '../../api/client'
 import { adminToken } from '../../stores/session'
 
 const props = defineProps<{
@@ -39,6 +39,29 @@ const BOTTOM_THRESHOLD = 40
 /** 会话是否已开始：一开始就把首屏信息与推荐问题收起来，避免会话中被占位。 */
 const started = computed(() => messages.value.length > 0)
 const avatarChar = computed(() => (props.name || '智').trim().slice(0, 1))
+/** 头像预览地址：原始 avatar 是带鉴权的 /api/ 路径，直接当 <img> src 会 401，需带鉴权拉成 blob。 */
+const avatarSrc = ref('')
+let avatarSeq = 0
+watch(
+  () => props.avatar,
+  async (val) => {
+    const seq = ++avatarSeq
+    if (avatarSrc.value.startsWith('blob:')) URL.revokeObjectURL(avatarSrc.value)
+    avatarSrc.value = ''
+    if (!val) return
+    try {
+      const url = await loadImagePreview(adminToken.value, val)
+      if (seq === avatarSeq) avatarSrc.value = url
+      else if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+    } catch {
+      /* 拉取失败保持空 → 回退首字符占位 */
+    }
+  },
+  { immediate: true }
+)
+onUnmounted(() => {
+  if (avatarSrc.value.startsWith('blob:')) URL.revokeObjectURL(avatarSrc.value)
+})
 /** 未填写欢迎语时回退到描述，避免首屏空面板。 */
 const greetText = computed(() => props.greeting.trim() || props.description.trim())
 const imageTip = computed(() =>
@@ -230,7 +253,7 @@ defineExpose({ reset })
     <div v-if="!started" class="preview-intro">
       <div class="preview-profile">
         <div class="profile-avatar">
-          <img v-if="avatar" :src="avatar" alt="" />
+          <img v-if="avatarSrc" :src="avatarSrc" alt="" />
           <span v-else>{{ avatarChar }}</span>
         </div>
         <div class="profile-body">
