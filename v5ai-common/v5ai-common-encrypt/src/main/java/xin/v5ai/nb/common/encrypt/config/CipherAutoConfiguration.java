@@ -1,15 +1,18 @@
 package xin.v5ai.nb.common.encrypt.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.encrypt.apikey.AgentApiKeyVerifier;
 import xin.v5ai.nb.common.encrypt.apikey.BcryptAgentApiKeyVerifier;
 import xin.v5ai.nb.common.encrypt.cipher.AesCredentialCipher;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.common.encrypt.cipher.Sm4CredentialCipher;
 
+@Slf4j
 @AutoConfiguration
 public class CipherAutoConfiguration {
     /**
@@ -38,6 +41,9 @@ public class CipherAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = "v5ai.crypto.type", havingValue = "aes")
     public CredentialCipher aesCredentialCipher() {
+        if (StringUtils.isBlank(secretKey)) {
+            log.warn("Secret key is blank, using default value.");
+        }
         return new AesCredentialCipher(secretKey);
     }
 
@@ -49,6 +55,12 @@ public class CipherAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = "v5ai.crypto.type", havingValue = "sm4")
     public CredentialCipher sm4CredentialCipher() {
+        if (StringUtils.isBlank(secretKey)) {
+            log.warn("Secret key is blank, using default value.");
+        }
+        if (StringUtils.isBlank(iv)) {
+            log.warn("IV is blank, using default value.");
+        }
         return new Sm4CredentialCipher(secretKey, iv);
     }
 
