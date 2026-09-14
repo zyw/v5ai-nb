@@ -369,16 +369,23 @@ onMounted(load)
             </n-card>
 
             <n-card title="配置信息" size="small" :bordered="true">
+              <n-collapse :default-expanded-names="['chat','skill']" class="setting-collapse">
               <n-form label-placement="top" size="small">
-                <n-form-item label="CHAT 模型">
-                  <n-select v-model:value="form.modelId" filterable :options="modelOptions" placeholder="选择已配置的对话模型" />
+                <n-form-item>
+                  <n-collapse-item title="CHAT 模型" name="chat">
+                    <template #header-extra>
+                      Extra
+                    </template>
+                    <n-select v-model:value="form.modelId" filterable :options="modelOptions" placeholder="选择已配置的对话模型" />
+                  </n-collapse-item>
                 </n-form-item>
                 <n-form-item>
-                  <template #label>SKILL</template>
-                  <n-select v-model:value="form.skillIds" multiple clearable :options="skillOptions" placeholder="选择已发布的 Skill" />
-                  <template #feedback>
-                    <span class="field-hint">添加 Skill 后，智能体将具备更多专项能力</span>
-                  </template>
+                  <n-collapse-item title="SKILL" name="skill">
+                    <n-select v-model:value="form.skillIds" multiple clearable :options="skillOptions" placeholder="选择已发布的 Skill" />
+                    <template #feedback>
+                      <span class="field-hint">添加 Skill 后，智能体将具备更多专项能力</span>
+                    </template>
+                  </n-collapse-item>
                 </n-form-item>
                 <n-form-item label="MCP 服务">
                   <n-select v-model:value="form.mcpServerIds" multiple clearable :options="mcpServerOptions" placeholder="选择已发现的 MCP Server" />
@@ -393,6 +400,7 @@ onMounted(load)
                   </template>
                 </n-form-item>
               </n-form>
+              </n-collapse>
             </n-card>
 
             <n-card title="能力开关" size="small" :bordered="true">
@@ -745,5 +753,37 @@ onMounted(load)
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+}
+/*.setting-collapse {
+  border: 1px solid #ccc;
+}*/
+.setting-collapse :deep(.n-collapse-item) {
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  overflow: hidden;
+  width: 100%;
+}
+.setting-collapse :deep(.n-collapse-item__header) {
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+  padding: 14px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid transparent;
+  transition: background .2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.setting-collapse :deep(.n-collapse-item:first-child>.n-collapse-item__header) {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.setting-collapse :deep(.n-collapse-item__content-inner) {
+  padding: 16px;
+  background: #fff;
+  border-top: none;
 }
 </style>
