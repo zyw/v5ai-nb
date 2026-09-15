@@ -131,10 +131,9 @@ async function refreshAgentIcons(rows: AgentResponse[]) {
 
 const columns: DataTableColumns<AgentResponse> = [
   { title: 'ID', key: 'id', width: 54 },
-  // { title: '智能体Key', key: 'agentKey', width: 160 },
-  { title: '名称(key)', key: 'name',width: 'auto',
+  { title: '名称(key)', key: 'name', width: 'auto',
     render: (row) =>
-        h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+        h('div', { style: 'display:flex;align-items:left;gap:8px' }, [
           agentIcons[row.id]
               ? h('img', { src: agentIcons[row.id], alt: row.name, style: 'width:20px;height:20px;border-radius:4px;object-fit:cover' })
               : null,
