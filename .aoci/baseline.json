@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-15T01:36:33Z",
-  "updated_at": "2026-09-15T03:34:52Z",
+  "updated_at": "2026-09-15T08:05:34Z",
   "files": {
     ".claude/settings.local.json": {
       "role": "index",
@@ -82,9 +82,9 @@
       "normalized_sha256": "67959cfb9534c5ceff5089d8e05fabfb006d7848fb1f1ddcf334ad23e70c2625"
     },
     "aoci.code.txt": {
-      "sha256": "d220d5a0d9bf3de5c8e28fc583ab1945a2e2d214f2765758c69f5e91a417e7bc",
-      "size": 441179,
-      "normalized_sha256": "d220d5a0d9bf3de5c8e28fc583ab1945a2e2d214f2765758c69f5e91a417e7bc"
+      "sha256": "6c6c94523f4ae8dcf6cf7ea1617066f50e5c428b80abd321eec734c670149668",
+      "size": 440638,
+      "normalized_sha256": "6c6c94523f4ae8dcf6cf7ea1617066f50e5c428b80abd321eec734c670149668"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -141,10 +141,9 @@
       "normalized_sha256": "4a1d453ff794b00e5e2c9c502357e8a5a4dcfc84452ee862ed47c8970ed88500"
     },
     "docs/api/phase1.md": {
-      "role": "index",
-      "sha256": "00912ada0f71b566e236302624e3d23a07930ac10cb0f42d4dfd1ff086c2d568",
-      "size": 6763,
-      "normalized_sha256": "00912ada0f71b566e236302624e3d23a07930ac10cb0f42d4dfd1ff086c2d568"
+      "sha256": "a4c0a1940ddec2e52958459a81cdc2a283f16ec8bfea23b074f6b44921e6e824",
+      "size": 7088,
+      "normalized_sha256": "a4c0a1940ddec2e52958459a81cdc2a283f16ec8bfea23b074f6b44921e6e824"
     },
     "docs/api/phase2.md": {
       "role": "index",
@@ -2475,10 +2474,9 @@
       "normalized_sha256": "4a8cfe6a1facf30f050938632f505e806f3461dcb6fe1cbefdf6430fa7196ba0"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/AgentController.java": {
-      "role": "index",
-      "sha256": "9d3f88a60dc963b98c9d115a80b883369b5f91778b62b2d4f515a79a3538a437",
-      "size": 5925,
-      "normalized_sha256": "9d3f88a60dc963b98c9d115a80b883369b5f91778b62b2d4f515a79a3538a437"
+      "sha256": "c4aa3f11231d7a3a5b0d6d0c509d490be2b9fda34a7ae9d5bd04db97c391ba7c",
+      "size": 4965,
+      "normalized_sha256": "c4aa3f11231d7a3a5b0d6d0c509d490be2b9fda34a7ae9d5bd04db97c391ba7c"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/vo/GenerateAgentConfigRequest.java": {
       "role": "index",
@@ -2529,10 +2527,9 @@
       "normalized_sha256": "3a4e2328224c41544927d28961fb1dc7ae3befe32ea7ecbb89e166eeff530224"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/bo/AgentBo.java": {
-      "role": "index",
-      "sha256": "6def42bf4ea35e7f8224a4b9ee65d00eb9566471e488413ec54ce6bc46285608",
-      "size": 1938,
-      "normalized_sha256": "6def42bf4ea35e7f8224a4b9ee65d00eb9566471e488413ec54ce6bc46285608"
+      "sha256": "84ac74d32005757846551589eef0882fa09425df5a27b643b1f4296c291dfb84",
+      "size": 2159,
+      "normalized_sha256": "84ac74d32005757846551589eef0882fa09425df5a27b643b1f4296c291dfb84"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/vo/AgentVersionVo.java": {
       "role": "index",
@@ -2583,10 +2580,9 @@
       "normalized_sha256": "cd7a93f03b87b39360c325f560a19219874c143579ae78bad1caa681cde760fd"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/AgentServiceImpl.java": {
-      "role": "index",
-      "sha256": "12a0bbf6d85e609b1fe56f28c10da9e4e5a02d1b5742248eb6eb1720f25fb099",
-      "size": 11360,
-      "normalized_sha256": "12a0bbf6d85e609b1fe56f28c10da9e4e5a02d1b5742248eb6eb1720f25fb099"
+      "sha256": "02245d1ed6595ea1795f8921c900882de40ced2b50c969ee8ba13430b90434e0",
+      "size": 11503,
+      "normalized_sha256": "02245d1ed6595ea1795f8921c900882de40ced2b50c969ee8ba13430b90434e0"
     },
     "v5ai-modules/v5ai-agent/src/main/resources/mapper/AgentCleanupMapper.xml": {
       "role": "index",
@@ -2619,10 +2615,9 @@
       "normalized_sha256": "b9a074cb9a948442c81210d0440d23e30fd0445d2f8999873db87882286d9d89"
     },
     "v5ai-modules/v5ai-agent/src/test/java/xin/v5ai/nb/agent/service/impl/AgentServiceImplTest.java": {
-      "role": "index",
-      "sha256": "d25db66b1319ac99b31299500c5ce2480d5dfa248a873a42bf27a18dab18171f",
-      "size": 11795,
-      "normalized_sha256": "d25db66b1319ac99b31299500c5ce2480d5dfa248a873a42bf27a18dab18171f"
+      "sha256": "ef5044bff33a0a02f1d2f951ebe6e1c9151118aa4800312fbde2e156cc8e3e02",
+      "size": 14020,
+      "normalized_sha256": "ef5044bff33a0a02f1d2f951ebe6e1c9151118aa4800312fbde2e156cc8e3e02"
     },
     "v5ai-modules/v5ai-agent/src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker": {
       "role": "index",
@@ -6123,9 +6118,9 @@
       "normalized_sha256": "dd95c8c9940fb14b06016f32853be9ef932b8add5660046a8c5c90028b9f3b7a"
     },
     "v5ai-ui/src/api/client.ts": {
-      "sha256": "e85f40ead89f5be65d782f8f8aa927f0202b3be6f0614af7e72000d660f46481",
-      "size": 73478,
-      "normalized_sha256": "e85f40ead89f5be65d782f8f8aa927f0202b3be6f0614af7e72000d660f46481"
+      "sha256": "7d59879c5c2bdedc41b0ad50d1485c307cc69f886874c516c1d94509099fe0bf",
+      "size": 73533,
+      "normalized_sha256": "7d59879c5c2bdedc41b0ad50d1485c307cc69f886874c516c1d94509099fe0bf"
     },
     "v5ai-ui/src/components/ChatMessageBody.vue": {
       "role": "index",
@@ -6272,9 +6267,9 @@
       "normalized_sha256": "576cde8dedffc74e122cb9a530fe68ae83e694cf9b49d98421f55ee3c3027b22"
     },
     "v5ai-ui/src/views/AgentsView.vue": {
-      "sha256": "e04a7d180b34f3940e0e05581a464e256f3a9289265f83b0bf7dc21129d9ffdb",
-      "size": 23298,
-      "normalized_sha256": "e04a7d180b34f3940e0e05581a464e256f3a9289265f83b0bf7dc21129d9ffdb"
+      "sha256": "131e20a581896423dcbbad52692eaf033841e39e4bb6738d1ba4065ac13b8d46",
+      "size": 24334,
+      "normalized_sha256": "131e20a581896423dcbbad52692eaf033841e39e4bb6738d1ba4065ac13b8d46"
     },
     "v5ai-ui/src/views/ChatDebugView.vue": {
       "role": "index",

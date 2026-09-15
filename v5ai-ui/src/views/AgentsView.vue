@@ -30,17 +30,11 @@ import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
-  bindKnowledgeBases,
-  bindMcpServers,
-  bindSkills,
   createAgent,
   createApiKey,
   deleteAgent,
   disableAgent,
   generateAgentConfig,
-  getKnowledgeBindings,
-  getMcpServerBindings,
-  getSkillBindings,
   listAgents,
   listKnowledgeBaseOptions,
   listMcpServerOptions,
@@ -72,7 +66,6 @@ const skillOptions = ref<OptionResponse[]>([])
 
 const showModal = ref(false)
 const showPublishModal = ref(false)
-// const showBindModal = ref(false)
 const showKeyModal = ref(false)
 const saving = ref(false)
 
@@ -96,12 +89,6 @@ const draft = reactive({
 })
 
 const publishForm = reactive({ agentKey: '', description: '' })
-const bindForm = reactive({
-  agentKey: '',
-  knowledgeBaseIds: [] as number[],
-  mcpServerIds: [] as number[],
-  skillIds: [] as number[]
-})
 const generatedKey = ref('')
 
 /** Agent 图标预览映射（id -> 可直接用于 <img> 的地址）。 */
@@ -375,30 +362,6 @@ async function openPublish(row: AgentResponse) {
   showPublishModal.value = true
 }
 
-// async function openBind(row: AgentResponse) {
-//   bindForm.agentKey = row.agentKey
-//   try {
-//     await ensureOptions()
-//   } catch (e) {
-//     message.error(e instanceof Error ? e.message : '加载下拉选项失败')
-//   }
-//   try {
-//     const [kb, mcp, skill] = await Promise.all([
-//       getKnowledgeBindings(adminToken.value, row.agentKey),
-//       getMcpServerBindings(adminToken.value, row.agentKey),
-//       getSkillBindings(adminToken.value, row.agentKey)
-//     ])
-//     bindForm.knowledgeBaseIds = kb
-//     bindForm.mcpServerIds = mcp
-//     bindForm.skillIds = skill
-//   } catch {
-//     bindForm.knowledgeBaseIds = []
-//     bindForm.mcpServerIds = []
-//     bindForm.skillIds = []
-//   }
-//   showBindModal.value = true
-// }
-
 async function handlePublish() {
   saving.value = true
   try {
@@ -412,23 +375,6 @@ async function handlePublish() {
     saving.value = false
   }
 }
-
-// async function handleSaveBindings() {
-//   saving.value = true
-//   try {
-//     await Promise.all([
-//       bindKnowledgeBases(adminToken.value, bindForm.agentKey, bindForm.knowledgeBaseIds),
-//       bindMcpServers(adminToken.value, bindForm.agentKey, bindForm.mcpServerIds),
-//       bindSkills(adminToken.value, bindForm.agentKey, bindForm.skillIds)
-//     ])
-//     message.success('绑定已更新')
-//     showBindModal.value = false
-//   } catch (e) {
-//     message.error(e instanceof Error ? e.message : '保存绑定失败')
-//   } finally {
-//     saving.value = false
-//   }
-// }
 
 async function handleCreateKey(agentKey: string) {
   try {
@@ -636,37 +582,6 @@ onMounted(reload)
         </n-space>
       </template>
     </n-modal>
-
-    <!-- 绑定（知识库等） -->
-<!--    <n-modal
-      :show="showBindModal"
-      preset="card"
-      title="编辑绑定"
-      style="width: 560px"
-      :bordered="false"
-      @update:show="(v: boolean) => (showBindModal = v)"
-    >
-      <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
-        为「{{ bindForm.agentKey }}」配置运行时可用的知识库、MCP Server 与 Skill。
-      </n-alert>
-      <n-form label-placement="top">
-        <n-form-item label="知识库">
-          <n-select v-model:value="bindForm.knowledgeBaseIds" multiple clearable :options="knowledgeBaseOptions" />
-        </n-form-item>
-        <n-form-item label="MCP Server">
-          <n-select v-model:value="bindForm.mcpServerIds" multiple clearable :options="mcpServerOptions" />
-        </n-form-item>
-        <n-form-item label="Skill">
-          <n-select v-model:value="bindForm.skillIds" multiple clearable :options="skillOptions" />
-        </n-form-item>
-      </n-form>
-      <template #footer>
-        <n-space justify="end">
-          <n-button @click="showBindModal = false">取消</n-button>
-          <n-button type="primary" :loading="saving" @click="handleSaveBindings">保存绑定</n-button>
-        </n-space>
-      </template>
-    </n-modal>-->
 
     <!-- 生成 Key -->
     <n-modal
