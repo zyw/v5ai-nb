@@ -165,7 +165,7 @@ class AgentServiceImplTest {
     }
 
     /**
-     * 列表查询条件：keyword 生成 name/agentKey 的 OR 组走 DB 侧 ILIKE（大小写原样下发），
+     * 列表查询条件：keyword 生成 name/agentKey 的 OR 组，用 MyBatis-Plus like 实现（与数据库无关），
      * keyword 空白时该组不参与；status 仍是精确匹配。
      * mapper 被 mock 掉、不执行 SQL，故断言生成的 Wrapper 片段。
      */
@@ -181,7 +181,7 @@ class AgentServiceImplTest {
         verify(agentMapper).selectList(any(Page.class), captor.capture());
 
         String sql = captor.getValue().getSqlSegment();
-        assertThat(sql).contains("ILIKE").contains("name").contains("agent_key").contains("OR");
+        assertThat(sql).contains("LIKE").contains("name").contains("agent_key").contains("OR");
         assertThat(sql).contains("status");
         assertThat(captor.getValue().getParamNameValuePairs().values()).contains("%DEMO%");
 
@@ -189,7 +189,9 @@ class AgentServiceImplTest {
         service.queryPageList(new AgentBo(), new PageQuery());
         verify(agentMapper).selectList(any(Page.class), captor.capture());
 
-        assertThat(captor.getValue().getSqlSegment()).doesNotContain("ILIKE");
+        String blankSql = captor.getValue().getSqlSegment();
+        // keyword 空白时整组不参与：既无 LIKE，也不能残留空括号 "()"（否则生成 `WHERE ()` 非法 SQL）。
+        assertThat(blankSql).doesNotContain("LIKE").doesNotContain("()");
     }
 
     @Test

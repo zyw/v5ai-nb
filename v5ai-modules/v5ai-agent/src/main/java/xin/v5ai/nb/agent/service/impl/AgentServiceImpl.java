@@ -1,6 +1,7 @@
 package xin.v5ai.nb.agent.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,16 +45,13 @@ public class AgentServiceImpl implements IAgentService {
     @Override
     public PageResult<AgentVo> queryPageList(AgentBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<Agent> lqw = buildQueryWrapper(bo);
-        return agentMapper.selectVoPage(pageQuery.build(),lqw);
-//        Page<Agent> page = pageQuery.build();
-//        List<Agent> list = agentMapper.selectList(page, lqw);
-//        List<AgentVo> vos = list.stream().map(this::toVo).toList();
-//        return PageResult.build(vos, page.getTotal());
+        IPage<AgentVo> page = agentMapper.selectVoPage(pageQuery.build(), lqw);
+        return PageResult.build(page.getRecords(), page.getTotal());
     }
 
     @Override
     public List<AgentVo> queryList(AgentBo bo) {
-        return agentMapper.selectList(buildQueryWrapper(bo)).stream().map(this::toVo).toList();
+        return agentMapper.selectVoList(buildQueryWrapper(bo));
     }
 
     @Override
@@ -175,23 +173,13 @@ public class AgentServiceImpl implements IAgentService {
      */
     private LambdaQueryWrapper<Agent> buildQueryWrapper(AgentBo bo) {
         // name / agentKey 是既有查询契约（大小写敏感），保留原语义；keyword 是前端唯一入口。
-        return QueryBuilder.lambda(Agent.class).likeIfText(Agent::getName, bo.getName())
+        return QueryBuilder.lambda(Agent.class)
+                .likeIfText(Agent::getName, bo.getName())
                 .likeIfText(Agent::getAgentKey, bo.getAgentKey())
                 .eqIfText(Agent::getStatus, bo.getStatus())
-                // 模糊匹配name和agentKey，大小写不敏感，or的关系，使用与数据库无关的代码编写
-                .nested(w -> w.like(StringUtils.isNotBlank(bo.getKeyword()),Agent::getName, bo.getKeyword())
-                        .or()
-                        .like(StringUtils.isNotBlank(bo.getKeyword()),Agent::getAgentKey, bo.getKeyword()))
+                .nested(StringUtils.isNotBlank(bo.getKeyword()), w -> w.like(Agent::getName, bo.getKeyword()).or().like(Agent::getAgentKey, bo.getKeyword()))
                 .orderByAsc(Agent::getId)
                 .build();
-//        String keyword = bo == null ? null : bo.getKeyword();
-//        if (StringUtils.isNotBlank(keyword)) {
-//            // name / agent_key 任一命中的 OR 组，大小写不敏感（PG ILIKE）。
-//            // 列名只能写原生字符串（wrapper 的 ILIKE 拿不到 Agent::getName 的编译期保护），
-//            // 由 AgentServiceImplTest 的 SQL 片段断言兜底。输入中的 % / _ 按通配符解释，与站内 likeIfText 一致。
-//            String pattern = "%" + keyword.trim() + "%";
-//            builder.nested(w -> w.apply("name ILIKE {0}", pattern).or().apply("agent_key ILIKE {0}", pattern));
-//        }
     }
 
     private Agent requireAgent(String agentKey) {
