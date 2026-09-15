@@ -72,7 +72,7 @@ const skillOptions = ref<OptionResponse[]>([])
 
 const showModal = ref(false)
 const showPublishModal = ref(false)
-const showBindModal = ref(false)
+// const showBindModal = ref(false)
 const showKeyModal = ref(false)
 const saving = ref(false)
 
@@ -133,7 +133,7 @@ const columns: DataTableColumns<AgentResponse> = [
   { title: 'ID', key: 'id', width: 54 },
   { title: '名称(key)', key: 'name', width: 'auto',
     render: (row) =>
-        h('div', { style: 'display:flex;align-items:left;gap:8px' }, [
+        h('div', { style: 'display: flex;align-items: flex-start;gap: 8px;text-overflow: ellipsis;overflow: hidden;white-space: nowrap;' }, [
           agentIcons[row.id]
               ? h('img', { src: agentIcons[row.id], alt: row.name, style: 'width:20px;height:20px;border-radius:4px;object-fit:cover' })
               : null,
@@ -141,6 +141,7 @@ const columns: DataTableColumns<AgentResponse> = [
             size: 'small',
             type: 'primary',
             text: true,
+            title: `${row.name}(${row.agentKey})`,
             onClick: () => openEdit(row)
           }, { default: () => (`${row.name}(${row.agentKey})`) })
         ])},
@@ -162,7 +163,7 @@ const columns: DataTableColumns<AgentResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 220,
+    width: 200,
     render: (row) =>
       h(RowActions, {
         actions: [
@@ -412,22 +413,22 @@ async function handlePublish() {
   }
 }
 
-async function handleSaveBindings() {
-  saving.value = true
-  try {
-    await Promise.all([
-      bindKnowledgeBases(adminToken.value, bindForm.agentKey, bindForm.knowledgeBaseIds),
-      bindMcpServers(adminToken.value, bindForm.agentKey, bindForm.mcpServerIds),
-      bindSkills(adminToken.value, bindForm.agentKey, bindForm.skillIds)
-    ])
-    message.success('绑定已更新')
-    showBindModal.value = false
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '保存绑定失败')
-  } finally {
-    saving.value = false
-  }
-}
+// async function handleSaveBindings() {
+//   saving.value = true
+//   try {
+//     await Promise.all([
+//       bindKnowledgeBases(adminToken.value, bindForm.agentKey, bindForm.knowledgeBaseIds),
+//       bindMcpServers(adminToken.value, bindForm.agentKey, bindForm.mcpServerIds),
+//       bindSkills(adminToken.value, bindForm.agentKey, bindForm.skillIds)
+//     ])
+//     message.success('绑定已更新')
+//     showBindModal.value = false
+//   } catch (e) {
+//     message.error(e instanceof Error ? e.message : '保存绑定失败')
+//   } finally {
+//     saving.value = false
+//   }
+// }
 
 async function handleCreateKey(agentKey: string) {
   try {
@@ -637,7 +638,7 @@ onMounted(reload)
     </n-modal>
 
     <!-- 绑定（知识库等） -->
-    <n-modal
+<!--    <n-modal
       :show="showBindModal"
       preset="card"
       title="编辑绑定"
@@ -665,7 +666,7 @@ onMounted(reload)
           <n-button type="primary" :loading="saving" @click="handleSaveBindings">保存绑定</n-button>
         </n-space>
       </template>
-    </n-modal>
+    </n-modal>-->
 
     <!-- 生成 Key -->
     <n-modal
