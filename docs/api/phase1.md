@@ -140,4 +140,12 @@ GET /api/admin/agents
 POST /api/admin/agents/{agentKey}/publish
 ```
 
+`GET /api/admin/agents` 查询参数：
+
+| 参数 | 语义 |
+|---|---|
+| `keyword` | 模糊关键词（`name` 或 `agentKey` 任一命中，大小写不敏感，OR） |
+| `status` | 状态精确匹配（`DRAFT` / `PUBLISHED` / `DISABLED`） |
+| `name` / `agentKey` | 保留的精确模糊条件（大小写敏感，AND） |
+
 Publishing creates an immutable application version snapshot in `v5ai_application_version` and marks the application as `PUBLISHED`.

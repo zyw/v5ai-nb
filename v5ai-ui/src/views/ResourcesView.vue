@@ -408,6 +408,7 @@ onMounted(reload)</script>
         :columns="columns"
         :data="resources"
         :bordered="false"
+        :scroll-x="columns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
         :row-key="(row: ResourceResponse) => row.id"
         :checked-row-keys="checkedRowKeys"
         @update:checked-row-keys="(keys: Array<string | number>) => (checkedRowKeys = keys.map(Number))"

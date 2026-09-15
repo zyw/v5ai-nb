@@ -404,7 +404,13 @@ onMounted(reload)
         </n-button>
       </n-space>
 
-      <n-data-table :loading="loading" :columns="serverColumns" :data="servers" :bordered="false" />
+      <n-data-table
+        :loading="loading"
+        :columns="serverColumns"
+        :data="servers"
+        :bordered="false"
+        :scroll-x="serverColumns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
+      />
       <n-pagination
         :page="pagination.page"
         :page-size="pagination.pageSize"
@@ -465,7 +471,12 @@ onMounted(reload)
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
         运行时会根据 Agent 已发布配置动态注册这些工具；DENY 权限的工具不会被注册。
       </n-alert>
-      <n-data-table :columns="toolColumns" :data="tools" :bordered="false" />
+      <n-data-table
+        :columns="toolColumns"
+        :data="tools"
+        :bordered="false"
+        :scroll-x="toolColumns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
+      />
     </n-modal>
   </div>
 </template>

@@ -331,7 +331,13 @@ onMounted(reload)
     </n-modal>
 
     <n-modal v-model:show="showRunDetailModal" preset="card" :title="`运行详情（${runDetail?.run.runId.slice(0, 8) ?? ''}）`" style="width: 50%" :bordered="false">
-      <n-data-table v-if="runDetail" :columns="nodeRunColumns" :data="runDetail.nodeRuns" :bordered="false" />
+      <n-data-table
+        v-if="runDetail"
+        :columns="nodeRunColumns"
+        :data="runDetail.nodeRuns"
+        :bordered="false"
+        :scroll-x="nodeRunColumns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
+      />
     </n-modal>
   </div>
 </template>

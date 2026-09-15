@@ -372,6 +372,7 @@ onMounted(reloadLogin)
             :checked-row-keys="operSelected"
             @update:checked-row-keys="(keys: Array<string | number>) => (operSelected = keys as number[])"
             :bordered="false"
+            :scroll-x="operColumns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
           />
           <n-pagination
             :page="operPagination.page"

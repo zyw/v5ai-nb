@@ -1,9 +1,14 @@
 package xin.v5ai.nb.agent.service.impl;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import xin.v5ai.nb.agent.domain.Agent;
 import xin.v5ai.nb.agent.domain.AgentVersion;
 import xin.v5ai.nb.agent.domain.bo.AgentBo;
@@ -22,8 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AgentServiceImplTest {
@@ -40,6 +47,11 @@ class AgentServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        // 纯单测环境无 MyBatis 启动流程，手动初始化实体 TableInfo，使 LambdaQueryWrapper 能解析列名。
+        var configuration = new MybatisConfiguration();
+        var assistant = new MapperBuilderAssistant(configuration, "");
+        TableInfoHelper.initTableInfo(assistant, Agent.class);
+
         agentMapper = mock(AgentMapper.class);
         versionMapper = mock(AgentVersionMapper.class);
 
@@ -150,6 +162,34 @@ class AgentServiceImplTest {
         var page = service.queryPageList(new AgentBo(), new PageQuery());
         assertThat(page.getTotal()).isEqualTo(1);
         assertThat(page.getRows()).extracting(AgentVo::getAgentKey).containsExactly("demo");
+    }
+
+    /**
+     * 列表查询条件：keyword 生成 name/agentKey 的 OR 组走 DB 侧 ILIKE（大小写原样下发），
+     * keyword 空白时该组不参与；status 仍是精确匹配。
+     * mapper 被 mock 掉、不执行 SQL，故断言生成的 Wrapper 片段。
+     */
+    @Test
+    void queryPageListBuildsKeywordOrGroupAndStatusFilter() {
+        service.createAgent(bo("demo", "Demo", 7L));
+        ArgumentCaptor<LambdaQueryWrapper<Agent>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+
+        var byKeyword = new AgentBo();
+        byKeyword.setKeyword("DEMO");
+        byKeyword.setStatus("DRAFT");
+        service.queryPageList(byKeyword, new PageQuery());
+        verify(agentMapper).selectList(any(Page.class), captor.capture());
+
+        String sql = captor.getValue().getSqlSegment();
+        assertThat(sql).contains("ILIKE").contains("name").contains("agent_key").contains("OR");
+        assertThat(sql).contains("status");
+        assertThat(captor.getValue().getParamNameValuePairs().values()).contains("%DEMO%");
+
+        clearInvocations(agentMapper);
+        service.queryPageList(new AgentBo(), new PageQuery());
+        verify(agentMapper).selectList(any(Page.class), captor.capture());
+
+        assertThat(captor.getValue().getSqlSegment()).doesNotContain("ILIKE");
     }
 
     @Test

@@ -15,3 +15,6 @@ dist/
 /v5ai-upload/
 /v5ai-starter/src/main/resources/application-dev.yml
 /v5ai-starter/src/main/resources/application-home.yml
+# DSH 项目级 MCP 配置：内嵌本机绝对路径（aoci 二进制与仓库根），不随仓库共享。
+# 手写的宿主配置须在首次 scan 前忽略，否则会被纳入 Managed Scope 治理。
+/.dsh/mcp.json

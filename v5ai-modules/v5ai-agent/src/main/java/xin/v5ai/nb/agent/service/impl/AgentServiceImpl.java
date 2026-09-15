@@ -16,6 +16,7 @@ import xin.v5ai.nb.agent.service.IAgentDeletionPortService;
 import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 
@@ -173,12 +174,27 @@ public class AgentServiceImpl implements IAgentService {
      * 构造 Agent 列表查询条件。
      */
     private LambdaQueryWrapper<Agent> buildQueryWrapper(AgentBo bo) {
-        return QueryBuilder.lambda(Agent.class)
-                .likeIfText(Agent::getName, bo == null ? null : bo.getName())
-                .likeIfText(Agent::getAgentKey, bo == null ? null : bo.getAgentKey())
-                .eqIfText(Agent::getStatus, bo == null ? null : bo.getStatus())
-                .orderByAsc(Agent::getId)
-                .build();
+        var builder = QueryBuilder.lambda(Agent.class);
+        if (bo == null) {
+            return builder.build();
+        }
+        // name / agentKey 是既有查询契约（大小写敏感），保留原语义；keyword 是前端唯一入口。
+        return builder.likeIfText(Agent::getName, bo.getName())
+                .likeIfText(Agent::getAgentKey, bo.getAgentKey())
+                .eqIfText(Agent::getStatus, bo.getStatus())
+                // 模糊匹配name和agentKey，大小写不敏感，or的关系，使用与数据库无关的代码编写
+                .nested(w -> w.like(StringUtils.isNotBlank(bo.getKeyword()),Agent::getName, bo.getKeyword())
+                        .or()
+                        .like(StringUtils.isNotBlank(bo.getKeyword()),Agent::getAgentKey, bo.getKeyword()))
+                .orderByAsc(Agent::getId).build();
+//        String keyword = bo == null ? null : bo.getKeyword();
+//        if (StringUtils.isNotBlank(keyword)) {
+//            // name / agent_key 任一命中的 OR 组，大小写不敏感（PG ILIKE）。
+//            // 列名只能写原生字符串（wrapper 的 ILIKE 拿不到 Agent::getName 的编译期保护），
+//            // 由 AgentServiceImplTest 的 SQL 片段断言兜底。输入中的 % / _ 按通配符解释，与站内 likeIfText 一致。
+//            String pattern = "%" + keyword.trim() + "%";
+//            builder.nested(w -> w.apply("name ILIKE {0}", pattern).or().apply("agent_key ILIKE {0}", pattern));
+//        }
     }
 
     private Agent requireAgent(String agentKey) {

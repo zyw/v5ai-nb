@@ -466,7 +466,12 @@ onMounted(reload)
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
         运行时注入的是「当前版本」；发布新版本会切换当前版本；「下线」把已发布版本置为已下线（OFFLINE：不再注入、内容冻结，可重新发布或删除）；Skill 存在任何已发布版本时不可禁用或删除。
       </n-alert>
-      <n-data-table :columns="versionColumns" :data="versions" :bordered="false" />
+      <n-data-table
+        :columns="versionColumns"
+        :data="versions"
+        :bordered="false"
+        :scroll-x="versionColumns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
+      />
     </n-modal>
   </div>
 </template>

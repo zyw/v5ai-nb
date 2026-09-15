@@ -17,6 +17,7 @@ import {
   NInput,
   NModal,
   NPagination,
+  NSelect,
   NSpace,
   NStep,
   NSteps,
@@ -24,7 +25,7 @@ import {
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { Plus } from 'lucide-vue-next'
+import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
@@ -47,7 +48,7 @@ import {
   listSkillOptions,
   publishAgent,
   type AgentResponse,
-  type OptionResponse
+  type OptionResponse, type ProviderResponse, loadImagePreview
 } from '../api/client'
 import { adminToken } from '../stores/session'
 import {formatDateTime} from "../utils/dateUtils";
@@ -58,6 +59,12 @@ const dialog = useDialog()
 const loading = ref(false)
 const agents = ref<AgentResponse[]>([])
 const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
+const search = reactive({ keyword: '', status: null as string | null })
+const statusOptions = [
+  { label: '草稿', value: 'DRAFT' },
+  { label: '已发布', value: 'PUBLISHED' },
+  { label: '已禁用', value: 'DISABLED' }
+]
 const modelOptions = ref<OptionResponse[]>([])
 const knowledgeBaseOptions = ref<OptionResponse[]>([])
 const mcpServerOptions = ref<OptionResponse[]>([])
@@ -97,25 +104,61 @@ const bindForm = reactive({
 })
 const generatedKey = ref('')
 
+/** Agent 图标预览映射（id -> 可直接用于 <img> 的地址）。 */
+const agentIcons = reactive<Record<number, string>>({})
+
+function revokeAgentIcons() {
+  for (const url of Object.values(agentIcons)) {
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+  }
+  for (const key of Object.keys(agentIcons)) delete agentIcons[Number(key)]
+}
+
+async function refreshAgentIcons(rows: AgentResponse[]) {
+  revokeAgentIcons()
+  await Promise.all(
+      rows
+          .filter((r) => r.avatar)
+          .map(async (r) => {
+            try {
+              agentIcons[r.id] = await loadImagePreview(adminToken.value, r.avatar!)
+            } catch {
+              // 忽略加载失败的图标
+            }
+          })
+  )
+}
+
 const columns: DataTableColumns<AgentResponse> = [
-  { title: 'ID', key: 'id', width: 64 },
-  { title: '智能体Key', key: 'agentKey', width: 160 },
-  { title: '名称', key: 'name',width: 160 },
-  { title: '描述', key: 'description', width: 200, ellipsis: { tooltip: true } },
+  { title: 'ID', key: 'id', width: 54 },
+  // { title: '智能体Key', key: 'agentKey', width: 160 },
+  { title: '名称(key)', key: 'name',width: 'auto',
+    render: (row) =>
+        h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+          agentIcons[row.id]
+              ? h('img', { src: agentIcons[row.id], alt: row.name, style: 'width:20px;height:20px;border-radius:4px;object-fit:cover' })
+              : null,
+          h(NButton, {
+            size: 'small',
+            type: 'primary',
+            text: true,
+            onClick: () => openEdit(row)
+          }, { default: () => (`${row.name}(${row.agentKey})`) })
+        ])},
+  { title: '描述', key: 'description', width: 'auto', ellipsis: { tooltip: true } },
   {
     title: '状态',
     key: 'status',
-    width: 100,
+    width: 90,
     render: (row) => h(StatusTag, { status: row.status })
   },
-  { title: 'Model ID', key: 'modelId', width: 90 },
+  { title: '模型ID', key: 'modelId', width: 90 },
   {
     title: '发布版本',
     key: 'publishedVersion',
     width: 90,
     render: (row) => row.publishedVersion ?? '-'
   },
-  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
@@ -124,8 +167,6 @@ const columns: DataTableColumns<AgentResponse> = [
     render: (row) =>
       h(RowActions, {
         actions: [
-          { key: 'edit', label: '编辑', secondary: true, type: 'info', onClick: () => openEdit(row) },
-          { key: 'bind', label: '绑定', secondary: true, type: 'warning', onClick: () => openBind(row) },
           { key: 'publish', label: '发布', type: 'primary', onClick: () => openPublish(row) },
           { key: 'key', label: 'Key', secondary: true, onClick: () => handleCreateKey(row.agentKey) },
           { key: 'disable', label: '禁用', secondary: true, type: 'error', onClick: () => handleDisable(row) },
@@ -135,12 +176,23 @@ const columns: DataTableColumns<AgentResponse> = [
   }
 ]
 
+/** 表格横向滚动：列宽总和（auto 列按 240px 估算）。描述列带 ellipsis 会切到 table-layout: fixed，必须显式给 scroll-x，否则窄屏下溢出到页面级横向滚动 */
+const tableScrollX = computed(() =>
+  columns.reduce((sum, col) => sum + (typeof col.width === 'number' ? col.width : 240), 0)
+)
+
 async function reload() {
   loading.value = true
   try {
-    const agentRows = await listAgents(adminToken.value, { pageNum: pagination.page, pageSize: pagination.pageSize })
+    const agentRows = await listAgents(adminToken.value, {
+      pageNum: pagination.page,
+      pageSize: pagination.pageSize,
+      keyword: search.keyword.trim() || undefined,
+      status: search.status ?? undefined
+    })
     agents.value = agentRows.rows
     pagination.itemCount = agentRows.total
+    void refreshAgentIcons(agentRows.rows)
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载数据失败')
   } finally {
@@ -159,6 +211,11 @@ function handlePageChange(page: number) {
 
 function handlePageSizeChange(pageSize: number) {
   pagination.pageSize = pageSize
+  pagination.page = 1
+  void reload()
+}
+
+function handleSearch() {
   pagination.page = 1
   void reload()
 }
@@ -318,29 +375,29 @@ async function openPublish(row: AgentResponse) {
   showPublishModal.value = true
 }
 
-async function openBind(row: AgentResponse) {
-  bindForm.agentKey = row.agentKey
-  try {
-    await ensureOptions()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '加载下拉选项失败')
-  }
-  try {
-    const [kb, mcp, skill] = await Promise.all([
-      getKnowledgeBindings(adminToken.value, row.agentKey),
-      getMcpServerBindings(adminToken.value, row.agentKey),
-      getSkillBindings(adminToken.value, row.agentKey)
-    ])
-    bindForm.knowledgeBaseIds = kb
-    bindForm.mcpServerIds = mcp
-    bindForm.skillIds = skill
-  } catch {
-    bindForm.knowledgeBaseIds = []
-    bindForm.mcpServerIds = []
-    bindForm.skillIds = []
-  }
-  showBindModal.value = true
-}
+// async function openBind(row: AgentResponse) {
+//   bindForm.agentKey = row.agentKey
+//   try {
+//     await ensureOptions()
+//   } catch (e) {
+//     message.error(e instanceof Error ? e.message : '加载下拉选项失败')
+//   }
+//   try {
+//     const [kb, mcp, skill] = await Promise.all([
+//       getKnowledgeBindings(adminToken.value, row.agentKey),
+//       getMcpServerBindings(adminToken.value, row.agentKey),
+//       getSkillBindings(adminToken.value, row.agentKey)
+//     ])
+//     bindForm.knowledgeBaseIds = kb
+//     bindForm.mcpServerIds = mcp
+//     bindForm.skillIds = skill
+//   } catch {
+//     bindForm.knowledgeBaseIds = []
+//     bindForm.mcpServerIds = []
+//     bindForm.skillIds = []
+//   }
+//   showBindModal.value = true
+// }
 
 async function handlePublish() {
   saving.value = true
@@ -434,7 +491,20 @@ onMounted(reload)
     </PageHeader>
 
     <n-card :bordered="true">
-      <n-data-table :loading="loading" :columns="columns" :data="agents" :bordered="false" />
+      <n-space style="margin-bottom: 12px" :size="8" align="center">
+        <n-input v-model:value="search.keyword" placeholder="名称 / Key" clearable style="width: 220px" @keyup.enter="handleSearch" />
+        <n-select v-model:value="search.status" placeholder="状态" clearable style="width: 130px" :options="statusOptions" />
+        <n-button size="small" type="primary" secondary @click="handleSearch">
+          <template #icon><n-icon :component="Search" /></template>
+          查询
+        </n-button>
+        <n-button size="small" quaternary @click="handleSearch">
+          <template #icon><n-icon :component="RefreshCw" /></template>
+          刷新
+        </n-button>
+      </n-space>
+
+      <n-data-table :loading="loading" :columns="columns" :data="agents" :bordered="false" :scroll-x="tableScrollX" />
       <n-pagination
         :page="pagination.page"
         :page-size="pagination.pageSize"

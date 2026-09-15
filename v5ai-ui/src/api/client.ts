@@ -105,6 +105,7 @@ export interface TestConnectionResponse {
 }
 
 export interface AgentResponse {
+  id: number
   agentKey: string
   name: string
   description?: string | null
@@ -808,8 +809,11 @@ export function testModelConnection(adminToken: string, id: number): Promise<Tes
 
 // ---- Agent ----
 
-export function listAgents(adminToken: string, query?: PageQuery): Promise<PageResult<AgentResponse>> {
-  return requestJson<PageResult<AgentResponse>>(`/api/admin/agents${pageQueryString(query)}`, {}, adminToken)
+export function listAgents(
+  adminToken: string,
+  query?: PageQuery & { keyword?: string; status?: string }
+): Promise<PageResult<AgentResponse>> {
+  return requestJson<PageResult<AgentResponse>>(`/api/admin/agents${paramString(query)}`, {}, adminToken)
 }
 
 export function getAgent(adminToken: string, agentKey: string): Promise<AgentResponse> {

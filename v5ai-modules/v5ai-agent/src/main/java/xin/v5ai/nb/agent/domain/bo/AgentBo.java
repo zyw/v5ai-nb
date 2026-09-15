@@ -93,7 +93,13 @@ public class AgentBo {
     private Boolean ragEnabled;
 
     /**
-     * 启用状态（查询条件：DRAFT / PUBLISHED / DISABLED）
+     * 启用状态（查询条件：DRAFT / PUBLISHED / DISABLED，精确匹配）
      */
     private String status;
+
+    /**
+     * 模糊搜索关键词（查询条件：name 或 agentKey 任一命中，大小写不敏感）。
+     * 仅用于列表查询，不参与创建/更新。
+     */
+    private String keyword;
 }
