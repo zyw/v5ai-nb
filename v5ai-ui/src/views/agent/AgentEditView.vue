@@ -13,7 +13,6 @@ import {
   NFormItem,
   NIcon,
   NInput,
-  NSelect,
   NSkeleton,
   NSpace,
   NSwitch,
@@ -27,11 +26,10 @@ import {
   getKnowledgeBindings,
   getMcpServerBindings,
   getSkillBindings,
-  listKnowledgeBaseOptions,
-  listMcpServerOptions,
-  listModelOptions,
+  listKnowledgeBases,
+  listMcpServers,
   listModels,
-  listSkillOptions,
+  listSkills,
   loadImagePreview,
   updateAgent,
   bindKnowledgeBases,
@@ -39,13 +37,15 @@ import {
   bindSkills,
   type AgentResponse,
   type ModelResponse,
-  type OptionResponse
+  type ResourceOption
 } from '../../api/client'
 import { adminToken } from '../../stores/session'
 import { formatDateTime } from '../../utils/dateUtils'
 import StatusTag from '../../components/StatusTag.vue'
 import PreviewPanel from './PreviewPanel.vue'
 import IconPicker from '../../components/IconPicker.vue'
+import ResourceIcon from '../../components/ResourceIcon.vue'
+import ResourcePickerList from '../../components/ResourcePickerList.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,10 +61,18 @@ const newQuestion = ref('')
 const avatarPreview = ref('')
 const showAvatarPicker = ref(false)
 
-const modelOptions = ref<OptionResponse[]>([])
-const knowledgeBaseOptions = ref<OptionResponse[]>([])
-const mcpServerOptions = ref<OptionResponse[]>([])
-const skillOptions = ref<OptionResponse[]>([])
+const modelCatalog = ref<ResourceOption[]>([])
+const skillCatalog = ref<ResourceOption[]>([])
+const mcpCatalog = ref<ResourceOption[]>([])
+const kbCatalog = ref<ResourceOption[]>([])
+
+type PickerKind = 'model' | 'skill' | 'mcp' | 'rag'
+const pickerOpen = ref(false)
+const pickerKind = ref<PickerKind>('skill')
+const pickerMultiple = ref(true)
+const pickerTitle = ref('')
+const pickerItems = ref<ResourceOption[]>([])
+const pickerSelected = ref<number[]>([])
 
 const form = reactive({
   name: '',
@@ -82,6 +90,74 @@ const form = reactive({
   skillEnabled: false,
   webSearchEnabled: false,
   ragEnabled: false
+})
+
+const selectedModel = computed(() => modelCatalog.value.find((m) => m.id === form.modelId) ?? null)
+const selectedSkills = computed(() =>
+  form.skillIds.map((id) => skillCatalog.value.find((s) => s.id === id)).filter((s): s is ResourceOption => !!s)
+)
+const selectedMcps = computed(() =>
+  form.mcpServerIds.map((id) => mcpCatalog.value.find((s) => s.id === id)).filter((s): s is ResourceOption => !!s)
+)
+const selectedKbs = computed(() =>
+  form.knowledgeBaseIds.map((id) => kbCatalog.value.find((s) => s.id === id)).filter((s): s is ResourceOption => !!s)
+)
+
+/** MCP 传输类型展示标签：STREAMABLE_HTTP → HTTP，其余原样。 */
+function mcpTransportLabel(t: string): string {
+  return t === 'STREAMABLE_HTTP' ? 'HTTP' : t
+}
+
+function openPicker(kind: PickerKind, title: string, multiple: boolean, items: ResourceOption[], selected: number[]) {
+  pickerKind.value = kind
+  pickerTitle.value = title
+  pickerMultiple.value = multiple
+  pickerItems.value = items
+  pickerSelected.value = selected
+  pickerOpen.value = true
+}
+
+function openModelPicker() {
+  openPicker('model', '选择对话模型', false, modelCatalog.value, form.modelId != null ? [form.modelId] : [])
+}
+function openSkillPicker() {
+  openPicker('skill', '添加 Skill', true, skillCatalog.value, form.skillIds)
+}
+function openMcpPicker() {
+  openPicker('mcp', '添加 MCP 服务', true, mcpCatalog.value, form.mcpServerIds)
+}
+function openKbPicker() {
+  openPicker('rag', '添加知识库', true, kbCatalog.value, form.knowledgeBaseIds)
+}
+
+function onPickerSelect(id: number) {
+  if (pickerKind.value === 'model') form.modelId = id
+}
+function onPickerConfirm(ids: number[]) {
+  if (pickerKind.value === 'skill') form.skillIds = ids
+  else if (pickerKind.value === 'mcp') form.mcpServerIds = ids
+  else if (pickerKind.value === 'rag') form.knowledgeBaseIds = ids
+}
+
+function removeSkill(id: number) {
+  form.skillIds = form.skillIds.filter((x) => x !== id)
+}
+function removeMcp(id: number) {
+  form.mcpServerIds = form.mcpServerIds.filter((x) => x !== id)
+}
+function removeKb(id: number) {
+  form.knowledgeBaseIds = form.knowledgeBaseIds.filter((x) => x !== id)
+}
+
+// 没有绑定项时运行时开关必须保持关闭（前端开关也因此不可打开）
+watch(selectedSkills, (list) => {
+  if (!list.length) form.skillEnabled = false
+})
+watch(selectedMcps, (list) => {
+  if (!list.length) form.mcpEnabled = false
+})
+watch(selectedKbs, (list) => {
+  if (!list.length) form.ragEnabled = false
 })
 
 const updatedAtLabel = computed(() => formatDateTime(detail.value?.updatedAt) ?? '—')
@@ -192,21 +268,36 @@ async function load() {
   loading.value = true
   missing.value = false
   try {
-    // 详情与下拉选项并行拉取；绑定查询失败不阻断整页渲染。
+    // 详情与四类资源列表并行拉取；绑定查询失败不阻断整页渲染。
     const [row, models, kbs, mcps, skills] = await Promise.all([
       getAgent(adminToken.value, agentKey.value),
-      listModelOptions(adminToken.value, 'CHAT'),
-      listKnowledgeBaseOptions(adminToken.value),
-      listMcpServerOptions(adminToken.value),
-      listSkillOptions(adminToken.value)
+      listModels(adminToken.value, { pageNum: 1, pageSize: 200, modelType: 'CHAT', enabled: true }),
+      listKnowledgeBases(adminToken.value, { pageNum: 1, pageSize: 200 }),
+      listMcpServers(adminToken.value, { pageNum: 1, pageSize: 200, status: 'ACTIVE' }),
+      listSkills(adminToken.value, { pageNum: 1, pageSize: 200, status: 'ACTIVE' })
     ])
-    modelOptions.value = models
-    knowledgeBaseOptions.value = kbs
-    mcpServerOptions.value = mcps
-    skillOptions.value = skills
+    modelCatalog.value = models.rows.map((m) => ({
+      id: m.id,
+      name: m.modelName ?? m.modelKey,
+      description: m.description ?? null,
+      icon: null,
+      default: m.isDefault,
+      meta: null
+    }))
+    kbCatalog.value = kbs.rows.map((k) => ({ id: k.id, name: k.name, description: k.description ?? null, icon: k.icon ?? null }))
+    mcpCatalog.value = mcps.rows.map((s) => ({
+      id: s.id,
+      name: s.name,
+      description: null,
+      icon: null,
+      meta: mcpTransportLabel(s.transportType)
+    }))
+    skillCatalog.value = skills.rows
+      .filter((s) => s.currentVersionId != null)
+      .map((s) => ({ id: s.id, name: s.name, description: s.description ?? null, icon: null }))
     applyAgent(row)
     if (form.modelId == null) {
-      form.modelId = models.find((o) => o.isDefault)?.value ?? models[0]?.value ?? null
+      form.modelId = modelCatalog.value.find((m) => m.default)?.id ?? modelCatalog.value[0]?.id ?? null
     }
     await refreshImageSupport()
     const [skillIds, mcpIds, kbIds] = await Promise.all([
@@ -369,51 +460,108 @@ onMounted(load)
             </n-card>
 
             <n-card title="配置信息" size="small" :bordered="true">
-              <n-collapse :default-expanded-names="['chat','skill']" class="setting-collapse">
-              <n-form label-placement="top" size="small">
-                <n-form-item>
-                  <n-collapse-item title="CHAT 模型" name="chat">
-                    <template #header-extra>
-                      Extra
-                    </template>
-                    <n-select v-model:value="form.modelId" filterable :options="modelOptions" placeholder="选择已配置的对话模型" />
-                  </n-collapse-item>
-                </n-form-item>
-                <n-form-item>
-                  <n-collapse-item title="SKILL" name="skill">
-                    <n-select v-model:value="form.skillIds" multiple clearable :options="skillOptions" placeholder="选择已发布的 Skill" />
-                    <template #feedback>
-                      <span class="field-hint">添加 Skill 后，智能体将具备更多专项能力</span>
-                    </template>
-                  </n-collapse-item>
-                </n-form-item>
-                <n-form-item label="MCP 服务">
-                  <n-select v-model:value="form.mcpServerIds" multiple clearable :options="mcpServerOptions" placeholder="选择已发现的 MCP Server" />
-                  <template #feedback>
-                    <span class="field-hint">添加 MCP 服务后，对话中即可使用这些工具能力</span>
-                  </template>
-                </n-form-item>
-                <n-form-item label="知识库">
-                  <n-select v-model:value="form.knowledgeBaseIds" multiple clearable :options="knowledgeBaseOptions" placeholder="选择知识库（RAG）" />
-                  <template #feedback>
-                    <span class="field-hint">绑定知识库后，回答会检索库内文档并给出引用</span>
-                  </template>
-                </n-form-item>
-              </n-form>
-              </n-collapse>
-            </n-card>
-
-            <n-card title="能力开关" size="small" :bordered="true">
-              <n-alert v-if="!modelOptions.length" type="warning" :bordered="false" style="margin-bottom: 10px">
+              <n-alert v-if="!modelCatalog.length" type="warning" :bordered="false" style="margin-bottom: 12px">
                 尚未配置可用的对话模型，请先在「模型管理」中配置并启用模型。
               </n-alert>
-              <n-space size="large" wrap>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.memoryEnabled" /><span>记忆库</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.mcpEnabled" /><span>MCP</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.skillEnabled" /><span>Skill</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.webSearchEnabled" /><span>联网搜索</span></n-space>
-                <n-space align="center" :size="8"><n-switch v-model:value="form.ragEnabled" /><span>RAG</span></n-space>
-              </n-space>
+
+              <!-- Chat 模型（单选） -->
+              <div class="config-group">
+                <div class="config-group-head">
+                  <div class="config-group-title">Chat 模型</div>
+                  <n-tag size="small" :bordered="false" type="info" style="margin-left: 8px">单选</n-tag>
+                  <div class="config-group-actions">
+                    <n-button size="tiny" secondary @click="openModelPicker">更换模型</n-button>
+                  </div>
+                </div>
+                <div class="resource-list">
+                  <div v-if="selectedModel" class="resource-item">
+                    <ResourceIcon kind="model" :size="36" />
+                    <div class="resource-item-main">
+                      <div class="resource-item-name">{{ selectedModel.name }}</div>
+                      <div v-if="selectedModel.description" class="resource-item-desc">{{ selectedModel.description }}</div>
+                    </div>
+                    <n-tag v-if="selectedModel.default" size="small" :bordered="false" type="success">默认</n-tag>
+                  </div>
+                  <n-empty v-else description="未选择对话模型" size="small" style="padding: 8px 0" />
+                </div>
+              </div>
+
+              <!-- Skill -->
+              <div class="config-group">
+                <div class="config-group-head">
+                  <div class="config-group-title">Skill</div>
+                  <div class="config-group-actions">
+                    <n-switch v-model:value="form.skillEnabled" size="small" :disabled="!selectedSkills.length" />
+                    <n-button size="tiny" secondary @click="openSkillPicker">+ 添加 Skill</n-button>
+                  </div>
+                </div>
+                <div class="resource-list">
+                  <div v-for="s in selectedSkills" :key="s.id" class="resource-item">
+                    <ResourceIcon kind="skill" :icon="s.icon" :size="36" />
+                    <div class="resource-item-main">
+                      <div class="resource-item-name">{{ s.name }}</div>
+                      <div v-if="s.description" class="resource-item-desc">{{ s.description }}</div>
+                    </div>
+                    <n-button size="tiny" quaternary type="error" @click="removeSkill(s.id)">移除</n-button>
+                  </div>
+                  <n-empty v-if="!selectedSkills.length" description="未添加 Skill" size="small" style="padding: 8px 0" />
+                </div>
+              </div>
+
+              <!-- MCP -->
+              <div class="config-group">
+                <div class="config-group-head">
+                  <div class="config-group-title">MCP 服务</div>
+                  <div class="config-group-actions">
+                    <n-switch v-model:value="form.mcpEnabled" size="small" :disabled="!selectedMcps.length" />
+                    <n-button size="tiny" secondary @click="openMcpPicker">+ 添加 MCP</n-button>
+                  </div>
+                </div>
+                <div class="resource-list">
+                  <div v-for="s in selectedMcps" :key="s.id" class="resource-item">
+                    <ResourceIcon kind="mcp" :icon="s.icon" :size="36" />
+                    <div class="resource-item-main">
+                      <div class="resource-item-name">{{ s.name }}</div>
+                    </div>
+                    <n-tag v-if="s.meta" size="small" :bordered="false" type="info">{{ s.meta }}</n-tag>
+                    <n-button size="tiny" quaternary type="error" @click="removeMcp(s.id)">移除</n-button>
+                  </div>
+                  <n-empty v-if="!selectedMcps.length" description="未添加 MCP 服务" size="small" style="padding: 8px 0" />
+                </div>
+              </div>
+
+              <!-- RAG 知识库 -->
+              <div class="config-group">
+                <div class="config-group-head">
+                  <div class="config-group-title">RAG 知识库</div>
+                  <div class="config-group-actions">
+                    <n-switch v-model:value="form.ragEnabled" size="small" :disabled="!selectedKbs.length" />
+                    <n-button size="tiny" secondary @click="openKbPicker">+ 添加知识库</n-button>
+                  </div>
+                </div>
+                <div class="resource-list">
+                  <div v-for="s in selectedKbs" :key="s.id" class="resource-item">
+                    <ResourceIcon kind="rag" :icon="s.icon" :size="36" />
+                    <div class="resource-item-main">
+                      <div class="resource-item-name">{{ s.name }}</div>
+                      <div v-if="s.description" class="resource-item-desc">{{ s.description }}</div>
+                    </div>
+                    <n-button size="tiny" quaternary type="error" @click="removeKb(s.id)">移除</n-button>
+                  </div>
+                  <n-empty v-if="!selectedKbs.length" description="未添加知识库" size="small" style="padding: 8px 0" />
+                </div>
+              </div>
+
+              <!-- 其他能力（无列表） -->
+              <div class="config-group config-group--last">
+                <div class="config-group-head">
+                  <div class="config-group-title">其他能力</div>
+                </div>
+                <div class="resource-list other-switches">
+                  <n-space align="center" :size="8"><n-switch v-model:value="form.memoryEnabled" size="small" /><span>记忆库</span></n-space>
+                  <n-space align="center" :size="8"><n-switch v-model:value="form.webSearchEnabled" size="small" /><span>联网搜索</span></n-space>
+                </div>
+              </div>
             </n-card>
 
             <n-card title="系统指令" size="small" :bordered="true">
@@ -486,6 +634,17 @@ onMounted(load)
     :model-value="form.avatar"
     :admin-token="adminToken"
     @update:model-value="handleAvatarPicked"
+  />
+
+  <ResourcePickerList
+    v-model:show="pickerOpen"
+    :title="pickerTitle"
+    :kind="pickerKind"
+    :multiple="pickerMultiple"
+    :items="pickerItems"
+    :selected-ids="pickerSelected"
+    @select="onPickerSelect"
+    @confirm="onPickerConfirm"
   />
 </template>
 
@@ -754,36 +913,71 @@ onMounted(load)
   align-items: flex-start;
   gap: 4px;
 }
-/*.setting-collapse {
-  border: 1px solid #ccc;
-}*/
-.setting-collapse :deep(.n-collapse-item) {
+/* 配置信息：列表式资源选择器 */
+.config-group {
+  padding: 4px 0 12px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
   margin-bottom: 10px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  overflow: hidden;
-  width: 100%;
 }
-.setting-collapse :deep(.n-collapse-item__header) {
-  font-weight: 600;
-  font-size: 14px;
-  color: #374151;
-  padding: 14px 16px;
-  background: #fafafa;
-  border-bottom: 1px solid transparent;
-  transition: background .2s;
+.config-group--last {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.config-group-head {
   display: flex;
-  justify-content: center;
   align-items: center;
+  gap: 8px;
 }
-.setting-collapse :deep(.n-collapse-item:first-child>.n-collapse-item__header) {
-  padding-top: 14px;
-  padding-bottom: 14px;
+.config-group-title {
+  font-size: 14px;
+  font-weight: 600;
 }
-.setting-collapse :deep(.n-collapse-item__content-inner) {
-  padding: 16px;
-  background: #fff;
-  border-top: none;
+.config-group-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.resource-item:hover {
+  background: rgba(128, 128, 128, 0.06);
+}
+.resource-item-main {
+  flex: 1;
+  min-width: 0;
+}
+.resource-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.resource-item-desc {
+  font-size: 12px;
+  color: rgba(120, 120, 120, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.other-switches {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-left: 8px;
 }
 </style>

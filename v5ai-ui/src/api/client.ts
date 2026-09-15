@@ -1744,6 +1744,18 @@ export interface OptionResponse {
   isDefault?: boolean
 }
 
+/** 列表式资源选择器统一条目（模型/Skill/MCP/知识库）。description/icon 缺省时由页面回退。 */
+export interface ResourceOption {
+  id: number
+  name: string
+  description?: string | null
+  icon?: string | null
+  /** 次要徽标文本，如 MCP 传输类型 STDIO/SSE/HTTP。 */
+  meta?: string | null
+  /** 是否为默认模型。 */
+  default?: boolean
+}
+
 export function listModelOptions(adminToken: string, type?: 'CHAT' | 'EMBEDDING' | 'RERANK'): Promise<OptionResponse[]> {
   return requestJson<OptionResponse[]>(`/api/admin/models/options${type ? `?modelType=${type}` : ''}`, {}, adminToken)
 }

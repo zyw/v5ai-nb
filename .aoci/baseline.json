@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-15T01:36:33Z",
-  "updated_at": "2026-09-15T08:05:34Z",
+  "updated_at": "2026-09-15T08:16:15Z",
   "files": {
     ".claude/settings.local.json": {
       "role": "index",
@@ -82,9 +82,9 @@
       "normalized_sha256": "67959cfb9534c5ceff5089d8e05fabfb006d7848fb1f1ddcf334ad23e70c2625"
     },
     "aoci.code.txt": {
-      "sha256": "6c6c94523f4ae8dcf6cf7ea1617066f50e5c428b80abd321eec734c670149668",
-      "size": 440638,
-      "normalized_sha256": "6c6c94523f4ae8dcf6cf7ea1617066f50e5c428b80abd321eec734c670149668"
+      "sha256": "d326bb3ec05be0dfaaa3df1ffdae8ab7b82be27fe5f3563c0df4a71e0a1a616d",
+      "size": 440894,
+      "normalized_sha256": "d326bb3ec05be0dfaaa3df1ffdae8ab7b82be27fe5f3563c0df4a71e0a1a616d"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -6267,9 +6267,9 @@
       "normalized_sha256": "576cde8dedffc74e122cb9a530fe68ae83e694cf9b49d98421f55ee3c3027b22"
     },
     "v5ai-ui/src/views/AgentsView.vue": {
-      "sha256": "131e20a581896423dcbbad52692eaf033841e39e4bb6738d1ba4065ac13b8d46",
-      "size": 24334,
-      "normalized_sha256": "131e20a581896423dcbbad52692eaf033841e39e4bb6738d1ba4065ac13b8d46"
+      "sha256": "a3312ab84f401caedde8275d6e5e25fdccf4882731cb2e652fbfc162b2ce8c1f",
+      "size": 21391,
+      "normalized_sha256": "a3312ab84f401caedde8275d6e5e25fdccf4882731cb2e652fbfc162b2ce8c1f"
     },
     "v5ai-ui/src/views/ChatDebugView.vue": {
       "role": "index",
