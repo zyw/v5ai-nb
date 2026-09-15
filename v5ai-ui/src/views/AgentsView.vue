@@ -48,7 +48,7 @@ import {
   listSkillOptions,
   publishAgent,
   type AgentResponse,
-  type OptionResponse, type ProviderResponse, loadImagePreview
+  type OptionResponse, loadImagePreview
 } from '../api/client'
 import { adminToken } from '../stores/session'
 import {formatDateTime} from "../utils/dateUtils";

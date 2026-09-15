@@ -11,8 +11,8 @@ import xin.v5ai.nb.agent.domain.vo.AgentVersionVo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
-import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.log.annotation.Log;
 import xin.v5ai.nb.common.log.enums.BusinessType;
@@ -36,16 +36,12 @@ public class AgentController extends BaseController {
     private final IAgentService agentService;
     private final AgentConfigGenerator agentConfigGenerator;
 
-//    @Autowired(required = false)
-//    private AuditLogRecorderService auditRecorder;
-
     /**
      * 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。
      */
     @PostMapping("/generate")
     @Log(title = "生成智能体配置", businessType = BusinessType.GENCODE)
     public R<GenerateAgentConfigResponse> generateAgentConfig(@RequestBody GenerateAgentConfigRequest request) {
-//        audit("GENERATE", "agent-config", null, "generate agent config");
         return R.ok(GenerateAgentConfigResponse.from(
                 agentConfigGenerator.generate(request.modelId(), request.description())));
     }
@@ -59,7 +55,6 @@ public class AgentController extends BaseController {
     @Log(title = "新建智能体", businessType = BusinessType.INSERT)
     public R<AgentVo> createAgent(@Validated(AddGroup.class) @RequestBody AgentBo bo) {
         var created = agentService.createAgent(bo);
-//        audit("CREATE", "agent", created.getAgentKey(), "create agent");
         return R.ok(created);
     }
 
@@ -83,9 +78,7 @@ public class AgentController extends BaseController {
     @Log(title = "更新智能体", businessType = BusinessType.UPDATE)
     public R<AgentVo> updateAgent(@PathVariable("agentKey") String agentKey,
                                   @RequestBody AgentBo bo) {
-        var updated = agentService.updateAgent(agentKey, bo);
-//        audit("UPDATE", "agent", agentKey, "update agent");
-        return R.ok(updated);
+        return R.ok(agentService.updateAgent(agentKey, bo));
     }
 
     /**
@@ -97,7 +90,6 @@ public class AgentController extends BaseController {
     @Log(title = "禁用智能体", businessType = BusinessType.DISABLE)
     public R<Void> disableAgent(@PathVariable("agentKey") String agentKey) {
         agentService.disable(agentKey);
-//        audit("DISABLE", "agent", agentKey, "disable agent");
         return R.ok();
     }
     /**
@@ -109,7 +101,6 @@ public class AgentController extends BaseController {
     @Log(title = "删除智能体", businessType = BusinessType.DELETE)
     public R<Void> deleteAgent(@PathVariable("agentKey") String agentKey) {
         agentService.delete(agentKey);
-//        audit("DELETE", "agent", agentKey, "delete agent with all related data");
         return R.ok();
     }
     /**
@@ -136,20 +127,6 @@ public class AgentController extends BaseController {
     public R<Void> publishAgent(@PathVariable("agentKey") String agentKey,
                                 @RequestBody PublishAgentRequest request) {
         agentService.publish(agentKey, request == null ? null : request.description());
-//        audit("PUBLISH", "agent", agentKey, "publish agent");
         return R.ok();
     }
-
-    /*private void audit(String action, String targetType, String targetId, String detail) {
-        if (auditRecorder == null) {
-            return;
-        }
-        String actor;
-        try {
-            actor = LoginHelper.getUsername();
-        } catch (Exception exception) {
-            actor = null;
-        }
-        auditRecorder.record(null, actor, action, targetType, targetId, detail, null);
-    }*/
 }
