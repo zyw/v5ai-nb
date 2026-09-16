@@ -44,16 +44,16 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 
 | 模块 | 职责 |
 |---|---|
-| `v5ai-common` | 公共能力：统一响应（`R`）、异常（`V5aiException`/`ErrorCode`）、分页（`PageQuery`/`PageResult`）、MyBatis-Plus 扩展（`BaseMapperPlus`/`QueryBuilder`）、加解密（`CredentialCipher`）、API Key 校验端口（`AgentApiKeyVerifier`）、平台领域（用户/角色/菜单/配额/用量/审计/限流端口与模型） |
+| `v5ai-common` | 公共能力：统一响应（`R`）、异常（`V5aiException`/`ErrorCode`）、分页（`PageQuery`/`PageResult`）、MyBatis-Plus 扩展（`BaseMapperPlus`/`QueryBuilder`）、加解密（`CredentialCipher`）、API Key 校验端口（`AgentApiKeyVerifier`）、平台领域（用户/角色/菜单/配额/用量/审计/限流端口与模型）；`v5ai-common-agentscope` 承载运行时契约：端口在 `core/service/*`（`AgentService`/`MessageService`/`ConversationService`/`RunRecordService`…），载体在 `core/domain/dto|bo|vo`（`AgentDTO`/`AgentVersionDTO`/`AgentRunBo`/`AgentRunVo`/`SessionMessage`），执行器与内置工具在 `core/executor/*`、`core/*Tool`（`ModelStreamTextExecutor`/`AgentScopeHarnessExecutor`/`WebSearchTool`/`RagSearchTool`） |
 | `v5ai-model` | **自包含模块（新风格的样板）**：`domain` 实体（`V5aiModel`/`V5aiModelProvider`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus` + `ModelConfigRetrieve` 端口）、`service`/`service.impl`、`controller`（`/api/admin/models`、`/api/admin/providers`），以及运行时模型链（`runtime/AgentScopeModelFactory`、`runtime/AgentScopeModelConnectionTester`、`runtime/config/*`）。凭据 AES-GCM 加密，支持连通性测试 |
-| `v5ai-agent` | **自包含模块**：`domain` 实体（`AgentDTO`/`AgentVersionDTO`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus` + `DatabaseAgentRepository` 实现 `AgentRepository` 端口）、`service`（`IAgentService`：草稿/发布/禁用/版本/分页）、`controller`（`/api/admin/agents`）；保留运行时端口与 record（`AgentRepository`/`PublishedAgentResolver`/`AgentConfigGenerator`/`AgentDTO`），运行时链（`AgentRuntime`/`ChatController`）零改动；级联删除通过 `AgentDeletionPort` 由 infra 实现 |
-| `v5ai-runtime` | Agent 运行时边界：`AgentRuntime`（stream/call）、事件模型（`RuntimeEvent`/`RuntimeEventType`）、会话/消息/run/run_event/AgentState 持久化端口、用量埋点、RAG 上下文端口（`RagContextProvider`）、MCP Tool 解析端口（`McpToolResolver`） |
+| `v5ai-agent` | **自包含模块**：`domain` 实体（`Agent`/`AgentVersion`）、`domain/bo`（`AgentBo`）、`domain/vo`（`AgentVo`/`AgentVersionVo`）、`mapper`（`BaseMapperPlus` + `AgentCleanupMapper`）、`service`（`IAgentService` 管理服务：创建/更新/草稿/发布/禁用/版本/分页）、`service/impl`（`AgentServiceImpl` 管理实现；`DBAgentServiceImpl`（`@Primary`，MyBatis-Plus）实现 common 的运行时端口 `AgentService`，同类型不再有其他实现以免多候选）、`core`（`AgentConfigGenerator`/`AgentScopeAgentConfigGenerator`：按描述调模型生成配置）、`controller`（`/api/admin/agents`）；级联删除走 `IAgentDeletionPortService`；旧的 `AgentRepository`/`DatabaseAgentRepository`/`InMemoryAgentRepository` 已废弃（整文件注释，不再使用） |
+| `v5ai-runtime` | Agent 运行时装配与持久化边界：`ChatController`/`AgentDebugController`（运行 / 调试入口，含 `controller/vo`）、`PersistingAgentRuntime`（持久化装饰器）、`PublishedModelAgentTextExecutor`、`AgentScopeRuntimeConfiguration`（装配执行器与运行时 Bean）、`DBAgentModelResolver`，以及运行期会话/消息/run/run_event/AgentState 的实体 + Mapper + `MyBatis*Repository` + `core/gateway`（实现 common `core/service` 的持久化端口）；运行时端口与事件模型（`AgentService`/`RagContextProvider`/`RagSearchProvider`/`McpToolResolver`/`RuntimeEvent`/`AgentRunBo`/`AgentRunVo`）定义在 `v5ai-common-agentscope` |
 | `v5ai-rag` | **自包含模块**：`domain` 实体（`KnowledgeBase`/`KnowledgeDocument`/`KnowledgeTask`/`AgentKnowledgeBinding`）、`bo`/`vo`、`mapper`（`BaseMapperPlus` + 端口实现 `MyBatis*Repository`）、`service`（`IKnowledgeBaseService`：知识库/文档/任务/绑定/URL 导入）、`controller`（`/api/admin/knowledge-bases`、`knowledge-bindings`）；保留运行时端口（`EmbeddingClient`/`VectorStore`/解析/切片/`RetrievalContextBuilder` 等），实现仍在 infra（PgVectorStore、OpenAiCompatibleEmbeddingClient、解析器） |
 | `v5ai-mcp` | **自包含模块**：`domain` 实体（`McpServer`/`McpTool`/`McpToolCallAudit`/`AgentMcpBinding`，headers/env 密文列）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus`）、`service`（`IMcpServerService`：连接测试、Tool 发现、权限三态、绑定、审计）、`controller`（`/api/admin/mcp-servers`、`/api/admin/mcp-tool-calls`、`agents/{agentKey}/mcp-bindings`）；保留运行时端口（`McpClientFactory`/`McpConnection`/`McpToolInfo`/`StdioCommandPolicy`/`McpToolPermissionPolicy`/`McpToolCallAuditRepository`），实现仍在 `v5ai-infrastructure`（AgentScope 适配） |
 | `v5ai-skill` | **自包含模块**：`domain` 实体（`SkillDTO`/`SkillVersion`/`SkillFileDTO`/`AgentSkillBinding`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus`）、`service`（`ISkillService`：上传解析、版本发布/回滚、绑定）、`controller`（`/api/admin/skills`、`agents/{agentKey}/skill-bindings`）；保留纯逻辑与运行时端口（`SkillPackageParser`/`SkillFrontmatterParser`/`SkillWorkspaceResolver`/`ResolvedSkill`），`SkillWorkspaceResolver` 实现在 `v5ai-infrastructure` |
 | `v5ai-workflow` | **自包含模块（进行中）**：`domain` 实体（`Workflow`/`WorkflowRun`/`WorkflowNodeRun`）、`bo`/`vo`、`mapper`（`BaseMapperPlus` + 运行时端口实现 `MyBatisWorkflowRepository`/`MyBatisWorkflowRunRepository`）、`service`（`IWorkflowService`：草稿/发布/禁用/运行查询）、`controller`（`/api/admin/workflows`）；保留纯逻辑（`WorkflowEngine`/`TemplateResolver`/`ConditionEvaluator`/`WorkflowDefinitionValidator`/`WorkflowJson`） |
 | `v5ai-worker` | 文档索引 Worker（异步任务状态机 + `@Scheduled` + 重试） |
-| `v5ai-platform` | **自包含平台模块**：auth（`platform.auth`：`AuthController`/`LoginServiceImpl`/`SaTokenWebConfiguration`/`PlmPermissionServiceImpl`，`platform.security`：`PasswordVerifier`/`BCryptPasswordVerifier`/`SaTokenConfiguration`）、apiKey（`platform.apiKey`：Agent API Key 管理/校验/过滤器 + `platform.domain.ApiKey`）、平台业务（`platform.domain`/`mapper`/`service.impl` 端口实现 + `platform.controller` 控制器：users/roles/menus/clients/logs/quota/usage/apiKey）、**db/migration（Flyway 迁移脚本，V23 已移除租户）**；common-core 的平台端口/record 保留为契约 |
+| `v5ai-platform` | **自包含平台模块**：auth（`platform.auth`：`AuthController`/`LoginServiceImpl`/`SaTokenWebConfiguration`/`PlmPermissionServiceImpl`，`platform.security`：`PasswordVerifier`/`BCryptPasswordVerifier`/`SaTokenConfiguration`）、apiKey（`platform.apiKey`：Agent API Key 管理/校验/过滤器 + `platform.domain.ApiKey`）、平台业务（`platform.domain`/`mapper`/`service.impl` 端口实现 + `platform.controller` 控制器：users/roles/menus/clients/logs/quota/usage/apiKey）、**db/migration（Flyway 迁移脚本）**；common-core 的平台端口/record 保留为契约 |
 | `v5ai-infrastructure` | 跨模块运行时/基础设施实现：MyBatis-Plus 装配（`mybatis/MyBatisConfiguration`）、Sa-Token/BCrypt/AES-GCM、pgvector、Redis/MinIO 配置、AgentScope 运行时适配（模型工厂、MCP 连接工厂、Skill Workspace 解析、RAG Embedding/向量/解析器）、Agent 级联删除（`AgentDeletionService`）、storage/reactor 配置 |
 | `v5ai-api` | 运行 API（`/api/v1/...` SSE/Chat）、`/api/auth/login` 之外的 Web 装配、`StatsController`/`HealthController`（跨模块聚合与基础设施）、`ApiGlobalExceptionHandler`、`OptionResponse`（model/mcp/skill/agent/rag/workflow 的控制器已移入各自模块，auth/apiKey/平台控制器已移入 `v5ai-platform`） |
 | `v5ai-starter` | 启动模块：`V5aiApplication`（`scanBasePackages="xin.v5ai.nb"` + `@MapperScan` + `@EnableScheduling`）、`application.yml` |
@@ -62,7 +62,7 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 ## 4. 核心领域概念
 
 - **Provider/Model**：模型供应商与模型配置；凭据 AES-GCM 加密存储；支持连通性测试。Embedding 模型未配置时回退到确定性本地 Hash 嵌入（1536 维）。
-- **Agent**：平台核心实体。有草稿/发布/禁用状态；发布时把配置（模型 / 系统提示词 / 能力开关等标量字段）快照到 `v5ai_agent_version.snapshot_json`，线上 `/api/v1` 运行按**发布快照**解析（`PublishedAgentResolver.resolve`），管理端 `/api/admin` 调试按**实时编辑行**解析（`resolveForDebug`），因此编辑未重新发布不影响线上；MCP/Skill/RAG 绑定列表不固化、仍按 `agentKey` 实时解析。5 个能力开关在运行时生效、对 `/api/v1` 与 `/api/admin` 一致：`mcpEnabled`/`skillEnabled` 门控绑定解析（关闭即不加载）、`ragEnabled` 门控知识检索（`ragCallMode` 选择调用方式：1=智能调用，注册 `rag_search` 工具、把可用知识库列表写进系统提示，由 LLM 自主决定是否检索与检索几次；2=强制调用，每次运行前必检索并注入，默认值、兼容存量行为）、`memoryEnabled` 控制按会话自动注入历史（显式 `resume` 历史不覆盖）、`webSearchEnabled` 注册 Tavily 联网搜索工具（配置 `v5ai.agentscope.tavily-api-key` / 环境变量 `V5AI_TAVILY_API_KEY`，缺 Key 时工具返回错误而非抛异常）。`agentKey` 为对外运行标识；通过 API Key（BCrypt 存储）鉴权。
+- **Agent**：平台核心实体（平台实体类为 `Agent`，运行时契约 record 为 `AgentDTO`；`AgentRunBo`/`AgentRunVo` 分别是运行入参与结果，`SessionMessage` 是会话消息载体）。有草稿/发布/禁用状态；发布时把配置（模型 / 系统提示词 / 能力开关等标量字段）快照到 `v5ai_agent_version.snapshot_json`，线上 `/api/v1` 运行按**发布快照**解析（`PublishedAgentResolver.resolve`），管理端 `/api/admin` 调试按**实时编辑行**解析（`resolveForDebug`），因此编辑未重新发布不影响线上；MCP/Skill/RAG 绑定列表不固化、仍按 `agentKey` 实时解析。5 个能力开关在运行时生效、对 `/api/v1` 与 `/api/admin` 一致：`mcpEnabled`/`skillEnabled` 门控绑定解析（关闭即不加载）、`ragEnabled` 门控知识检索（`ragCallMode` 选择调用方式：1=智能调用，注册 `rag_search` 工具、把可用知识库列表写进系统提示，由 LLM 自主决定是否检索与检索几次；2=强制调用，每次运行前必检索并注入，默认值、兼容存量行为）、`memoryEnabled` 控制按会话自动注入历史（显式 `resume` 历史不覆盖）、`webSearchEnabled` 注册 Tavily 联网搜索工具（配置 `v5ai.agentscope.tavily-api-key` / 环境变量 `V5AI_TAVILY_API_KEY`，缺 Key 时工具返回错误而非抛异常）。`agentKey` 为对外运行标识；通过 API Key（BCrypt 存储）鉴权。
 - **会话/消息/run/run_event/AgentState**：运行时持久化对象。对话历史与恢复基于这些表。
 - **知识库（RAG）**：文档上传（TXT/MD/PDF/DOCX）与 URL 导入 → Worker 异步（解析→切片→Embedding→pgvector）→ 向量/关键词检索 → 运行时注入上下文并发出 `RETRIEVAL` 事件。
 - **MCP**：Server 注册（Streamable HTTP / SSE / Stdio，headers/env 加密），连接测试 → Tool 发现与缓存 → Agent 绑定 → 运行时动态注册为 AgentScope Toolkit。**必须先"发现工具"再绑定发布**。Tool 权限三态 ALLOW/APPROVE/DENY，调用审计（runId/工具名/参数摘要/状态/耗时）。Stdio 命令受白名单限制（生产必配 `V5AI_MCP_STDIO_COMMAND_WHITELIST`）。
@@ -79,7 +79,9 @@ RUN_STARTED → MODEL_CALL → (TEXT_DELTA | TOOL_CALL → TOOL_RESULT | RETRIEV
 失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED
 ```
 
-实现链：`ChatController` → `AgentRuntime`（`AgentScopeRuntime`）→ `PersistingAgentRuntime`（持久化装饰器）→ `AgentScopeHarnessExecutor`/`ModelStreamTextExecutor`（模型执行器）。
+`RETRIEVAL` 的位置取决于 RAG 调用方式：**强制调用**在模型调用前发出（pre-step 检索注入）；**智能调用**在 `rag_search` 的 `TOOL_RESULT` 之后追加。
+
+实现链：`ChatController` → `AgentRuntime`（入参 `AgentRunBo`、结果 `AgentRunVo`；默认实现 `AgentScopeRuntime`）→ `PersistingAgentRuntime`（持久化装饰器）→ `AgentScopeHarnessExecutor`/`ModelStreamTextExecutor`（模型执行器）。
 
 端到端流式链路（`/api/v1/agents/{agentKey}/chat/stream`，RAG / 记忆 / MCP / Skill / Tool 装配的先后关系）：
 
@@ -101,8 +103,8 @@ sequenceDiagram
     Note over P: Flux.defer 订阅才执行
     P->>P: normalize + ensureConversation + save用户提问
     P->>A: delegate.stream
-    A->>A: resolve Agent(发布快照) + withMemory
-    alt ragEnabled
+    A->>A: resolve AgentDTO(发布快照) + withMemory
+    alt ragEnabled 且强制调用
         A->>R: buildContext
         R-->>A: RagContext 上下文 + hits
     end
@@ -115,18 +117,21 @@ sequenceDiagram
     opt skillEnabled
         E->>E: AgentSkillWorkspaceResolver.resolveSkills<br/>读当前发布版本文件
     end
-    E->>E: new Toolkit + registerAgentTool<br/>PlatformMcpTool / WebSearchTool
+    opt 智能调用且有可用知识库
+        E->>E: listBoundKnowledgeBases<br/>可用知识库列表写入系统提示
+    end
+    E->>E: new Toolkit + registerAgentTool<br/>PlatformMcpTool / WebSearchTool / RagSearchTool
     E->>E: injectSkillsToWorkspace + HarnessAgent.build
     E->>M: model.stream / streamEvents
     M-->>E: 增量 token + 工具调用
-    E-->>A: Text/Reasoning/ToolCall/ToolResult
+    E-->>A: Text/Reasoning/ToolCall/ToolResult/Retrieval
     A-->>U: SSE TEXT_DELTA / TOOL_CALL / ...
     A-->>U: SSE RUN_COMPLETED
     Note over E: doFinally 去重关闭 McpConnection
     Note over P: 落库 run/事件/回答 + 用量配额
 ```
 
-能力装配内部（`ModelStreamTextExecutor`，`mcpEnabled` / `skillEnabled` / `webSearchEnabled` 分派）：
+能力装配内部（`ModelStreamTextExecutor`，`mcpEnabled` / `skillEnabled` / `webSearchEnabled` / 智能调用 RAG 分派）：
 
 ```mermaid
 flowchart TB
@@ -138,16 +143,21 @@ flowchart TB
     G2 -- 否 --> G3
     SK --> G3{webSearchEnabled?}
     G3 -- 是 --> WS[webSearch=true]
-    G3 -- 否 --> DEC
-    WS --> DEC{有工具/Skill/联网?}
+    G3 -- 否 --> G4
+    WS --> G4{智能调用 RAG 且有可用知识库?}
+    G4 -- 是 --> RG[listBoundKnowledgeBases 取可用知识库列表]
+    G4 -- 否 --> DEC
+    RG --> DEC{有工具/Skill/联网/智能RAG?}
     DEC -- 全无 --> DIR[streamDirect 无工具直连模型]
     DEC -- 有 --> ASM[streamWithExtensions 装配]
     ASM --> T1[Toolkit.registerAgentTool<br/>PlatformMcpTool 逐个注册 MCP]
     ASM --> T2[Toolkit.registerAgentTool<br/>WebSearchTool 联网搜索]
+    ASM --> T5[Toolkit.registerAgentTool<br/>RagSearchTool 智能调用 RAG]
     ASM --> T3[injectSkillsToWorkspace<br/>写 workspace/skills/name/ 文件]
-    ASM --> T4[HarnessAgent.build<br/>toolkit + skillRepository + sysPrompt]
+    ASM --> T4[HarnessAgent.build<br/>toolkit + skillRepository + sysPrompt<br/>含可用知识库列表]
     T1 --> RUN
     T2 --> RUN
+    T5 --> RUN
     T3 --> RUN
     T4 --> RUN[streamEvents 模型按需调用工具]
     RUN --> CLOSE[doFinally 去重关闭 McpConnection]
@@ -178,7 +188,7 @@ flowchart LR
 ## 7. 数据库与迁移
 
 - 迁移脚本位于 `v5ai-platform/src/main/resources/db/migration/`，命名 `V<n>__<name>.sql`，Flyway 管理（表 `v5ai_flyway_schema_history`）。`spring.flyway.locations: classpath:db/migration` 扫描所有 classpath（v5ai-platform 为 starter 依赖）。
-- 当前迁移：V1 Phase1、V2 RAG、V3 provider_type、V4 runtime 列改 varchar、V5 MCP、V6 Skill、V7 平台增强、V8 Agent 重命名、V9 角色、V10 菜单、V11 回填 admin 角色、V12 工作流。
+- 当前迁移：V1 Phase1、V2 RAG、V3 provider_type、V4 runtime 列改 varchar、V5 MCP、V6 Skill、V7 平台增强、V8 Agent 重命名、V9 角色、V10 菜单、V11 回填 admin 角色、V12 工作流、V13 Agent 展示与能力开关字段、V14 用户资料字段、V15 用户启用改 status、V16 角色 role_name 与 data_scope、V17 操作日志与登录日志、V18 RBAC 重写 + plm_client、V19 日志表更名 plm_* + client_key、V20 配额/用量 created_at、V21 菜单权限标识 + 日志/客户端菜单、V22 工作流菜单、V23 存储实例 + 资源菜单、V24 知识库扩展、V25 存储实例 description、V26 模型供应商描述/图标、V27 种子模型供应商、V28 模型 config jsonb→text、V29 模型 endpoint→base_url、V30 RAG 向量存储解耦、V31 关键词路 jieba + BM25、V32 Agent RAG 调用方式（`rag_call_mode`）。
 - 所有表以 `v5ai_` 前缀。运行时表 UUID 列使用 VARCHAR（避免 `uuid = character varying` 报错）。
 - 需要 pgvector 扩展（`CREATE EXTENSION IF NOT EXISTS vector` 在迁移中幂等执行）。
 - 添加新表/改列时**必须新增一个递增的 V 版本迁移**，不要修改已应用的历史迁移。
@@ -217,6 +227,7 @@ cd v5ai-ui && npm install && npm run build
 - 业务模块的 CRUD 采用 MyBatis-Plus 风格：实体继承 `common.mybatis.core.domain.BaseEntity`（`@TableName`/`@TableId`），BO 用 `@AutoMapper(target = Entity.class, reverseConvertGenerate = false)`，VO 用 `@AutoMapper(target = Entity.class)`，Mapper 继承 `BaseMapperPlus<Entity, Vo>`，查询用 `QueryBuilder.lambda(...)` + `selectVoPage/selectVoList`，分页统一 `PageQuery`/`PageResult`，转换用 `MapstructUtils.convert`，控制器继承 `common.web.core.BaseController` 并返回 `R<T>`。
 - 跨模块的运行时/平台实现仍放 `v5ai-infrastructure`，通过 Spring 依赖注入装配。
 - API 层的请求/响应体使用不可变 record（见 git log `feat(api): 添加不可变请求和响应体记录类型`）。
+- 运行时契约的载体命名与分层：跨层传输用 `...DTO`（`AgentDTO`/`AgentVersionDTO`），入参用 `...Bo`（`AgentRunBo`），出参用 `...Vo`（`AgentRunVo`）；`v5ai-common-agentscope` 内按 `core/domain/{dto,bo,vo}` 分层，运行时端口统一放 `core/service`（如 `AgentService`）。
 - 响应统一包装 `R`（`common.core.domain.R`）；错误统一走 `V5aiException` + `ErrorCode`。
 - 运行时相关代码保持响应式（`Flux`/`Mono`）；Web 层为 Servlet MVC（上传用 `MultipartFile`，SSE 用 `ServerSentEvent`）。
 - 提交信息使用 conventional commits（feat/fix/refactor/chore 等，中文描述）。
@@ -250,8 +261,8 @@ cd v5ai-ui && npm install && npm run build
 
 - **加一个新管理实体**（如某种资源）：按 `v5ai-model` 样板，在业务模块内补 `domain` 实体 + `domain/bo` + `domain/vo` + `mapper`（`BaseMapperPlus`）+ `service`/`service.impl` + `controller`（`@RequestMapping("/api/admin/...")`）→ 新增 Flyway 迁移 → ui 加 view/路由 → 写测试与 docs/api。
 - **改模型/Provider 管理**：入口在 `v5ai-model`（`V5aiModelMapper`/`V5aiModelProviderMapper`/`IV5aiModelService`/`V5aiModelController`）；运行时模型链（`AgentScopeModelFactory`/`AgentScopeModelConnectionTester`/`ModelConfigRetrieve`）也在 `v5ai-model/runtime`。
-- **改运行时行为**：入口在 `v5ai-runtime`（`AgentRuntime` 接口与各 Executor），持久化在 `PersistingAgentRuntime`，事件模型在 `RuntimeEvent`。
-- **MCP/Skill 运行时集成**：接口在 `v5ai-runtime`（`McpToolResolver`、`ResolvedSkillAgentSkillService`），实现与 AgentScope 适配在 `v5ai-infrastructure/runtime`、`infrastructure/mcp`、`infrastructure/skill`。
+- **改运行时行为**：运行时契约与端口在 `v5ai-common-agentscope`（`AgentRuntime`（入参 `AgentRunBo`/结果 `AgentRunVo`）、`core/executor/*` 执行器、`RuntimeEvent`、`core/service` 端口），装配与持久化在 `v5ai-runtime`（`AgentScopeRuntimeConfiguration`、`PersistingAgentRuntime`、`core/mapper` 的 `MyBatis*Repository`）。
+- **MCP/Skill 运行时集成**：接口在 `v5ai-common-agentscope`（`McpToolResolver`、`SkillWorkspaceResolver`、`ResolvedSkillAgentSkillService`），实现与 AgentScope 适配在 `v5ai-infrastructure`（runtime/mcp/skill）。
 - **继续 Workflow 阶段**：先读 `v5ai-workflow` 模块与 `docs/api/phase5.md`/迁移 V12，当前只有领域与基础 API，可视化编辑器与完整执行闭环待完成。
 - **注意历史遗留命名**：代码/文档中可能残留 `Application` 字样（V8 迁移前概念），新代码一律用 `AgentDTO`。
 

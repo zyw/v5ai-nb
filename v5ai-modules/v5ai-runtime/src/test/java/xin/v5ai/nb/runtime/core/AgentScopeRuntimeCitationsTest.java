@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core;
+package xin.v5ai.nb.runtime.core;
 
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -6,6 +6,7 @@ import cn.hutool.json.JSONUtil;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;

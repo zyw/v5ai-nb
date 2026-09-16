@@ -1,8 +1,9 @@
-package xin.v5ai.nb.common.agentscope.core;
+package xin.v5ai.nb.runtime.core;
 
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.domain.*;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
