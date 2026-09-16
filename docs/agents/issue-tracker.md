@@ -27,7 +27,7 @@
 | 列出 issue | `GET /~api/issues?offset=0&count=N` | 返回 issue 数组；实测可用 |
 | 创建 issue | `POST /~api/issues` | 请求体为 `IssueOpenData`：`{"projectId": 41, "title": "…", "description": "…", "confidential": false, …}`（字段：`ownEstimatedTime`/`projectId`/`title`/`fields`/`iterationIds`/`description`/`confidential`；**注意是 `projectId` 数字而非 `projectPath`**）；响应为 issue 编号数字；实测可用 |
 | 读取 issue | `GET /~api/issues/{id}` | 返回 issue JSON（`id`、`number`、`state`、`title`、`description` 等）；`id` 为数字，实测可用 |
-| 追加评论 | `POST /~api/issues/{issueId}/comments` | 请求体 `{"content": "…"}`（路径以文档为准） |
+| 追加评论 | `POST /~api/issues/{issueId}/comments` | ⚠️ **本实例实测不可用**：`GET` 返回 200，`POST` 返回 405 Method Not Allowed（2026-09-16 复现）；`PUT /~api/issues/{id}/description` 同样 405。需要跨单关联时，直接在正文里写 `#<编号>`（OneDev 会渲染成链接并在被引用单上生成反向引用），不要依赖评论。 |
 | 状态转换 | `POST /~api/issues/{issueId}/transitions/{name}` | 按项目 issue 状态机执行转换（路径以文档为准） |
 
 项目列表与 issue 列表的「集合端点」支持 OneDev Smart Query（`query` 参数，ANTLR 语法）；

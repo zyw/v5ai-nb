@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-15T01:36:33Z",
-  "updated_at": "2026-09-15T08:16:15Z",
+  "updated_at": "2026-09-16T09:33:43Z",
   "files": {
     ".claude/settings.local.json": {
       "role": "index",
@@ -46,10 +46,9 @@
       "normalized_sha256": "373b1f87b5ce21f13f2ad6a7bb7249f65609eb5c7733508d3719f4503d740cc0"
     },
     ".env.example": {
-      "role": "index",
-      "sha256": "49b55c1de82afd9efa56569a190f55f28807c8943a2f89c483eb3b24b4333747",
-      "size": 1363,
-      "normalized_sha256": "49b55c1de82afd9efa56569a190f55f28807c8943a2f89c483eb3b24b4333747"
+      "sha256": "93911b2f47487cd71d9a75d698015774c12f4aae2661db655f5a66c4a35ee734",
+      "size": 1512,
+      "normalized_sha256": "93911b2f47487cd71d9a75d698015774c12f4aae2661db655f5a66c4a35ee734"
     },
     ".gitattributes": {
       "role": "index",
@@ -64,27 +63,24 @@
       "normalized_sha256": "746fc50b16b3e46cbc014631969f7e2da810546d444c06d893a917a488da14eb"
     },
     "AGENTS.md": {
-      "role": "index",
-      "sha256": "552b03d8745aa06489c1a740a35e91539ac3f2c1c313283b731ff62f72c54093",
-      "size": 33127,
-      "normalized_sha256": "552b03d8745aa06489c1a740a35e91539ac3f2c1c313283b731ff62f72c54093"
+      "sha256": "6d3a36588d38777b692055f10bccaa8380318fa9080e71128741717a7e5d7616",
+      "size": 41118,
+      "normalized_sha256": "6d3a36588d38777b692055f10bccaa8380318fa9080e71128741717a7e5d7616"
     },
     "CONTEXT.md": {
-      "role": "index",
-      "sha256": "9120807c3e217209379383bc1fd8a19396c446ffff11b4de35681bbf34fb2e4f",
-      "size": 13644,
-      "normalized_sha256": "9120807c3e217209379383bc1fd8a19396c446ffff11b4de35681bbf34fb2e4f"
+      "sha256": "eee43713f8bcdbe3ad4a73327eb733a31acbdd52586c1b30eb70004b422679c8",
+      "size": 15476,
+      "normalized_sha256": "eee43713f8bcdbe3ad4a73327eb733a31acbdd52586c1b30eb70004b422679c8"
     },
     "README.md": {
-      "role": "index",
-      "sha256": "67959cfb9534c5ceff5089d8e05fabfb006d7848fb1f1ddcf334ad23e70c2625",
-      "size": 7531,
-      "normalized_sha256": "67959cfb9534c5ceff5089d8e05fabfb006d7848fb1f1ddcf334ad23e70c2625"
+      "sha256": "2913285e80fdba967c108c5b79258b927fea7f4ee80313dbf496f8d2c6409785",
+      "size": 14238,
+      "normalized_sha256": "2913285e80fdba967c108c5b79258b927fea7f4ee80313dbf496f8d2c6409785"
     },
     "aoci.code.txt": {
-      "sha256": "d326bb3ec05be0dfaaa3df1ffdae8ab7b82be27fe5f3563c0df4a71e0a1a616d",
-      "size": 440894,
-      "normalized_sha256": "d326bb3ec05be0dfaaa3df1ffdae8ab7b82be27fe5f3563c0df4a71e0a1a616d"
+      "sha256": "26bdccb223b9183f379ad9496fa06719ba4573f65f50fa654e535a233fd3d7dd",
+      "size": 447789,
+      "normalized_sha256": "26bdccb223b9183f379ad9496fa06719ba4573f65f50fa654e535a233fd3d7dd"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -121,6 +117,11 @@
       "sha256": "ffae33c4eddc9c8904cd2c8f3298fd161db1330eab9b7f95041e16351121d644",
       "size": 2293,
       "normalized_sha256": "ffae33c4eddc9c8904cd2c8f3298fd161db1330eab9b7f95041e16351121d644"
+    },
+    "docs/adr/0005-rag-call-mode.md": {
+      "sha256": "aed3687fc7649dfe28dd8c4828d8693cc913604e1926163a86d8e29474b607d3",
+      "size": 2109,
+      "normalized_sha256": "aed3687fc7649dfe28dd8c4828d8693cc913604e1926163a86d8e29474b607d3"
     },
     "docs/agents/domain.md": {
       "role": "index",
@@ -200,10 +201,9 @@
       "normalized_sha256": "ec42b62e05447d6a904cc8152edaf830899290ca376bce36b9e3014e7f319e8b"
     },
     "docs/phase3-verification.md": {
-      "role": "index",
-      "sha256": "65d700d51d0220649cce628abd022503227045ce66f0cae11c001cb43a9f1c55",
-      "size": 3929,
-      "normalized_sha256": "65d700d51d0220649cce628abd022503227045ce66f0cae11c001cb43a9f1c55"
+      "sha256": "e2f2f386169fc6c7724ad814e4826d28e5b8186e0fe022171d771ac4ec0e00c4",
+      "size": 3924,
+      "normalized_sha256": "e2f2f386169fc6c7724ad814e4826d28e5b8186e0fe022171d771ac4ec0e00c4"
     },
     "docs/phase4-verification.md": {
       "role": "index",
@@ -218,10 +218,9 @@
       "normalized_sha256": "85cc13254942e8197f2644840d7e5d5d8fc2f529ad56cc3188a835d9db2ae678"
     },
     "docs/superpowers/plans/2026-08-12-phase1-foundation-agent.md": {
-      "role": "index",
-      "sha256": "7f2525149f6919b2aaa3066d57ac44bbddd8e94c0e080fabd23980b1d44d6b7b",
-      "size": 23415,
-      "normalized_sha256": "7f2525149f6919b2aaa3066d57ac44bbddd8e94c0e080fabd23980b1d44d6b7b"
+      "sha256": "e5bad3cefd21f0204997292a65306f403504a80891076455433711142735cd42",
+      "size": 23411,
+      "normalized_sha256": "e5bad3cefd21f0204997292a65306f403504a80891076455433711142735cd42"
     },
     "docs/superpowers/plans/2026-08-13-agent-model-adapters.md": {
       "role": "index",
@@ -374,22 +373,19 @@
       "normalized_sha256": "9f38b3f09cabcc341742c5cd564b68bc1181cc535f6ab9d6dde8f881b0daf58e"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentConfigGenerator.java": {
-      "role": "index",
-      "sha256": "6862bcde7e60c8339cfe1d1f289f64bc9171469f137f03779b7bf02dc577a8bb",
-      "size": 760,
-      "normalized_sha256": "6862bcde7e60c8339cfe1d1f289f64bc9171469f137f03779b7bf02dc577a8bb"
+      "sha256": "f1835c79661404e2402d8ece1ca98e502df3f1a92665355b4fab1ac9932a79e5",
+      "size": 804,
+      "normalized_sha256": "f1835c79661404e2402d8ece1ca98e502df3f1a92665355b4fab1ac9932a79e5"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentDeletionPort.java": {
-      "role": "index",
-      "sha256": "fa479b93005038ff7fe5806f81be020d14cbb380fddcc5f935b41f1f9359c4ba",
-      "size": 618,
-      "normalized_sha256": "fa479b93005038ff7fe5806f81be020d14cbb380fddcc5f935b41f1f9359c4ba"
+      "sha256": "f7fc8dcf3d3d42be67b9e0ce7db16a05f4dd72cdea48d18d976da144d949cbd2",
+      "size": 624,
+      "normalized_sha256": "f7fc8dcf3d3d42be67b9e0ce7db16a05f4dd72cdea48d18d976da144d949cbd2"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java": {
-      "role": "index",
-      "sha256": "584d465323da2276542f68bba16636982c1f5befa7fe6ad7a962d17c000334f9",
-      "size": 1018,
-      "normalized_sha256": "584d465323da2276542f68bba16636982c1f5befa7fe6ad7a962d17c000334f9"
+      "sha256": "5db1e17c9716c727fd2a1410be48fd2984723ec0ff04a64d7bfca566f76ac6de",
+      "size": 1007,
+      "normalized_sha256": "5db1e17c9716c727fd2a1410be48fd2984723ec0ff04a64d7bfca566f76ac6de"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentScopeModelChatClient.java": {
       "role": "index",
@@ -398,22 +394,19 @@
       "normalized_sha256": "a327079c43976273d36440971c835a6dcca443182b1274f617d25d8e831adc40"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentScopeRuntime.java": {
-      "role": "index",
-      "sha256": "fcff99b02bd774231d77624628b3ff85ffaa7668594064420414105cd03e85b8",
-      "size": 8101,
-      "normalized_sha256": "fcff99b02bd774231d77624628b3ff85ffaa7668594064420414105cd03e85b8"
+      "sha256": "e47d8984a91ee36773dd392772a5552c42c80ccf20009b0b44eef4fbe863e736",
+      "size": 13121,
+      "normalized_sha256": "e47d8984a91ee36773dd392772a5552c42c80ccf20009b0b44eef4fbe863e736"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentTextEvent.java": {
-      "role": "index",
-      "sha256": "739f08a1d1f052d2ccd808d0503542ae5b5f292166ed864d5effeff7086a4a2c",
-      "size": 2274,
-      "normalized_sha256": "739f08a1d1f052d2ccd808d0503542ae5b5f292166ed864d5effeff7086a4a2c"
+      "sha256": "04d582f9f3c2005a48479fe437a69306d3f7b54cd6362a9f9e9328256b9e6628",
+      "size": 2866,
+      "normalized_sha256": "04d582f9f3c2005a48479fe437a69306d3f7b54cd6362a9f9e9328256b9e6628"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/McpConnection.java": {
-      "role": "index",
-      "sha256": "a5159c6acf0f25bd0dcb0ccbd9c3f6df510723a00bc934fc2e1057731198571e",
-      "size": 873,
-      "normalized_sha256": "a5159c6acf0f25bd0dcb0ccbd9c3f6df510723a00bc934fc2e1057731198571e"
+      "sha256": "c16d454d154dd620d5ca97480ede391f2bdc877b5c6ce64710291183cde29aac",
+      "size": 868,
+      "normalized_sha256": "c16d454d154dd620d5ca97480ede391f2bdc877b5c6ce64710291183cde29aac"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/McpJsonCodec.java": {
       "role": "index",
@@ -428,34 +421,45 @@
       "normalized_sha256": "dc9370047656fb421eb874f78ad2220e743c74e1ef4b1288ee976160517d393d"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/ModelConfigRetrieve.java": {
-      "role": "index",
-      "sha256": "7b5fc7b31c64828bb37a9e1fbb846ac38e0f8af54626fda0470fc5f8422dd758",
-      "size": 933,
-      "normalized_sha256": "7b5fc7b31c64828bb37a9e1fbb846ac38e0f8af54626fda0470fc5f8422dd758"
+      "sha256": "c8b13c78e2df5740c25719d2d14bb003bec40940b52ba396ab91c70eb6999cad",
+      "size": 936,
+      "normalized_sha256": "c8b13c78e2df5740c25719d2d14bb003bec40940b52ba396ab91c70eb6999cad"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/PersistingAgentRuntime.java": {
-      "role": "index",
-      "sha256": "932907ef3dc8fef673ea5f3fcc8d4dc65aa95b2a337c1d473b550dde514b599f",
-      "size": 13424,
-      "normalized_sha256": "932907ef3dc8fef673ea5f3fcc8d4dc65aa95b2a337c1d473b550dde514b599f"
+      "sha256": "44fc4a6b2d86c5bfb3f37ea91066404e4450766179e813aa2921febabae4b9d9",
+      "size": 13432,
+      "normalized_sha256": "44fc4a6b2d86c5bfb3f37ea91066404e4450766179e813aa2921febabae4b9d9"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/PlatformMcpTool.java": {
-      "role": "index",
-      "sha256": "335f63a7f1ed7c5f2717d62005e884fa7dc5e2bf238d6d5eabb26bec49d2f390",
-      "size": 5189,
-      "normalized_sha256": "335f63a7f1ed7c5f2717d62005e884fa7dc5e2bf238d6d5eabb26bec49d2f390"
+      "sha256": "85b953ff32fb0b4cbd397319891d09b5e72e48db16faec7c01b4d9ad4e64ad20",
+      "size": 5192,
+      "normalized_sha256": "85b953ff32fb0b4cbd397319891d09b5e72e48db16faec7c01b4d9ad4e64ad20"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/RagContextProvider.java": {
-      "role": "index",
-      "sha256": "e4d2516ffc5bef0bae32374ad03634777aaded2311154d1515f97ccc70c699ea",
-      "size": 1015,
-      "normalized_sha256": "e4d2516ffc5bef0bae32374ad03634777aaded2311154d1515f97ccc70c699ea"
+      "sha256": "b5101bb549839f699aadf814d64599ea911521299ebb1b5e91662d7bd65c897e",
+      "size": 1028,
+      "normalized_sha256": "b5101bb549839f699aadf814d64599ea911521299ebb1b5e91662d7bd65c897e"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/RagSearchProvider.java": {
+      "sha256": "56e1852496cbe192cef48a8ebf3bf9980ecd308bb2d2ca7c16a9dbe2f3c08148",
+      "size": 1075,
+      "normalized_sha256": "56e1852496cbe192cef48a8ebf3bf9980ecd308bb2d2ca7c16a9dbe2f3c08148"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/RagSearchTool.java": {
+      "sha256": "22b5a8554e9ae4af1c475b39feac89ecdbd3bdb8c8b471a51002c261413b0be1",
+      "size": 3611,
+      "normalized_sha256": "22b5a8554e9ae4af1c475b39feac89ecdbd3bdb8c8b471a51002c261413b0be1"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/StdioCommandPolicy.java": {
       "role": "index",
       "sha256": "83cf58a94907d160b2b1fd24da7a8371b39ab8276dd64ff99179d2512cc86e8f",
       "size": 529,
       "normalized_sha256": "83cf58a94907d160b2b1fd24da7a8371b39ab8276dd64ff99179d2512cc86e8f"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/WebSearchTool.java": {
+      "sha256": "5e32f2c7837514ec3cc93dd1d7ba0bef4e71a8f15fa7bb384cdf0d89e96a738d",
+      "size": 4442,
+      "normalized_sha256": "5e32f2c7837514ec3cc93dd1d7ba0bef4e71a8f15fa7bb384cdf0d89e96a738d"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/Agent.java": {
       "role": "index",
@@ -488,10 +492,14 @@
       "normalized_sha256": "60cdcaaf60191a43399f956b8774c1b40dcd34ebec2f92d02d02baf3ef283b2f"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/GeneratedAgentConfig.java": {
-      "role": "index",
-      "sha256": "35a02eebaab69aec830f4e1fb74a8e2f69136e2a28649c26eed23cdf79427dd0",
-      "size": 607,
-      "normalized_sha256": "35a02eebaab69aec830f4e1fb74a8e2f69136e2a28649c26eed23cdf79427dd0"
+      "sha256": "f2620afa0f069ffe5060230ac55ec4a451c150eb36d4507af9c9dab0b57d4bd5",
+      "size": 652,
+      "normalized_sha256": "f2620afa0f069ffe5060230ac55ec4a451c150eb36d4507af9c9dab0b57d4bd5"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/KnowledgeBaseRef.java": {
+      "sha256": "d1afa41994deb60820e5f382a237a2cc5b41d061870facf9d08a1e2db13c4aa4",
+      "size": 478,
+      "normalized_sha256": "d1afa41994deb60820e5f382a237a2cc5b41d061870facf9d08a1e2db13c4aa4"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/McpToolCallAudit.java": {
       "role": "index",
@@ -518,10 +526,9 @@
       "normalized_sha256": "a9d8214bdaa1eb949b54805e0f46389e9fe6ed046d80fa6f8ac156de9aabb2ee"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/ResolvedMcpTool.java": {
-      "role": "index",
-      "sha256": "09b72fc1f5c2ad31f7a1e19f5ba4ce167008d32452056f03d67cda1fdb305937",
-      "size": 892,
-      "normalized_sha256": "09b72fc1f5c2ad31f7a1e19f5ba4ce167008d32452056f03d67cda1fdb305937"
+      "sha256": "b725ecc120448da9851a018c722ca8cd70140a7b3d8eab60e4cf476b6734e1e2",
+      "size": 895,
+      "normalized_sha256": "b725ecc120448da9851a018c722ca8cd70140a7b3d8eab60e4cf476b6734e1e2"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/ResolvedSkill.java": {
       "role": "index",
@@ -530,22 +537,44 @@
       "normalized_sha256": "67ead65b6e211d0a0a316b136c3120f0caaef2dfa751aa695f066a4edf413240"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/RuntimeEvent.java": {
-      "role": "index",
-      "sha256": "963adb4ca41c71da3f790c345c9bbb2075026eced295cbe66060d901f24a59d7",
-      "size": 3145,
-      "normalized_sha256": "963adb4ca41c71da3f790c345c9bbb2075026eced295cbe66060d901f24a59d7"
+      "sha256": "b152022c7652d233670d6c8003e02c7055d540e470d8ed29f28ed67be5fa1ab3",
+      "size": 3148,
+      "normalized_sha256": "b152022c7652d233670d6c8003e02c7055d540e470d8ed29f28ed67be5fa1ab3"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/SessionMessage.java": {
+      "sha256": "14b6e93e2fd4ceae670315521508d43c3f87bbab9ffb6f5875c07e0ec4c2b6d9",
+      "size": 456,
+      "normalized_sha256": "14b6e93e2fd4ceae670315521508d43c3f87bbab9ffb6f5875c07e0ec4c2b6d9"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/bo/AgentRunBo.java": {
+      "sha256": "2b8a54ad6e82966d1540e7ebd0d57629d7033bd093d2937e5b5b8336b1a505d6",
+      "size": 2163,
+      "normalized_sha256": "2b8a54ad6e82966d1540e7ebd0d57629d7033bd093d2937e5b5b8336b1a505d6"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/bo/ConversationBo.java": {
+      "sha256": "c7a9ae31f80a9fa33fd93ad9025e470540d69c935ef71d78a39b1afbd297170b",
+      "size": 357,
+      "normalized_sha256": "c7a9ae31f80a9fa33fd93ad9025e470540d69c935ef71d78a39b1afbd297170b"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/AgentDTO.java": {
+      "sha256": "c4690b65e3388fb766b1d36200e8d4063a1cb5ebef0fe9721d0da3b4759814dd",
+      "size": 2612,
+      "normalized_sha256": "c4690b65e3388fb766b1d36200e8d4063a1cb5ebef0fe9721d0da3b4759814dd"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/AgentMcpBindingDTO.java": {
-      "role": "index",
-      "sha256": "2b04bc679b2b757f1f903610640a375c1e97cf3d861485e3266114973da6f31f",
-      "size": 525,
-      "normalized_sha256": "2b04bc679b2b757f1f903610640a375c1e97cf3d861485e3266114973da6f31f"
+      "sha256": "deb8c6c103b4616cf315242b35ebca929e4f6f2a0f077f518a057f8c45ca4a73",
+      "size": 528,
+      "normalized_sha256": "deb8c6c103b4616cf315242b35ebca929e4f6f2a0f077f518a057f8c45ca4a73"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/AgentSkillBindingDTO.java": {
-      "role": "index",
-      "sha256": "8bb7e15ebb731bbd3b04d57cb72843254b00f578e871feebfa74f7bd158e1dbb",
-      "size": 695,
-      "normalized_sha256": "8bb7e15ebb731bbd3b04d57cb72843254b00f578e871feebfa74f7bd158e1dbb"
+      "sha256": "26e03a57a50ae72600cd345d65f55179781ed4a9b29c6f922d2599d2161f9c8f",
+      "size": 701,
+      "normalized_sha256": "26e03a57a50ae72600cd345d65f55179781ed4a9b29c6f922d2599d2161f9c8f"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/AgentVersionDTO.java": {
+      "sha256": "afb2e56002ca86e7335715bf88d4badfb8d7b8a4e9bdbbb4ba2d4610659f9c03",
+      "size": 548,
+      "normalized_sha256": "afb2e56002ca86e7335715bf88d4badfb8d7b8a4e9bdbbb4ba2d4610659f9c03"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/McpServerDTO.java": {
       "role": "index",
@@ -583,6 +612,26 @@
       "size": 1112,
       "normalized_sha256": "ba747ec1fd50ea1182a0b5c2f0173d030eac25a0063db346f70e0dd42a58f823"
     },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/rag/RagContext.java": {
+      "sha256": "2d7daf7680d8d1a21984b6d4068b2f4520f5e9e9376cef0b5d87c58477825dd2",
+      "size": 1152,
+      "normalized_sha256": "2d7daf7680d8d1a21984b6d4068b2f4520f5e9e9376cef0b5d87c58477825dd2"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/rag/RagHit.java": {
+      "sha256": "7daabcf5dd2230340d612c9a2c4a9b28975be2937a48ff09af1e9e062a4e0dcc",
+      "size": 712,
+      "normalized_sha256": "7daabcf5dd2230340d612c9a2c4a9b28975be2937a48ff09af1e9e062a4e0dcc"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/vo/AgentRunVo.java": {
+      "sha256": "2bf412aeae37290ba90c19e69d603dea1ebcf9a632631c2112bdd20f7df40a80",
+      "size": 317,
+      "normalized_sha256": "2bf412aeae37290ba90c19e69d603dea1ebcf9a632631c2112bdd20f7df40a80"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/vo/McpToolCallVo.java": {
+      "sha256": "cc1074be22f319c1742fbd577dcde51568cf907886104e3716c71e23dfe0f31e",
+      "size": 652,
+      "normalized_sha256": "cc1074be22f319c1742fbd577dcde51568cf907886104e3716c71e23dfe0f31e"
+    },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/exception/AgentPublishException.java": {
       "role": "index",
       "sha256": "6e9d68c047d6865c2f349037f9e8ee1c17b5edd45fc8da0d1f656664285ce56d",
@@ -596,22 +645,19 @@
       "normalized_sha256": "ee95fc81203b6a47c3f9b0d498f7f26c5cbb9ed45364fc73bed7e5fa29edc664"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/AgentScopeHarnessExecutor.java": {
-      "role": "index",
-      "sha256": "0474a869d5cd69a5efb89a89e24ed790821b735574eba126381949ccd9e33069",
-      "size": 4137,
-      "normalized_sha256": "0474a869d5cd69a5efb89a89e24ed790821b735574eba126381949ccd9e33069"
+      "sha256": "a4643af027dd60eec1e24969ff8a7a0fbfe8f26e55414fdc357ef97ad1c13def",
+      "size": 4158,
+      "normalized_sha256": "a4643af027dd60eec1e24969ff8a7a0fbfe8f26e55414fdc357ef97ad1c13def"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/AgentTextExecutor.java": {
-      "role": "index",
-      "sha256": "0b9332710da815fe4fdd498266714715784ecbda0b7dcdab06045824aaaff615",
-      "size": 1111,
-      "normalized_sha256": "0b9332710da815fe4fdd498266714715784ecbda0b7dcdab06045824aaaff615"
+      "sha256": "d4f68569d46601d0a96f67c5cafd958d12722e0d8153190e07c0861c349dc7b1",
+      "size": 1120,
+      "normalized_sha256": "d4f68569d46601d0a96f67c5cafd958d12722e0d8153190e07c0861c349dc7b1"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutor.java": {
-      "role": "index",
-      "sha256": "790ac269e79a50902d58e3905c5186da185ab8ea6962a9a42c8d48bc96024dac",
-      "size": 14219,
-      "normalized_sha256": "790ac269e79a50902d58e3905c5186da185ab8ea6962a9a42c8d48bc96024dac"
+      "sha256": "1fb5ed1503817073aabd92dd3d74cf645099a77e4e072d79740ed409356db754",
+      "size": 20306,
+      "normalized_sha256": "1fb5ed1503817073aabd92dd3d74cf645099a77e4e072d79740ed409356db754"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/factory/AgentScopeModelFactory.java": {
       "role": "index",
@@ -650,34 +696,34 @@
       "normalized_sha256": "576efc2d7c36321091942ac4de52febcad5ad78649efd18b6e667711d71cce4d"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/repository/AgentRepository.java": {
-      "role": "index",
-      "sha256": "9596c40b616d9ec9323ef61a6696065c981d1bb37fa6111a24834edf7bd73daa",
-      "size": 730,
-      "normalized_sha256": "9596c40b616d9ec9323ef61a6696065c981d1bb37fa6111a24834edf7bd73daa"
+      "sha256": "a81f67ec6e3bc92f6d689f75f00818deb9218b86dee7c03547f38a700b4d0cc4",
+      "size": 825,
+      "normalized_sha256": "a81f67ec6e3bc92f6d689f75f00818deb9218b86dee7c03547f38a700b4d0cc4"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/AgentModelResolver.java": {
-      "role": "index",
-      "sha256": "ed028414cc833ba6e0bbd50a1ee68c89b0bafbeb964fb5791da271d46a16ba37",
-      "size": 775,
-      "normalized_sha256": "ed028414cc833ba6e0bbd50a1ee68c89b0bafbeb964fb5791da271d46a16ba37"
+      "sha256": "191b3d672f537b79edf6aabcd44462704604ff0cbbd2248cabd229655581fce7",
+      "size": 778,
+      "normalized_sha256": "191b3d672f537b79edf6aabcd44462704604ff0cbbd2248cabd229655581fce7"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/McpToolResolver.java": {
-      "role": "index",
-      "sha256": "3ea4ac7193ae09bfe5b636d93d69d32e820166b29a3dec3ef990f9fc6d9cfc3a",
-      "size": 866,
-      "normalized_sha256": "3ea4ac7193ae09bfe5b636d93d69d32e820166b29a3dec3ef990f9fc6d9cfc3a"
+      "sha256": "96aeb1cc639ac95accd5e23b9f3aace5b2e30d20a0a72e7ec1eacac84122dae7",
+      "size": 885,
+      "normalized_sha256": "96aeb1cc639ac95accd5e23b9f3aace5b2e30d20a0a72e7ec1eacac84122dae7"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/ModelToolSupportResolver.java": {
+      "sha256": "c1668949e1a7960d65253f479206b5314fae07390aee72b672eaf1919c7d854c",
+      "size": 542,
+      "normalized_sha256": "c1668949e1a7960d65253f479206b5314fae07390aee72b672eaf1919c7d854c"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/PublishedAgentResolver.java": {
-      "role": "index",
-      "sha256": "2a73f299369d7a0b3454c4c9339387d862b85ccd95aea349c0133b64b329e50c",
-      "size": 1589,
-      "normalized_sha256": "2a73f299369d7a0b3454c4c9339387d862b85ccd95aea349c0133b64b329e50c"
+      "sha256": "4905b63c92b2bc193c41e81aa069596f46f07636ee78e20d5c747011d7f71619",
+      "size": 787,
+      "normalized_sha256": "4905b63c92b2bc193c41e81aa069596f46f07636ee78e20d5c747011d7f71619"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/SkillWorkspaceResolver.java": {
-      "role": "index",
-      "sha256": "e7c50999eccfa3676cec6aae6f3ca23df4da1dcd61300dacef467bad2e4a8cb2",
-      "size": 847,
-      "normalized_sha256": "e7c50999eccfa3676cec6aae6f3ca23df4da1dcd61300dacef467bad2e4a8cb2"
+      "sha256": "046236c796db823b332865cfe4fdd9f2423e56b81e695d30b435e8546112a3e6",
+      "size": 866,
+      "normalized_sha256": "046236c796db823b332865cfe4fdd9f2423e56b81e695d30b435e8546112a3e6"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AgentMcpBindingService.java": {
       "role": "index",
@@ -685,23 +731,25 @@
       "size": 288,
       "normalized_sha256": "6f7b6f1886ded9852ca3a70ffe4b5cdeeb63fea8357adc2a1e026da9ac9f48b9"
     },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AgentService.java": {
+      "sha256": "d92496dd86e0819b00e0d3af092b2d4356f3bedd323552fc8de11462589310a1",
+      "size": 1735,
+      "normalized_sha256": "d92496dd86e0819b00e0d3af092b2d4356f3bedd323552fc8de11462589310a1"
+    },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AgentSkillBindingService.java": {
-      "role": "index",
-      "sha256": "d7ff058e75030eb3df9e1c068384943f6ace983bc4ce26578be76b2834b0b422",
-      "size": 589,
-      "normalized_sha256": "d7ff058e75030eb3df9e1c068384943f6ace983bc4ce26578be76b2834b0b422"
+      "sha256": "8be1baefcf2648b4da7dfd001cbf05bcec125f2cab8e495635a292d70a4b7a1b",
+      "size": 601,
+      "normalized_sha256": "8be1baefcf2648b4da7dfd001cbf05bcec125f2cab8e495635a292d70a4b7a1b"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AgentStateService.java": {
-      "role": "index",
-      "sha256": "d179e327c24cecb4b9742858ec11536e817a78085e9171398553e79ce95b51aa",
-      "size": 910,
-      "normalized_sha256": "d179e327c24cecb4b9742858ec11536e817a78085e9171398553e79ce95b51aa"
+      "sha256": "091638f382ae9b6c187b7cdc7d6396b202426aa5a35e91c6916231d415c15de3",
+      "size": 925,
+      "normalized_sha256": "091638f382ae9b6c187b7cdc7d6396b202426aa5a35e91c6916231d415c15de3"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/ConversationService.java": {
-      "role": "index",
-      "sha256": "fc8943a8ff785c36f4c7b9627a1b707839355a9e3bdfe26c0fa71557dacd04f5",
-      "size": 574,
-      "normalized_sha256": "fc8943a8ff785c36f4c7b9627a1b707839355a9e3bdfe26c0fa71557dacd04f5"
+      "sha256": "176b1fee2891cc9d98ca18164d46fc6df7c7c32852bba5243de300f03f22a52b",
+      "size": 584,
+      "normalized_sha256": "176b1fee2891cc9d98ca18164d46fc6df7c7c32852bba5243de300f03f22a52b"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/McpServerService.java": {
       "role": "index",
@@ -722,10 +770,9 @@
       "normalized_sha256": "96c6e69c69841ecd236adffcc708e3e53ae01a094e25e3b5118bc8a508884283"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/MessageService.java": {
-      "role": "index",
-      "sha256": "d9bb9d486f1a976c171549a956f0b7b1c0a87fa42437390865425149e647d7f5",
-      "size": 645,
-      "normalized_sha256": "d9bb9d486f1a976c171549a956f0b7b1c0a87fa42437390865425149e647d7f5"
+      "sha256": "0202b8f314de8f95c5e1a8886dfc3ced47009da6f86b28238dafe819901ffed1",
+      "size": 666,
+      "normalized_sha256": "0202b8f314de8f95c5e1a8886dfc3ced47009da6f86b28238dafe819901ffed1"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/ResolvedSkillAgentSkillService.java": {
       "role": "index",
@@ -740,10 +787,9 @@
       "normalized_sha256": "2077cd9034d2448c3095878e3086ad09dfe1e1eb19a72269f3866ce6b5a368fe"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/RunRecordService.java": {
-      "role": "index",
-      "sha256": "0da427949df8054f458ab39334c31acb7a865382f0fa550c4a548531253edf9a",
-      "size": 903,
-      "normalized_sha256": "0da427949df8054f458ab39334c31acb7a865382f0fa550c4a548531253edf9a"
+      "sha256": "329271c1e186ce8b0b7368f1a25d7a73bcd1cff50b1d2cd2f1dcf7e78c8f456d",
+      "size": 899,
+      "normalized_sha256": "329271c1e186ce8b0b7368f1a25d7a73bcd1cff50b1d2cd2f1dcf7e78c8f456d"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/SkillFileService.java": {
       "role": "index",
@@ -782,16 +828,19 @@
       "normalized_sha256": "4f70a5f01a35058faeb1d3d2a48bed821f871c78bee6fc66500cc8feeb055119"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/MessageRole.java": {
-      "role": "index",
-      "sha256": "9f28e2808e31e860a5c7fb2e2e9beca67ac69846493fa9e93ed40a1a84a0747f",
-      "size": 226,
-      "normalized_sha256": "9f28e2808e31e860a5c7fb2e2e9beca67ac69846493fa9e93ed40a1a84a0747f"
+      "sha256": "09df2f0104c7a51537163a5f689ec507d6ffdece54b731e687609057a9cc8b36",
+      "size": 229,
+      "normalized_sha256": "09df2f0104c7a51537163a5f689ec507d6ffdece54b731e687609057a9cc8b36"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/RagCallMode.java": {
+      "sha256": "beaad91127bd63b8e032a05831c2933c68e1130c8196c10fee8c9edd1732e179",
+      "size": 962,
+      "normalized_sha256": "beaad91127bd63b8e032a05831c2933c68e1130c8196c10fee8c9edd1732e179"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/RuntimeEventType.java": {
-      "role": "index",
-      "sha256": "c699c3e493541668010c7fd7d20f10520b25b68d79cc2a36df674f6e4f781238",
-      "size": 738,
-      "normalized_sha256": "c699c3e493541668010c7fd7d20f10520b25b68d79cc2a36df674f6e4f781238"
+      "sha256": "49dc9330a36c97ebfd9e0015e1fe75fe83fd5b0c48af24042d4a7dd27d9bcb11",
+      "size": 741,
+      "normalized_sha256": "49dc9330a36c97ebfd9e0015e1fe75fe83fd5b0c48af24042d4a7dd27d9bcb11"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/utils/ChatResponseTexts.java": {
       "role": "index",
@@ -817,11 +866,26 @@
       "size": 2009,
       "normalized_sha256": "c80c2aff0d5575142adc6a16af7d8afcb1ddd2edf8ae693375db58a9a19d67f0"
     },
+    "v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/RagSearchToolTest.java": {
+      "sha256": "bf2502d6c96b2e04d7828193c4375f947a3a75d262889b0289e7377cd35d06eb",
+      "size": 3204,
+      "normalized_sha256": "bf2502d6c96b2e04d7828193c4375f947a3a75d262889b0289e7377cd35d06eb"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/WebSearchToolTest.java": {
+      "sha256": "24e8c980a7ae150d4f513288bfea93b41ec5a59504d02ad5eecc49e4f030e308",
+      "size": 2030,
+      "normalized_sha256": "24e8c980a7ae150d4f513288bfea93b41ec5a59504d02ad5eecc49e4f030e308"
+    },
     "v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/domain/dto/ModelExtConfigAttrsTest.java": {
       "role": "index",
       "sha256": "9d07b96614cc242ec467bf33cd53397ed5648ab1d9440443ff4803bb05d29397",
       "size": 1585,
       "normalized_sha256": "9d07b96614cc242ec467bf33cd53397ed5648ab1d9440443ff4803bb05d29397"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutorSwitchGateTest.java": {
+      "sha256": "0702a19ef416bc2840bedec83ec1b4c89def4e8c8c58cb88f6a6f52819658480",
+      "size": 3751,
+      "normalized_sha256": "0702a19ef416bc2840bedec83ec1b4c89def4e8c8c58cb88f6a6f52819658480"
     },
     "v5ai-common/v5ai-common-bom/pom.xml": {
       "role": "index",
@@ -2468,15 +2532,14 @@
       "normalized_sha256": "2ce042c0fc58029e2653b8395e7d54afb080020d8fd5e945cac87c79e14a6786"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/config/AgentRuntimeConfiguration.java": {
-      "role": "index",
-      "sha256": "4a8cfe6a1facf30f050938632f505e806f3461dcb6fe1cbefdf6430fa7196ba0",
-      "size": 1074,
-      "normalized_sha256": "4a8cfe6a1facf30f050938632f505e806f3461dcb6fe1cbefdf6430fa7196ba0"
+      "sha256": "6d381c5d90ad4065b2c3191d875bc45a5d55210208145eef285719710a56b923",
+      "size": 782,
+      "normalized_sha256": "6d381c5d90ad4065b2c3191d875bc45a5d55210208145eef285719710a56b923"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/AgentController.java": {
-      "sha256": "c4aa3f11231d7a3a5b0d6d0c509d490be2b9fda34a7ae9d5bd04db97c391ba7c",
-      "size": 4965,
-      "normalized_sha256": "c4aa3f11231d7a3a5b0d6d0c509d490be2b9fda34a7ae9d5bd04db97c391ba7c"
+      "sha256": "12d6a4966494849503ec69e97ebeac69ad7b2adfc6db5f812d27309a26084192",
+      "size": 4956,
+      "normalized_sha256": "12d6a4966494849503ec69e97ebeac69ad7b2adfc6db5f812d27309a26084192"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/vo/GenerateAgentConfigRequest.java": {
       "role": "index",
@@ -2485,104 +2548,104 @@
       "normalized_sha256": "c215df321d3c88502310b70294c026978d73039187c68e1bafbf953507ac33b3"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/vo/GenerateAgentConfigResponse.java": {
-      "role": "index",
-      "sha256": "bc90b5b072f8260a86df448e318a9dbc54c1e99d4eb85c4e29ee85a8315a1435",
-      "size": 746,
-      "normalized_sha256": "bc90b5b072f8260a86df448e318a9dbc54c1e99d4eb85c4e29ee85a8315a1435"
+      "sha256": "9a39163255c39452123d985e28229075a7603c275d2d783bce9b6e3a4eec6df3",
+      "size": 727,
+      "normalized_sha256": "9a39163255c39452123d985e28229075a7603c275d2d783bce9b6e3a4eec6df3"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/vo/PublishAgentRequest.java": {
-      "role": "index",
-      "sha256": "e2757342ba92d190206ebf3e67188be9b4b4956b6beec49ec45d2e22e9fe20c6",
-      "size": 223,
-      "normalized_sha256": "e2757342ba92d190206ebf3e67188be9b4b4956b6beec49ec45d2e22e9fe20c6"
+      "sha256": "e642160c0541dc26e0ca476dd8325c1ab7a8c95ac3d9fe7c585fddf6e4d33836",
+      "size": 226,
+      "normalized_sha256": "e642160c0541dc26e0ca476dd8325c1ab7a8c95ac3d9fe7c585fddf6e4d33836"
+    },
+    "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/core/AgentConfigGenerator.java": {
+      "sha256": "db18ce082cf012bcceb172bfa9a51dd550d1d584a0d3118813d33c66d62b37f7",
+      "size": 682,
+      "normalized_sha256": "db18ce082cf012bcceb172bfa9a51dd550d1d584a0d3118813d33c66d62b37f7"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/core/AgentScopeAgentConfigGenerator.java": {
-      "role": "index",
-      "sha256": "7367a4ca79330819b7b0d6fc842011603e53296031686fb0ca9003fa222207d2",
-      "size": 6174,
-      "normalized_sha256": "7367a4ca79330819b7b0d6fc842011603e53296031686fb0ca9003fa222207d2"
+      "sha256": "dc57286bc0732c9afc7423cac8cc1899036a5f19f8918f27aecc3d18fe9a4990",
+      "size": 6042,
+      "normalized_sha256": "dc57286bc0732c9afc7423cac8cc1899036a5f19f8918f27aecc3d18fe9a4990"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/core/DatabaseAgentRepository.java": {
-      "role": "index",
-      "sha256": "ffb07b7514310149cd2d638772116f22237dcce56b4a08a66fc0b0c1d244affc",
-      "size": 6642,
-      "normalized_sha256": "ffb07b7514310149cd2d638772116f22237dcce56b4a08a66fc0b0c1d244affc"
+      "sha256": "5d14b0cedc7f74227e19039575c0cf5ed1770d89f8f19b99eb8d87e528f80018",
+      "size": 7237,
+      "normalized_sha256": "5d14b0cedc7f74227e19039575c0cf5ed1770d89f8f19b99eb8d87e528f80018"
+    },
+    "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/core/GeneratedAgentConfig.java": {
+      "sha256": "19cb2a3461e8b7fd629254e4f6fd4fd4f291ada4154dcd2b51bf4d0e65863e07",
+      "size": 591,
+      "normalized_sha256": "19cb2a3461e8b7fd629254e4f6fd4fd4f291ada4154dcd2b51bf4d0e65863e07"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/core/InMemoryAgentRepository.java": {
-      "role": "index",
-      "sha256": "d6c3f1a5fd4f722d918de54410dd2f9a9e0f8ef4eb133297bcc04fefa005d0ae",
-      "size": 3213,
-      "normalized_sha256": "d6c3f1a5fd4f722d918de54410dd2f9a9e0f8ef4eb133297bcc04fefa005d0ae"
+      "sha256": "833be19c19d3e0e18141334ec14200e0591dc1f59d11834d5f4b8d953c486aba",
+      "size": 3518,
+      "normalized_sha256": "833be19c19d3e0e18141334ec14200e0591dc1f59d11834d5f4b8d953c486aba"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/Agent.java": {
-      "role": "index",
-      "sha256": "6f456224fb65bf50c83477afb02c9711af19e60618eca95a1128ab176e488bc7",
-      "size": 1957,
-      "normalized_sha256": "6f456224fb65bf50c83477afb02c9711af19e60618eca95a1128ab176e488bc7"
+      "sha256": "0974b8d23f65c1630c762a80ce4e65ce0792b280c4212aae6e60f455c839527c",
+      "size": 2110,
+      "normalized_sha256": "0974b8d23f65c1630c762a80ce4e65ce0792b280c4212aae6e60f455c839527c"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/AgentVersion.java": {
-      "role": "index",
-      "sha256": "3a4e2328224c41544927d28961fb1dc7ae3befe32ea7ecbb89e166eeff530224",
-      "size": 1331,
-      "normalized_sha256": "3a4e2328224c41544927d28961fb1dc7ae3befe32ea7ecbb89e166eeff530224"
+      "sha256": "80ce6d3887e597e21913c760b60a050cc6dbe49a977173d49d4f99d31e6f0532",
+      "size": 1343,
+      "normalized_sha256": "80ce6d3887e597e21913c760b60a050cc6dbe49a977173d49d4f99d31e6f0532"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/bo/AgentBo.java": {
-      "sha256": "84ac74d32005757846551589eef0882fa09425df5a27b643b1f4296c291dfb84",
-      "size": 2159,
-      "normalized_sha256": "84ac74d32005757846551589eef0882fa09425df5a27b643b1f4296c291dfb84"
+      "sha256": "e46b5811c52410cead59e610615546234e9c2471b569f39d39219b9fd53587db",
+      "size": 2309,
+      "normalized_sha256": "e46b5811c52410cead59e610615546234e9c2471b569f39d39219b9fd53587db"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/vo/AgentVersionVo.java": {
-      "role": "index",
-      "sha256": "0011eb4428f4d511231eb32b62fe0ee8ed3c7391955df612b38fb49d0fefc3ab",
-      "size": 839,
-      "normalized_sha256": "0011eb4428f4d511231eb32b62fe0ee8ed3c7391955df612b38fb49d0fefc3ab"
+      "sha256": "bfd1c1d59532ed2bad4c76f91eda06c78f53adc2daf0debfa5800e700e2214fe",
+      "size": 845,
+      "normalized_sha256": "bfd1c1d59532ed2bad4c76f91eda06c78f53adc2daf0debfa5800e700e2214fe"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/vo/AgentVo.java": {
-      "role": "index",
-      "sha256": "0105c96023025a153330209c0bae30982c5626c08a3de6c2fdc81935cb23b89c",
-      "size": 1645,
-      "normalized_sha256": "0105c96023025a153330209c0bae30982c5626c08a3de6c2fdc81935cb23b89c"
+      "sha256": "3a175ae4ba7f530366facefb25263e6717bbb1e9aad11b30674c6c2d40e3f623",
+      "size": 1795,
+      "normalized_sha256": "3a175ae4ba7f530366facefb25263e6717bbb1e9aad11b30674c6c2d40e3f623"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentCleanupMapper.java": {
-      "role": "index",
-      "sha256": "88dccd20c9aa0d3a1e02f610e2123ecc421a44d87b2a657fb11e7258a096aa0f",
-      "size": 2551,
-      "normalized_sha256": "88dccd20c9aa0d3a1e02f610e2123ecc421a44d87b2a657fb11e7258a096aa0f"
+      "sha256": "75d8e3e6999c56e689af92da6579036b9d341ef2a522e414292c68d35077d2ae",
+      "size": 2560,
+      "normalized_sha256": "75d8e3e6999c56e689af92da6579036b9d341ef2a522e414292c68d35077d2ae"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentMapper.java": {
-      "role": "index",
-      "sha256": "b62007cb2697862c484a7b2791ec51d435cc7d37045820d1644c32216c42889b",
-      "size": 776,
-      "normalized_sha256": "b62007cb2697862c484a7b2791ec51d435cc7d37045820d1644c32216c42889b"
+      "sha256": "42dbc84d075627803ceb1247f12264691e825ca6be7b6ff04f88635fad2bc795",
+      "size": 785,
+      "normalized_sha256": "42dbc84d075627803ceb1247f12264691e825ca6be7b6ff04f88635fad2bc795"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentVersionMapper.java": {
-      "role": "index",
-      "sha256": "f75a5648f95933262ccdcf7b85ee00797975f315434533d8806e716aa56d24c6",
-      "size": 1132,
-      "normalized_sha256": "f75a5648f95933262ccdcf7b85ee00797975f315434533d8806e716aa56d24c6"
+      "sha256": "a132b79923ec2cfe368614d282bbbcfe41776b67187ed3b8bafdb1d1fe7c5be3",
+      "size": 1144,
+      "normalized_sha256": "a132b79923ec2cfe368614d282bbbcfe41776b67187ed3b8bafdb1d1fe7c5be3"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/IAgentDeletionPortService.java": {
-      "role": "index",
-      "sha256": "220abd20850b7a25cb2cc8191582300b1f06a1bb15d576aef523df36ab9db7d3",
-      "size": 579,
-      "normalized_sha256": "220abd20850b7a25cb2cc8191582300b1f06a1bb15d576aef523df36ab9db7d3"
+      "sha256": "50b014620b6d8ccc1b711c06477f9a689d9e156418d77f603cc7e7991e2b5566",
+      "size": 585,
+      "normalized_sha256": "50b014620b6d8ccc1b711c06477f9a689d9e156418d77f603cc7e7991e2b5566"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/IAgentService.java": {
-      "role": "index",
-      "sha256": "2a4d4f588359a66b3ec7c5cb55cec851f23d5190a576a219522802526c3fb084",
-      "size": 1544,
-      "normalized_sha256": "2a4d4f588359a66b3ec7c5cb55cec851f23d5190a576a219522802526c3fb084"
+      "sha256": "f27c03e9acd15e10e992c7031a95044d2d66c850b4a5b6f956728c3dfdd78aea",
+      "size": 1574,
+      "normalized_sha256": "f27c03e9acd15e10e992c7031a95044d2d66c850b4a5b6f956728c3dfdd78aea"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/AgentDeletionServiceImpl.java": {
-      "role": "index",
-      "sha256": "cd7a93f03b87b39360c325f560a19219874c143579ae78bad1caa681cde760fd",
-      "size": 1762,
-      "normalized_sha256": "cd7a93f03b87b39360c325f560a19219874c143579ae78bad1caa681cde760fd"
+      "sha256": "5197ad4ca08c79f672308e60a45559a786a058f467ec2051c9ae7eba0f82105b",
+      "size": 1765,
+      "normalized_sha256": "5197ad4ca08c79f672308e60a45559a786a058f467ec2051c9ae7eba0f82105b"
     },
     "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/AgentServiceImpl.java": {
-      "sha256": "02245d1ed6595ea1795f8921c900882de40ced2b50c969ee8ba13430b90434e0",
-      "size": 11503,
-      "normalized_sha256": "02245d1ed6595ea1795f8921c900882de40ced2b50c969ee8ba13430b90434e0"
+      "sha256": "36663ca7ce841cde8b9fb007d32f6c60dbe65014ed012dd3c2a21c9b151ca9d0",
+      "size": 12135,
+      "normalized_sha256": "36663ca7ce841cde8b9fb007d32f6c60dbe65014ed012dd3c2a21c9b151ca9d0"
+    },
+    "v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/DBAgentServiceImpl.java": {
+      "sha256": "a3375c1ed5a356dd09c80c9935c0568109c10335723a198b2c8b8037dece51e4",
+      "size": 6912,
+      "normalized_sha256": "a3375c1ed5a356dd09c80c9935c0568109c10335723a198b2c8b8037dece51e4"
     },
     "v5ai-modules/v5ai-agent/src/main/resources/mapper/AgentCleanupMapper.xml": {
       "role": "index",
@@ -2609,15 +2672,14 @@
       "normalized_sha256": "a67fb26726488476444b32c489080f4f173743dd868088333a23a8469d3d7fdc"
     },
     "v5ai-modules/v5ai-agent/src/test/java/xin/v5ai/nb/agent/controller/AgentControllerTest.java": {
-      "role": "index",
-      "sha256": "b9a074cb9a948442c81210d0440d23e30fd0445d2f8999873db87882286d9d89",
-      "size": 3642,
-      "normalized_sha256": "b9a074cb9a948442c81210d0440d23e30fd0445d2f8999873db87882286d9d89"
+      "sha256": "289c0fac2e5a3c43b5f6cca505273655a82f7dfe046be5697a5df8b75739d325",
+      "size": 3623,
+      "normalized_sha256": "289c0fac2e5a3c43b5f6cca505273655a82f7dfe046be5697a5df8b75739d325"
     },
     "v5ai-modules/v5ai-agent/src/test/java/xin/v5ai/nb/agent/service/impl/AgentServiceImplTest.java": {
-      "sha256": "ef5044bff33a0a02f1d2f951ebe6e1c9151118aa4800312fbde2e156cc8e3e02",
-      "size": 14020,
-      "normalized_sha256": "ef5044bff33a0a02f1d2f951ebe6e1c9151118aa4800312fbde2e156cc8e3e02"
+      "sha256": "e991aefe8877fe024f1ddcd9db0c785bce1ef60d09554172170c8b795ab07822",
+      "size": 14067,
+      "normalized_sha256": "e991aefe8877fe024f1ddcd9db0c785bce1ef60d09554172170c8b795ab07822"
     },
     "v5ai-modules/v5ai-agent/src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker": {
       "role": "index",
@@ -2656,16 +2718,14 @@
       "normalized_sha256": "223c4097f77e43665907edb8b587ceaacc1b8dd2a877db386477109039e78a5e"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/controller/AgentMcpBindingController.java": {
-      "role": "index",
-      "sha256": "3c42df5e1154b04240d8a66a04cc230df314feae368aedaab989d0c3d5e41b3b",
-      "size": 1425,
-      "normalized_sha256": "3c42df5e1154b04240d8a66a04cc230df314feae368aedaab989d0c3d5e41b3b"
+      "sha256": "ef12d64af45b700fb72bfb6836502cc85ddeba2930c3fd3ee3cc92b76a0a9038",
+      "size": 1428,
+      "normalized_sha256": "ef12d64af45b700fb72bfb6836502cc85ddeba2930c3fd3ee3cc92b76a0a9038"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/controller/McpBindRequest.java": {
-      "role": "index",
-      "sha256": "098d540e3a4bbc667b9213ddf25bc5d8799833f8af33bf4e9508d365f0f38364",
-      "size": 245,
-      "normalized_sha256": "098d540e3a4bbc667b9213ddf25bc5d8799833f8af33bf4e9508d365f0f38364"
+      "sha256": "d5310051b4171bf4f2fe4e113b596e8f6fcdbfc5d58915c2b1b0626bd6f89f32",
+      "size": 248,
+      "normalized_sha256": "d5310051b4171bf4f2fe4e113b596e8f6fcdbfc5d58915c2b1b0626bd6f89f32"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/controller/McpConnectionTestResponse.java": {
       "role": "index",
@@ -2692,10 +2752,9 @@
       "normalized_sha256": "0646d89c813a3f08fe05f8c971e625f7d9f54194ace8e7ad338642c4924d548c"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/AgentMcpToolResolver.java": {
-      "role": "index",
-      "sha256": "46be3c92a8cd6a9631f98d9b717b6231ce7b9f3751f8a05c912d314311301548",
-      "size": 3427,
-      "normalized_sha256": "46be3c92a8cd6a9631f98d9b717b6231ce7b9f3751f8a05c912d314311301548"
+      "sha256": "8959bad1f3384bfbbef49bf02beb49dbcef5043fdf5c9aa8750a8db525692b85",
+      "size": 3443,
+      "normalized_sha256": "8959bad1f3384bfbbef49bf02beb49dbcef5043fdf5c9aa8750a8db525692b85"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/AgentScopeMcpClientFactory.java": {
       "role": "index",
@@ -2704,10 +2763,9 @@
       "normalized_sha256": "6ed5bbb0df6274936c207153f20a80357b6ae6a566007ab59991929b2413ff78"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/AgentScopeMcpConnection.java": {
-      "role": "index",
-      "sha256": "af26086518ac566fe47278da22b1d11a950bf788a553029e70a0e7fa0b7fed26",
-      "size": 3646,
-      "normalized_sha256": "af26086518ac566fe47278da22b1d11a950bf788a553029e70a0e7fa0b7fed26"
+      "sha256": "9a7692493ba9b5be8e48a1d51ec5e12878f836d49615cfacc7bc0916fd854388",
+      "size": 3568,
+      "normalized_sha256": "9a7692493ba9b5be8e48a1d51ec5e12878f836d49615cfacc7bc0916fd854388"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/McpToolPermissionPolicy.java": {
       "role": "index",
@@ -2728,10 +2786,9 @@
       "normalized_sha256": "e2ea0f454c72eaf4c425ae43b6abe28f5d623aed9b67533eabc99c3122431795"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/AgentMcpBinding.java": {
-      "role": "index",
-      "sha256": "fb06e945c25fbacbc03865e0d73cd992b58cc17db0fb55e73ebbe0471f2b0ea2",
-      "size": 668,
-      "normalized_sha256": "fb06e945c25fbacbc03865e0d73cd992b58cc17db0fb55e73ebbe0471f2b0ea2"
+      "sha256": "775359dd8b2da5b1690863e4cf4aa22642c92ff8313c9325eeee5009c264894f",
+      "size": 671,
+      "normalized_sha256": "775359dd8b2da5b1690863e4cf4aa22642c92ff8313c9325eeee5009c264894f"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpServer.java": {
       "role": "index",
@@ -2776,10 +2833,9 @@
       "normalized_sha256": "be835794ab284527b20a4b8523e6d1406012dab8835df78f21d2bf512bb6ce04"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/AgentMcpBindingMapper.java": {
-      "role": "index",
-      "sha256": "35cf2450d6ad62fe1f76e5bd7c17f3aea8311d8a1cc91ff22d1480464bf3e181",
-      "size": 393,
-      "normalized_sha256": "35cf2450d6ad62fe1f76e5bd7c17f3aea8311d8a1cc91ff22d1480464bf3e181"
+      "sha256": "4b9f56a27fe670665cb3d26e1c4e63e85783ae7eda79682ae30a2e440663bb93",
+      "size": 396,
+      "normalized_sha256": "4b9f56a27fe670665cb3d26e1c4e63e85783ae7eda79682ae30a2e440663bb93"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/McpServerMapper.java": {
       "role": "index",
@@ -2800,10 +2856,9 @@
       "normalized_sha256": "5fa5c026027ccab4038caf8d5d7d5fb921e9922cf122501bb3ccf20b031b8204"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/MyBatisAgentMcpBindingRepository.java": {
-      "role": "index",
-      "sha256": "fe493a3f002d9ffe7d66e8c928573366a647d3025d156c52ee5620ef835c5ce3",
-      "size": 1574,
-      "normalized_sha256": "fe493a3f002d9ffe7d66e8c928573366a647d3025d156c52ee5620ef835c5ce3"
+      "sha256": "f688857c57add3c8f020ba74f07024005cc377453396023f8d0c3823912db1ff",
+      "size": 1577,
+      "normalized_sha256": "f688857c57add3c8f020ba74f07024005cc377453396023f8d0c3823912db1ff"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/MyBatisMcpServerRepository.java": {
       "role": "index",
@@ -2824,10 +2879,9 @@
       "normalized_sha256": "07c3da584e72afab8afcb6b50fd7fe7011fbac0e3479248a699324eeedc3c68c"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/service/IMcpServerService.java": {
-      "role": "index",
-      "sha256": "20a32ee5328dc949dc8c3b8db8d9ef0ef08cd74347be1d1541af32f7258b3213",
-      "size": 2821,
-      "normalized_sha256": "20a32ee5328dc949dc8c3b8db8d9ef0ef08cd74347be1d1541af32f7258b3213"
+      "sha256": "ed7ebb3d791eeac68c131f3ce5a7fc6eda1e7511bd286eba8d5ddecbd93e0dea",
+      "size": 2830,
+      "normalized_sha256": "ed7ebb3d791eeac68c131f3ce5a7fc6eda1e7511bd286eba8d5ddecbd93e0dea"
     },
     "v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/service/impl/McpServerServiceImpl.java": {
       "role": "index",
@@ -2866,10 +2920,9 @@
       "normalized_sha256": "8a9dc58ededa8b1046285c93d8fac78999915c4a60c601320a8d5ead26f175a0"
     },
     "v5ai-modules/v5ai-mcp/src/test/java/xin/v5ai/nb/mcp/service/impl/McpServerServiceImplTest.java": {
-      "role": "index",
-      "sha256": "7126d49feccfd00f02759c42b427b953283622f823d2de2082c739aa1c27a95c",
-      "size": 12307,
-      "normalized_sha256": "7126d49feccfd00f02759c42b427b953283622f823d2de2082c739aa1c27a95c"
+      "sha256": "ad2abbb37bdb8b04f49b91231e39b953b65ea267a4d6b372176a01797b063a4d",
+      "size": 12298,
+      "normalized_sha256": "ad2abbb37bdb8b04f49b91231e39b953b65ea267a4d6b372176a01797b063a4d"
     },
     "v5ai-modules/v5ai-mcp/src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker": {
       "role": "index",
@@ -2884,10 +2937,9 @@
       "normalized_sha256": "6989dbe4c48649155167e505fa450438524c3531ad47b907cf064fb6a5eae90a"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/controller/V5aiModelController.java": {
-      "role": "index",
-      "sha256": "07ceb0220f994cc9a792ddb3af37b515287f65077d231f08c511a22d27b204ff",
-      "size": 4399,
-      "normalized_sha256": "07ceb0220f994cc9a792ddb3af37b515287f65077d231f08c511a22d27b204ff"
+      "sha256": "3f277737165d25e70221c9457bbe108fcd1c5226b0de1b870383539b2a36812c",
+      "size": 4402,
+      "normalized_sha256": "3f277737165d25e70221c9457bbe108fcd1c5226b0de1b870383539b2a36812c"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/controller/V5aiModelProviderController.java": {
       "role": "index",
@@ -2980,22 +3032,19 @@
       "normalized_sha256": "596c0e3122a55c2ef4768cb2ee3fec9bf59f4dda667b3f1724e04360b891bb1f"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/ModelEnabledPredicate.java": {
-      "role": "index",
-      "sha256": "0a02d5195f490a879092fb0746918aa08184a7f07d24c7c83ce95c4cc350e013",
-      "size": 858,
-      "normalized_sha256": "0a02d5195f490a879092fb0746918aa08184a7f07d24c7c83ce95c4cc350e013"
+      "sha256": "a0d50daf33d010cdd3ca5442ec651baf861cc24bd69bf5f58d954cb71469974a",
+      "size": 861,
+      "normalized_sha256": "a0d50daf33d010cdd3ca5442ec651baf861cc24bd69bf5f58d954cb71469974a"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/ModelRuntimeConfigGateway.java": {
-      "role": "index",
-      "sha256": "1fa6887b594683ee6ab13558b59a747a4689131df478627732d54bba1c796855",
-      "size": 971,
-      "normalized_sha256": "1fa6887b594683ee6ab13558b59a747a4689131df478627732d54bba1c796855"
+      "sha256": "3ee788c2c432109e82aefbf02d14d40cc36954eb740748329b2c9d0adfde8860",
+      "size": 974,
+      "normalized_sha256": "3ee788c2c432109e82aefbf02d14d40cc36954eb740748329b2c9d0adfde8860"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/V5aiModelMapper.java": {
-      "role": "index",
-      "sha256": "cd2a33a6f3bbfde88bf2f92e772807846632466dc5682cd6fe2dca8bf4439117",
-      "size": 1199,
-      "normalized_sha256": "cd2a33a6f3bbfde88bf2f92e772807846632466dc5682cd6fe2dca8bf4439117"
+      "sha256": "cc78a31d9fad39919ac41de30f8c1dc8358fb9d68e880f6a6fb53ed2dbdf5239",
+      "size": 1205,
+      "normalized_sha256": "cc78a31d9fad39919ac41de30f8c1dc8358fb9d68e880f6a6fb53ed2dbdf5239"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/V5aiModelProviderMapper.java": {
       "role": "index",
@@ -3010,10 +3059,9 @@
       "normalized_sha256": "3eec524d16e9614dbc785b3c494c66a2eb8f39cfb8007558a44b7d5f5f33afdf"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/service/IV5aiModelService.java": {
-      "role": "index",
-      "sha256": "d80343699782cea262ea841f8534efba67cf6bbcc967521419edc7d7081d426b",
-      "size": 2150,
-      "normalized_sha256": "d80343699782cea262ea841f8534efba67cf6bbcc967521419edc7d7081d426b"
+      "sha256": "6f62e14b207644171653909052d2d72b9278a560df61769037f78248aedf0c1e",
+      "size": 2153,
+      "normalized_sha256": "6f62e14b207644171653909052d2d72b9278a560df61769037f78248aedf0c1e"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/service/impl/ModelConfigRetrieveImpl.java": {
       "role": "index",
@@ -3028,10 +3076,9 @@
       "normalized_sha256": "d41214e4d2c55ad21dbb7d4562a8a279ac75ff6d0324554be4ee702eedd4aa39"
     },
     "v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/service/impl/V5aiModelServiceImpl.java": {
-      "role": "index",
-      "sha256": "72ab6c870feb8eda19582030241f81b476d3494c0e5037cb22415f4938a50c31",
-      "size": 13368,
-      "normalized_sha256": "72ab6c870feb8eda19582030241f81b476d3494c0e5037cb22415f4938a50c31"
+      "sha256": "aa66e79742b4c0f76c5426009fd5fcd768a28676b5e1368494419f624501a310",
+      "size": 13374,
+      "normalized_sha256": "aa66e79742b4c0f76c5426009fd5fcd768a28676b5e1368494419f624501a310"
     },
     "v5ai-modules/v5ai-model/src/main/resources/mapper/V5aiModelMapper.xml": {
       "role": "index",
@@ -3076,10 +3123,9 @@
       "normalized_sha256": "e45adaab65d69afa9e309d5c29b43dd38a7d69f0072677ac1b87df201895c90a"
     },
     "v5ai-modules/v5ai-model/src/test/java/xin/v5ai/nb/model/service/impl/V5aiModelServiceImplTest.java": {
-      "role": "index",
-      "sha256": "d158e05fd8d7ca8000f0983577fcae1450d81904d93094a762064abb5d1ab115",
-      "size": 11751,
-      "normalized_sha256": "d158e05fd8d7ca8000f0983577fcae1450d81904d93094a762064abb5d1ab115"
+      "sha256": "39831489e16be669170ef548b25fbd08b51beac1368aad7b0102db116e1bcbff",
+      "size": 11754,
+      "normalized_sha256": "39831489e16be669170ef548b25fbd08b51beac1368aad7b0102db116e1bcbff"
     },
     "v5ai-modules/v5ai-model/src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker": {
       "role": "index",
@@ -4095,6 +4141,11 @@
       "size": 1400,
       "normalized_sha256": "ddcd46d1bbc6a10003f4da2f5bafec2ca8e041b187eda1b09957ab429d530a6f"
     },
+    "v5ai-modules/v5ai-platform/src/main/resources/db/migration/V32__agent_rag_call_mode.sql": {
+      "sha256": "215503e8ea01b0c67955f8635c092b78ecb9ac1e242e0080ce4ed2ca04dee05d",
+      "size": 369,
+      "normalized_sha256": "215503e8ea01b0c67955f8635c092b78ecb9ac1e242e0080ce4ed2ca04dee05d"
+    },
     "v5ai-modules/v5ai-platform/src/main/resources/db/migration/V3__provider_type_column.sql": {
       "role": "index",
       "sha256": "bf9471c8535cd26418248b64eacfb53014145af60c0bb5d608cee03031f730d3",
@@ -4258,10 +4309,9 @@
       "normalized_sha256": "ff4c4221da38d8f13061c151bd1258c8a7187704470f2ba8f9d01b4894652e68"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/controller/AgentKnowledgeBindingController.java": {
-      "role": "index",
-      "sha256": "95decc90be497938bd60efadafb4ec1b8df2df9df4f3b6190d83d8c0acbf59f7",
-      "size": 1625,
-      "normalized_sha256": "95decc90be497938bd60efadafb4ec1b8df2df9df4f3b6190d83d8c0acbf59f7"
+      "sha256": "0dab8c1cbbc851124cfd193bda607154fceeeed58497acfd1b1ce4c21b088994",
+      "size": 1628,
+      "normalized_sha256": "0dab8c1cbbc851124cfd193bda607154fceeeed58497acfd1b1ce4c21b088994"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/controller/KnowledgeBaseController.java": {
       "role": "index",
@@ -4276,10 +4326,9 @@
       "normalized_sha256": "9e9236a8e03c9d9731d7445d026108c643ad244f290e96974aac934c0925e4b8"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/controller/KnowledgeDebugController.java": {
-      "role": "index",
-      "sha256": "f91caf1072303b69cbb4dbbfc41c37e01442909acb8b465c04b7b9e739142ae3",
-      "size": 2082,
-      "normalized_sha256": "f91caf1072303b69cbb4dbbfc41c37e01442909acb8b465c04b7b9e739142ae3"
+      "sha256": "94806bf2f909251d3bce05c59181a9b62b8f5f87c62a2a0a1e05d1481bcc76c5",
+      "size": 2085,
+      "normalized_sha256": "94806bf2f909251d3bce05c59181a9b62b8f5f87c62a2a0a1e05d1481bcc76c5"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/controller/KnowledgeDocumentController.java": {
       "role": "index",
@@ -4306,10 +4355,9 @@
       "normalized_sha256": "76341a3d584415d3fa67b3b131df55ea87fd2d7830874c5bd155848fc5a79f8d"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/DBRagContextProvider.java": {
-      "role": "index",
-      "sha256": "e429b67fb06fef640d20cbb109d4eaf9c2a93d1fe4eb7329796ee9e78d2ca11b",
-      "size": 1226,
-      "normalized_sha256": "e429b67fb06fef640d20cbb109d4eaf9c2a93d1fe4eb7329796ee9e78d2ca11b"
+      "sha256": "06b1c510e45bdb046d79e285e98a08f12682ebe824ab4b2f6c6b7e39c216e7c0",
+      "size": 2638,
+      "normalized_sha256": "06b1c510e45bdb046d79e285e98a08f12682ebe824ab4b2f6c6b7e39c216e7c0"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/EmbeddingClient.java": {
       "role": "index",
@@ -4336,10 +4384,9 @@
       "normalized_sha256": "36849ebfe43d23d46a4a94ce8f39493b514b55d530314aefad36703b6bebad33"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/RetrievalContextBuilder.java": {
-      "role": "index",
-      "sha256": "5bd75c2c493556806c596aace0bc693dccdee3bf24bab4c898514ffe1c6c6317",
-      "size": 13418,
-      "normalized_sha256": "5bd75c2c493556806c596aace0bc693dccdee3bf24bab4c898514ffe1c6c6317"
+      "sha256": "593a06bee74779bedf2de011f29d9cce9c168bf8eb6757e16f41ed0e4373ea1c",
+      "size": 14393,
+      "normalized_sha256": "593a06bee74779bedf2de011f29d9cce9c168bf8eb6757e16f41ed0e4373ea1c"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/RetrievalHitEnricher.java": {
       "role": "index",
@@ -4534,10 +4581,9 @@
       "normalized_sha256": "a911061a697ba207ca99779e6f73c721b21cf614e0acfa15ec2dd03eb6761ef3"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/repository/AgentKnowledgeBindingRepository.java": {
-      "role": "index",
-      "sha256": "a208d3e73bd75e97c68552e8924c5b78a24bcca8521440c7d5d52324ba7c3122",
-      "size": 983,
-      "normalized_sha256": "a208d3e73bd75e97c68552e8924c5b78a24bcca8521440c7d5d52324ba7c3122"
+      "sha256": "0264010630e2ad49b32fb56ac2beee93ff35f45281b37c8c6d1afe7c2dc98952",
+      "size": 1010,
+      "normalized_sha256": "0264010630e2ad49b32fb56ac2beee93ff35f45281b37c8c6d1afe7c2dc98952"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/repository/KnowledgeBaseRepository.java": {
       "role": "index",
@@ -4648,10 +4694,9 @@
       "normalized_sha256": "d007500036b6189d780e3f0d26bfa8c01236578e914ea4077494c039113bc37c"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/AgentKnowledgeBinding.java": {
-      "role": "index",
-      "sha256": "df6f43dede4c675005a872edee9d5cb3ba2004742e7a7a4c76e5b0418df10f39",
-      "size": 674,
-      "normalized_sha256": "df6f43dede4c675005a872edee9d5cb3ba2004742e7a7a4c76e5b0418df10f39"
+      "sha256": "bac1286903d8757d1d097962f662a0a8de47318d648dfa63e2abb23b0362c9b5",
+      "size": 677,
+      "normalized_sha256": "bac1286903d8757d1d097962f662a0a8de47318d648dfa63e2abb23b0362c9b5"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/KnowledgeBase.java": {
       "role": "index",
@@ -4738,10 +4783,9 @@
       "normalized_sha256": "b5f0ac95d583cfd37d690d2c4d9aaab2c6a7fe6539021683016c3248c8a2c916"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/KnowledgeBindBo.java": {
-      "role": "index",
-      "sha256": "69fcfa101aa45cf79e7400d7d3e63c70ad0372e7958eeb7d239adae0a1e29013",
-      "size": 218,
-      "normalized_sha256": "69fcfa101aa45cf79e7400d7d3e63c70ad0372e7958eeb7d239adae0a1e29013"
+      "sha256": "fe1de89a46b7ac5f5f81fe18f0b8e0ffd7f00c363fc61b1cd0d75cf070753e3c",
+      "size": 221,
+      "normalized_sha256": "fe1de89a46b7ac5f5f81fe18f0b8e0ffd7f00c363fc61b1cd0d75cf070753e3c"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/StoreConnectionTestBo.java": {
       "role": "index",
@@ -4774,10 +4818,9 @@
       "normalized_sha256": "ba630d9bca016ec7854c58a34075b13f9c258c472520c7700a8e19a3487930bd"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/vo/KnowledgeBaseVo.java": {
-      "role": "index",
-      "sha256": "1fe3a4d39a852d86393122ac9daefc55e422138061e2931491d2599f70364679",
-      "size": 2190,
-      "normalized_sha256": "1fe3a4d39a852d86393122ac9daefc55e422138061e2931491d2599f70364679"
+      "sha256": "8e34c6a80bc56b4a60061d4aa311fb196bb03ce1efaf60e0fa3d1bd600785ffa",
+      "size": 2193,
+      "normalized_sha256": "8e34c6a80bc56b4a60061d4aa311fb196bb03ce1efaf60e0fa3d1bd600785ffa"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/vo/KnowledgeChunkVo.java": {
       "role": "index",
@@ -4810,10 +4853,9 @@
       "normalized_sha256": "6ae35c5ea8ce07aa1e82a3f00691cfbc0ca4e92d9615692ba9871a9f831b385a"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/mapper/AgentKnowledgeBindingMapper.java": {
-      "role": "index",
-      "sha256": "6c7ff5c84ef0437825928ecdc7f6bca9d79bbbd21e13521f9121b122c1efdbdd",
-      "size": 388,
-      "normalized_sha256": "6c7ff5c84ef0437825928ecdc7f6bca9d79bbbd21e13521f9121b122c1efdbdd"
+      "sha256": "c01e881b66692f38f258936ee3228335a3778f7f65efcf262eac582d4ed69ae2",
+      "size": 391,
+      "normalized_sha256": "c01e881b66692f38f258936ee3228335a3778f7f65efcf262eac582d4ed69ae2"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/mapper/KnowledgeBaseMapper.java": {
       "role": "index",
@@ -4846,16 +4888,14 @@
       "normalized_sha256": "8bc96cd7050c557e6b4619b0cb9f8bba1e1c7d0b66eceb4743d61fa199322677"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IAgentKnowledgeBindingService.java": {
-      "role": "index",
-      "sha256": "dbd01247fe822556d686d4860049fd8ff4a0634e91d3bfc20f3a26cee3c76023",
-      "size": 909,
-      "normalized_sha256": "dbd01247fe822556d686d4860049fd8ff4a0634e91d3bfc20f3a26cee3c76023"
+      "sha256": "0207e6ab588956c91502e602a72bb65588a9ad8f4c9e6a0e8cc3f868aa02d491",
+      "size": 936,
+      "normalized_sha256": "0207e6ab588956c91502e602a72bb65588a9ad8f4c9e6a0e8cc3f868aa02d491"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeBaseService.java": {
-      "role": "index",
-      "sha256": "c177e4a0058d25bc53efff4c7b2e1317e38383bfb9904ff70874ef7f62d645e3",
-      "size": 4175,
-      "normalized_sha256": "c177e4a0058d25bc53efff4c7b2e1317e38383bfb9904ff70874ef7f62d645e3"
+      "sha256": "b505d2dd693c2a3e93a9600d21ac8430f47dd75bbe985de8dfc85216ce6f0343",
+      "size": 4184,
+      "normalized_sha256": "b505d2dd693c2a3e93a9600d21ac8430f47dd75bbe985de8dfc85216ce6f0343"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeChunkAdminService.java": {
       "role": "index",
@@ -4906,10 +4946,9 @@
       "normalized_sha256": "d24d48119f72d6aba0b08273d882e78d3d7112f6069d07c96eeee639b36ce128"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/impl/KnowledgeBaseServiceImpl.java": {
-      "role": "index",
-      "sha256": "b4e1d6eb3ed0eacc1daef0cb3aba7548cd018ad910b78825b9f35809e17c22cb",
-      "size": 34015,
-      "normalized_sha256": "b4e1d6eb3ed0eacc1daef0cb3aba7548cd018ad910b78825b9f35809e17c22cb"
+      "sha256": "3a10b4a28928aa37393ab57798165302c1ff9ddca77f74ee37ad0695b63e928b",
+      "size": 34024,
+      "normalized_sha256": "3a10b4a28928aa37393ab57798165302c1ff9ddca77f74ee37ad0695b63e928b"
     },
     "v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/impl/KnowledgeChunkAdminServiceImpl.java": {
       "role": "index",
@@ -5152,16 +5191,14 @@
       "normalized_sha256": "38ea44c0641aa9a9b5ac5d1636586a9723023c769d63f6e8a6bb82d284294e21"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/AgentDebugController.java": {
-      "role": "index",
-      "sha256": "204cc7f9b33d44fcabf22db9ba90ce8b77076c0bd7852b8ba52aa6cc97a5616f",
-      "size": 1927,
-      "normalized_sha256": "204cc7f9b33d44fcabf22db9ba90ce8b77076c0bd7852b8ba52aa6cc97a5616f"
+      "sha256": "3239c258df9be5f95e37ae1917d230daabb8bdf58229937172ec83a9cde32ffc",
+      "size": 1926,
+      "normalized_sha256": "3239c258df9be5f95e37ae1917d230daabb8bdf58229937172ec83a9cde32ffc"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/ChatController.java": {
-      "role": "index",
-      "sha256": "a05a10a6984e21f9fff779087a1ef73c1195bd5ee590aee79aca0a2c17275ccb",
-      "size": 3011,
-      "normalized_sha256": "a05a10a6984e21f9fff779087a1ef73c1195bd5ee590aee79aca0a2c17275ccb"
+      "sha256": "0ae7995167eb0d33cb95516be081e5c809f8e4b0ffe9f3339a2ce32118d79410",
+      "size": 2989,
+      "normalized_sha256": "0ae7995167eb0d33cb95516be081e5c809f8e4b0ffe9f3339a2ce32118d79410"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/vo/ChatRequest.java": {
       "role": "index",
@@ -5170,34 +5207,34 @@
       "normalized_sha256": "73a7a3f2cd421ecf6f29849184e7ca48ac51e70502e313acc3018a848f2f48e3"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/vo/ConversationMessageResponse.java": {
-      "role": "index",
-      "sha256": "2958170fa726fbbb28f0c1265c2011ce35a0e0efc1013fa54a730dcabb2ee2b1",
-      "size": 668,
-      "normalized_sha256": "2958170fa726fbbb28f0c1265c2011ce35a0e0efc1013fa54a730dcabb2ee2b1"
+      "sha256": "41c51696d1c4cf45776683e4d47b5b8ea185821dce6e66045c47fd97db8cd1fe",
+      "size": 689,
+      "normalized_sha256": "41c51696d1c4cf45776683e4d47b5b8ea185821dce6e66045c47fd97db8cd1fe"
+    },
+    "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/AgentScopeRuntime.java": {
+      "sha256": "0f91473a26c7366f015f0aa8bc019340edb9205b23f761ba6c32702304b23a6f",
+      "size": 12825,
+      "normalized_sha256": "0f91473a26c7366f015f0aa8bc019340edb9205b23f761ba6c32702304b23a6f"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/PersistingAgentRuntime.java": {
-      "role": "index",
-      "sha256": "e6e99e09e5d353ec58a0edcfd691d63fa9e8d4267840be22fcd8900e34e79ce2",
-      "size": 13423,
-      "normalized_sha256": "e6e99e09e5d353ec58a0edcfd691d63fa9e8d4267840be22fcd8900e34e79ce2"
+      "sha256": "49d70d6d3a02a09cec94e90d7b175c67a74166975dfb5cc209deb412a7f4091d",
+      "size": 13520,
+      "normalized_sha256": "49d70d6d3a02a09cec94e90d7b175c67a74166975dfb5cc209deb412a7f4091d"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/PublishedModelAgentTextExecutor.java": {
-      "role": "index",
-      "sha256": "ee588f2adb58148eac91d929db2ce498613a1837f32f42caa2625c8de32dd40a",
-      "size": 2906,
-      "normalized_sha256": "ee588f2adb58148eac91d929db2ce498613a1837f32f42caa2625c8de32dd40a"
+      "sha256": "d4c9df6e49eeefac39d6ab230e07c25416b70483deba1318089cb50aa9980453",
+      "size": 4341,
+      "normalized_sha256": "d4c9df6e49eeefac39d6ab230e07c25416b70483deba1318089cb50aa9980453"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/config/AgentScopeRuntimeConfiguration.java": {
-      "role": "index",
-      "sha256": "5910dcdd0e498b9829a78aaed4c8d10c126c160d96b005c367249a4182ca0135",
-      "size": 5610,
-      "normalized_sha256": "5910dcdd0e498b9829a78aaed4c8d10c126c160d96b005c367249a4182ca0135"
+      "sha256": "f4fb8f0f95bb610662ab38db6e1b5cdcb39369df14b93ad46cdc0f9a1ab62142",
+      "size": 6345,
+      "normalized_sha256": "f4fb8f0f95bb610662ab38db6e1b5cdcb39369df14b93ad46cdc0f9a1ab62142"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/config/properties/AgentScopeRuntimeProperties.java": {
-      "role": "index",
-      "sha256": "8af68a6931784f12884794e8e741efef813219c64a40723df7917bcb26530bca",
-      "size": 367,
-      "normalized_sha256": "8af68a6931784f12884794e8e741efef813219c64a40723df7917bcb26530bca"
+      "sha256": "20cef86294323c0ce0f3b480e4d66e62f6d8083bfb31bbd29e303b599c50d55f",
+      "size": 485,
+      "normalized_sha256": "20cef86294323c0ce0f3b480e4d66e62f6d8083bfb31bbd29e303b599c50d55f"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/domain/AgentStateEntity.java": {
       "role": "index",
@@ -5230,10 +5267,9 @@
       "normalized_sha256": "9118f4d76083e1c765519adf5d7271118e6d1539d2dd9d2a71470d63b1187576"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/gateway/AgentStateGateway.java": {
-      "role": "index",
-      "sha256": "8d079a69926421e6f25a2f72a474da3409a0daf1af86e00919a503a85cdd0fb0",
-      "size": 780,
-      "normalized_sha256": "8d079a69926421e6f25a2f72a474da3409a0daf1af86e00919a503a85cdd0fb0"
+      "sha256": "fb995e1e0384d9b0fe44f756d6a30d5741b00ab68188dc3b74d47d72724cd1eb",
+      "size": 792,
+      "normalized_sha256": "fb995e1e0384d9b0fe44f756d6a30d5741b00ab68188dc3b74d47d72724cd1eb"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/gateway/RuntimeConversationGateway.java": {
       "role": "index",
@@ -5254,10 +5290,9 @@
       "normalized_sha256": "512e50af7db1619ab30d6bf4a8413445bcc38817936cc01186153eb0ab440a80"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/gateway/RuntimeRunGateway.java": {
-      "role": "index",
-      "sha256": "cba83398e9a62d1b0b095574e6683eb6f947c96b815937bf86c625feecebf0d1",
-      "size": 884,
-      "normalized_sha256": "cba83398e9a62d1b0b095574e6683eb6f947c96b815937bf86c625feecebf0d1"
+      "sha256": "a18cba77bf6933b2a7e40843d2448dbd4db7eea4e8d5138f3100a01b614e06a4",
+      "size": 887,
+      "normalized_sha256": "a18cba77bf6933b2a7e40843d2448dbd4db7eea4e8d5138f3100a01b614e06a4"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/AgentStateMapper.java": {
       "role": "index",
@@ -5272,16 +5307,14 @@
       "normalized_sha256": "2468b46ee8fe3de46c69915266b05493a3708a9d07193ced7762d73fbedecc34"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/MyBatisConversationRepository.java": {
-      "role": "index",
-      "sha256": "46d28f443e5559d6911f1161d56111f24e3f3940f19c0c6e010bddf006384ba1",
-      "size": 871,
-      "normalized_sha256": "46d28f443e5559d6911f1161d56111f24e3f3940f19c0c6e010bddf006384ba1"
+      "sha256": "7912c9c08fe5f3d482bd17667e00de78a857645d153ecac5376f0d002a3cd624",
+      "size": 878,
+      "normalized_sha256": "7912c9c08fe5f3d482bd17667e00de78a857645d153ecac5376f0d002a3cd624"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/MyBatisMessageRepository.java": {
-      "role": "index",
-      "sha256": "388a8a2f35cec8bff14a55bc84ca38bc915deb4fe9fa90e5f367457befc16cef",
-      "size": 1339,
-      "normalized_sha256": "388a8a2f35cec8bff14a55bc84ca38bc915deb4fe9fa90e5f367457befc16cef"
+      "sha256": "3df348cc8b1eccfb6e7e4d6a09efc3c2f894430c2a23923cc603c679cf7b3bdd",
+      "size": 1367,
+      "normalized_sha256": "3df348cc8b1eccfb6e7e4d6a09efc3c2f894430c2a23923cc603c679cf7b3bdd"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/MyBatisRunEventRepository.java": {
       "role": "index",
@@ -5290,10 +5323,9 @@
       "normalized_sha256": "4059aee87aa7f4857ebfb66731ee021a217e217f4a0bd0d36e03174fa63cbb19"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/MyBatisRunRecordRepository.java": {
-      "role": "index",
-      "sha256": "e4a904e3378ee3ec333377cb79317f4992106a741abfcb1bb6fc133881e46a7a",
-      "size": 1091,
-      "normalized_sha256": "e4a904e3378ee3ec333377cb79317f4992106a741abfcb1bb6fc133881e46a7a"
+      "sha256": "a11cb586474e7a0b908c705ff611fffeba918a93a44ce773856c454adc201222",
+      "size": 1084,
+      "normalized_sha256": "a11cb586474e7a0b908c705ff611fffeba918a93a44ce773856c454adc201222"
     },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/RuntimeConversationMapper.java": {
       "role": "index",
@@ -5319,17 +5351,31 @@
       "size": 1109,
       "normalized_sha256": "62d93ee2afff6bab8e8d89a139db2d01e92b71532973534fc99d4470e9b4497b"
     },
+    "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/resolver/AgentScopePublishedAgentResolver.java": {
+      "sha256": "a369d1e01507aaa0cd74331420e95097e55e843bd21a77330c2adcdfb4b10342",
+      "size": 3797,
+      "normalized_sha256": "a369d1e01507aaa0cd74331420e95097e55e843bd21a77330c2adcdfb4b10342"
+    },
     "v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/resolver/DBAgentModelResolver.java": {
       "role": "index",
       "sha256": "fa67ced84511c0fa29c392416adb7c09821381c584cd027800141221e7685e5a",
       "size": 1077,
       "normalized_sha256": "fa67ced84511c0fa29c392416adb7c09821381c584cd027800141221e7685e5a"
     },
+    "v5ai-modules/v5ai-runtime/src/test/java/xin/v5ai/nb/runtime/core/AgentScopeRuntimeCitationsTest.java": {
+      "sha256": "98b789640491aa3c2218c1a8bb2f57aa82545a40795324db2472952b830b22db",
+      "size": 5172,
+      "normalized_sha256": "98b789640491aa3c2218c1a8bb2f57aa82545a40795324db2472952b830b22db"
+    },
+    "v5ai-modules/v5ai-runtime/src/test/java/xin/v5ai/nb/runtime/core/AgentScopeRuntimeSwitchesTest.java": {
+      "sha256": "f660e07654f7a4d5d34817758be8ba56ca8c26c2a9cf4666fd891e1db5e6dd0b",
+      "size": 8206,
+      "normalized_sha256": "f660e07654f7a4d5d34817758be8ba56ca8c26c2a9cf4666fd891e1db5e6dd0b"
+    },
     "v5ai-modules/v5ai-runtime/src/test/java/xin/v5ai/nb/runtime/core/PersistingAgentRuntimeTest.java": {
-      "role": "index",
-      "sha256": "6d3e72a19460e1d3587d67fe3eacce9b05fb60c60c66ef0d1cb756ee1f103186",
-      "size": 4795,
-      "normalized_sha256": "6d3e72a19460e1d3587d67fe3eacce9b05fb60c60c66ef0d1cb756ee1f103186"
+      "sha256": "73fc8cad18fd822c67146ae6df137ce59fc5bb5e7811926d31cf15ae4a479256",
+      "size": 4718,
+      "normalized_sha256": "73fc8cad18fd822c67146ae6df137ce59fc5bb5e7811926d31cf15ae4a479256"
     },
     "v5ai-modules/v5ai-skill/pom.xml": {
       "role": "index",
@@ -5338,10 +5384,9 @@
       "normalized_sha256": "ed040622c6ecd0161f9c80c11da8bed4037df1790d1f8d9a0d929a3edb49f26d"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/controller/AgentSkillBindingController.java": {
-      "role": "index",
-      "sha256": "601de283fdc5fe0687d5eeb28d17d93d1be2070e87aa7eef76ab0a2d573e99d9",
-      "size": 1187,
-      "normalized_sha256": "601de283fdc5fe0687d5eeb28d17d93d1be2070e87aa7eef76ab0a2d573e99d9"
+      "sha256": "87f4cc6424c04b2b1e597d77a940903a8ab9481dbcb3ee445e9cc8f72a6ae940",
+      "size": 1190,
+      "normalized_sha256": "87f4cc6424c04b2b1e597d77a940903a8ab9481dbcb3ee445e9cc8f72a6ae940"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/controller/SkillController.java": {
       "role": "index",
@@ -5350,16 +5395,14 @@
       "normalized_sha256": "ace17c6c06b4e13ea3db77a0f7400f8e5949b87803defa0603aeda52f3050375"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/AgentSkillBindingService.java": {
-      "role": "index",
-      "sha256": "d3bae3951fe316ae786d5ec918f9f2e02e2634697f9dcc394d8a78e01d8928b5",
-      "size": 551,
-      "normalized_sha256": "d3bae3951fe316ae786d5ec918f9f2e02e2634697f9dcc394d8a78e01d8928b5"
+      "sha256": "6a27dd8edd7a06bed610fae6a92dddef27ec59fa6de9b48896f45895e89acaa5",
+      "size": 563,
+      "normalized_sha256": "6a27dd8edd7a06bed610fae6a92dddef27ec59fa6de9b48896f45895e89acaa5"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/AgentSkillWorkspaceResolver.java": {
-      "role": "index",
-      "sha256": "7a1d0fb11f0d92c11f7603e4a9d85b162af52e5540d238c05154094e38f0e053",
-      "size": 2636,
-      "normalized_sha256": "7a1d0fb11f0d92c11f7603e4a9d85b162af52e5540d238c05154094e38f0e053"
+      "sha256": "02adf4b2fad2b48dd5a3ce2973b9fbed4e11b64ad2af02c7d65035779729c7ad",
+      "size": 2652,
+      "normalized_sha256": "02adf4b2fad2b48dd5a3ce2973b9fbed4e11b64ad2af02c7d65035779729c7ad"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/SkillAiGenerator.java": {
       "role": "index",
@@ -5404,10 +5447,9 @@
       "normalized_sha256": "171c8777a04c156050d7afc409adbf918946c239aa9885b9425311c5329df0b2"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/AgentSkillBinding.java": {
-      "role": "index",
-      "sha256": "6199e7698ea3e96fe5057a01f079b8c152c24ee453e9d189bbd88c7c0cb76cf4",
-      "size": 775,
-      "normalized_sha256": "6199e7698ea3e96fe5057a01f079b8c152c24ee453e9d189bbd88c7c0cb76cf4"
+      "sha256": "80de41a7c3334fe68430c99bb998fe6b7fc57b7691e5b936118758548f902cfd",
+      "size": 781,
+      "normalized_sha256": "80de41a7c3334fe68430c99bb998fe6b7fc57b7691e5b936118758548f902cfd"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/Skill.java": {
       "role": "index",
@@ -5452,10 +5494,9 @@
       "normalized_sha256": "4fe5d1be9b11a037eccc4b95ebeb97266907da7125898fcf855ae741f4c685f2"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/bo/SkillBindBo.java": {
-      "role": "index",
-      "sha256": "a5bad37a3a0993f2b054016089ca3f3d29418590e666b55c63afeba804906c6d",
-      "size": 225,
-      "normalized_sha256": "a5bad37a3a0993f2b054016089ca3f3d29418590e666b55c63afeba804906c6d"
+      "sha256": "e86ded73dd6923caf9f384ea8d420bf9ee0a899e06de780ea252db0cad52b91a",
+      "size": 228,
+      "normalized_sha256": "e86ded73dd6923caf9f384ea8d420bf9ee0a899e06de780ea252db0cad52b91a"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/bo/SkillBo.java": {
       "role": "index",
@@ -5482,16 +5523,14 @@
       "normalized_sha256": "08390a15368b46c7c3d7e756f49abf5280e0ab33bc6edc7ccf6036f4886f923d"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/vo/AgentSkillBindingDTO.java": {
-      "role": "index",
-      "sha256": "ad4b01e6a398a80c3221fabc7ebba20306038c4743ff8cb5832bbaf0035e1ce8",
-      "size": 621,
-      "normalized_sha256": "ad4b01e6a398a80c3221fabc7ebba20306038c4743ff8cb5832bbaf0035e1ce8"
+      "sha256": "aa97c6b57dfada7bb99f34fc0d6f6ade5a13189a0cffef222a16d582279aecd6",
+      "size": 627,
+      "normalized_sha256": "aa97c6b57dfada7bb99f34fc0d6f6ade5a13189a0cffef222a16d582279aecd6"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/vo/AgentSkillBindingVo.java": {
-      "role": "index",
-      "sha256": "ad38f91ad68785de79d6da24c06fbbf80c8320e1a5661632e67b50645757eaa7",
-      "size": 601,
-      "normalized_sha256": "ad38f91ad68785de79d6da24c06fbbf80c8320e1a5661632e67b50645757eaa7"
+      "sha256": "6c89f1871693409a3a5af29b729875a0f9aacaa006083e3b4b0358b738753df5",
+      "size": 604,
+      "normalized_sha256": "6c89f1871693409a3a5af29b729875a0f9aacaa006083e3b4b0358b738753df5"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/vo/SkillDTO.java": {
       "role": "index",
@@ -5518,10 +5557,9 @@
       "normalized_sha256": "95d503fb32aea2c15549a00d0543ea350befb5354dd8ede78d8fab1d8134a4bf"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/vo/SkillUsageVo.java": {
-      "role": "index",
-      "sha256": "89830d649a1dcbdc4d2e62fe089b7faf6af580d9c58bab4c53033ebbdf2d43c1",
-      "size": 209,
-      "normalized_sha256": "89830d649a1dcbdc4d2e62fe089b7faf6af580d9c58bab4c53033ebbdf2d43c1"
+      "sha256": "1b343c0a747f7be05168572f64234bbcd2f99f0b05fc5fecd46fe188d6cc6a8e",
+      "size": 215,
+      "normalized_sha256": "1b343c0a747f7be05168572f64234bbcd2f99f0b05fc5fecd46fe188d6cc6a8e"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/domain/vo/SkillVersionVo.java": {
       "role": "index",
@@ -5536,16 +5574,14 @@
       "normalized_sha256": "f81d0013caab959adae4fa4dc50934c64b44f2c33a507acecb926c23ec874eaa"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/mapper/AgentSkillBindingMapper.java": {
-      "role": "index",
-      "sha256": "9bdf9a0229b62ef4bf88bb892dae53b5b787b65bb009507bf0ebb705f1b066fb",
-      "size": 500,
-      "normalized_sha256": "9bdf9a0229b62ef4bf88bb892dae53b5b787b65bb009507bf0ebb705f1b066fb"
+      "sha256": "f08af0f8315352ab5d4d6f9b9052d62d2ab5729799a367437a210ef22d9d7d23",
+      "size": 503,
+      "normalized_sha256": "f08af0f8315352ab5d4d6f9b9052d62d2ab5729799a367437a210ef22d9d7d23"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/mapper/MyBatisAgentSkillBindingRepository.java": {
-      "role": "index",
-      "sha256": "2f5dbca067969c9163fa7cbaa3e5a7bac26653504a1f3af1aea7310603edd7d9",
-      "size": 1500,
-      "normalized_sha256": "2f5dbca067969c9163fa7cbaa3e5a7bac26653504a1f3af1aea7310603edd7d9"
+      "sha256": "875381a02aa1fec3f613bbe192cbb2aa947214cb0f199ddf1a53993645987137",
+      "size": 1503,
+      "normalized_sha256": "875381a02aa1fec3f613bbe192cbb2aa947214cb0f199ddf1a53993645987137"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/mapper/MyBatisSkillFileRepository.java": {
       "role": "index",
@@ -5578,10 +5614,9 @@
       "normalized_sha256": "b05ecaa7774db9112c9b6e05ac3b3ebae8243d62ea616626c8af6762613b18da"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/service/IAgentSkillBindingService.java": {
-      "role": "index",
-      "sha256": "2918a275423bae112cbf5264cef925feb6b59d433fe28b4e91f5c7f6f2cc3456",
-      "size": 364,
-      "normalized_sha256": "2918a275423bae112cbf5264cef925feb6b59d433fe28b4e91f5c7f6f2cc3456"
+      "sha256": "79a2c7e966faddc91f1f8111d75c5ea36bcee56ea420b612ee0cf204d3dc4231",
+      "size": 370,
+      "normalized_sha256": "79a2c7e966faddc91f1f8111d75c5ea36bcee56ea420b612ee0cf204d3dc4231"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/service/ISkillFileService.java": {
       "role": "index",
@@ -5590,10 +5625,9 @@
       "normalized_sha256": "2112d5a98a6d8e37d014b3c10cb1a40fbea5dbaa256f142f59d83e301aac2b3d"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/service/ISkillService.java": {
-      "role": "index",
-      "sha256": "f6ca87a82aeb8c71ab7f13fc561b9a742cab188b444f55b21ba04f2c16390037",
-      "size": 4681,
-      "normalized_sha256": "f6ca87a82aeb8c71ab7f13fc561b9a742cab188b444f55b21ba04f2c16390037"
+      "sha256": "4ab1b64c7e7f4dad5edbee787a0f2164cb75bcddbee72093b5c58863ea6ee2a9",
+      "size": 4696,
+      "normalized_sha256": "4ab1b64c7e7f4dad5edbee787a0f2164cb75bcddbee72093b5c58863ea6ee2a9"
     },
     "v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/service/ISkillVersionService.java": {
       "role": "index",
@@ -5758,10 +5792,9 @@
       "normalized_sha256": "7a53e2936e9a886a103b383ad21728f82a99e6a098de03146be1fca73a68f971"
     },
     "v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/WorkflowEngine.java": {
-      "role": "index",
-      "sha256": "8b8a5d9f1e33b32754b3cbff4fb7b0be9ef199e2652e0625e820f1c8ea73b9dc",
-      "size": 10570,
-      "normalized_sha256": "8b8a5d9f1e33b32754b3cbff4fb7b0be9ef199e2652e0625e820f1c8ea73b9dc"
+      "sha256": "c93ba00605b8cfff861b6edaad853714a83b4c13002e5aa015f4647f575e542d",
+      "size": 10563,
+      "normalized_sha256": "c93ba00605b8cfff861b6edaad853714a83b4c13002e5aa015f4647f575e542d"
     },
     "v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/WorkflowJson.java": {
       "role": "index",
@@ -5920,10 +5953,9 @@
       "normalized_sha256": "fd1d77eb6cc6d26153ebbd0ff0fc5866fe58608a6b5a3c18fb7b3e03220fb460"
     },
     "v5ai-modules/v5ai-workflow/src/test/java/xin/v5ai/nb/workflow/WorkflowEngineTest.java": {
-      "role": "index",
-      "sha256": "b92d60084af1f25958e09a08eb6d3ea61faf50189707e3c223ee25fc62b4333b",
-      "size": 13866,
-      "normalized_sha256": "b92d60084af1f25958e09a08eb6d3ea61faf50189707e3c223ee25fc62b4333b"
+      "sha256": "76da4552d6c44fa59853646b16ad416cd013c59194dc5f552d3d1e89ffb9a561",
+      "size": 13840,
+      "normalized_sha256": "76da4552d6c44fa59853646b16ad416cd013c59194dc5f552d3d1e89ffb9a561"
     },
     "v5ai-modules/v5ai-workflow/src/test/java/xin/v5ai/nb/workflow/service/impl/WorkflowServiceImplTest.java": {
       "role": "index",
@@ -5956,10 +5988,9 @@
       "normalized_sha256": "72415fe1dce5f0f7d3bf088bbc3d2b8525c17d4b30ccb18a067af1f990a4089a"
     },
     "v5ai-starter/src/main/java/xin/v5ai/nb/starter/controller/StatsController.java": {
-      "role": "index",
-      "sha256": "de32e19c312bd70b62986496890163ec70ef0dd0215a884f46b4dd08e1f59a13",
-      "size": 2381,
-      "normalized_sha256": "de32e19c312bd70b62986496890163ec70ef0dd0215a884f46b4dd08e1f59a13"
+      "sha256": "68011ecc004cc71e5419e2bffe87f378ca536c6d033d6d735fb354ce05976ac1",
+      "size": 2366,
+      "normalized_sha256": "68011ecc004cc71e5419e2bffe87f378ca536c6d033d6d735fb354ce05976ac1"
     },
     "v5ai-starter/src/main/java/xin/v5ai/nb/starter/controller/vo/OverviewResponse.java": {
       "role": "index",
@@ -5974,10 +6005,9 @@
       "normalized_sha256": "bb920a555ecd04335c2b37db3d95aedcf22232fc515001431a1f28d2b329945b"
     },
     "v5ai-starter/src/main/resources/application.yml": {
-      "role": "index",
-      "sha256": "661417348c9dfc4c3f7f47368a7ac0a2448b7f099705dd903ca801012ba4bebd",
-      "size": 7154,
-      "normalized_sha256": "661417348c9dfc4c3f7f47368a7ac0a2448b7f099705dd903ca801012ba4bebd"
+      "sha256": "7670ae1032b1c7b7d8526375a2973dc79b53850a20665523626ac40fcf963ebf",
+      "size": 7275,
+      "normalized_sha256": "7670ae1032b1c7b7d8526375a2973dc79b53850a20665523626ac40fcf963ebf"
     },
     "v5ai-starter/src/main/resources/banner.txt": {
       "role": "index",
@@ -6118,9 +6148,9 @@
       "normalized_sha256": "dd95c8c9940fb14b06016f32853be9ef932b8add5660046a8c5c90028b9f3b7a"
     },
     "v5ai-ui/src/api/client.ts": {
-      "sha256": "7d59879c5c2bdedc41b0ad50d1485c307cc69f886874c516c1d94509099fe0bf",
-      "size": 73533,
-      "normalized_sha256": "7d59879c5c2bdedc41b0ad50d1485c307cc69f886874c516c1d94509099fe0bf"
+      "sha256": "fe0c0e4a984545f164dc8e15479f793f720345821beb22ca6222078cb6f831c2",
+      "size": 73989,
+      "normalized_sha256": "fe0c0e4a984545f164dc8e15479f793f720345821beb22ca6222078cb6f831c2"
     },
     "v5ai-ui/src/components/ChatMessageBody.vue": {
       "role": "index",
@@ -6169,6 +6199,16 @@
       "sha256": "d990dd81fe09b2c05acf87ca4053187cd3b858b4c9e796718830162d1300d1bc",
       "size": 816,
       "normalized_sha256": "d990dd81fe09b2c05acf87ca4053187cd3b858b4c9e796718830162d1300d1bc"
+    },
+    "v5ai-ui/src/components/ResourceIcon.vue": {
+      "sha256": "0a8c7b8f538b57fe261155db66aed486ac65ee41c8d692898dc02abc93f9fcec",
+      "size": 1950,
+      "normalized_sha256": "0a8c7b8f538b57fe261155db66aed486ac65ee41c8d692898dc02abc93f9fcec"
+    },
+    "v5ai-ui/src/components/ResourcePickerList.vue": {
+      "sha256": "450ab41ea0219b2563e58aa22f17499a64e5815a4b2215dad80d26fbfc960e91",
+      "size": 4331,
+      "normalized_sha256": "450ab41ea0219b2563e58aa22f17499a64e5815a4b2215dad80d26fbfc960e91"
     },
     "v5ai-ui/src/components/RoleTag.vue": {
       "role": "index",
@@ -6386,10 +6426,9 @@
       "normalized_sha256": "b3509bb61081dd62f67f255a9e8ad608dd5e5633fcc6812bd9dcad23d4440e11"
     },
     "v5ai-ui/src/views/agent/AgentEditView.vue": {
-      "role": "index",
-      "sha256": "1655bb4a053790e1cd070104d3839b88fedaf6f20f84f9798c222e4f48a31f16",
-      "size": 24927,
-      "normalized_sha256": "1655bb4a053790e1cd070104d3839b88fedaf6f20f84f9798c222e4f48a31f16"
+      "sha256": "ca6c1b5c20ce19bda7b2379a4472b3c193788cd6f6fad2c61901b27ed4ffba52",
+      "size": 34756,
+      "normalized_sha256": "ca6c1b5c20ce19bda7b2379a4472b3c193788cd6f6fad2c61901b27ed4ffba52"
     },
     "v5ai-ui/src/views/agent/PreviewPanel.vue": {
       "role": "index",
