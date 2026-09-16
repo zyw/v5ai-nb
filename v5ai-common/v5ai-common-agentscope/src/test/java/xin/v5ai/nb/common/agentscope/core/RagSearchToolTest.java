@@ -5,8 +5,8 @@ import io.agentscope.core.message.ToolResultState;
 import io.agentscope.core.tool.ToolCallParam;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
-import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 
 import java.util.ArrayList;
 import java.util.List;

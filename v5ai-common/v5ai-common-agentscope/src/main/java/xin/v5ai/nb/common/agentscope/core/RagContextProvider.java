@@ -3,7 +3,7 @@ package xin.v5ai.nb.common.agentscope.core;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
-import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
 
 /**
  * RAG 上下文构建器：为一次运行请求生成检索上下文与结构化命中（知识库引用）。

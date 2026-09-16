@@ -23,7 +23,7 @@ import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
 import xin.v5ai.nb.common.agentscope.core.RagSearchTool;
 import xin.v5ai.nb.common.agentscope.core.WebSearchTool;
 import xin.v5ai.nb.common.agentscope.core.domain.*;
-import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;

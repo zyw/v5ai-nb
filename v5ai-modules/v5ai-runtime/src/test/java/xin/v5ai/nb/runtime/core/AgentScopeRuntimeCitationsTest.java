@@ -11,8 +11,8 @@ import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
-import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
-import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 

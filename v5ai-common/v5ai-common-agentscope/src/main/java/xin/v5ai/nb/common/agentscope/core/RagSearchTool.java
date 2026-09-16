@@ -5,7 +5,7 @@ import io.agentscope.core.tool.ToolBase;
 import io.agentscope.core.tool.ToolCallParam;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 
 import java.util.List;
 import java.util.Map;

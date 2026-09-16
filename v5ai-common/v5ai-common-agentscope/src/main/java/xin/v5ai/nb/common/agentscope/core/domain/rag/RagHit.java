@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core.rag;
+package xin.v5ai.nb.common.agentscope.core.domain.rag;
 
 /**
  * 一条知识检索命中（引用展示用）。

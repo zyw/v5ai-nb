@@ -1,7 +1,7 @@
 package xin.v5ai.nb.common.agentscope.core;
 
 import xin.v5ai.nb.common.agentscope.core.domain.KnowledgeBaseRef;
-import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
 
 import java.util.List;
 

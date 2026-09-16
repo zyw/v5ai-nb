@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core.rag;
+package xin.v5ai.nb.common.agentscope.core.domain.rag;
 
 import java.util.List;
 
