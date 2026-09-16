@@ -4,26 +4,57 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
+import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.KnowledgeBaseRef;
 import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
+import xin.v5ai.nb.rag.core.dto.RetrievalResult;
+import xin.v5ai.nb.rag.service.IAgentKnowledgeBindingService;
+import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 
+import java.util.List;
+
+/**
+ * RAG 运行时端口实现（强制调用的 {@link RagContextProvider} + 智能调用的 {@link RagSearchProvider}）。
+ */
 @Component
 @RequiredArgsConstructor
-public class DBRagContextProvider implements RagContextProvider {
+public class DBRagContextProvider implements RagContextProvider, RagSearchProvider {
 
     private final RetrievalContextBuilder retrievalContextBuilder;
+    private final IAgentKnowledgeBindingService bindingService;
+    private final IKnowledgeBaseService baseService;
 
     @Override
     public Mono<RagContext> buildContext(Agent agent, AgentRunRequest request) {
         return Mono.fromCallable(() -> {
             var result = retrievalContextBuilder.build(agent.agentKey(), request.query());
-            var hits = result.citations().stream()
-                    .map(citation -> new RagHit(citation.knowledgeBaseId(), citation.documentId(),
-                            citation.documentTitle(), citation.chunkIndex(), citation.content(), citation.score()))
-                    .toList();
-            return new RagContext(result.context(), hits);
+            return toRagContext(result);
         });
+    }
+
+    @Override
+    public List<KnowledgeBaseRef> listBoundKnowledgeBases(String agentKey) {
+        return bindingService.findByAgentKey(agentKey).stream()
+                .map(baseService::getKnowledgeBase)
+                .filter(base -> base != null)
+                .map(base -> new KnowledgeBaseRef(base.getId(), base.getName(), base.getDescription()))
+                .toList();
+    }
+
+    @Override
+    public RagContext search(String agentKey, long knowledgeBaseId, String query) {
+        // 知识库未绑定到该 Agent 时由 RetrievalContextBuilder.search 抛异常，工具侧转为友好错误
+        return toRagContext(retrievalContextBuilder.search(agentKey, knowledgeBaseId, query));
+    }
+
+    private static RagContext toRagContext(RetrievalResult result) {
+        var hits = result.citations().stream()
+                .map(citation -> new RagHit(citation.knowledgeBaseId(), citation.documentId(),
+                        citation.documentTitle(), citation.chunkIndex(), citation.content(), citation.score()))
+                .toList();
+        return new RagContext(result.context(), hits);
     }
 }

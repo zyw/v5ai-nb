@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.ResolvedMcpTool;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -49,7 +50,7 @@ class ModelStreamTextExecutorSwitchGateTest {
     private static Agent agent(boolean mcpEnabled, boolean skillEnabled) {
         return new Agent("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
-                false, mcpEnabled, skillEnabled, false, false);
+                false, mcpEnabled, skillEnabled, false, false, RagCallMode.FORCED.value());
     }
 
     private static ModelStreamTextExecutor executor(Path workspace, McpToolResolver mcp, SkillWorkspaceResolver skill) {

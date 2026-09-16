@@ -50,6 +50,7 @@ class PublishedAgentResolverTest {
         assertThat(resolved.modelId()).isEqualTo(7L);
         assertThat(resolved.status()).isEqualTo(AgentStatus.PUBLISHED);
         assertThat(resolved.publishedVersion()).isEqualTo(1L);
+        assertThat(resolved.ragCallMode()).isEqualTo(1);
     }
 
     @Test
@@ -85,7 +86,7 @@ class PublishedAgentResolverTest {
                 + ",\"systemPrompt\":\"" + (systemPrompt == null ? "" : systemPrompt) + "\""
                 + ",\"avatar\":\"\",\"greeting\":\"\",\"presetQuestions\":\"\""
                 + ",\"memoryEnabled\":false,\"mcpEnabled\":false,\"skillEnabled\":false"
-                + ",\"webSearchEnabled\":false,\"ragEnabled\":false}";
+                + ",\"webSearchEnabled\":false,\"ragEnabled\":false,\"ragCallMode\":1}";
     }
 
     private static final class InMemoryAgentRepository implements AgentRepository {

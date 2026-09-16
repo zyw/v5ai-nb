@@ -3,6 +3,7 @@ package xin.v5ai.nb.runtime.core;
 import io.agentscope.core.model.Model;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
+import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
@@ -56,8 +57,25 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
             Path workspace,
             String webSearchApiKey
     ) {
+        this(modelResolver, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace, webSearchApiKey, null);
+    }
+
+    /**
+     * MCP/Skill/联网搜索/RAG 智能调用感知构造：额外携带 {@link RagSearchProvider}，
+     * 供 Agent 开启 RAG 智能调用模式时注册 {@code rag_search} 工具。
+     */
+    public PublishedModelAgentTextExecutor(
+            AgentModelResolver modelResolver,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditRepository,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey,
+            RagSearchProvider ragSearchProvider
+    ) {
         this(modelResolver, model -> new ModelStreamTextExecutor(
-                model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace, webSearchApiKey));
+                model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace,
+                webSearchApiKey, ragSearchProvider));
     }
 
     /**

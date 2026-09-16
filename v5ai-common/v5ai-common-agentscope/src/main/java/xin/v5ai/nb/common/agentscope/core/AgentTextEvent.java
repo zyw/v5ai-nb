@@ -2,7 +2,10 @@ package xin.v5ai.nb.common.agentscope.core;
 
 
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
+import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
+
+import java.util.List;
 
 /**
  * 由 {@link AgentTextExecutor} 产生的事件（sealed，仅允许固定几种实现）。
@@ -11,10 +14,11 @@ import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
  * - Text：文本增量片段，直接流式推送给客户端；
  * - ModelCall：模型调用标记，被上层转换为平台统一的 {@code MODEL_CALL} 事件；
  * - ToolCall：MCP 工具调用标记（携带工具名与权限决策）；
- * - ToolResult：MCP 工具调用结果（成功/失败）。
+ * - ToolResult：MCP 工具调用结果（成功/失败）；
+ * - Retrieval：RAG 智能检索命中（{@code rag_search} 工具调用后），被上层转换为 {@code RETRIEVAL} 事件。
  */
 public sealed interface AgentTextEvent permits AgentTextEvent.Reasoning, AgentTextEvent.Text,
-        AgentTextEvent.ModelCall, AgentTextEvent.ToolCall, AgentTextEvent.ToolResult {
+        AgentTextEvent.ModelCall, AgentTextEvent.ToolCall, AgentTextEvent.ToolResult, AgentTextEvent.Retrieval {
 
     /**
      * 思考增量：模型输出的推理内容片段（AgentScope {@code ThinkingBlockDeltaEvent} 转来）。
@@ -58,5 +62,14 @@ public sealed interface AgentTextEvent permits AgentTextEvent.Reasoning, AgentTe
      * @param message  失败原因（成功时为空串）
      */
     record ToolResult(String toolName, boolean success, String message) implements AgentTextEvent {
+    }
+
+    /**
+     * RAG 检索命中：智能调用模式下 {@code rag_search} 工具执行后产出，
+     * 上层转为 {@code RETRIEVAL} 事件（与强制调用 pre-step 的引用事件同口径）。
+     *
+     * @param hits 结构化命中（可为空列表）
+     */
+    record Retrieval(List<RagHit> hits) implements AgentTextEvent {
     }
 }

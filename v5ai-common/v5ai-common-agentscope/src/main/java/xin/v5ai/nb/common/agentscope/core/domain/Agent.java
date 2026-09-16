@@ -1,6 +1,7 @@
 package xin.v5ai.nb.common.agentscope.core.domain;
 
 import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 
 /**
  * Agent 领域契约：运行时所需的 Agent 完整配置（发布态快照），
@@ -21,6 +22,7 @@ import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
  * @param skillEnabled      是否启用 Skill
  * @param webSearchEnabled  是否启用联网搜索
  * @param ragEnabled        是否启用 RAG 知识库检索
+ * @param ragCallMode       RAG 调用方式（{@code 1=智能/2=强制}，仅在 {@code ragEnabled} 开启时生效）
  */
 public record Agent(
         String agentKey,
@@ -37,16 +39,17 @@ public record Agent(
         boolean mcpEnabled,
         boolean skillEnabled,
         boolean webSearchEnabled,
-        boolean ragEnabled
+        boolean ragEnabled,
+        int ragCallMode
 ) {
     /**
      * 便捷构造器：未设置展示与能力开关字段，使用默认值
-     * （字符串为 null、开关为 false）。
+     * （字符串为 null、开关为 false、RAG 调用方式为强制 2）。
      */
     public Agent(String agentKey, String name, String description, AgentStatus status,
                  Long modelId, Long publishedVersion, String systemPrompt) {
         this(agentKey, name, description, status, modelId, publishedVersion, systemPrompt,
-                null, null, null, false, false, false, false, false);
+                null, null, null, false, false, false, false, false, RagCallMode.FORCED.value());
     }
 
     /**

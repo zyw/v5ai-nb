@@ -1,7 +1,6 @@
 package xin.v5ai.nb.runtime.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
@@ -29,9 +28,8 @@ import java.util.UUID;
  * 2) 中间：显式传入会话与事件仓储；
  * 3) 完整：额外传入 Agent 状态仓储。
  */
+@Slf4j
 public class PersistingAgentRuntime implements AgentRuntime {
-    private static final Logger LOG = LoggerFactory.getLogger(PersistingAgentRuntime.class);
-
     /** 被装饰的真实运行时（实际执行 Agent） */
     private final AgentRuntime delegate;
     /** 消息仓储：保存用户提问与助手回答 */
@@ -209,7 +207,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                 quotaService.recordUsage(request.agentKey(), promptTokens + completionTokens);
             }
         } catch (Exception exception) {
-            LOG.warn("failed to record usage for run {}: {}", runId, exception.getMessage());
+            log.warn("failed to record usage for run {}: {}", runId, exception.getMessage());
         }
     }
 

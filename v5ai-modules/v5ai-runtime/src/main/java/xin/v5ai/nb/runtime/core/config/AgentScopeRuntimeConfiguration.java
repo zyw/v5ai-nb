@@ -11,12 +11,14 @@ import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.AgentScopeRuntime;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
+import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentScopeHarnessExecutor;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
+import xin.v5ai.nb.common.agentscope.core.resolver.ModelToolSupportResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.core.service.*;
@@ -38,11 +40,13 @@ public class AgentScopeRuntimeConfiguration {
             AgentScopeRuntimeProperties properties,
             ObjectProvider<McpToolResolver> mcpToolResolverProvider,
             ObjectProvider<McpToolCallAuditService> auditRepositoryProvider,
-            ObjectProvider<SkillWorkspaceResolver> skillWorkspaceResolverProvider
+            ObjectProvider<SkillWorkspaceResolver> skillWorkspaceResolverProvider,
+            ObjectProvider<RagSearchProvider> ragSearchProviderProvider
     ) {
         McpToolResolver mcpToolResolver = mcpToolResolverProvider.getIfAvailable();
         McpToolCallAuditService auditRepository = auditRepositoryProvider.getIfAvailable();
         SkillWorkspaceResolver skillWorkspaceResolver = skillWorkspaceResolverProvider.getIfAvailable();
+        RagSearchProvider ragSearchProvider = ragSearchProviderProvider.getIfAvailable();
         AgentModelResolver modelResolver = modelResolverProvider.getIfAvailable();
         if (modelResolver != null) {
             return new PublishedModelAgentTextExecutor(
@@ -51,7 +55,8 @@ public class AgentScopeRuntimeConfiguration {
                     auditRepository,
                     skillWorkspaceResolver,
                     Path.of(properties.getWorkspace()),
-                    properties.getTavilyApiKey());
+                    properties.getTavilyApiKey(),
+                    ragSearchProvider);
         }
         Model model = modelProvider.getIfAvailable();
         if (model != null) {
@@ -74,10 +79,12 @@ public class AgentScopeRuntimeConfiguration {
             RunEventService runEventService,
             ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
+            ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
             ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
-        var runtime = new AgentScopeRuntime(resolver::resolve, executor, ragContextProviderProvider.getIfAvailable(), messageService);
+        var runtime = new AgentScopeRuntime(resolver::resolve, executor, ragContextProviderProvider.getIfAvailable(),
+                messageService, modelToolSupportResolverProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
@@ -97,10 +104,12 @@ public class AgentScopeRuntimeConfiguration {
             RunEventService runEventService,
             ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
+            ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
             ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
-        var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable(), messageService);
+        var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable(),
+                messageService, modelToolSupportResolverProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());

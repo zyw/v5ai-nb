@@ -280,7 +280,8 @@ class AgentServiceImplTest {
         assertThat(versions.get(0).getVersion()).isEqualTo(1L);
         assertThat(versions.get(0).getSnapshotJson())
                 .contains("\"agentKey\":\"demo\"")
-                .contains("\"modelId\":7");
+                .contains("\"modelId\":7")
+                .contains("\"ragCallMode\":2");
         assertThat(agents.get(0).getStatus()).isEqualTo("PUBLISHED");
         assertThat(agents.get(0).getPublishedVersion()).isEqualTo(1L);
     }

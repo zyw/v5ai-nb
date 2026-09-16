@@ -101,4 +101,9 @@ public class Agent extends BaseEntity {
      * 是否启用 RAG
      */
     private Boolean ragEnabled;
+
+    /**
+     * RAG 调用方式（1=智能调用，2=强制调用；仅在 ragEnabled 开启时生效）
+     */
+    private Integer ragCallMode;
 }

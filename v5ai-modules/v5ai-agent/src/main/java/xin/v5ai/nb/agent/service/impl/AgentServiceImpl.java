@@ -36,6 +36,8 @@ public class AgentServiceImpl implements IAgentService {
     private static final String STATUS_DRAFT = "DRAFT";
     private static final String STATUS_DISABLED = "DISABLED";
     private static final String STATUS_PUBLISHED = "PUBLISHED";
+    /** RAG 调用方式默认值：强制调用，兼容存量 Agent 行为。 */
+    private static final int RAG_CALL_MODE_FORCED = 2;
 
     private final AgentMapper agentMapper;
     private final AgentVersionMapper versionMapper;
@@ -85,6 +87,7 @@ public class AgentServiceImpl implements IAgentService {
         agent.setSkillEnabled(Boolean.TRUE.equals(bo.getSkillEnabled()));
         agent.setWebSearchEnabled(Boolean.TRUE.equals(bo.getWebSearchEnabled()));
         agent.setRagEnabled(Boolean.TRUE.equals(bo.getRagEnabled()));
+        agent.setRagCallMode(bo.getRagCallMode() == null ? RAG_CALL_MODE_FORCED : bo.getRagCallMode());
         agentMapper.insert(agent);
         return toVo(agent);
     }
@@ -119,6 +122,9 @@ public class AgentServiceImpl implements IAgentService {
                 ? existing.getWebSearchEnabled() : bo.getWebSearchEnabled());
         update.setRagEnabled(bo == null || bo.getRagEnabled() == null
                 ? existing.getRagEnabled() : bo.getRagEnabled());
+        update.setRagCallMode(bo == null || bo.getRagCallMode() == null
+                ? (existing.getRagCallMode() == null ? RAG_CALL_MODE_FORCED : existing.getRagCallMode())
+                : bo.getRagCallMode());
         agentMapper.updateById(update);
         return toVo(requireAgent(agentKey));
     }
@@ -216,6 +222,7 @@ public class AgentServiceImpl implements IAgentService {
         vo.setSkillEnabled(agent.getSkillEnabled());
         vo.setWebSearchEnabled(agent.getWebSearchEnabled());
         vo.setRagEnabled(agent.getRagEnabled());
+        vo.setRagCallMode(agent.getRagCallMode());
         vo.setCreatedAt(agent.getCreatedAt());
         vo.setUpdatedAt(agent.getUpdatedAt());
         return vo;
@@ -237,7 +244,7 @@ public class AgentServiceImpl implements IAgentService {
      */
     private String snapshot(Agent agent) {
         return """
-                {"agentKey":"%s","name":"%s","description":"%s","modelId":%d,"systemPrompt":"%s","avatar":"%s","greeting":"%s","presetQuestions":"%s","memoryEnabled":%b,"mcpEnabled":%b,"skillEnabled":%b,"webSearchEnabled":%b,"ragEnabled":%b}
+                {"agentKey":"%s","name":"%s","description":"%s","modelId":%d,"systemPrompt":"%s","avatar":"%s","greeting":"%s","presetQuestions":"%s","memoryEnabled":%b,"mcpEnabled":%b,"skillEnabled":%b,"webSearchEnabled":%b,"ragEnabled":%b,"ragCallMode":%d}
                 """.formatted(
                 jsonEscape(agent.getAgentKey()),
                 jsonEscape(agent.getName()),
@@ -251,7 +258,8 @@ public class AgentServiceImpl implements IAgentService {
                 Boolean.TRUE.equals(agent.getMcpEnabled()),
                 Boolean.TRUE.equals(agent.getSkillEnabled()),
                 Boolean.TRUE.equals(agent.getWebSearchEnabled()),
-                Boolean.TRUE.equals(agent.getRagEnabled())).trim();
+                Boolean.TRUE.equals(agent.getRagEnabled()),
+                agent.getRagCallMode() == null ? RAG_CALL_MODE_FORCED : agent.getRagCallMode()).trim();
     }
 
     private static String jsonEscape(String value) {

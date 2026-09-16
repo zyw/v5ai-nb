@@ -68,7 +68,26 @@ public class RetrievalContextBuilder {
         if (bases.isEmpty()) {
             return RetrievalResult.empty();
         }
+        return retrieve(bases, query);
+    }
 
+    /**
+     * 单库检索（智能调用 {@code rag_search} 工具用）：校验知识库确已绑定到 Agent，
+     * 再对该单个知识库执行与 {@link #build} 相同的检索/融合/回填/格式化管线。
+     */
+    public RetrievalResult search(String agentKey, long knowledgeBaseId, String query) {
+        var knowledgeBaseIds = bindingService.findByAgentKey(agentKey);
+        if (!knowledgeBaseIds.contains(knowledgeBaseId)) {
+            throw new ServiceException("knowledge base " + knowledgeBaseId + " is not bound to agent '" + agentKey + "'");
+        }
+        KnowledgeBaseVo base = baseService.getKnowledgeBase(knowledgeBaseId);
+        if (base == null) {
+            return RetrievalResult.empty();
+        }
+        return retrieve(new LinkedHashMap<>(Map.of(knowledgeBaseId, base)), query);
+    }
+
+    private RetrievalResult retrieve(Map<Long, KnowledgeBaseVo> bases, String query) {
         List<VectorStore.RetrievalHit> hits;
         FusionSettings fusion = resolveFusionSettings(bases);
         if (fusion != null) {

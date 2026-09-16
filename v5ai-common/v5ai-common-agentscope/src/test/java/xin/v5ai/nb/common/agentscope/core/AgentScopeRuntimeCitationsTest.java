@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 
 import java.util.List;
@@ -39,7 +40,7 @@ class AgentScopeRuntimeCitationsTest {
     private static Agent agentWithRag() {
         return new Agent("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
-                false, false, false, false, true);
+                false, false, false, false, true, RagCallMode.FORCED.value());
     }
 
     private static AgentScopeRuntime runtimeWith(RagContext rag) {

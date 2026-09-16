@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 
 import java.util.ArrayList;
@@ -63,9 +64,13 @@ class AgentScopeRuntimeSwitchesTest {
     }
 
     private static Agent agent(boolean ragEnabled, boolean memoryEnabled) {
+        return agent(ragEnabled, memoryEnabled, RagCallMode.FORCED.value());
+    }
+
+    private static Agent agent(boolean ragEnabled, boolean memoryEnabled, int ragCallMode) {
         return new Agent("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
-                memoryEnabled, false, false, false, ragEnabled);
+                memoryEnabled, false, false, false, ragEnabled, ragCallMode);
     }
 
     @Test
@@ -141,5 +146,47 @@ class AgentScopeRuntimeSwitchesTest {
         runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题").withHistory(explicit)).collectList().block();
 
         assertThat(executor.lastRequest.history()).extracting(Message::content).containsExactly("resume 显式历史");
+    }
+
+    @Test
+    void smartRagSkipsPreRetrieval() {
+        var counter = new AtomicInteger();
+        var executor = new CapturingExecutor();
+        var runtime = new AgentScopeRuntime(
+                key -> agent(true, false, RagCallMode.SMART.value()),
+                executor,
+                (agent, request) -> {
+                    counter.incrementAndGet();
+                    return Mono.just(new RagContext("上下文", List.of(new RagHit(1L, 2L, "doc", 0, "内容", 0.9))));
+                },
+                new InMemoryMessageService(List.of()),
+                modelId -> true);
+
+        var events = runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题")).collectList().block();
+
+        assertThat(counter).hasValue(0);
+        assertThat(events).noneMatch(event -> event.type() == RuntimeEventType.RETRIEVAL);
+        assertThat(executor.lastRequest.ragContext()).isNull();
+    }
+
+    @Test
+    void smartRagFallsBackToForcedWhenModelLacksTools() {
+        var counter = new AtomicInteger();
+        var executor = new CapturingExecutor();
+        var runtime = new AgentScopeRuntime(
+                key -> agent(true, false, RagCallMode.SMART.value()),
+                executor,
+                (agent, request) -> {
+                    counter.incrementAndGet();
+                    return Mono.just(new RagContext("上下文", List.of(new RagHit(1L, 2L, "doc", 0, "内容", 0.9))));
+                },
+                new InMemoryMessageService(List.of()),
+                modelId -> false);
+
+        var events = runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题")).collectList().block();
+
+        assertThat(counter).hasValue(1);
+        assertThat(events).anyMatch(event -> event.type() == RuntimeEventType.RETRIEVAL);
+        assertThat(executor.lastRequest.ragContext()).isEqualTo("上下文");
     }
 }

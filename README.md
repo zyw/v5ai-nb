@@ -137,12 +137,12 @@ flowchart LR
     E --> F["SSE 事件流"]
 ```
 
-关键差异：线上 `resolve()` 按 `publishedVersion` 找 `v5ai_agent_version.snapshot_json` 还原标量字段（模型/系统提示词/5 个能力开关/展示字段），编辑未重新发布不影响线上；调试 `resolveForDebug()` 直接返回实时编辑行，便于在草稿态下预览/调试。MCP/Skill/RAG 绑定列表两路都不固化、仍按 `agentKey` 实时解析。
+关键差异：线上 `resolve()` 按 `publishedVersion` 找 `v5ai_agent_version.snapshot_json` 还原标量字段（模型/系统提示词/5 个能力开关/RAG 调用方式/展示字段），编辑未重新发布不影响线上；调试 `resolveForDebug()` 直接返回实时编辑行，便于在草稿态下预览/调试。MCP/Skill/RAG 绑定列表两路都不固化、仍按 `agentKey` 实时解析。
 
 ### 4. SSE 事件顺序
 
 ```
-RUN_STARTED → RETRIEVAL(有 RAG 命中) → MODEL_CALL
+RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调用在 rag_search 的 TOOL_RESULT 之后) → MODEL_CALL
   → (TEXT_DELTA | REASONING_DELTA)* | (TOOL_CALL → TOOL_RESULT)*
   → MESSAGE_COMPLETED → RUN_COMPLETED
 失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED
@@ -156,8 +156,9 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中) → MODEL_CALL
 | 调试控制器 | `AgentDebugController`（`@Qualifier("agentDebugRuntime")`） |
 | Agent 解析 | `PublishedAgentResolver.resolve` / `resolveForDebug` |
 | 持久化装饰器 | `PersistingAgentRuntime`（先 save 用户提问，再 delegate；`doOnNext` 边推边落库） |
-| 编排 + RAG/记忆门控 | `AgentScopeRuntime`（`ragEnabled` / `memoryEnabled`） |
-| RAG 检索 | `DBRagContextProvider` → `RetrievalContextBuilder`（向量 topK=4，空回退关键词，融合可选） |
+| 编排 + RAG/记忆门控 | `AgentScopeRuntime`（`ragEnabled` / `ragCallMode`：智能调用跳过前置检索、交执行器工具路径 / `memoryEnabled`） |
+| RAG 检索（强制调用） | `DBRagContextProvider.buildContext` → `RetrievalContextBuilder.build`（向量 topK=4，空回退关键词，融合可选），模型前注入系统提示 |
+| RAG 检索（智能调用） | `RagSearchTool`（工具名 `rag_search`，参数 `ragId` + `queryQuestion`）→ `DBRagContextProvider.search` → `RetrievalContextBuilder.search`（单库，校验 `ragId` 已绑定），命中 `TOOL_RESULT` 后追加 `RETRIEVAL` |
 | 工具装配 | `ModelStreamTextExecutor.streamText` / `streamWithExtensions` |
 | MCP 解析 | `AgentMcpToolResolver`（读 ACTIVE 绑定、滤 DENY、建连接） |
 | Skill 解析 | `AgentSkillWorkspaceResolver`（读当前发布版本文件） |

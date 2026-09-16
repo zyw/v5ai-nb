@@ -6,6 +6,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
 import xin.v5ai.nb.common.agentscope.core.repository.AgentRepository;
 import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 
 public class PublishedAgentResolver {
     private final AgentRepository repository;
@@ -57,7 +58,8 @@ public class PublishedAgentResolver {
                 obj.getBool("mcpEnabled", false),
                 obj.getBool("skillEnabled", false),
                 obj.getBool("webSearchEnabled", false),
-                obj.getBool("ragEnabled", false));
+                obj.getBool("ragEnabled", false),
+                obj.getInt("ragCallMode", RagCallMode.FORCED.value()));
     }
 
     /**

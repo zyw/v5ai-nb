@@ -93,6 +93,11 @@ public class AgentBo {
     private Boolean ragEnabled;
 
     /**
+     * RAG 调用方式（1=智能调用，2=强制调用；仅在 ragEnabled 开启时生效）
+     */
+    private Integer ragCallMode;
+
+    /**
      * 启用状态（查询条件：DRAFT / PUBLISHED / DISABLED，精确匹配）
      */
     private String status;

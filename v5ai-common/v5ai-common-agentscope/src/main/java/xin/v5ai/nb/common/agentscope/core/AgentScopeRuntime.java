@@ -2,6 +2,8 @@ package xin.v5ai.nb.common.agentscope.core;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.domain.Agent;
@@ -12,10 +14,12 @@ import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.resolver.ModelToolSupportResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 
 import java.util.ArrayList;
@@ -33,6 +37,8 @@ import java.util.function.Function;
  * 整个执行是惰性的（Flux.defer），订阅时才真正开始运行。
  */
 public class AgentScopeRuntime implements AgentRuntime {
+    private static final Logger log = LoggerFactory.getLogger(AgentScopeRuntime.class);
+
     /** 单条引用内容截断长度：与知识库问答一致，避免单条 SSE 载荷过大。 */
     private static final int HIT_CONTENT_CAP = 2_000;
 
@@ -44,6 +50,8 @@ public class AgentScopeRuntime implements AgentRuntime {
     private final RagContextProvider ragContextProvider;
     /** 消息仓储（可空）：Agent 开启记忆时读取会话历史注入上下文 */
     private final MessageService messageService;
+    /** 模型工具调用能力判定（可空）：智能调用模式依赖模型支持 function calling，不支持时回退强制调用 */
+    private final ModelToolSupportResolver modelToolSupportResolver;
 
     /**
      * 无 RAG 的构造器：不配置知识检索能力；仅解析已发布 Agent。
@@ -69,14 +77,25 @@ public class AgentScopeRuntime implements AgentRuntime {
     }
 
     /**
-     * 全参构造：附带消息仓储，Agent 开启记忆（memoryEnabled）时按会话加载历史。
+     * 全参构造：附带消息仓储与模型工具能力判定；Agent 开启记忆（memoryEnabled）时按会话加载历史，
+     * 智能调用模式（rag_call_mode=SMART）依赖模型工具能力判定来决定是否回退强制调用。
      */
     public AgentScopeRuntime(Function<String, Agent> agentResolver, AgentTextExecutor agentTextExecutor,
                              RagContextProvider ragContextProvider, MessageService messageService) {
+        this(agentResolver, agentTextExecutor, ragContextProvider, messageService, null);
+    }
+
+    /**
+     * 完整构造：在消息仓储之外附带模型工具能力判定（可空，空则智能调用默认视为模型支持工具）。
+     */
+    public AgentScopeRuntime(Function<String, Agent> agentResolver, AgentTextExecutor agentTextExecutor,
+                             RagContextProvider ragContextProvider, MessageService messageService,
+                             ModelToolSupportResolver modelToolSupportResolver) {
         this.agentResolver = agentResolver;
         this.agentTextExecutor = agentTextExecutor;
         this.ragContextProvider = ragContextProvider;
         this.messageService = messageService;
+        this.modelToolSupportResolver = modelToolSupportResolver;
     }
 
     @Override
@@ -87,8 +106,9 @@ public class AgentScopeRuntime implements AgentRuntime {
             // 记忆开关：仅当 memoryEnabled 时按会话加载历史并注入（显式 resume 历史不覆盖）
             var req = withMemory(agent, request);
             var runId = UUID.randomUUID().toString();
-            // 若未配置 RAG 或 Agent 关闭 RAG，则上下文为空；否则异步构建检索上下文
-            var contextMono = (ragContextProvider == null || !agent.ragEnabled())
+            // 强制调用（FORCED，或智能调用因模型不支持工具而回退）→ pre-step 检索并注入；
+            // 智能调用（SMART）→ 跳过 pre-step，交由执行器注册 rag_search 工具按需检索
+            var contextMono = (ragContextProvider == null || !shouldPreRetrieve(agent))
                     ? Mono.just(RagContext.empty())
                     : ragContextProvider.buildContext(agent, req);
             return Flux.concat(
@@ -151,8 +171,30 @@ public class AgentScopeRuntime implements AgentRuntime {
     }
 
     /**
-     * 把执行器内部事件映射为平台事件流。
+     * 判断本次运行是否需 pre-step 检索（强制调用）：{@code ragEnabled=false} 或
+     * SMART（模型支持工具）时为 false；FORCED、或 SMART 但模型不支持工具调用时回退为 true。
      */
+    private boolean shouldPreRetrieve(Agent agent) {
+        if (!agent.ragEnabled()) {
+            return false;
+        }
+        // 未知/非法取值按 from() 归一为强制调用，与 ModelStreamTextExecutor.isSmartRag 的判定保持一致
+        if (RagCallMode.from(agent.ragCallMode()) == RagCallMode.FORCED) {
+            return true;
+        }
+        // SMART：模型不支持工具调用时，注册 rag_search 也无法被模型调用，回退为强制调用
+        Long modelId = agent.modelId();
+        if (modelId == null) {
+            return true;
+        }
+        if (modelToolSupportResolver != null && !modelToolSupportResolver.supportsToolCall(modelId)) {
+            log.warn("agent '{}' 绑定模型 {} 不支持工具调用，rag_call_mode=SMART 回退为强制调用",
+                    agent.agentKey(), modelId);
+            return true;
+        }
+        return false;
+    }
+
     /**
      * 引用载荷：与知识库问答（{@code KnowledgeQaServiceImpl.hitsPayload}）逐字同构——
      * 同一组字段名与截断长度，前端才能复用同一个解析器与渲染组件。
@@ -171,6 +213,9 @@ public class AgentScopeRuntime implements AgentRuntime {
         return JSONUtil.toJsonStr(payload);
     }
 
+    /**
+     * 把执行器内部事件映射为平台事件流。
+     */
     private static Flux<RuntimeEvent> toRuntimeEvents(String runId, AgentTextEvent event) {
         return switch (event) {
             case AgentTextEvent.Reasoning reasoning ->
@@ -188,6 +233,8 @@ public class AgentScopeRuntime implements AgentRuntime {
             }
             case AgentTextEvent.ToolResult result -> Flux.just(RuntimeEvent.toolResult(runId,
                     result.success() ? result.toolName() : result.toolName() + " failed: " + result.message()));
+            case AgentTextEvent.Retrieval retrieval ->
+                    Flux.just(RuntimeEvent.retrieval(runId, citationsPayload(retrieval.hits())));
         };
     }
 

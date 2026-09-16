@@ -89,7 +89,8 @@ const form = reactive({
   mcpEnabled: false,
   skillEnabled: false,
   webSearchEnabled: false,
-  ragEnabled: false
+  ragEnabled: false,
+  ragCallMode: 2
 })
 
 const selectedModel = computed(() => modelCatalog.value.find((m) => m.id === form.modelId) ?? null)
@@ -257,6 +258,7 @@ function applyAgent(row: AgentResponse) {
   form.skillEnabled = row.skillEnabled ?? false
   form.webSearchEnabled = row.webSearchEnabled ?? false
   form.ragEnabled = row.ragEnabled ?? false
+  form.ragCallMode = row.ragCallMode ?? 2
 }
 
 async function load() {
@@ -343,6 +345,7 @@ async function save() {
       skillEnabled: form.skillEnabled,
       webSearchEnabled: form.webSearchEnabled,
       ragEnabled: form.ragEnabled,
+      ragCallMode: form.ragEnabled ? form.ragCallMode : 2,
       modelId: form.modelId
     })
     await Promise.all([
@@ -565,6 +568,14 @@ onMounted(load)
                     </n-switch>
                     <n-button size="tiny" secondary @click="openKbPicker">+ 添加知识库</n-button>
                   </div>
+                </div>
+                <div v-if="form.ragEnabled" style="display:flex;align-items:center;gap:10px;padding:2px 0 6px;font-size:12px;color:var(--n-text-color-3);">
+                  <span>调用方式</span>
+                  <n-radio-group v-model:value="form.ragCallMode" size="small">
+                    <n-radio-button :value="2">强制调用</n-radio-button>
+                    <n-radio-button :value="1">智能调用</n-radio-button>
+                  </n-radio-group>
+                  <span>{{ form.ragCallMode === 1 ? '由 LLM 自主判断是否检索知识库' : '每次对话都强制检索知识库' }}</span>
                 </div>
                 <div class="resource-list">
                   <div v-for="s in selectedKbs" :key="s.id" class="resource-item">

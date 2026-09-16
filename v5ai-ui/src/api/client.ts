@@ -121,6 +121,7 @@ export interface AgentResponse {
   skillEnabled?: boolean
   webSearchEnabled?: boolean
   ragEnabled?: boolean
+  ragCallMode?: number
   createdAt?: string | null
   updatedAt?: string | null
 }
@@ -139,6 +140,7 @@ export interface CreateAgentRequest {
   skillEnabled?: boolean
   webSearchEnabled?: boolean
   ragEnabled?: boolean
+  ragCallMode?: number
 }
 
 export interface UpdateAgentRequest {
@@ -154,6 +156,7 @@ export interface UpdateAgentRequest {
   skillEnabled?: boolean
   webSearchEnabled?: boolean
   ragEnabled?: boolean
+  ragCallMode?: number
 }
 
 export interface AgentVersionResponse {

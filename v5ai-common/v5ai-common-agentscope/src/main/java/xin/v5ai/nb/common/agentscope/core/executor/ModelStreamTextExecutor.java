@@ -17,14 +17,18 @@ import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
 import xin.v5ai.nb.common.agentscope.core.PlatformMcpTool;
+import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
+import xin.v5ai.nb.common.agentscope.core.RagSearchTool;
 import xin.v5ai.nb.common.agentscope.core.WebSearchTool;
 import xin.v5ai.nb.common.agentscope.core.domain.*;
+import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.common.agentscope.core.service.ResolvedSkillAgentSkillService;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -32,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.stream.Collectors;
 
 /**
@@ -56,6 +61,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     private final SkillWorkspaceResolver skillWorkspaceResolver;
     private final Path workspace;
     private final String webSearchApiKey;
+    private final RagSearchProvider ragSearchProvider;
 
     public ModelStreamTextExecutor(Model model) {
         this(model, null, null, null, null, null);
@@ -88,12 +94,25 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             Path workspace,
             String webSearchApiKey
     ) {
+        this(model, mcpToolResolver, auditService, skillWorkspaceResolver, workspace, webSearchApiKey, null);
+    }
+
+    public ModelStreamTextExecutor(
+            Model model,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditService,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey,
+            RagSearchProvider ragSearchProvider
+    ) {
         this.model = model;
         this.mcpToolResolver = mcpToolResolver;
         this.auditService = auditService;
         this.skillWorkspaceResolver = skillWorkspaceResolver;
         this.workspace = workspace;
         this.webSearchApiKey = webSearchApiKey;
+        this.ragSearchProvider = ragSearchProvider;
     }
 
     @Override
@@ -104,10 +123,23 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         var skills = (application.skillEnabled() && skillWorkspaceResolver != null)
                 ? skillWorkspaceResolver.resolveSkills(application) : List.<ResolvedSkill>of();
         boolean webSearch = application.webSearchEnabled();
-        if (tools.isEmpty() && skills.isEmpty() && !webSearch) {
+        // 智能调用：注册 rag_search 工具 + 注入可用知识库列表；强制调用由 AgentScopeRuntime
+        // 在 pre-step 检索并把上下文放进 request.ragContext()，此处不再注册工具
+        boolean smartRag = isSmartRag(application, request) && ragSearchProvider != null;
+        List<KnowledgeBaseRef> knowledgeBases = smartRag
+                ? ragSearchProvider.listBoundKnowledgeBases(application.agentKey()) : List.of();
+        if (knowledgeBases.isEmpty() && tools.isEmpty() && skills.isEmpty() && !webSearch) {
             return streamDirect(application, request);
         }
-        return streamWithExtensions(application, request, tools, skills, webSearch);
+        return streamWithExtensions(application, request, tools, skills, webSearch, knowledgeBases);
+    }
+
+    /** 是否走智能调用工具路径：仅当 ragEnabled 且 rag_call_mode=SMART 且请求未携带强制检索上下文。 */
+    private static boolean isSmartRag(Agent application, AgentRunRequest request) {
+        if (!application.ragEnabled() || application.ragCallMode() != RagCallMode.SMART.value()) {
+            return false;
+        }
+        return request.ragContext() == null || request.ragContext().isBlank();
     }
 
     /**
@@ -130,7 +162,8 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      */
     private Flux<AgentTextEvent> streamWithExtensions(
             Agent application, AgentRunRequest request,
-            List<ResolvedMcpTool> tools, List<ResolvedSkill> skills, boolean webSearch) {
+            List<ResolvedMcpTool> tools, List<ResolvedSkill> skills, boolean webSearch,
+            List<KnowledgeBaseRef> knowledgeBases) {
         ensureWorkspaceExists();
         var workspace = this.workspace != null ? this.workspace : Path.of(".agentscope/workspace");
 
@@ -148,6 +181,13 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             toolNames.add(WebSearchTool.TOOL_NAME);
             toolPermissions.put(WebSearchTool.TOOL_NAME, McpToolPermission.ALLOW);
         }
+        // 智能调用 RAG：注册 rag_search 工具；命中通过 outbox 回传，在 TOOL_RESULT 后追加 RETRIEVAL
+        Deque<List<RagHit>> ragOutbox = new ConcurrentLinkedDeque<>();
+        if (!knowledgeBases.isEmpty()) {
+            toolkit.registerAgentTool(new RagSearchTool(application.agentKey(), ragSearchProvider, ragOutbox::addLast));
+            toolNames.add(RagSearchTool.TOOL_NAME);
+            toolPermissions.put(RagSearchTool.TOOL_NAME, McpToolPermission.ALLOW);
+        }
 
         // Workspace 注入：把已发布 Skill 文件写入 <workspace>/skills/<name>/，便于
         // 工作区工具读取资源；同时注册只读 Skill 仓库让 SkillRuntime 注入提示。
@@ -156,9 +196,9 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         HarnessAgent.Builder builder = HarnessAgent.builder()
                 .name(application.name())
                 .description("v5ai AgentScope runtime with MCP tools and skills")
-                // MCP/Skill 路径不走 buildMessages，须显式注入系统提示（含 RAG 上下文），
+                // MCP/Skill 路径不走 buildMessages，须显式注入系统提示（含 RAG 上下文/可用知识库列表），
                 // 否则 application.systemPrompt() 与 request.ragContext() 都会丢失
-                .sysPrompt(buildSystemPrompt(application, request))
+                .sysPrompt(buildSystemPrompt(application, request, knowledgeBases))
                 .model(model)
                 // 每次运行使用全新内存状态存储：上一次运行中断（如工具调用未完成）
                 // 残留的 pending tool call 不会泄漏到本次运行，避免
@@ -192,9 +232,10 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         return Flux.concat(
                         Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
                         agent.streamEvents(conversationMessages(request), RuntimeContext.empty())
-                                // mapAgentEvent 对无关事件返回 null：必须用 mapNotNull，
-                                // 否则 Reactor 的 map 会对 null 抛 "mapper returned a null value"
-                                .mapNotNull(event -> mapAgentEvent(event, toolNames, toolPermissions)))
+                                // mapAgentEvents 对无关事件返回空列表；rag_search 的 ToolResult
+                                // 会展开为 ToolResult + Retrieval 两个事件
+                                .concatMap(event -> Flux.fromIterable(
+                                        mapAgentEvents(event, toolNames, toolPermissions, ragOutbox))))
                 .doFinally(signal -> {
                     agent.close();
                     // 同一 Server 的多个工具共享一个连接：按连接去重，只关闭一次
@@ -235,30 +276,39 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         }
     }
 
-    private static AgentTextEvent mapAgentEvent(
-            AgentEvent event, Set<String> mcpToolNames, Map<String, McpToolPermission> toolPermissions) {
+    private static List<AgentTextEvent> mapAgentEvents(
+            AgentEvent event, Set<String> toolNames, Map<String, McpToolPermission> toolPermissions,
+            Deque<List<RagHit>> ragOutbox) {
         if (event instanceof ThinkingBlockDeltaEvent thinking) {
             // 模型推理（思考）增量：与回答分流，供前端折叠展示；上游不落库
-            return new AgentTextEvent.Reasoning(thinking.getDelta());
+            return List.of(new AgentTextEvent.Reasoning(thinking.getDelta()));
         }
         if (event instanceof TextBlockDeltaEvent text) {
-            return new AgentTextEvent.Text(text.getDelta());
+            return List.of(new AgentTextEvent.Text(text.getDelta()));
         }
-        if (event instanceof ToolCallStartEvent call && mcpToolNames.contains(call.getToolCallName())) {
+        if (event instanceof ToolCallStartEvent call && toolNames.contains(call.getToolCallName())) {
             var permission = toolPermissions.get(call.getToolCallName());
-            return new AgentTextEvent.ToolCall(call.getToolCallName(),
-                    permission == null ? McpToolPermission.ALLOW : permission);
+            return List.of(new AgentTextEvent.ToolCall(call.getToolCallName(),
+                    permission == null ? McpToolPermission.ALLOW : permission));
         }
-        if (event instanceof ToolResultEndEvent result && mcpToolNames.contains(result.getToolCallName())) {
+        if (event instanceof ToolResultEndEvent result && toolNames.contains(result.getToolCallName())) {
             var success = ToolResultState.SUCCESS.equals(result.getState());
-            return new AgentTextEvent.ToolResult(result.getToolCallName(), success,
+            var toolResult = new AgentTextEvent.ToolResult(result.getToolCallName(), success,
                     success ? "" : (result.getState() == null ? "tool result error" : result.getState().getValue()));
+            // rag_search 命中在工具内部写入 outbox，TOOL_RESULT 之后追加 RETRIEVAL 事件
+            if (RagSearchTool.TOOL_NAME.equals(result.getToolCallName())) {
+                var hits = ragOutbox.pollFirst();
+                if (hits != null && !hits.isEmpty()) {
+                    return List.of(toolResult, new AgentTextEvent.Retrieval(hits));
+                }
+            }
+            return List.of(toolResult);
         }
         if (event instanceof ModelCallStartEvent) {
             // 模型调用标记已在流开头显式发出，避免重复
-            return null;
+            return List.of();
         }
-        return null;
+        return List.of();
     }
 
     private void ensureWorkspaceExists() {
@@ -302,6 +352,16 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      * 直连路径经 buildMessages 注入，MCP/Skill 路径经 HarnessAgent.sysPrompt 注入，两路共用同一口径。
      */
     private static String buildSystemPrompt(Agent application, AgentRunRequest request) {
+        return buildSystemPrompt(application, request, null);
+    }
+
+    /**
+     * 组装系统提示：应用系统提示词（或默认身份+描述）+ RAG 知识上下文；
+     * 智能调用模式下额外注入「可用知识库列表」（{@code knowledgeBases}），供模型决定何时调用 {@code rag_search}。
+     * 直连路径经 buildMessages 注入，MCP/Skill 路径经 HarnessAgent.sysPrompt 注入，两路共用同一口径。
+     */
+    private static String buildSystemPrompt(Agent application, AgentRunRequest request,
+                                            List<KnowledgeBaseRef> knowledgeBases) {
         var system = new StringBuilder();
         // 配置了系统提示词则优先使用，否则回退默认（应用身份 + 描述）
         if (application.systemPrompt() != null && !application.systemPrompt().isBlank()) {
@@ -315,6 +375,18 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         if (request.ragContext() != null && !request.ragContext().isBlank()) {
             system.append("\n\nUse the following knowledge base context when relevant:\n")
                     .append(request.ragContext());
+        }
+        if (knowledgeBases != null && !knowledgeBases.isEmpty()) {
+            system.append("\n\nAvailable knowledge bases. When the user's question needs grounded knowledge, "
+                    + "call rag_search with the relevant 'ragId' and your 'queryQuestion' "
+                    + "(you may call it multiple times if useful):\n");
+            for (KnowledgeBaseRef kb : knowledgeBases) {
+                system.append("- id=").append(kb.id()).append(": ").append(kb.name());
+                if (kb.description() != null && !kb.description().isBlank()) {
+                    system.append(" (").append(kb.description()).append(')');
+                }
+                system.append('\n');
+            }
         }
         return system.toString();
     }

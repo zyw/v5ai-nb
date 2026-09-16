@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.Agent;
 import xin.v5ai.nb.common.agentscope.core.domain.AgentVersion;
 import xin.v5ai.nb.common.agentscope.core.repository.AgentRepository;
 import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 
 import java.util.List;
 
@@ -142,6 +143,7 @@ public class DatabaseAgentRepository implements AgentRepository {
         entity.setSkillEnabled(application.skillEnabled());
         entity.setWebSearchEnabled(application.webSearchEnabled());
         entity.setRagEnabled(application.ragEnabled());
+        entity.setRagCallMode(application.ragCallMode());
         return entity;
     }
 
@@ -157,6 +159,7 @@ public class DatabaseAgentRepository implements AgentRepository {
                 Boolean.TRUE.equals(entity.getMcpEnabled()),
                 Boolean.TRUE.equals(entity.getSkillEnabled()),
                 Boolean.TRUE.equals(entity.getWebSearchEnabled()),
-                Boolean.TRUE.equals(entity.getRagEnabled()));
+                Boolean.TRUE.equals(entity.getRagEnabled()),
+                entity.getRagCallMode() == null ? RagCallMode.FORCED.value() : entity.getRagCallMode());
     }
 }
