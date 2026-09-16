@@ -40,6 +40,129 @@
 - `v5ai-starter`: Spring Boot 启动模块（`scanBasePackages="xin.v5ai.nb"` + `@MapperScan` + `@EnableScheduling`）
 - `v5ai-ui`: Vue 3 + Vite + TypeScript + Naive UI 管理前端
 
+## 运行时调用链路（RAG / MCP / Skill / Tool 装配）
+
+> 一次运行从 HTTP 进来到 SSE 逐条推回，所有中间步骤都是同一条 Reactor `Flux` 链上的惰性执行（`Flux.defer` 在订阅时才真正开始）。RAG 检索、MCP/Skill/Tool 装配都发生在「模型首 token 之前」。
+
+### 1. 在线流式调用全链路（`POST /api/v1/agents/{agentKey}/chat/stream`）
+
+```mermaid
+sequenceDiagram
+    participant U as 客户端
+    participant F as 过滤器(鉴权/限流/配额)
+    participant C as ChatController
+    participant P as PersistingAgentRuntime
+    participant A as AgentScopeRuntime
+    participant R as DBRagContextProvider
+    participant E as ModelStreamTextExecutor
+    participant M as 大模型
+
+    U->>F: POST stream + Bearer API-Key
+    F->>F: 鉴权(401)/限流配额(429)
+    F->>C: 放行
+    C->>P: agentRuntime.stream
+    Note over P: Flux.defer 订阅才执行
+    P->>P: normalize + ensureConversation + save用户提问
+    P->>A: delegate.stream
+    A->>A: resolve Agent(发布快照) + withMemory
+    alt ragEnabled
+        A->>R: buildContext
+        R-->>A: RagContext 上下文 + hits
+    end
+    A-->>U: SSE RUN_STARTED + RETRIEVAL
+    A->>E: streamText(agent, request+ragContext)
+    Note over E: 能力装配：按开关解析→注册
+    opt mcpEnabled
+        E->>E: AgentMcpToolResolver.resolveTools<br/>读绑定→滤DENY→connect建连接
+    end
+    opt skillEnabled
+        E->>E: AgentSkillWorkspaceResolver.resolveSkills<br/>读当前发布版本文件
+    end
+    E->>E: new Toolkit + registerAgentTool<br/>PlatformMcpTool / WebSearchTool
+    E->>E: injectSkillsToWorkspace + HarnessAgent.build
+    E->>M: model.stream / streamEvents
+    M-->>E: 增量 token + 工具调用
+    E-->>A: Text/Reasoning/ToolCall/ToolResult
+    A-->>U: SSE TEXT_DELTA / TOOL_CALL / ...
+    A-->>U: SSE RUN_COMPLETED
+    Note over E: doFinally 去重关闭 McpConnection
+    Note over P: 落库 run/事件/回答 + 用量配额
+```
+
+### 2. 能力装配内部（`ModelStreamTextExecutor`）
+
+```mermaid
+flowchart TB
+    S[streamText application, request] --> G1{mcpEnabled?}
+    G1 -- 是 --> M1[AgentMcpToolResolver.resolveTools<br/>读ACTIVE绑定→过滤DENY→建连接]
+    G1 -- 否 --> G2
+    M1 --> G2{skillEnabled?}
+    G2 -- 是 --> SK[AgentSkillWorkspaceResolver.resolveSkills<br/>读ACTIVE绑定当前发布版本文件]
+    G2 -- 否 --> G3
+    SK --> G3{webSearchEnabled?}
+    G3 -- 是 --> WS[webSearch=true]
+    G3 -- 否 --> DEC
+    WS --> DEC{有工具/Skill/联网?}
+    DEC -- 全无 --> DIR[streamDirect 无工具直连模型]
+    DEC -- 有 --> ASM[streamWithExtensions 装配]
+    ASM --> T1[Toolkit.registerAgentTool<br/>PlatformMcpTool 逐个注册 MCP]
+    ASM --> T2[Toolkit.registerAgentTool<br/>WebSearchTool 联网搜索]
+    ASM --> T3[injectSkillsToWorkspace<br/>写 workspace/skills/name/ 文件]
+    ASM --> T4[HarnessAgent.build<br/>toolkit + skillRepository + sysPrompt]
+    T1 --> RUN
+    T2 --> RUN
+    T3 --> RUN
+    T4 --> RUN[streamEvents 模型按需调用工具]
+    RUN --> CLOSE[doFinally 去重关闭 McpConnection]
+```
+
+### 3. 调试链路（`POST /api/admin/agents/{agentKey}/chat/stream`，`resolveForDebug`）
+
+管理端调试接口与线上共享**同一条下游链**（同一个 `PersistingAgentRuntime` → `AgentScopeRuntime` → RAG/记忆/MCP/Skill/Tool 装配 → 模型），仅「鉴权方式」与「Agent 解析源」不同：
+
+| 维度 | 线上 `/api/v1` | 调试 `/api/admin` |
+|---|---|---|
+| 端点 | `POST /api/v1/agents/{key}/chat/stream` | `POST /api/admin/agents/{key}/chat/stream` |
+| 鉴权 | Agent API Key（`Bearer`，BCrypt 比对）+ 限流/配额 | 管理端 Sa-Token 登录（`/api/admin/**` 拦截），无需 API Key |
+| 运行时 Bean | `agentRuntime` | `agentDebugRuntime`（`@Qualifier`，两个同类型 Bean 需显式限定） |
+| Agent 解析 | `PublishedAgentResolver.resolve`：仅 `PUBLISHED`，读**发布版本快照** | `PublishedAgentResolver.resolveForDebug`：`DRAFT`/`PUBLISHED` 可跑，`DISABLED` 拒绝，读**实时编辑行** |
+| 下游装配 | 相同 | 相同 |
+
+```mermaid
+flowchart LR
+    A["POST /api/admin/agents/{agentKey}/chat/stream"] --> B["Sa-Token 管理端鉴权"]
+    B --> C["AgentDebugController 限定 agentDebugRuntime Bean"]
+    C --> D["resolveForDebug：DRAFT/PUBLISHED 可跑、DISABLED 拒绝、读实时编辑行"]
+    D --> E["复用与线上相同的下游链（RAG/记忆/MCP/Skill/Tool 装配进模型）"]
+    E --> F["SSE 事件流"]
+```
+
+关键差异：线上 `resolve()` 按 `publishedVersion` 找 `v5ai_agent_version.snapshot_json` 还原标量字段（模型/系统提示词/5 个能力开关/展示字段），编辑未重新发布不影响线上；调试 `resolveForDebug()` 直接返回实时编辑行，便于在草稿态下预览/调试。MCP/Skill/RAG 绑定列表两路都不固化、仍按 `agentKey` 实时解析。
+
+### 4. SSE 事件顺序
+
+```
+RUN_STARTED → RETRIEVAL(有 RAG 命中) → MODEL_CALL
+  → (TEXT_DELTA | REASONING_DELTA)* | (TOOL_CALL → TOOL_RESULT)*
+  → MESSAGE_COMPLETED → RUN_COMPLETED
+失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED
+```
+
+### 5. 关键实现位置
+
+| 环节 | 类 |
+|---|---|
+| 鉴权/限流/配额 | `AgentApiKeyServletFilter`（线上）；`/api/admin/**` 由 Sa-Token 拦截（调试） |
+| 调试控制器 | `AgentDebugController`（`@Qualifier("agentDebugRuntime")`） |
+| Agent 解析 | `PublishedAgentResolver.resolve` / `resolveForDebug` |
+| 持久化装饰器 | `PersistingAgentRuntime`（先 save 用户提问，再 delegate；`doOnNext` 边推边落库） |
+| 编排 + RAG/记忆门控 | `AgentScopeRuntime`（`ragEnabled` / `memoryEnabled`） |
+| RAG 检索 | `DBRagContextProvider` → `RetrievalContextBuilder`（向量 topK=4，空回退关键词，融合可选） |
+| 工具装配 | `ModelStreamTextExecutor.streamText` / `streamWithExtensions` |
+| MCP 解析 | `AgentMcpToolResolver`（读 ACTIVE 绑定、滤 DENY、建连接） |
+| Skill 解析 | `AgentSkillWorkspaceResolver`（读当前发布版本文件） |
+| 联网搜索 | `WebSearchTool`（Tavily，`v5ai.agentscope.tavily-api-key`，缺 Key 返回错误） |
+
 ## 本地验证
 
 ```bash

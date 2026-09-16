@@ -81,6 +81,91 @@ RUN_STARTED → MODEL_CALL → (TEXT_DELTA | TOOL_CALL → TOOL_RESULT | RETRIEV
 
 实现链：`ChatController` → `AgentRuntime`（`AgentScopeRuntime`）→ `PersistingAgentRuntime`（持久化装饰器）→ `AgentScopeHarnessExecutor`/`ModelStreamTextExecutor`（模型执行器）。
 
+端到端流式链路（`/api/v1/agents/{agentKey}/chat/stream`，RAG / 记忆 / MCP / Skill / Tool 装配的先后关系）：
+
+```mermaid
+sequenceDiagram
+    participant U as 客户端
+    participant F as 过滤器(鉴权/限流/配额)
+    participant C as ChatController
+    participant P as PersistingAgentRuntime
+    participant A as AgentScopeRuntime
+    participant R as DBRagContextProvider
+    participant E as ModelStreamTextExecutor
+    participant M as 大模型
+
+    U->>F: POST stream + Bearer API-Key
+    F->>F: 鉴权(401)/限流配额(429)
+    F->>C: 放行
+    C->>P: agentRuntime.stream
+    Note over P: Flux.defer 订阅才执行
+    P->>P: normalize + ensureConversation + save用户提问
+    P->>A: delegate.stream
+    A->>A: resolve Agent(发布快照) + withMemory
+    alt ragEnabled
+        A->>R: buildContext
+        R-->>A: RagContext 上下文 + hits
+    end
+    A-->>U: SSE RUN_STARTED + RETRIEVAL
+    A->>E: streamText(agent, request+ragContext)
+    Note over E: 能力装配：按开关解析、后注册
+    opt mcpEnabled
+        E->>E: AgentMcpToolResolver.resolveTools<br/>读绑定、滤DENY、connect建连接
+    end
+    opt skillEnabled
+        E->>E: AgentSkillWorkspaceResolver.resolveSkills<br/>读当前发布版本文件
+    end
+    E->>E: new Toolkit + registerAgentTool<br/>PlatformMcpTool / WebSearchTool
+    E->>E: injectSkillsToWorkspace + HarnessAgent.build
+    E->>M: model.stream / streamEvents
+    M-->>E: 增量 token + 工具调用
+    E-->>A: Text/Reasoning/ToolCall/ToolResult
+    A-->>U: SSE TEXT_DELTA / TOOL_CALL / ...
+    A-->>U: SSE RUN_COMPLETED
+    Note over E: doFinally 去重关闭 McpConnection
+    Note over P: 落库 run/事件/回答 + 用量配额
+```
+
+能力装配内部（`ModelStreamTextExecutor`，`mcpEnabled` / `skillEnabled` / `webSearchEnabled` 分派）：
+
+```mermaid
+flowchart TB
+    S[streamText application, request] --> G1{mcpEnabled?}
+    G1 -- 是 --> M1[AgentMcpToolResolver.resolveTools<br/>读ACTIVE绑定、过滤DENY、建连接]
+    G1 -- 否 --> G2
+    M1 --> G2{skillEnabled?}
+    G2 -- 是 --> SK[AgentSkillWorkspaceResolver.resolveSkills<br/>读ACTIVE绑定当前发布版本文件]
+    G2 -- 否 --> G3
+    SK --> G3{webSearchEnabled?}
+    G3 -- 是 --> WS[webSearch=true]
+    G3 -- 否 --> DEC
+    WS --> DEC{有工具/Skill/联网?}
+    DEC -- 全无 --> DIR[streamDirect 无工具直连模型]
+    DEC -- 有 --> ASM[streamWithExtensions 装配]
+    ASM --> T1[Toolkit.registerAgentTool<br/>PlatformMcpTool 逐个注册 MCP]
+    ASM --> T2[Toolkit.registerAgentTool<br/>WebSearchTool 联网搜索]
+    ASM --> T3[injectSkillsToWorkspace<br/>写 workspace/skills/name/ 文件]
+    ASM --> T4[HarnessAgent.build<br/>toolkit + skillRepository + sysPrompt]
+    T1 --> RUN
+    T2 --> RUN
+    T3 --> RUN
+    T4 --> RUN[streamEvents 模型按需调用工具]
+    RUN --> CLOSE[doFinally 去重关闭 McpConnection]
+```
+
+管理端调试链路 `/api/admin/agents/{agentKey}/chat/stream`（`resolveForDebug` 草稿态）：
+
+```mermaid
+flowchart LR
+    A["POST /api/admin/agents/{agentKey}/chat/stream"] --> B["Sa-Token 管理端鉴权"]
+    B --> C["AgentDebugController 限定 agentDebugRuntime Bean"]
+    C --> D["resolveForDebug：DRAFT/PUBLISHED 可跑、DISABLED 拒绝、读实时编辑行"]
+    D --> E["复用与线上相同的下游链（RAG/记忆/MCP/Skill/Tool 装配进模型）"]
+    E --> F["SSE 事件流"]
+```
+
+与线上差异：鉴权用 Sa-Token（不用 API Key、不经 `AgentApiKeyServletFilter` 的限流/配额），Agent 解析用 `resolveForDebug`（实时编辑行，DRAFT/PUBLISHED 可跑、DISABLED 拒绝）；下游装配链（RAG/记忆/MCP/Skill/Tool → 模型 → SSE）与线上 `/api/v1` 完全相同。
+
 ## 6. API 概览
 
 - **认证**：`POST /api/auth/login`（默认管理员 `admin/admin`，启动时自动种子）。管理 API 强制登录，写操作需 admin 角色。

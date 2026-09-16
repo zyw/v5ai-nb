@@ -17,10 +17,10 @@ import {
   NSpace,
   NSwitch,
   NTag,
-  NText,
+  NText, NTooltip,
   useMessage
 } from 'naive-ui'
-import { ArrowLeft, Bot, Plus, X } from 'lucide-vue-next'
+import {ArrowLeft, Bot, CircleQuestionMark, MessagesSquare, Plus, X} from 'lucide-vue-next'
 import {
   getAgent,
   getKnowledgeBindings,
@@ -467,7 +467,7 @@ onMounted(load)
               <!-- Chat 模型（单选） -->
               <div class="config-group">
                 <div class="config-group-head">
-                  <div class="config-group-title">Chat 模型</div>
+                  <div class="config-group-title">对话模型</div>
                   <n-tag size="small" :bordered="false" type="info" style="margin-left: 8px">单选</n-tag>
                   <div class="config-group-actions">
                     <n-button size="tiny" secondary @click="openModelPicker">更换模型</n-button>
@@ -489,9 +489,18 @@ onMounted(load)
               <!-- Skill -->
               <div class="config-group">
                 <div class="config-group-head">
-                  <div class="config-group-title">Skill</div>
+                  <div class="config-group-title">
+                    Skill
+                    <n-tooltip placement="top">
+                      <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+                      配置 SKILL，赋予智能体更多能力
+                    </n-tooltip>
+                  </div>
                   <div class="config-group-actions">
-                    <n-switch v-model:value="form.skillEnabled" size="small" :disabled="!selectedSkills.length" />
+                    <n-switch v-model:value="form.skillEnabled" size="small" :disabled="!selectedSkills.length">
+                      <template #checked>开</template>
+                      <template #unchecked>关</template>
+                    </n-switch>
                     <n-button size="tiny" secondary @click="openSkillPicker">+ 添加 Skill</n-button>
                   </div>
                 </div>
@@ -511,9 +520,18 @@ onMounted(load)
               <!-- MCP -->
               <div class="config-group">
                 <div class="config-group-head">
-                  <div class="config-group-title">MCP 服务</div>
+                  <div class="config-group-title">
+                    MCP 服务
+                    <n-tooltip placement="top">
+                      <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+                      配置 MCP 服务，赋予智能体更多能力
+                    </n-tooltip>
+                  </div>
                   <div class="config-group-actions">
-                    <n-switch v-model:value="form.mcpEnabled" size="small" :disabled="!selectedMcps.length" />
+                    <n-switch v-model:value="form.mcpEnabled" size="small" :disabled="!selectedMcps.length">
+                      <template #checked>开</template>
+                      <template #unchecked>关</template>
+                    </n-switch>
                     <n-button size="tiny" secondary @click="openMcpPicker">+ 添加 MCP</n-button>
                   </div>
                 </div>
@@ -533,9 +551,18 @@ onMounted(load)
               <!-- RAG 知识库 -->
               <div class="config-group">
                 <div class="config-group-head">
-                  <div class="config-group-title">RAG 知识库</div>
+                  <div class="config-group-title">
+                    RAG 知识库
+                    <n-tooltip placement="top">
+                      <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+                      配置 RAG 知识库服务，赋予智能体更多能力
+                    </n-tooltip>
+                  </div>
                   <div class="config-group-actions">
-                    <n-switch v-model:value="form.ragEnabled" size="small" :disabled="!selectedKbs.length" />
+                    <n-switch v-model:value="form.ragEnabled" size="small" :disabled="!selectedKbs.length">
+                      <template #checked>开</template>
+                      <template #unchecked>关</template>
+                    </n-switch>
                     <n-button size="tiny" secondary @click="openKbPicker">+ 添加知识库</n-button>
                   </div>
                 </div>
@@ -558,8 +585,20 @@ onMounted(load)
                   <div class="config-group-title">其他能力</div>
                 </div>
                 <div class="resource-list other-switches">
-                  <n-space align="center" :size="8"><n-switch v-model:value="form.memoryEnabled" size="small" /><span>记忆库</span></n-space>
-                  <n-space align="center" :size="8"><n-switch v-model:value="form.webSearchEnabled" size="small" /><span>联网搜索</span></n-space>
+                  <n-space align="center" :size="8">
+                    <n-switch v-model:value="form.memoryEnabled" size="small">
+                      <template #checked>开</template>
+                      <template #unchecked>关</template>
+                    </n-switch>
+                    <span>记忆库</span>
+                  </n-space>
+                  <n-space align="center" :size="8">
+                    <n-switch v-model:value="form.webSearchEnabled" size="small">
+                      <template #checked>开</template>
+                      <template #unchecked>关</template>
+                    </n-switch>
+                    <span>联网搜索</span>
+                  </n-space>
                 </div>
               </div>
             </n-card>
