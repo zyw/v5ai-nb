@@ -3,7 +3,7 @@ package xin.v5ai.nb.runtime.core.gateway;
 import xin.v5ai.nb.runtime.core.domain.RuntimeRunEntity;
 
 /**
- * 运行记录持久化网关：管理一次 Agent 运行的完整生命周期。
+ * 运行记录持久化网关：管理一次 AgentDTO 运行的完整生命周期。
  * 由基础设施层实现（MyBatis），对接 {@code v5ai_run} 表。
  */
 public interface RuntimeRunGateway {

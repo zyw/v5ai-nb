@@ -3,7 +3,7 @@ package xin.v5ai.nb.common.agentscope.core.resolver;
 import io.agentscope.core.model.Model;
 
 /**
- * Agent 模型解析器：将模型 ID 转换为实际可用的模型对象。
+ * AgentDTO 模型解析器：将模型 ID 转换为实际可用的模型对象。
  *
  * 典型实现方式：根据 modelId 从数据库/配置中查询模型配置
  * （模型名称、服务商、BaseURL、API Key 等），然后构建并返回

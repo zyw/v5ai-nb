@@ -1,6 +1,6 @@
 package xin.v5ai.nb.common.agentscope.core.service;
 
-import xin.v5ai.nb.common.agentscope.core.domain.Message;
+import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 
 import java.util.List;
 
@@ -13,7 +13,7 @@ public interface MessageService {
      *
      * @param message 要保存的消息
      */
-    void save(Message message);
+    void save(SessionMessage message);
 
     /**
      * 查询某个会话的全部历史消息（通常按时间正序返回）。
@@ -21,5 +21,5 @@ public interface MessageService {
      * @param conversationId 会话 ID
      * @return 该会话的消息列表
      */
-    List<Message> findByConversationId(String conversationId);
+    List<SessionMessage> findByConversationId(String conversationId);
 }

@@ -5,7 +5,7 @@ import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 import java.time.Instant;
 
 /**
- * 运行时事件（不可变 record）：描述一次 Agent 运行的每一步进展，
+ * 运行时事件（不可变 record）：描述一次 AgentDTO 运行的每一步进展，
  * 用于流式推送、前端展示与持久化审计。
  *
  * 创建方式：通过下方静态工厂方法构造，自动填充类型与时间戳。

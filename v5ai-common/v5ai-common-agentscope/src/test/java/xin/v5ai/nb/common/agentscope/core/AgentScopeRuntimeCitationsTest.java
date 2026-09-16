@@ -6,8 +6,8 @@ import cn.hutool.json.JSONUtil;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
@@ -31,14 +31,14 @@ class AgentScopeRuntimeCitationsTest {
     /** 不跑模型，只回放一个文本片段，便于把事件流收干。 */
     private static final class NoopExecutor implements AgentTextExecutor {
         @Override
-        public Flux<AgentTextEvent> streamText(Agent agent, AgentRunRequest request) {
+        public Flux<AgentTextEvent> streamText(AgentDTO agent, AgentRunBo request) {
             return Flux.just(new AgentTextEvent.Text("ok"));
         }
     }
 
-    /** 构造开启 RAG 的 Agent（能力开关默认 false，必须显式开启才会构建检索上下文）。 */
-    private static Agent agentWithRag() {
-        return new Agent("agent-x", "Demo", "desc", null, 1L, null,
+    /** 构造开启 RAG 的 AgentDTO（能力开关默认 false，必须显式开启才会构建检索上下文）。 */
+    private static AgentDTO agentWithRag() {
+        return new AgentDTO("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
                 false, false, false, false, true, RagCallMode.FORCED.value());
     }
@@ -52,7 +52,7 @@ class AgentScopeRuntimeCitationsTest {
 
     private static String retrievalPayloadOf(RagContext rag) {
         var events = runtimeWith(rag)
-                .stream(new AgentRunRequest("agent-x", "conv-1", "问题"))
+                .stream(new AgentRunBo("agent-x", "conv-1", "问题"))
                 .collectList().block();
         return events.stream()
                 .filter(event -> event.type() == RuntimeEventType.RETRIEVAL)
@@ -101,7 +101,7 @@ class AgentScopeRuntimeCitationsTest {
     @Test
     void noRetrievalEventWhenContextIsEmpty() {
         var events = runtimeWith(RagContext.empty())
-                .stream(new AgentRunRequest("agent-x", "conv-1", "问题"))
+                .stream(new AgentRunBo("agent-x", "conv-1", "问题"))
                 .collectList().block();
 
         assertThat(events).isNotNull();

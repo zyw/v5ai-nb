@@ -6,6 +6,6 @@ package xin.v5ai.nb.common.agentscope.enums;
 public enum MessageRole {
     /** 用户消息 */
     USER,
-    /** 助手（Agent/AI）消息 */
+    /** 助手（AgentDTO/AI）消息 */
     ASSISTANT
 }

@@ -11,7 +11,7 @@ import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 /**
  * <p>
- * Agent 实体（v5ai_agent）：agentKey 全局唯一，status 为 DRAFT/PUBLISHED/DISABLED。
+ * AgentDTO 实体（v5ai_agent）：agentKey 全局唯一，status 为 DRAFT/PUBLISHED/DISABLED。
  * </p>
  *
  * @author ZYW
@@ -28,7 +28,7 @@ public class Agent extends BaseEntity {
     private Long id;
 
     /**
-     * 对外运行标识（全局唯一，运行时通过 agentKey 解析 Agent）
+     * 对外运行标识（全局唯一，运行时通过 agentKey 解析 AgentDTO）
      */
     private String agentKey;
 

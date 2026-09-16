@@ -12,8 +12,8 @@ import xin.v5ai.nb.common.agentscope.core.AgentScopeRuntime;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
 import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentScopeHarnessExecutor;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
@@ -65,7 +65,7 @@ public class AgentScopeRuntimeConfiguration {
                     new JsonFileAgentStateStore(Path.of(properties.getStateDirectory())),
                     Path.of(properties.getWorkspace()));
         }
-        return (Agent application, AgentRunRequest request) ->
+        return (AgentDTO application, AgentRunBo request) ->
                 Flux.just(new AgentTextEvent.Text("Phase 1 runtime placeholder response for: " + request.query()));
     }
 
@@ -91,7 +91,7 @@ public class AgentScopeRuntimeConfiguration {
     }
 
     /**
-     * 管理端调试运行时：允许草稿态 Agent 运行（{@code resolveForDebug}），
+     * 管理端调试运行时：允许草稿态 AgentDTO 运行（{@code resolveForDebug}），
      * 供后台「预览与调试」面板在未发布时直接调试；仅禁用状态拒绝。
      */
     @Bean

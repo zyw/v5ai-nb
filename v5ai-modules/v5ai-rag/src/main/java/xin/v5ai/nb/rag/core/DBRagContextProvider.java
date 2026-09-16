@@ -5,8 +5,8 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
 import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.KnowledgeBaseRef;
 import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
@@ -28,7 +28,7 @@ public class DBRagContextProvider implements RagContextProvider, RagSearchProvid
     private final IKnowledgeBaseService baseService;
 
     @Override
-    public Mono<RagContext> buildContext(Agent agent, AgentRunRequest request) {
+    public Mono<RagContext> buildContext(AgentDTO agent, AgentRunBo request) {
         return Mono.fromCallable(() -> {
             var result = retrievalContextBuilder.build(agent.agentKey(), request.query());
             return toRagContext(result);
@@ -46,7 +46,7 @@ public class DBRagContextProvider implements RagContextProvider, RagSearchProvid
 
     @Override
     public RagContext search(String agentKey, long knowledgeBaseId, String query) {
-        // 知识库未绑定到该 Agent 时由 RetrievalContextBuilder.search 抛异常，工具侧转为友好错误
+        // 知识库未绑定到该 AgentDTO 时由 RetrievalContextBuilder.search 抛异常，工具侧转为友好错误
         return toRagContext(retrievalContextBuilder.search(agentKey, knowledgeBaseId, query));
     }
 

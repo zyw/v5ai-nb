@@ -1,12 +1,12 @@
 package xin.v5ai.nb.common.agentscope.core.resolver;
 
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedMcpTool;
 
 import java.util.List;
 
 /**
- * 运行时 MCP Tool 解析器：根据已发布 Agent 的绑定配置，
+ * 运行时 MCP Tool 解析器：根据已发布 AgentDTO 的绑定配置，
  * 解析出本次运行要注册（动态注册）的 MCP 工具集合。
  *
  * 实现约定：
@@ -17,10 +17,10 @@ import java.util.List;
 public interface McpToolResolver {
 
     /**
-     * 解析 Agent 绑定的 MCP 工具。
+     * 解析 AgentDTO 绑定的 MCP 工具。
      *
-     * @param application 已发布的 Agent
+     * @param application 已发布的 AgentDTO
      * @return 本次运行可用的 MCP 工具（可能为空列表）
      */
-    List<ResolvedMcpTool> resolveTools(Agent application);
+    List<ResolvedMcpTool> resolveTools(AgentDTO application);
 }

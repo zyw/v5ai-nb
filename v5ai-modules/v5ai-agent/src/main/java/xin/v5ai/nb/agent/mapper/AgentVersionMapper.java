@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * <p>
- * Agent 版本 Mapper 接口
+ * AgentDTO 版本 Mapper 接口
  * </p>
  *
  * @author ZYW
@@ -20,9 +20,9 @@ import java.util.List;
 public interface AgentVersionMapper extends BaseMapper<AgentVersion> {
 
     /**
-     * 计算某 Agent 的下一个版本号。
+     * 计算某 AgentDTO 的下一个版本号。
      *
-     * @param agentKey Agent 的 agentKey
+     * @param agentKey AgentDTO 的 agentKey
      * @return 下一个版本号（1 起）
      */
     Long nextVersion(@Param("agentKey") String agentKey);
@@ -30,7 +30,7 @@ public interface AgentVersionMapper extends BaseMapper<AgentVersion> {
     /**
      * 按 agentKey 查询版本列表（新版本在前）。
      *
-     * @param agentKey Agent 的 agentKey
+     * @param agentKey AgentDTO 的 agentKey
      * @return 版本列表
      */
     default List<AgentVersion> selectVersionsByAgentKey(String agentKey) {

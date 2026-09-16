@@ -6,11 +6,11 @@ import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.agent.controller.vo.GenerateAgentConfigRequest;
 import xin.v5ai.nb.agent.controller.vo.GenerateAgentConfigResponse;
 import xin.v5ai.nb.agent.controller.vo.PublishAgentRequest;
+import xin.v5ai.nb.agent.core.AgentConfigGenerator;
 import xin.v5ai.nb.agent.domain.bo.AgentBo;
 import xin.v5ai.nb.agent.domain.vo.AgentVersionVo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.service.IAgentService;
-import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.validate.AddGroup;
@@ -22,7 +22,7 @@ import xin.v5ai.nb.common.web.core.BaseController;
 import java.util.List;
 
 /**
- * Agent 管理 API：新建（含向导生成配置）、分页列表、更新、禁用、删除、版本列表与发布。
+ * AgentDTO 管理 API：新建（含向导生成配置）、分页列表、更新、禁用、删除、版本列表与发布。
  *
  * @author ZYW
  * @since 2026-08-22

@@ -109,7 +109,7 @@ public class KnowledgeBaseVo implements Serializable {
     private Long chunkCount;
 
     /**
-     * 引用该知识库的 Agent 标识列表（列表接口批量回填；被引用时删除须拦截、禁用仅警告）
+     * 引用该知识库的 AgentDTO 标识列表（列表接口批量回填；被引用时删除须拦截、禁用仅警告）
      */
     private List<String> referencedAgentKeys;
 }

@@ -9,7 +9,7 @@
 //import java.util.List;
 //
 ///**
-// * {@link AgentSkillBindingService} 的 MyBatis-Plus 实现（运行时按 Agent 读取 Skill 绑定）。
+// * {@link AgentSkillBindingService} 的 MyBatis-Plus 实现（运行时按 AgentDTO 读取 Skill 绑定）。
 // *
 // * @author ZYW
 // * @since 2026-08-22

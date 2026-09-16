@@ -92,7 +92,7 @@ public class V5aiModelController extends BaseController {
     }
 
     /**
-     * 切换模型启用/停用（专用端点）：停用前校验模型是否被 Agent/知识库使用，
+     * 切换模型启用/停用（专用端点）：停用前校验模型是否被 AgentDTO/知识库使用，
      * 停用默认模型时自动清除其默认标记。
      *
      * @param id 模型 ID

@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 
 /**
  * <p>
- * Agent-MCP Server 绑定实体（v5ai_agent_mcp）：复合主键 (agent_key, mcp_server_id)。
+ * AgentDTO-MCP Server 绑定实体（v5ai_agent_mcp）：复合主键 (agent_key, mcp_server_id)。
  * </p>
  *
  * @author ZYW

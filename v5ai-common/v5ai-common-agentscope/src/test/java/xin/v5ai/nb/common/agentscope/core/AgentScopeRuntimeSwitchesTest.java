@@ -3,10 +3,9 @@ package xin.v5ai.nb.common.agentscope.core;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
-import xin.v5ai.nb.common.agentscope.core.domain.Message;
-import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.domain.*;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.rag.RagHit;
@@ -29,10 +28,10 @@ class AgentScopeRuntimeSwitchesTest {
 
     /** 捕获传给执行器的请求，便于断言门控后的历史/上下文。 */
     private static final class CapturingExecutor implements AgentTextExecutor {
-        AgentRunRequest lastRequest;
+        AgentRunBo lastRequest;
 
         @Override
-        public Flux<AgentTextEvent> streamText(Agent agent, AgentRunRequest request) {
+        public Flux<AgentTextEvent> streamText(AgentDTO agent, AgentRunBo request) {
             this.lastRequest = request;
             return Flux.just(new AgentTextEvent.Text("ok"));
         }
@@ -40,21 +39,21 @@ class AgentScopeRuntimeSwitchesTest {
 
     /** 内存 MessageService，按 conversationId 存/取。 */
     private static final class InMemoryMessageService implements MessageService {
-        private final List<Message> messages = new ArrayList<>();
+        private final List<SessionMessage> messages = new ArrayList<>();
 
-        InMemoryMessageService(List<Message> seed) {
+        InMemoryMessageService(List<SessionMessage> seed) {
             messages.addAll(seed);
         }
 
         @Override
-        public void save(Message message) {
+        public void save(SessionMessage message) {
             messages.add(message);
         }
 
         @Override
-        public List<Message> findByConversationId(String conversationId) {
-            List<Message> result = new ArrayList<>();
-            for (Message m : messages) {
+        public List<SessionMessage> findByConversationId(String conversationId) {
+            List<SessionMessage> result = new ArrayList<>();
+            for (SessionMessage m : messages) {
                 if (m.conversationId().equals(conversationId)) {
                     result.add(m);
                 }
@@ -63,12 +62,12 @@ class AgentScopeRuntimeSwitchesTest {
         }
     }
 
-    private static Agent agent(boolean ragEnabled, boolean memoryEnabled) {
+    private static AgentDTO agent(boolean ragEnabled, boolean memoryEnabled) {
         return agent(ragEnabled, memoryEnabled, RagCallMode.FORCED.value());
     }
 
-    private static Agent agent(boolean ragEnabled, boolean memoryEnabled, int ragCallMode) {
-        return new Agent("agent-x", "Demo", "desc", null, 1L, null,
+    private static AgentDTO agent(boolean ragEnabled, boolean memoryEnabled, int ragCallMode) {
+        return new AgentDTO("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
                 memoryEnabled, false, false, false, ragEnabled, ragCallMode);
     }
@@ -86,7 +85,7 @@ class AgentScopeRuntimeSwitchesTest {
                 },
                 new InMemoryMessageService(List.of()));
 
-        var events = runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题")).collectList().block();
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-1", "问题")).collectList().block();
 
         assertThat(counter).hasValue(0);
         assertThat(events).noneMatch(event -> event.type() == RuntimeEventType.RETRIEVAL);
@@ -98,18 +97,18 @@ class AgentScopeRuntimeSwitchesTest {
         var executor = new CapturingExecutor();
         // PersistingAgentRuntime 已先落库当前用户消息：尾部 USER=当前 query，应被剔除
         var seed = List.of(
-                new Message("conv-1", "agent-x", MessageRole.USER, "你好"),
-                new Message("conv-1", "agent-x", MessageRole.ASSISTANT, "你好！"),
-                new Message("conv-1", "agent-x", MessageRole.USER, "问题"));
+                new SessionMessage("conv-1", "agent-x", MessageRole.USER, "你好"),
+                new SessionMessage("conv-1", "agent-x", MessageRole.ASSISTANT, "你好！"),
+                new SessionMessage("conv-1", "agent-x", MessageRole.USER, "问题"));
         var runtime = new AgentScopeRuntime(
                 key -> agent(false, true),
                 executor,
                 null,
                 new InMemoryMessageService(seed));
 
-        runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题")).collectList().block();
+        runtime.stream(new AgentRunBo("agent-x", "conv-1", "问题")).collectList().block();
 
-        assertThat(executor.lastRequest.history()).extracting(Message::role, Message::content)
+        assertThat(executor.lastRequest.history()).extracting(SessionMessage::role, SessionMessage::content)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(MessageRole.USER, "你好"),
                         org.assertj.core.groups.Tuple.tuple(MessageRole.ASSISTANT, "你好！"));
@@ -119,15 +118,15 @@ class AgentScopeRuntimeSwitchesTest {
     void memoryDisabledLeavesHistoryEmpty() {
         var executor = new CapturingExecutor();
         var seed = List.of(
-                new Message("conv-1", "agent-x", MessageRole.USER, "你好"),
-                new Message("conv-1", "agent-x", MessageRole.ASSISTANT, "你好！"));
+                new SessionMessage("conv-1", "agent-x", MessageRole.USER, "你好"),
+                new SessionMessage("conv-1", "agent-x", MessageRole.ASSISTANT, "你好！"));
         var runtime = new AgentScopeRuntime(
                 key -> agent(false, false),
                 executor,
                 null,
                 new InMemoryMessageService(List.copyOf(seed)));
 
-        runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题")).collectList().block();
+        runtime.stream(new AgentRunBo("agent-x", "conv-1", "问题")).collectList().block();
 
         assertThat(executor.lastRequest.history()).isEmpty();
     }
@@ -135,17 +134,17 @@ class AgentScopeRuntimeSwitchesTest {
     @Test
     void explicitHistoryIsNeverOverwrittenByMemoryLoader() {
         var executor = new CapturingExecutor();
-        var seed = List.of(new Message("conv-1", "agent-x", MessageRole.USER, "已被显式覆盖的历史"));
+        var seed = List.of(new SessionMessage("conv-1", "agent-x", MessageRole.USER, "已被显式覆盖的历史"));
         var runtime = new AgentScopeRuntime(
                 key -> agent(false, true),
                 executor,
                 null,
                 new InMemoryMessageService(seed));
 
-        var explicit = List.of(new Message("conv-1", "agent-x", MessageRole.USER, "resume 显式历史"));
-        runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题").withHistory(explicit)).collectList().block();
+        var explicit = List.of(new SessionMessage("conv-1", "agent-x", MessageRole.USER, "resume 显式历史"));
+        runtime.stream(new AgentRunBo("agent-x", "conv-1", "问题").withHistory(explicit)).collectList().block();
 
-        assertThat(executor.lastRequest.history()).extracting(Message::content).containsExactly("resume 显式历史");
+        assertThat(executor.lastRequest.history()).extracting(SessionMessage::content).containsExactly("resume 显式历史");
     }
 
     @Test
@@ -162,7 +161,7 @@ class AgentScopeRuntimeSwitchesTest {
                 new InMemoryMessageService(List.of()),
                 modelId -> true);
 
-        var events = runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题")).collectList().block();
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-1", "问题")).collectList().block();
 
         assertThat(counter).hasValue(0);
         assertThat(events).noneMatch(event -> event.type() == RuntimeEventType.RETRIEVAL);
@@ -183,7 +182,7 @@ class AgentScopeRuntimeSwitchesTest {
                 new InMemoryMessageService(List.of()),
                 modelId -> false);
 
-        var events = runtime.stream(new AgentRunRequest("agent-x", "conv-1", "问题")).collectList().block();
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-1", "问题")).collectList().block();
 
         assertThat(counter).hasValue(1);
         assertThat(events).anyMatch(event -> event.type() == RuntimeEventType.RETRIEVAL);

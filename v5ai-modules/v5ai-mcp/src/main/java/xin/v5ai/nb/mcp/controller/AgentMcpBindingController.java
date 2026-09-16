@@ -13,7 +13,7 @@ import xin.v5ai.nb.mcp.service.IMcpServerService;
 import java.util.List;
 
 /**
- * Agent 绑定 MCP Server API。
+ * AgentDTO 绑定 MCP Server API。
  *
  * @author ZYW
  * @since 2026-08-22

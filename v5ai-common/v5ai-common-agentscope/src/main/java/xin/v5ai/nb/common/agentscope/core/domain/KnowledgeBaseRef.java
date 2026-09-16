@@ -1,7 +1,7 @@
 package xin.v5ai.nb.common.agentscope.core.domain;
 
 /**
- * 一个已绑定到 Agent 的知识库引用（智能调用模式下用于把「可用知识库列表」写入系统提示，
+ * 一个已绑定到 AgentDTO 的知识库引用（智能调用模式下用于把「可用知识库列表」写入系统提示，
  * 并在 {@code rag_search} 工具内校验模型传入的 {@code ragId}）。
  *
  * @param id          知识库 ID

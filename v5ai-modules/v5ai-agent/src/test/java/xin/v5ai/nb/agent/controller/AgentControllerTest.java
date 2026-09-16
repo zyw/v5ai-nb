@@ -3,10 +3,10 @@ package xin.v5ai.nb.agent.controller;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.agent.controller.vo.GenerateAgentConfigRequest;
 import xin.v5ai.nb.agent.controller.vo.PublishAgentRequest;
+import xin.v5ai.nb.agent.core.GeneratedAgentConfig;
 import xin.v5ai.nb.agent.domain.bo.AgentBo;
 import xin.v5ai.nb.agent.domain.vo.AgentVo;
 import xin.v5ai.nb.agent.service.IAgentService;
-import xin.v5ai.nb.common.agentscope.core.domain.GeneratedAgentConfig;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 

@@ -6,7 +6,7 @@ import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 
 /**
  * <p>
- * Agent-MCP Server 绑定 Mapper 接口（复合主键）。
+ * AgentDTO-MCP Server 绑定 Mapper 接口（复合主键）。
  * </p>
  *
  * @author ZYW

@@ -15,7 +15,7 @@ import xin.v5ai.nb.rag.service.IKnowledgeBaseService;
 import java.util.List;
 
 /**
- * Agent 绑定知识库 API。
+ * AgentDTO 绑定知识库 API。
  *
  * @author ZYW
  * @since 2026-08-22

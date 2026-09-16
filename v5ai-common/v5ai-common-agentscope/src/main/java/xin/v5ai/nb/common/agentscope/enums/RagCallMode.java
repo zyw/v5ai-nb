@@ -6,10 +6,16 @@ package xin.v5ai.nb.common.agentscope.enums;
  *   <li>{@link #SMART}（智能调用）：注册 {@code rag_search} 工具，由 LLM 自主判断是否检索、检索哪个知识库、调用几次；</li>
  *   <li>{@link #FORCED}（强制调用）：每次运行都在模型前检索并注入系统提示（历史行为）。</li>
  * </ul>
- * 仅在 Agent 的 {@code ragEnabled} 开启时生效。
+ * 仅在 AgentDTO 的 {@code ragEnabled} 开启时生效。
  */
 public enum RagCallMode {
+    /**
+     * 智能调用。
+     */
     SMART(1),
+    /**
+     * 强制调用。
+     */
     FORCED(2);
 
     private final int value;

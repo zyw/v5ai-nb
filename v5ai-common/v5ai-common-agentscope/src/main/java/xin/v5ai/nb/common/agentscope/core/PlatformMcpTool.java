@@ -77,7 +77,7 @@ public class PlatformMcpTool extends ToolBase {
 
     @Override
     public Mono<PermissionDecision> checkPermissions(Map<String, Object> toolInput, PermissionContextState context) {
-        // 平台权限决策在 callAsync 中执行并审计，这里不阻塞 Agent 的执行流
+        // 平台权限决策在 callAsync 中执行并审计，这里不阻塞 AgentDTO 的执行流
         return Mono.just(PermissionDecision.allow("platform MCP permission policy is enforced and audited"));
     }
 

@@ -1,6 +1,6 @@
 package xin.v5ai.nb.common.agentscope.core;
 
-import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallResult;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.McpToolCallVo;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
 
 import java.util.List;
@@ -16,7 +16,7 @@ public interface McpConnection extends AutoCloseable {
     List<McpToolInfo> listTools();
 
     /** 调用指定 Tool。失败不抛异常，而是返回 ok=false 的结果。 */
-    McpToolCallResult callTool(String toolName, Map<String, Object> arguments);
+    McpToolCallVo callTool(String toolName, Map<String, Object> arguments);
 
     /** 释放连接（幂等）。 */
     @Override

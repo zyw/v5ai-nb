@@ -16,10 +16,10 @@ import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 @Mapper
 public interface V5aiModelMapper extends BaseMapperPlus<V5aiModel, V5aiModelVo> {
     /**
-     * 统计引用该模型的 Agent 数（任意状态）。
+     * 统计引用该模型的 AgentDTO 数（任意状态）。
      *
      * @param modelId 模型 ID
-     * @return 引用该模型的 Agent 行数
+     * @return 引用该模型的 AgentDTO 行数
      */
     Long countAgentUsage(Long modelId);
 

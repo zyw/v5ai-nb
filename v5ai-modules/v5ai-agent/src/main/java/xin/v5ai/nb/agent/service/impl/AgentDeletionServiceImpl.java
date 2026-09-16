@@ -8,7 +8,7 @@ import xin.v5ai.nb.agent.mapper.AgentCleanupMapper;
 import xin.v5ai.nb.agent.service.IAgentDeletionPortService;
 
 /**
- * Agent 级联删除实现：全部删除逻辑下沉 {@link AgentCleanupMapper}（XML SQL），
+ * AgentDTO 级联删除实现：全部删除逻辑下沉 {@link AgentCleanupMapper}（XML SQL），
  * 按依赖顺序执行——FK 子表（子查询定位）→ 直连 agent_key 表 → 主表。
  *
  * @author ZYW

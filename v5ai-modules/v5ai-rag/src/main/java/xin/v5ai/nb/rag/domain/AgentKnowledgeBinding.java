@@ -8,7 +8,7 @@ import lombok.ToString;
 
 /**
  * <p>
- * Agent-知识库绑定实体（v5ai_agent_knowledge）：复合主键 (agent_key, knowledge_base_id)。
+ * AgentDTO-知识库绑定实体（v5ai_agent_knowledge）：复合主键 (agent_key, knowledge_base_id)。
  * 表无 updated_at 列，故不继承 BaseEntity。
  * </p>
  *

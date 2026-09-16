@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 
 /**
  * <p>
- * Agent 版本视图对象
+ * AgentDTO 版本视图对象
  * </p>
  *
  * @author ZYW
@@ -26,7 +26,7 @@ public class AgentVersionVo implements Serializable {
     private Long id;
 
     /**
-     * 所属 Agent 的 agentKey
+     * 所属 AgentDTO 的 agentKey
      */
     private String agentKey;
 

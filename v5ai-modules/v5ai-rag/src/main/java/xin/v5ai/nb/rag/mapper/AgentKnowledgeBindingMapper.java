@@ -6,7 +6,7 @@ import xin.v5ai.nb.rag.domain.AgentKnowledgeBinding;
 
 /**
  * <p>
- * Agent-知识库绑定 Mapper 接口
+ * AgentDTO-知识库绑定 Mapper 接口
  * </p>
  *
  * @author ZYW

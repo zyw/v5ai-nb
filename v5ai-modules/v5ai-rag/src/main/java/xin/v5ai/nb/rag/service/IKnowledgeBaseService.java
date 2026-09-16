@@ -13,7 +13,7 @@ import xin.v5ai.nb.rag.domain.vo.KnowledgeTaskVo;
 import java.util.List;
 
 /**
- * 知识库管理服务：知识库 CRUD、文档上传/URL 导入、索引任务查询、Agent 绑定。
+ * 知识库管理服务：知识库 CRUD、文档上传/URL 导入、索引任务查询、AgentDTO 绑定。
  *
  * @author ZYW
  * @since 2026-08-22
@@ -118,12 +118,12 @@ public interface IKnowledgeBaseService {
     List<KnowledgeTaskVo> listTasksByDocument(Long documentId);
 
     /**
-     * 全量替换某 Agent 绑定的知识库集合。
+     * 全量替换某 AgentDTO 绑定的知识库集合。
      */
     void bindKnowledgeBases(String agentKey, List<Long> knowledgeBaseIds);
 
     /**
-     * 查询某 Agent 绑定的知识库 ID 集合。
+     * 查询某 AgentDTO 绑定的知识库 ID 集合。
      */
     List<Long> getKnowledgeBindings(String agentKey);
 }

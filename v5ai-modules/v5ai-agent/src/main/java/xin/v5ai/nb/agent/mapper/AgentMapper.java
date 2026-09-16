@@ -8,7 +8,7 @@ import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
 
 /**
  * <p>
- * Agent Mapper 接口
+ * AgentDTO Mapper 接口
  * </p>
  *
  * @author ZYW
@@ -18,10 +18,10 @@ import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
 public interface AgentMapper extends BaseMapperPlus<Agent, AgentVo> {
 
     /**
-     * 按 agentKey 查询 Agent。
+     * 按 agentKey 查询 AgentDTO。
      *
      * @param agentKey 对外运行标识
-     * @return 匹配的 Agent，不存在时返回 null
+     * @return 匹配的 AgentDTO，不存在时返回 null
      */
     default Agent selectByAgentKey(String agentKey) {
         return selectOne(new LambdaQueryWrapper<Agent>().eq(Agent::getAgentKey, agentKey));

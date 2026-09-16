@@ -4,8 +4,8 @@ import io.agentscope.core.model.Model;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.executor.ModelStreamTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
@@ -16,7 +16,7 @@ import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import java.nio.file.Path;
 
 /**
- * MCP Agent 的文本执行器，负责解析 MCP Agent 的模型定义，并使用 Stream 模式执行。
+ * MCP AgentDTO 的文本执行器，负责解析 MCP AgentDTO 的模型定义，并使用 Stream 模式执行。
  */
 
 public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
@@ -46,7 +46,7 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
     }
 
     /**
-     * MCP/Skill/联网搜索感知构造：额外携带 Tavily API Key，用于 Agent 开启
+     * MCP/Skill/联网搜索感知构造：额外携带 Tavily API Key，用于 AgentDTO 开启
      * {@code webSearchEnabled} 时注册联网搜索工具。
      */
     public PublishedModelAgentTextExecutor(
@@ -62,7 +62,7 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
 
     /**
      * MCP/Skill/联网搜索/RAG 智能调用感知构造：额外携带 {@link RagSearchProvider}，
-     * 供 Agent 开启 RAG 智能调用模式时注册 {@code rag_search} 工具。
+     * 供 AgentDTO 开启 RAG 智能调用模式时注册 {@code rag_search} 工具。
      */
     public PublishedModelAgentTextExecutor(
             AgentModelResolver modelResolver,
@@ -79,7 +79,7 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
     }
 
     /**
-     * 使用指定的执行器工厂构造 MCP Agent 的文本执行器。
+     * 使用指定的执行器工厂构造 MCP AgentDTO 的文本执行器。
      */
     PublishedModelAgentTextExecutor(AgentModelResolver modelResolver, AgentScopeExecutorFactory executorFactory) {
         this.modelResolver = modelResolver;
@@ -87,10 +87,10 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
     }
 
     /**
-     * 使用指定的执行器工厂构造 MCP Agent 的文本执行器。
+     * 使用指定的执行器工厂构造 MCP AgentDTO 的文本执行器。
      */
     @Override
-    public Flux<AgentTextEvent> streamText(Agent agent, AgentRunRequest request) {
+    public Flux<AgentTextEvent> streamText(AgentDTO agent, AgentRunBo request) {
         var model = modelResolver.resolve(agent.modelId());
         if (model == null) {
             return Flux.error(new IllegalArgumentException("model is not resolvable: " + agent.modelId()));

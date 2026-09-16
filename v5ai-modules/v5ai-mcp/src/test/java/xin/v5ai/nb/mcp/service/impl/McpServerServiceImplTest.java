@@ -7,7 +7,7 @@ import xin.v5ai.nb.common.agentscope.core.factory.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
 import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
-import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallResult;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.McpToolCallVo;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
@@ -268,8 +268,8 @@ class McpServerServiceImplTest {
         }
 
         @Override
-        public McpToolCallResult callTool(String toolName, Map<String, Object> arguments) {
-            return McpToolCallResult.success("ok");
+        public McpToolCallVo callTool(String toolName, Map<String, Object> arguments) {
+            return McpToolCallVo.success("ok");
         }
 
         @Override

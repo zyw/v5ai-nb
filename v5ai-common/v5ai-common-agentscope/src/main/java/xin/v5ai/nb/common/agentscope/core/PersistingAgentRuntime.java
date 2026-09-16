@@ -17,19 +17,19 @@
 //
 ///**
 // * 带持久化能力的运行时装饰器：包裹（delegate）另一个 AgentRuntime，
-// * 在事件流转过程中把"会话、消息、运行记录、运行事件、Agent 状态"
+// * 在事件流转过程中把"会话、消息、运行记录、运行事件、AgentDTO 状态"
 // * 一并落库，从而支持多轮对话历史与运行审计。
 // *
-// * 职责边界：delegate 负责真正执行 Agent；本类只做副作用（持久化）。
+// * 职责边界：delegate 负责真正执行 AgentDTO；本类只做副作用（持久化）。
 // * 提供 3 个构造器，持久化能力逐步增强：
 // * 1) 最简：会话/事件仓储使用空实现（lambda 空操作），不保存；
 // * 2) 中间：显式传入会话与事件仓储；
-// * 3) 完整：额外传入 Agent 状态仓储。
+// * 3) 完整：额外传入 AgentDTO 状态仓储。
 // */
 //public class PersistingAgentRuntime implements AgentRuntime {
 //    private static final Logger LOG = LoggerFactory.getLogger(PersistingAgentRuntime.class);
 //
-//    /** 被装饰的真实运行时（实际执行 Agent） */
+//    /** 被装饰的真实运行时（实际执行 AgentDTO） */
 //    private final AgentRuntime delegate;
 //    /** 消息仓储：保存用户提问与助手回答 */
 //    private final MessageService messageService;
@@ -39,7 +39,7 @@
 //    private final ConversationService conversationService;
 //    /** 运行事件仓储：保存每一条运行事件 */
 //    private final RunEventService runEventService;
-//    /** Agent 状态仓储（可空）：保存会话级 Agent 状态 */
+//    /** AgentDTO 状态仓储（可空）：保存会话级 AgentDTO 状态 */
 //    private final AgentStateService agentStateService;
 //    /** 用量记录器（可空）：运行完成/失败时记录模型调用用量 */
 //    private final UsageRecorder usageRecorder;
@@ -101,14 +101,14 @@
 //    }
 //
 //    @Override
-//    public Flux<RuntimeEvent> stream(AgentRunRequest request) {
+//    public Flux<RuntimeEvent> stream(AgentRunBo request) {
 //        // defer：订阅时才执行副作用（落库），避免每次构建 Flux 就写库
 //        return Flux.defer(() -> {
 //            // 若未传 conversationId，则先自动生成一个（normalize 负责）
 //            var normalizedRequest = normalize(request);
 //            // 1) 登记会话 + 保存用户提问
-//            conversationService.ensureConversation(new Conversation(normalizedRequest.conversationId(), normalizedRequest.agentKey()));
-//            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query()));
+//            conversationService.ensureConversation(new ConversationBo(normalizedRequest.conversationId(), normalizedRequest.agentKey()));
+//            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query()));
 //            // 累积最终回答文本（把 TEXT_DELTA 片段拼起来）
 //            var answer = new StringBuilder();
 //            // 用单元素数组持有 runId（lambda 里捕获可变值）
@@ -134,11 +134,11 @@
 //                            answer.append(event.payload());
 //                        }
 //                        if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
-//                            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
+//                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
 //                            saveAgentState(normalizedRequest, answer.toString());
 //                        }
 //                        if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-//                            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
+//                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
 //                            saveAgentState(normalizedRequest, answer.toString());
 //                            runRecordService.complete(event.runId());
 //                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0], answer.toString(), true);
@@ -168,7 +168,7 @@
 //                    // 也要把回答落库，保证消息完整
 //                    .doOnComplete(() -> {
 //                        if (runId[0] == null) {
-//                            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
+//                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
 //                            saveAgentState(normalizedRequest, answer.toString());
 //                            recordUsage(normalizedRequest, null, modelName[0], startedAt[0], answer.toString(), true);
 //                        }
@@ -179,7 +179,7 @@
 //    /**
 //     * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账（Token 按字符数粗略估算）。
 //     */
-//    private void recordUsage(AgentRunRequest request, String runId, String modelName,
+//    private void recordUsage(AgentRunBo request, String runId, String modelName,
 //                             java.time.Instant startedAt, String answer, boolean success) {
 //        if (usageRecorder == null && quotaService == null) {
 //            return;
@@ -207,20 +207,20 @@
 //    }
 //
 //    @Override
-//    public Mono<AgentRunResult> call(AgentRunRequest request) {
+//    public Mono<AgentRunVo> call(AgentRunBo request) {
 //        // 复用 stream()，过滤出文本增量片段并拼接为最终回答
 //        return stream(request)
 //                .filter(event -> event.type() == RuntimeEventType.TEXT_DELTA)
 //                .map(RuntimeEvent::payload)
 //                .collectList()
-//                .map(parts -> new AgentRunResult("", String.join("", parts)));
+//                .map(parts -> new AgentRunVo("", String.join("", parts)));
 //    }
 //
 //    /**
-//     * 保存会话级 Agent 状态（可选能力）：把 agentKey 与最后一次回答写入状态仓储。
+//     * 保存会话级 AgentDTO 状态（可选能力）：把 agentKey 与最后一次回答写入状态仓储。
 //     * 未配置 agentStateRepository 时直接跳过。
 //     */
-//    private void saveAgentState(AgentRunRequest request, String answer) {
+//    private void saveAgentState(AgentRunBo request, String answer) {
 //        if (agentStateService == null) {
 //            return;
 //        }
@@ -235,11 +235,11 @@
 //     * 规范化请求：conversationId 缺失或为空时自动生成一个 UUID，
 //     * 保证每次运行都能关联到唯一会话。
 //     */
-//    private AgentRunRequest normalize(AgentRunRequest request) {
+//    private AgentRunBo normalize(AgentRunBo request) {
 //        if (request.conversationId() != null && !request.conversationId().isBlank()) {
 //            return request;
 //        }
-//        return new AgentRunRequest(request.agentKey(), UUID.randomUUID().toString(), request.query(),
+//        return new AgentRunBo(request.agentKey(), UUID.randomUUID().toString(), request.query(),
 //                request.ragContext(), request.history(), request.runId());
 //    }
 //}

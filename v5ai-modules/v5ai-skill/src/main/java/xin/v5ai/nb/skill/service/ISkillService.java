@@ -12,7 +12,7 @@ import xin.v5ai.nb.skill.domain.vo.SkillVo;
 import java.util.List;
 
 /**
- * Skill 管理服务：上传解析、分页查询、版本发布、回滚、禁用与 Agent 绑定。
+ * Skill 管理服务：上传解析、分页查询、版本发布、回滚、禁用与 AgentDTO 绑定。
  *
  * @author ZYW
  * @since 2026-08-22
@@ -100,7 +100,7 @@ public interface ISkillService {
     boolean enableSkill(Long id);
 
     /**
-     * 删除 Skill（级联删除其全部版本、文件与 Agent 绑定）。
+     * 删除 Skill（级联删除其全部版本、文件与 AgentDTO 绑定）。
      * 存在已发布版本时禁止删除。
      */
     boolean deleteSkill(Long id);
@@ -128,7 +128,7 @@ public interface ISkillService {
     SkillVo offlineVersion(Long skillId, Long versionId);
 
     /**
-     * 查询 Skill 当前被多少个 Agent 绑定使用（用于下线前的使用提示）。
+     * 查询 Skill 当前被多少个 AgentDTO 绑定使用（用于下线前的使用提示）。
      */
     SkillUsageVo getSkillUsage(Long skillId);
 
@@ -138,12 +138,12 @@ public interface ISkillService {
     SkillVo rollback(Long skillId, Long versionId);
 
     /**
-     * 全量替换某 Agent 绑定的 Skill 集合。
+     * 全量替换某 AgentDTO 绑定的 Skill 集合。
      */
     boolean bindSkills(String agentKey, List<Long> skillIds);
 
     /**
-     * 查询某 Agent 绑定的 Skill ID 集合。
+     * 查询某 AgentDTO 绑定的 Skill ID 集合。
      */
     List<Long> getSkillBindings(String agentKey);
 }

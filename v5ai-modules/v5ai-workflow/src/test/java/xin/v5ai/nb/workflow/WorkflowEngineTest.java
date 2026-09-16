@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.workflow.core.*;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
@@ -215,17 +215,17 @@ class WorkflowEngineTest {
     }
 
     private static final class FakeAgentRuntime implements AgentRuntime {
-        final List<AgentRunRequest> requests = new ArrayList<>();
+        final List<AgentRunBo> requests = new ArrayList<>();
 
         @Override
-        public Flux<RuntimeEvent> stream(AgentRunRequest request) {
+        public Flux<RuntimeEvent> stream(AgentRunBo request) {
             return Flux.empty();
         }
 
         @Override
-        public Mono<AgentRunResult> call(AgentRunRequest request) {
+        public Mono<AgentRunVo> call(AgentRunBo request) {
             requests.add(request);
-            return Mono.just(new AgentRunResult("child-run", "answer:" + request.query()));
+            return Mono.just(new AgentRunVo("child-run", "answer:" + request.query()));
         }
     }
 

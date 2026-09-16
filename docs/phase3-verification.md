@@ -40,7 +40,7 @@ cd v5ai-ui && npx vue-tsc --noEmit   # 前端类型检查
 
 ### 运行时（动态 Tool 注册 + 权限 + 审计）
 
-- `AgentTextEvent` 新增 `ToolCall`/`ToolResult`；`AgentRunRequest` 新增 `runId`
+- `AgentTextEvent` 新增 `ToolCall`/`ToolResult`；`AgentRunBo` 新增 `runId`
   （运行时生成，工具审计据此关联）。
 - `ModelStreamTextExecutor` 升级：无工具走原轻量 `Model.stream` 路径；
   有工具时把 `PlatformMcpTool` 动态注册进 HarnessAgent Toolkit，

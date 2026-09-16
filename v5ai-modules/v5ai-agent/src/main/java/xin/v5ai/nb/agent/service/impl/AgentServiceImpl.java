@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * Agent 管理服务实现类。
+ * AgentDTO 管理服务实现类。
  *
  * @author ZYW
  * @since 2026-08-22
@@ -36,7 +36,7 @@ public class AgentServiceImpl implements IAgentService {
     private static final String STATUS_DRAFT = "DRAFT";
     private static final String STATUS_DISABLED = "DISABLED";
     private static final String STATUS_PUBLISHED = "PUBLISHED";
-    /** RAG 调用方式默认值：强制调用，兼容存量 Agent 行为。 */
+    /** RAG 调用方式默认值：强制调用，兼容存量 AgentDTO 行为。 */
     private static final int RAG_CALL_MODE_FORCED = 2;
 
     private final AgentMapper agentMapper;
@@ -175,7 +175,7 @@ public class AgentServiceImpl implements IAgentService {
     }
 
     /**
-     * 构造 Agent 列表查询条件。
+     * 构造 AgentDTO 列表查询条件。
      */
     private LambdaQueryWrapper<Agent> buildQueryWrapper(AgentBo bo) {
         // name / agentKey 是既有查询契约（大小写敏感），保留原语义；keyword 是前端唯一入口。

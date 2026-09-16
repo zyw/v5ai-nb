@@ -2,7 +2,7 @@ package xin.v5ai.nb.workflow.core;
 
 import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
 import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
@@ -164,7 +164,7 @@ public class WorkflowEngine {
         if (outputVar == null || outputVar.isBlank()) {
             outputVar = node.id();
         }
-        var result = agentRuntime.call(new AgentRunRequest(agentKey, context.runId, prompt)).block();
+        var result = agentRuntime.call(new AgentRunBo(agentKey, context.runId, prompt)).block();
         String answer = result == null ? "" : result.answer();
         context.variables.put(outputVar, answer);
         outputs.put("answer", answer);

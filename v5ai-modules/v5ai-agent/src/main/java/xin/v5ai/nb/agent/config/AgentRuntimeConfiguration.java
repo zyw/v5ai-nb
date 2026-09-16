@@ -3,10 +3,10 @@ package xin.v5ai.nb.agent.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import xin.v5ai.nb.agent.core.InMemoryAgentRepository;
+import xin.v5ai.nb.agent.service.impl.InMemoryAgentServiceImpl;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.repository.AgentRepository;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
+import xin.v5ai.nb.common.agentscope.core.service.AgentService;
 import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
 
 @Configuration
@@ -16,14 +16,14 @@ public class AgentRuntimeConfiguration {
     private String agentKey;
 
     @Bean
-    AgentRepository agentRepository() {
-        var repository = new InMemoryAgentRepository();
-        repository.save(new Agent(agentKey, "Demo", "Development demo application", AgentStatus.PUBLISHED, 1L, 1L));
+    AgentService agentRepository() {
+        var repository = new InMemoryAgentServiceImpl();
+        repository.save(new AgentDTO(agentKey, "Demo", "Development demo application", AgentStatus.PUBLISHED, 1L, 1L));
         return repository;
     }
 
     @Bean
-    PublishedAgentResolver publishedAgentResolver(AgentRepository agentRepository) {
-        return new PublishedAgentResolver(agentRepository);
+    PublishedAgentResolver publishedAgentResolver(AgentService agentService) {
+        return new PublishedAgentResolver(agentService);
     }
 }

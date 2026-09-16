@@ -10,7 +10,7 @@ import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 import java.util.List;
 
 /**
- * {@link AgentMcpBindingService} 的 MyBatis-Plus 实现（Agent-MCP 绑定读写，供级联删除与运行时解析）。
+ * {@link AgentMcpBindingService} 的 MyBatis-Plus 实现（AgentDTO-MCP 绑定读写，供级联删除与运行时解析）。
  *
  * @author ZYW
  * @since 2026-08-22

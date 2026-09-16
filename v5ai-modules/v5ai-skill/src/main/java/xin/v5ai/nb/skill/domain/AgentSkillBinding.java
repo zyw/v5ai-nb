@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
 
 /**
  * <p>
- * Agent-Skill 绑定实体（v5ai_agent_skill）：复合主键 (agent_key, skill_id)，无自增主键列。
+ * AgentDTO-Skill 绑定实体（v5ai_agent_skill）：复合主键 (agent_key, skill_id)，无自增主键列。
  * </p>
  *
  * @author ZYW
@@ -26,7 +26,7 @@ public class AgentSkillBinding implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
     /**
-     * Agent 对外标识
+     * AgentDTO 对外标识
      */
     private String agentKey;
 

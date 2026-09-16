@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunResult;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.core.domain.R;
@@ -29,15 +29,15 @@ public class ChatController {
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatRequest request
     ) {
-        return toSse(agentRuntime.stream(new AgentRunRequest(agentKey, request.conversationId(), request.query())));
+        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, request.conversationId(), request.query())));
     }
 
     @PostMapping
-    public Mono<AgentRunResult> call(
+    public Mono<AgentRunVo> call(
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatRequest request
     ) {
-        return agentRuntime.call(new AgentRunRequest(agentKey, request.conversationId(), request.query()));
+        return agentRuntime.call(new AgentRunBo(agentKey, request.conversationId(), request.query()));
     }
 
     @GetMapping("/conversations/{conversationId}")
@@ -60,7 +60,7 @@ public class ChatController {
             @RequestBody ChatRequest request
     ) {
         var history = messageService.findByConversationId(conversationId);
-        var resumeRequest = new AgentRunRequest(agentKey, conversationId, request.query()).withHistory(history);
+        var resumeRequest = new AgentRunBo(agentKey, conversationId, request.query()).withHistory(history);
         return toSse(agentRuntime.stream(resumeRequest));
     }
 

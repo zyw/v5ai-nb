@@ -3,7 +3,7 @@ package xin.v5ai.nb.skill.core;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.skill.domain.enums.SkillStatus;
@@ -16,7 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
- * 运行时 Skill 解析器实现：读取 Agent 绑定的 ACTIVE Skill 的当前发布版本文件。
+ * 运行时 Skill 解析器实现：读取 AgentDTO 绑定的 ACTIVE Skill 的当前发布版本文件。
  * 单个 Skill 解析失败时跳过，不影响整体运行。
  */
 @Slf4j
@@ -29,7 +29,7 @@ public class AgentSkillWorkspaceResolver implements SkillWorkspaceResolver {
     private final ISkillFileService fileService;
 
     @Override
-    public List<ResolvedSkill> resolveSkills(Agent agent) {
+    public List<ResolvedSkill> resolveSkills(AgentDTO agent) {
         var bindings = bindingService.selectList(agent.agentKey());
         if (bindings.isEmpty()) {
             return List.of();
@@ -41,7 +41,7 @@ public class AgentSkillWorkspaceResolver implements SkillWorkspaceResolver {
         return resolved;
     }
 
-    private void resolveOne(Agent agent, Long skillId, List<ResolvedSkill> resolved) {
+    private void resolveOne(AgentDTO agent, Long skillId, List<ResolvedSkill> resolved) {
         var skill = skillService.getSkill(skillId);
         if (skill == null || !SkillStatus.ACTIVE.name().equals(skill.getStatus()) || skill.getCurrentVersionId() == null) {
             log.debug("skill {} missing/disabled/unpublished, skipped for app {}", skillId, agent.agentKey());

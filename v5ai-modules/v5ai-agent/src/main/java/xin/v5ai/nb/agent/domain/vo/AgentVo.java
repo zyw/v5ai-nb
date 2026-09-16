@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
 
 /**
  * <p>
- * Agent 视图对象（字段名与 v5ai-ui 的 AgentResponse 类型保持一致）。
+ * AgentDTO 视图对象（字段名与 v5ai-ui 的 AgentResponse 类型保持一致）。
  * </p>
  *
  * @author ZYW

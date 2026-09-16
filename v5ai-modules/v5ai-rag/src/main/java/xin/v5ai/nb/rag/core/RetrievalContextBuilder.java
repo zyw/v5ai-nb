@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * 融合语义（与调试检索口径对齐，见 {@link RetrievalFusion}）：
  * <ul>
  *   <li>默认「快速路径」：向量优先（每库组 top {@link #INJECT_TOP_K}），向量为空才回退关键词，简单去重合并；</li>
- *   <li>仅当该 Agent 绑定的知识库<b>全部</b>显式配置且一致（{@code config.searchParams.fusionStrategy} =
+ *   <li>仅当该 AgentDTO 绑定的知识库<b>全部</b>显式配置且一致（{@code config.searchParams.fusionStrategy} =
  *       {@code RRF} 或 {@code WEIGHTED_SUM}）时执行双路融合：候选数 = {@code max(注入条数×3, 30)}，
  *       融合后截断到注入条数——使「调试里显式选融合并保存」的库在线上按同口径检索；</li>
  *   <li>任一库未显式配置 / 配置不一致 / 策略非法时维持快速路径并告警；注入条数保持独立预算
@@ -72,7 +72,7 @@ public class RetrievalContextBuilder {
     }
 
     /**
-     * 单库检索（智能调用 {@code rag_search} 工具用）：校验知识库确已绑定到 Agent，
+     * 单库检索（智能调用 {@code rag_search} 工具用）：校验知识库确已绑定到 AgentDTO，
      * 再对该单个知识库执行与 {@link #build} 相同的检索/融合/回填/格式化管线。
      */
     public RetrievalResult search(String agentKey, long knowledgeBaseId, String query) {
@@ -152,7 +152,7 @@ public class RetrievalContextBuilder {
             if (first == null) {
                 first = settings;
             } else if (!first.equals(settings)) {
-                log.warn("Agent 绑定知识库的融合检索配置不一致（{} vs {}），回退默认检索路径", first, settings);
+                log.warn("AgentDTO 绑定知识库的融合检索配置不一致（{} vs {}），回退默认检索路径", first, settings);
                 return null;
             }
         }

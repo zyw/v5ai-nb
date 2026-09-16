@@ -6,7 +6,7 @@ import xin.v5ai.nb.model.domain.V5aiModel;
 import java.util.function.Predicate;
 
 /**
- * 模型启用谓词：Agent 只有在模型存在且启用时才能发布。
+ * 模型启用谓词：AgentDTO 只有在模型存在且启用时才能发布。
  * 由 {@code v5ai-agent.AgentManagementService} 按类型注入。
  *
  * @author ZYW

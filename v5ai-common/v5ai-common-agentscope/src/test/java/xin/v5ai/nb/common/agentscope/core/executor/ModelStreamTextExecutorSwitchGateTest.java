@@ -6,10 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
-import xin.v5ai.nb.common.agentscope.core.domain.ResolvedMcpTool;
-import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
+import xin.v5ai.nb.common.agentscope.core.domain.*;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
@@ -31,7 +30,7 @@ class ModelStreamTextExecutorSwitchGateTest {
         final AtomicInteger calls = new AtomicInteger();
 
         @Override
-        public List<ResolvedMcpTool> resolveTools(Agent application) {
+        public List<ResolvedMcpTool> resolveTools(AgentDTO application) {
             calls.incrementAndGet();
             return List.of();
         }
@@ -41,14 +40,14 @@ class ModelStreamTextExecutorSwitchGateTest {
         final AtomicInteger calls = new AtomicInteger();
 
         @Override
-        public List<ResolvedSkill> resolveSkills(Agent agent) {
+        public List<ResolvedSkill> resolveSkills(AgentDTO agent) {
             calls.incrementAndGet();
             return List.of();
         }
     }
 
-    private static Agent agent(boolean mcpEnabled, boolean skillEnabled) {
-        return new Agent("agent-x", "Demo", "desc", null, 1L, null,
+    private static AgentDTO agent(boolean mcpEnabled, boolean skillEnabled) {
+        return new AgentDTO("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
                 false, mcpEnabled, skillEnabled, false, false, RagCallMode.FORCED.value());
     }
@@ -66,7 +65,7 @@ class ModelStreamTextExecutorSwitchGateTest {
         var mcp = new CountingMcpResolver();
         var skill = new CountingSkillResolver();
 
-        executor(workspace, mcp, skill).streamText(agent(false, false), new AgentRunRequest("agent-x", "c", "q"));
+        executor(workspace, mcp, skill).streamText(agent(false, false), new AgentRunBo("agent-x", "c", "q"));
 
         assertThat(mcp.calls).hasValue(0);
         assertThat(skill.calls).hasValue(0);
@@ -77,7 +76,7 @@ class ModelStreamTextExecutorSwitchGateTest {
         var mcp = new CountingMcpResolver();
         var skill = new CountingSkillResolver();
 
-        executor(workspace, mcp, skill).streamText(agent(true, false), new AgentRunRequest("agent-x", "c", "q"));
+        executor(workspace, mcp, skill).streamText(agent(true, false), new AgentRunBo("agent-x", "c", "q"));
 
         assertThat(mcp.calls).hasValue(1);
         assertThat(skill.calls).hasValue(0);
@@ -88,7 +87,7 @@ class ModelStreamTextExecutorSwitchGateTest {
         var mcp = new CountingMcpResolver();
         var skill = new CountingSkillResolver();
 
-        executor(workspace, mcp, skill).streamText(agent(false, true), new AgentRunRequest("agent-x", "c", "q"));
+        executor(workspace, mcp, skill).streamText(agent(false, true), new AgentRunBo("agent-x", "c", "q"));
 
         assertThat(mcp.calls).hasValue(0);
         assertThat(skill.calls).hasValue(1);

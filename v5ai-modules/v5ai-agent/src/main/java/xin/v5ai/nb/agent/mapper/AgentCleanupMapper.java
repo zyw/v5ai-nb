@@ -4,7 +4,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 /**
- * Agent 级联删除的专用清理 Mapper（XML 实现见 mapper/AgentCleanupMapper.xml）：
+ * AgentDTO 级联删除的专用清理 Mapper（XML 实现见 mapper/AgentCleanupMapper.xml）：
  * <ul>
  *   <li>FK 子表：无 agent_key 直连列，通过子查询定位（v5ai_agent_model / v5ai_run_event /
  *       v5ai_mcp_tool_call / v5ai_agent_state）；</li>
@@ -27,7 +27,7 @@ public interface AgentCleanupMapper {
     /** agent_state 无 agent_key 列，按 conversation_id 子查询。 */
     int deleteAgentStates(@Param("agentKey") String agentKey);
 
-    /** 直连 agent_key 表：Agent 版本。 */
+    /** 直连 agent_key 表：AgentDTO 版本。 */
     int deleteAgentVersions(@Param("agentKey") String agentKey);
 
     /** 直连 agent_key 表：知识库绑定。 */
@@ -39,7 +39,7 @@ public interface AgentCleanupMapper {
     /** 直连 agent_key 表：Skill 绑定。 */
     int deleteAgentSkillBindings(@Param("agentKey") String agentKey);
 
-    /** 直连 agent_key 表：Agent API Key。 */
+    /** 直连 agent_key 表：AgentDTO API Key。 */
     int deleteApiKeys(@Param("agentKey") String agentKey);
 
     /** 直连 agent_key 表：应用配额。 */

@@ -132,7 +132,7 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     }
 
     /**
-     * 列表页批量回填文档数 / 切片数 / 被引用 Agent：各一次按知识库 ID 的聚合查询，避免逐库 N+1。
+     * 列表页批量回填文档数 / 切片数 / 被引用 AgentDTO：各一次按知识库 ID 的聚合查询，避免逐库 N+1。
      */
     private void enrichList(List<KnowledgeBaseVo> vos, List<KnowledgeBase> list) {
         if (list.isEmpty()) {
@@ -173,7 +173,7 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
     }
 
     /**
-     * 查询绑定某知识库的 Agent 标识列表（删除前校验引用用）。
+     * 查询绑定某知识库的 AgentDTO 标识列表（删除前校验引用用）。
      */
     private List<String> findReferencingAgentKeys(Long knowledgeBaseId) {
         return bindingMapper.selectList(new LambdaQueryWrapper<AgentKnowledgeBinding>()
@@ -289,7 +289,7 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         List<String> referencingAgents = findReferencingAgentKeys(id);
         if (!referencingAgents.isEmpty()) {
             throw new ServiceException(
-                    "该知识库正被 Agent（" + String.join(", ", referencingAgents) + "）绑定，请先解除绑定后再删除");
+                    "该知识库正被 AgentDTO（" + String.join(", ", referencingAgents) + "）绑定，请先解除绑定后再删除");
         }
         // 1) 逐文档清理切片业务行与向量（含关键词后端），再删文档行
         List<KnowledgeDocument> documents = documentMapper.selectList(

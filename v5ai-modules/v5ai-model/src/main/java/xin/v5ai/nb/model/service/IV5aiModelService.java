@@ -53,7 +53,7 @@ public interface IV5aiModelService {
     /**
      * 切换模型启用/停用（专用端点语义）。
      * <p>幂等：状态未变化直接返回 true。启用→停用需通过引用校验
-     * （被 Agent 或知识库 embedding/rerank 引用时抛 409）；停用默认模型时自动清除其默认标记。</p>
+     * （被 AgentDTO 或知识库 embedding/rerank 引用时抛 409）；停用默认模型时自动清除其默认标记。</p>
      *
      * @param id      模型 ID
      * @param enabled 目标启用状态，不能为 null

@@ -1,12 +1,12 @@
 package xin.v5ai.nb.common.agentscope.core.resolver;
 
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
 
 import java.util.List;
 
 /**
- * 运行时 Skill 解析器：根据已发布 Agent 的绑定配置，解析出本次运行要注入的
+ * 运行时 Skill 解析器：根据已发布 AgentDTO 的绑定配置，解析出本次运行要注入的
  * 已发布 Skill 集合。
  *
  * 约定：
@@ -17,10 +17,10 @@ import java.util.List;
 public interface SkillWorkspaceResolver {
 
     /**
-     * 解析 Agent 绑定的 Skill。
+     * 解析 AgentDTO 绑定的 Skill。
      *
-     * @param agent 已发布的 Agent
+     * @param agent 已发布的 AgentDTO
      * @return 本次运行可注入的 Skill（可能为空列表）
      */
-    List<ResolvedSkill> resolveSkills(Agent agent);
+    List<ResolvedSkill> resolveSkills(AgentDTO agent);
 }

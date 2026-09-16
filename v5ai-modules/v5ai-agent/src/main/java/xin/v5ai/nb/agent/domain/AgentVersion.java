@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
 
 /**
  * <p>
- * Agent 版本实体（v5ai_agent_version）：发布时生成的配置快照，版本号按 Agent 内自增。
+ * AgentDTO 版本实体（v5ai_agent_version）：发布时生成的配置快照，版本号按 AgentDTO 内自增。
  * 表无 updated_at 列，故不继承 {@code BaseEntity}，仅含 createdAt。
  * </p>
  *
@@ -35,12 +35,12 @@ public class AgentVersion implements Serializable {
     private Long id;
 
     /**
-     * 所属 Agent 的 agentKey
+     * 所属 AgentDTO 的 agentKey
      */
     private String agentKey;
 
     /**
-     * 版本号（每个 Agent 内自增，从 1 起）
+     * 版本号（每个 AgentDTO 内自增，从 1 起）
      */
     private Long version;
 

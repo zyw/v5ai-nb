@@ -1,7 +1,7 @@
 package xin.v5ai.nb.agent.controller.vo;
 
 /**
- * 发布 Agent 请求体。
+ * 发布 AgentDTO 请求体。
  *
  * @param description 版本描述（可选）
  * @author ZYW

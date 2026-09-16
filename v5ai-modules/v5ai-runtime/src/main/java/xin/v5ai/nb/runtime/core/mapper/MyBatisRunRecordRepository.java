@@ -2,7 +2,7 @@ package xin.v5ai.nb.runtime.core.mapper;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.service.RunRecordService;
 import xin.v5ai.nb.runtime.core.gateway.RuntimeRunGateway;
 import xin.v5ai.nb.runtime.core.domain.RuntimeRunEntity;
@@ -14,7 +14,7 @@ public class MyBatisRunRecordRepository implements RunRecordService {
     private final RuntimeRunGateway gateway;
 
     @Override
-    public void start(String runId, AgentRunRequest request) {
+    public void start(String runId, AgentRunBo request) {
         var entity = new RuntimeRunEntity();
         entity.setId(runId);
         entity.setConversationId(request.conversationId());

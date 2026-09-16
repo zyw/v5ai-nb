@@ -1,7 +1,7 @@
 package xin.v5ai.nb.common.agentscope.enums;
 
 /**
- * 运行时事件类型：完整描述一次 Agent 运行的每个阶段。
+ * 运行时事件类型：完整描述一次 AgentDTO 运行的每个阶段。
  */
 public enum RuntimeEventType {
     /** 运行开始 */

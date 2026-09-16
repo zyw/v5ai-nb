@@ -10,7 +10,7 @@ import xin.v5ai.nb.skill.service.ISkillService;
 import java.util.List;
 
 /**
- * Agent 绑定 Skill API。
+ * AgentDTO 绑定 Skill API。
  *
  * @author ZYW
  * @since 2026-08-22

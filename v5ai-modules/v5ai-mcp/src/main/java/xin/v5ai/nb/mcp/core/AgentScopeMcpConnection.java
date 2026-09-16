@@ -4,10 +4,8 @@ import io.agentscope.core.tool.mcp.McpClientWrapper;
 import io.agentscope.core.tool.mcp.McpTool;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
-import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallResult;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.McpToolCallVo;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
 
 import java.util.Collections;
@@ -42,21 +40,21 @@ public class AgentScopeMcpConnection implements McpConnection {
     }
 
     @Override
-    public McpToolCallResult callTool(String toolName, Map<String, Object> arguments) {
+    public McpToolCallVo callTool(String toolName, Map<String, Object> arguments) {
         try {
             ensureInitialized();
             var result = wrapper.callTool(toolName, arguments == null ? Map.of() : arguments).block();
             if (result == null) {
-                return McpToolCallResult.failure("MCP tool returned no result: " + toolName);
+                return McpToolCallVo.failure("MCP tool returned no result: " + toolName);
             }
             var text = extractText(result);
             if (Boolean.TRUE.equals(result.isError())) {
-                return McpToolCallResult.failure(text == null || text.isBlank() ? "MCP tool returned error: " + toolName : text);
+                return McpToolCallVo.failure(text == null || text.isBlank() ? "MCP tool returned error: " + toolName : text);
             }
-            return McpToolCallResult.success(text);
+            return McpToolCallVo.success(text);
         } catch (Exception exception) {
             log.warn("MCP tool '{}' call failed: {}", toolName, exception.getMessage());
-            return McpToolCallResult.failure(exception.getMessage() == null
+            return McpToolCallVo.failure(exception.getMessage() == null
                     ? exception.getClass().getSimpleName() : exception.getMessage());
         }
     }

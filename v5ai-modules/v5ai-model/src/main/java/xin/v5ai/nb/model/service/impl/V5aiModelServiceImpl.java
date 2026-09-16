@@ -289,7 +289,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
 //    }
 
     /**
-     * 引用校验：模型被 Agent（任意状态）或知识库（embedding/rerank 任一引用）使用时抛 409，
+     * 引用校验：模型被 AgentDTO（任意状态）或知识库（embedding/rerank 任一引用）使用时抛 409，
      * 并给出按引用来源计数的明细。
      *
      * @param id      模型 ID
@@ -302,7 +302,7 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
         long kbCount = kbs == null ? 0 : kbs;
         if (agentCount > 0 || kbCount > 0) {
             throw new V5aiException(ErrorCode.CONFLICT,
-                    "模型被 " + agentCount + " 个 Agent、" + kbCount + " 个知识库使用，无法" + opName);
+                    "模型被 " + agentCount + " 个 AgentDTO、" + kbCount + " 个知识库使用，无法" + opName);
         }
     }
 

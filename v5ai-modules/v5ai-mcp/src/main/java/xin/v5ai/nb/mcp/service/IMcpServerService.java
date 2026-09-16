@@ -13,7 +13,7 @@ import xin.v5ai.nb.mcp.domain.vo.McpToolVo;
 import java.util.List;
 
 /**
- * MCP Server 管理服务：Server 增删改查、连接测试、Tool 发现、Agent 绑定、
+ * MCP Server 管理服务：Server 增删改查、连接测试、Tool 发现、AgentDTO 绑定、
  * 权限调整与调用审计查询。本模块不依赖任何具体 MCP 传输库，
  * 连接能力通过 {@link xin.v5ai.nb.mcp.McpClientFactory} 注入（基础设施层实现）。
  *
@@ -83,12 +83,12 @@ public interface IMcpServerService {
     McpToolVo updateToolPermission(Long serverId, String toolName, McpToolPermission permission);
 
     /**
-     * 全量替换某 Agent 绑定的 MCP Server 集合。
+     * 全量替换某 AgentDTO 绑定的 MCP Server 集合。
      */
     void bindServers(String agentKey, List<Long> mcpServerIds);
 
     /**
-     * 查询某 Agent 绑定的 MCP Server ID 集合。
+     * 查询某 AgentDTO 绑定的 MCP Server ID 集合。
      */
     List<Long> getServerBindings(String agentKey);
 

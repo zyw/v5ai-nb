@@ -9,7 +9,7 @@ import xin.v5ai.nb.common.core.validate.AddGroup;
 import xin.v5ai.nb.common.core.validate.EditGroup;
 
 /**
- * Agent 请求体（创建/更新/查询）。
+ * AgentDTO 请求体（创建/更新/查询）。
  *
  * @author ZYW
  * @since 2026-08-22

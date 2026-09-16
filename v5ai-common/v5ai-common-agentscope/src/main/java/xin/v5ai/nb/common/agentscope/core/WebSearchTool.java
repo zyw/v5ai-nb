@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * 联网搜索工具：调用 Tavily Search API，把 Top 结果拼成文本返回给模型。
- * 由 {@code Agent.webSearchEnabled} 控制是否注册；API Key 缺失/查询为空时返回友好错误而非抛异常。
+ * 由 {@code AgentDTO.webSearchEnabled} 控制是否注册；API Key 缺失/查询为空时返回友好错误而非抛异常。
  */
 public class WebSearchTool extends ToolBase {
 

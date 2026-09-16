@@ -7,7 +7,7 @@ import xin.v5ai.nb.skill.domain.vo.AgentSkillBindingVo;
 
 /**
  * <p>
- * Agent-Skill 绑定 Mapper 接口（复合主键，无自增列）。
+ * AgentDTO-Skill 绑定 Mapper 接口（复合主键，无自增列）。
  * </p>
  *
  * @author ZYW

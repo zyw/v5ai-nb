@@ -3,11 +3,11 @@ package xin.v5ai.nb.common.agentscope.core.executor;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
-import xin.v5ai.nb.common.agentscope.core.domain.Agent;
-import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 
 /**
- * 文本型 Agent 执行器：把应用配置 + 运行请求转化为文本事件流。
+ * 文本型 AgentDTO 执行器：把应用配置 + 运行请求转化为文本事件流。
  *
  * 与 {@link AgentRuntime} 的关系：Runtime 负责上层编排（解析应用、
  * RAG、事件映射），具体"怎么驱动模型跑"交给本接口的实现。
@@ -16,11 +16,11 @@ import xin.v5ai.nb.common.agentscope.core.domain.AgentRunRequest;
 @FunctionalInterface
 public interface AgentTextExecutor {
     /**
-     * 流式执行 Agent，产出文本事件流。
+     * 流式执行 AgentDTO，产出文本事件流。
      *
      * @param application 已发布的应用配置（模型、名称等）
      * @param request     本次运行的请求（含 query 与可选 RAG 上下文）
      * @return 文本事件流（Text 增量 / ModelCall 标记）
      */
-    Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request);
+    Flux<AgentTextEvent> streamText(AgentDTO application, AgentRunBo request);
 }

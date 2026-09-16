@@ -5,6 +5,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.*;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.ConversationBo;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
 import xin.v5ai.nb.common.agentscope.core.service.*;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
@@ -19,18 +22,18 @@ import java.util.UUID;
 
 /**
  * 带持久化能力的运行时装饰器：包裹（delegate）另一个 AgentRuntime，
- * 在事件流转过程中把"会话、消息、运行记录、运行事件、Agent 状态"
+ * 在事件流转过程中把"会话、消息、运行记录、运行事件、AgentDTO 状态"
  * 一并落库，从而支持多轮对话历史与运行审计。
  *
- * 职责边界：delegate 负责真正执行 Agent；本类只做副作用（持久化）。
+ * 职责边界：delegate 负责真正执行 AgentDTO；本类只做副作用（持久化）。
  * 提供 3 个构造器，持久化能力逐步增强：
  * 1) 最简：会话/事件仓储使用空实现（lambda 空操作），不保存；
  * 2) 中间：显式传入会话与事件仓储；
- * 3) 完整：额外传入 Agent 状态仓储。
+ * 3) 完整：额外传入 AgentDTO 状态仓储。
  */
 @Slf4j
 public class PersistingAgentRuntime implements AgentRuntime {
-    /** 被装饰的真实运行时（实际执行 Agent） */
+    /** 被装饰的真实运行时（实际执行 AgentDTO） */
     private final AgentRuntime delegate;
     /** 消息仓储：保存用户提问与助手回答 */
     private final MessageService messageService;
@@ -40,7 +43,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
     private final ConversationService conversationService;
     /** 运行事件仓储：保存每一条运行事件 */
     private final RunEventService runEventService;
-    /** Agent 状态仓储（可空）：保存会话级 Agent 状态 */
+    /** AgentDTO 状态仓储（可空）：保存会话级 AgentDTO 状态 */
     private final AgentStateService agentStateService;
     /** 用量记录器（可空）：运行完成/失败时记录模型调用用量 */
     private final ModelUsageService usageRecorder;
@@ -102,14 +105,14 @@ public class PersistingAgentRuntime implements AgentRuntime {
     }
 
     @Override
-    public Flux<RuntimeEvent> stream(AgentRunRequest request) {
+    public Flux<RuntimeEvent> stream(AgentRunBo request) {
         // defer：订阅时才执行副作用（落库），避免每次构建 Flux 就写库
         return Flux.defer(() -> {
             // 若未传 conversationId，则先自动生成一个（normalize 负责）
             var normalizedRequest = normalize(request);
             // 1) 登记会话 + 保存用户提问
-            conversationService.ensureConversation(new Conversation(normalizedRequest.conversationId(), normalizedRequest.agentKey()));
-            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query()));
+            conversationService.ensureConversation(new ConversationBo(normalizedRequest.conversationId(), normalizedRequest.agentKey()));
+            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query()));
             // 累积最终回答文本（把 TEXT_DELTA 片段拼起来）
             var answer = new StringBuilder();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
@@ -131,7 +134,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         }
                         // 事件落库；唯一例外是思考增量——它是模型的中间产物、不是回答的一部分，
                         // 落库只会让 v5ai_run_event 随思考长度膨胀，且没有第二个消费方。
-                        // 与「知识库问答整体不持久化」同一口径（见 CONTEXT.md「Agent 调试」）。
+                        // 与「知识库问答整体不持久化」同一口径（见 CONTEXT.md「AgentDTO 调试」）。
                         if (event.type() != RuntimeEventType.REASONING_DELTA) {
                             runEventService.save(event);
                         }
@@ -139,11 +142,11 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             answer.append(event.payload());
                         }
                         if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
-                            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
+                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
                         }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-                            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
+                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
                             runRecordService.complete(event.runId());
                             recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0], answer.toString(), true);
@@ -173,7 +176,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     // 也要把回答落库，保证消息完整
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
-                            messageService.save(new Message(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
+                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
                             saveAgentState(normalizedRequest, answer.toString());
                             recordUsage(normalizedRequest, null, modelName[0], startedAt[0], answer.toString(), true);
                         }
@@ -184,7 +187,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
     /**
      * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账（Token 按字符数粗略估算）。
      */
-    private void recordUsage(AgentRunRequest request, String runId, String modelName,
+    private void recordUsage(AgentRunBo request, String runId, String modelName,
                              Instant startedAt, String answer, boolean success) {
         if (usageRecorder == null && quotaService == null) {
             return;
@@ -212,20 +215,20 @@ public class PersistingAgentRuntime implements AgentRuntime {
     }
 
     @Override
-    public Mono<AgentRunResult> call(AgentRunRequest request) {
+    public Mono<AgentRunVo> call(AgentRunBo request) {
         // 复用 stream()，过滤出文本增量片段并拼接为最终回答
         return stream(request)
                 .filter(event -> event.type() == RuntimeEventType.TEXT_DELTA)
                 .map(RuntimeEvent::payload)
                 .collectList()
-                .map(parts -> new AgentRunResult("", String.join("", parts)));
+                .map(parts -> new AgentRunVo("", String.join("", parts)));
     }
 
     /**
-     * 保存会话级 Agent 状态（可选能力）：把 agentKey 与最后一次回答写入状态仓储。
+     * 保存会话级 AgentDTO 状态（可选能力）：把 agentKey 与最后一次回答写入状态仓储。
      * 未配置 agentStateRepository 时直接跳过。
      */
-    private void saveAgentState(AgentRunRequest request, String answer) {
+    private void saveAgentState(AgentRunBo request, String answer) {
         if (agentStateService == null) {
             return;
         }
@@ -240,11 +243,11 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 规范化请求：conversationId 缺失或为空时自动生成一个 UUID，
      * 保证每次运行都能关联到唯一会话。
      */
-    private AgentRunRequest normalize(AgentRunRequest request) {
+    private AgentRunBo normalize(AgentRunBo request) {
         if (request.conversationId() != null && !request.conversationId().isBlank()) {
             return request;
         }
-        return new AgentRunRequest(request.agentKey(), UUID.randomUUID().toString(), request.query(),
+        return new AgentRunBo(request.agentKey(), UUID.randomUUID().toString(), request.query(),
                 request.ragContext(), request.history(), request.runId());
     }
 }

@@ -10,5 +10,5 @@ import xin.v5ai.nb.common.agentscope.enums.MessageRole;
  * @param role           消息角色（用户/助手）
  * @param content        消息内容
  */
-public record Message(String conversationId, String agentKey, MessageRole role, String content) {
+public record SessionMessage(String conversationId, String agentKey, MessageRole role, String content) {
 }

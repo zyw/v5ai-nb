@@ -6,7 +6,7 @@ import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import java.util.Map;
 
 /**
- * 已解析的 MCP 工具：包含注册到 Agent 所需的元数据、平台权限决策与执行连接。
+ * 已解析的 MCP 工具：包含注册到 AgentDTO 所需的元数据、平台权限决策与执行连接。
  *
  * @param serverId    所属 MCP Server
  * @param serverName  MCP Server 名称

@@ -470,7 +470,7 @@ git commit -m "feat: 持久化会话消息和 Agent 运行记录"
 
 **Interfaces:**
 - `POST /api/v1/agents/{agentKey}/chat/stream` accepts `{ "conversationId": "...", "query": "..." }` and returns `text/event-stream`.
-- `POST /api/v1/agents/{agentKey}/chat` returns the completed `AgentRunResult`.
+- `POST /api/v1/agents/{agentKey}/chat` returns the completed `AgentRunVo`.
 - Admin model and Agent endpoints require Sa-Token JWT.
 - Runtime endpoints require an Agent API Key resolved by `agentKey`.
 

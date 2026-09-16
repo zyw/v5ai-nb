@@ -74,7 +74,7 @@ class V5aiModelServiceImplTest {
 
         assertThatThrownBy(() -> service.updateEnabled(1L, false))
                 .isInstanceOf(V5aiException.class)
-                .hasMessageContaining("2 个 Agent")
+                .hasMessageContaining("2 个 AgentDTO")
                 .hasMessageContaining("无法禁用");
 
         verify(mapper, never()).updateById(any(V5aiModel.class));

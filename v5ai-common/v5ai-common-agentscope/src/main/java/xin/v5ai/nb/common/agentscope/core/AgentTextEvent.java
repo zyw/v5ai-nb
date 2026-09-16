@@ -30,7 +30,7 @@ public sealed interface AgentTextEvent permits AgentTextEvent.Reasoning, AgentTe
     }
 
     /**
-     * 文本增量：Agent 输出的一段文字内容。
+     * 文本增量：AgentDTO 输出的一段文字内容。
      *
      * @param text 文本片段
      */

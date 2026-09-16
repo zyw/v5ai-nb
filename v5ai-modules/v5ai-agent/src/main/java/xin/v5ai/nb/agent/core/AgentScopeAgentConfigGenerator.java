@@ -8,17 +8,15 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import xin.v5ai.nb.common.agentscope.core.AgentConfigGenerator;
 import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.common.agentscope.core.exception.ModelChatException;
-import xin.v5ai.nb.common.agentscope.core.domain.GeneratedAgentConfig;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 基于 AgentScope 模型的 Agent 配置生成器：
+ * 基于 AgentScope 模型的 AgentDTO 配置生成器：
  * 根据用户描述，要求模型输出严格 JSON（name/description/greeting/presetQuestions/systemPrompt），
  * 解析后回填「新建智能体」向导。模型对话经 {@link ModelChatClient} 发起。
  */

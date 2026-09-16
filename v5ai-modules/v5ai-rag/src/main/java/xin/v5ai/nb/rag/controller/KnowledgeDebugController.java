@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * 知识库调试 API（知识检索 / 知识问答 tab 的后端）：
- * 检索预览与无 Agent 的流式问答（页内调试会话，不落库）。
+ * 检索预览与无 AgentDTO 的流式问答（页内调试会话，不落库）。
  *
  * @author ZYW
  * @since 2026-09-06
