@@ -17,6 +17,7 @@ import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
 import xin.v5ai.nb.common.agentscope.core.PlatformMcpTool;
+import xin.v5ai.nb.common.agentscope.core.WebSearchTool;
 import xin.v5ai.nb.common.agentscope.core.domain.*;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
@@ -54,9 +55,10 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     private final McpToolCallAuditService auditService;
     private final SkillWorkspaceResolver skillWorkspaceResolver;
     private final Path workspace;
+    private final String webSearchApiKey;
 
     public ModelStreamTextExecutor(Model model) {
-        this(model, null, null, null, null);
+        this(model, null, null, null, null, null);
     }
 
     public ModelStreamTextExecutor(
@@ -65,7 +67,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             McpToolCallAuditService auditService,
             Path workspace
     ) {
-        this(model, mcpToolResolver, auditService, null, workspace);
+        this(model, mcpToolResolver, auditService, null, workspace, null);
     }
 
     public ModelStreamTextExecutor(
@@ -75,21 +77,37 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             SkillWorkspaceResolver skillWorkspaceResolver,
             Path workspace
     ) {
+        this(model, mcpToolResolver, auditService, skillWorkspaceResolver, workspace, null);
+    }
+
+    public ModelStreamTextExecutor(
+            Model model,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditService,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey
+    ) {
         this.model = model;
         this.mcpToolResolver = mcpToolResolver;
         this.auditService = auditService;
         this.skillWorkspaceResolver = skillWorkspaceResolver;
         this.workspace = workspace;
+        this.webSearchApiKey = webSearchApiKey;
     }
 
     @Override
     public Flux<AgentTextEvent> streamText(Agent application, AgentRunRequest request) {
-        var tools = mcpToolResolver == null ? List.<ResolvedMcpTool>of() : mcpToolResolver.resolveTools(application);
-        var skills = skillWorkspaceResolver == null ? List.<ResolvedSkill>of() : skillWorkspaceResolver.resolveSkills(application);
-        if (tools.isEmpty() && skills.isEmpty()) {
+        // 能力开关门控：关闭时不加载绑定（MCP/Skill），联网搜索按开关注册独立工具
+        var tools = (application.mcpEnabled() && mcpToolResolver != null)
+                ? mcpToolResolver.resolveTools(application) : List.<ResolvedMcpTool>of();
+        var skills = (application.skillEnabled() && skillWorkspaceResolver != null)
+                ? skillWorkspaceResolver.resolveSkills(application) : List.<ResolvedSkill>of();
+        boolean webSearch = application.webSearchEnabled();
+        if (tools.isEmpty() && skills.isEmpty() && !webSearch) {
             return streamDirect(application, request);
         }
-        return streamWithExtensions(application, request, tools, skills);
+        return streamWithExtensions(application, request, tools, skills, webSearch);
     }
 
     /**
@@ -112,18 +130,24 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      */
     private Flux<AgentTextEvent> streamWithExtensions(
             Agent application, AgentRunRequest request,
-            List<ResolvedMcpTool> tools, List<ResolvedSkill> skills) {
+            List<ResolvedMcpTool> tools, List<ResolvedSkill> skills, boolean webSearch) {
         ensureWorkspaceExists();
         var workspace = this.workspace != null ? this.workspace : Path.of(".agentscope/workspace");
 
         Toolkit toolkit = new Toolkit();
-        Set<String> mcpToolNames = new HashSet<>();
+        Set<String> toolNames = new HashSet<>();
         for (ResolvedMcpTool tool : tools) {
             toolkit.registerAgentTool(new PlatformMcpTool(tool, request.runId(), auditService));
-            mcpToolNames.add(tool.toolName());
+            toolNames.add(tool.toolName());
         }
         Map<String, McpToolPermission> toolPermissions = tools.stream()
                 .collect(Collectors.toMap(ResolvedMcpTool::toolName, ResolvedMcpTool::permission));
+        // 联网搜索：独立内置工具，权限视为 ALLOW，事件与 MCP 工具同一口径
+        if (webSearch) {
+            toolkit.registerAgentTool(new WebSearchTool(webSearchApiKey));
+            toolNames.add(WebSearchTool.TOOL_NAME);
+            toolPermissions.put(WebSearchTool.TOOL_NAME, McpToolPermission.ALLOW);
+        }
 
         // Workspace 注入：把已发布 Skill 文件写入 <workspace>/skills/<name>/，便于
         // 工作区工具读取资源；同时注册只读 Skill 仓库让 SkillRuntime 注入提示。
@@ -167,10 +191,10 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
 
         return Flux.concat(
                         Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
-                        agent.streamEvents(request.query(), RuntimeContext.empty())
+                        agent.streamEvents(conversationMessages(request), RuntimeContext.empty())
                                 // mapAgentEvent 对无关事件返回 null：必须用 mapNotNull，
                                 // 否则 Reactor 的 map 会对 null 抛 "mapper returned a null value"
-                                .mapNotNull(event -> mapAgentEvent(event, mcpToolNames, toolPermissions)))
+                                .mapNotNull(event -> mapAgentEvent(event, toolNames, toolPermissions)))
                 .doFinally(signal -> {
                     agent.close();
                     // 同一 Server 的多个工具共享一个连接：按连接去重，只关闭一次
@@ -254,13 +278,21 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     private static List<Msg> buildMessages(Agent application, AgentRunRequest request) {
         List<Msg> messages = new ArrayList<>();
         messages.add(Msg.builder().role(MsgRole.SYSTEM).textContent(buildSystemPrompt(application, request)).build());
+        messages.addAll(conversationMessages(request));
+        return messages;
+    }
 
-        // 回放历史消息（USER/ASSISTANT 角色映射）
+    /**
+     * 组装对话消息（不含系统提示）：历史 USER/ASSISTANT 轮次 + 当前提问。
+     * 直连路径经 {@link #buildMessages} 复用，MCP/Skill/联网搜索路径经
+     * {@code streamEvents(List, ...)} 复用，两路历史回放口径一致（记忆由运行时注入历史）。
+     */
+    private static List<Msg> conversationMessages(AgentRunRequest request) {
+        List<Msg> messages = new ArrayList<>();
         for (Message history : request.history()) {
             var role = history.role() == MessageRole.USER ? MsgRole.USER : MsgRole.ASSISTANT;
             messages.add(Msg.builder().role(role).textContent(history.content()).build());
         }
-        // 追加当前提问
         messages.add(Msg.builder().role(MsgRole.USER).textContent(request.query()).build());
         return messages;
     }

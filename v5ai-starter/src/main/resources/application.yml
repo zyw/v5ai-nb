@@ -170,6 +170,8 @@ v5ai:
   agentscope:
     workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
     state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}
+    # 联网搜索（Tavily）API Key；为空则不启用联网搜索工具
+    tavily-api-key: ${V5AI_TAVILY_API_KEY:}
   storage:
     # 通用资源存储（plm_resource）存储类型：LOCAL=本地磁盘 MINIO=MinIO
     type: ${V5AI_STORAGE_TYPE:LOCAL}

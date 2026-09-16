@@ -41,8 +41,23 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
             SkillWorkspaceResolver skillWorkspaceResolver,
             Path workspace
     ) {
+        this(modelResolver, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace, null);
+    }
+
+    /**
+     * MCP/Skill/联网搜索感知构造：额外携带 Tavily API Key，用于 Agent 开启
+     * {@code webSearchEnabled} 时注册联网搜索工具。
+     */
+    public PublishedModelAgentTextExecutor(
+            AgentModelResolver modelResolver,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditRepository,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey
+    ) {
         this(modelResolver, model -> new ModelStreamTextExecutor(
-                model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace));
+                model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace, webSearchApiKey));
     }
 
     /**

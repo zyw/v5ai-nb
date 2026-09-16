@@ -50,7 +50,8 @@ public class AgentScopeRuntimeConfiguration {
                     mcpToolResolver,
                     auditRepository,
                     skillWorkspaceResolver,
-                    Path.of(properties.getWorkspace()));
+                    Path.of(properties.getWorkspace()),
+                    properties.getTavilyApiKey());
         }
         Model model = modelProvider.getIfAvailable();
         if (model != null) {
@@ -76,7 +77,7 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
-        var runtime = new AgentScopeRuntime(resolver, executor, ragContextProviderProvider.getIfAvailable());
+        var runtime = new AgentScopeRuntime(resolver::resolve, executor, ragContextProviderProvider.getIfAvailable(), messageService);
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
@@ -99,7 +100,7 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider
     ) {
-        var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable());
+        var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable(), messageService);
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());

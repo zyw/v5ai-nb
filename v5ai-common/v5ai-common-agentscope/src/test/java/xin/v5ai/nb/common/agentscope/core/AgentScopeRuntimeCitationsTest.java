@@ -35,9 +35,16 @@ class AgentScopeRuntimeCitationsTest {
         }
     }
 
+    /** 构造开启 RAG 的 Agent（能力开关默认 false，必须显式开启才会构建检索上下文）。 */
+    private static Agent agentWithRag() {
+        return new Agent("agent-x", "Demo", "desc", null, 1L, null,
+                null, null, null, null,
+                false, false, false, false, true);
+    }
+
     private static AgentScopeRuntime runtimeWith(RagContext rag) {
         return new AgentScopeRuntime(
-                key -> new Agent("agent-x", "Demo", "desc", null, 1L, null),
+                key -> agentWithRag(),
                 new NoopExecutor(),
                 (agent, request) -> Mono.just(rag));
     }
