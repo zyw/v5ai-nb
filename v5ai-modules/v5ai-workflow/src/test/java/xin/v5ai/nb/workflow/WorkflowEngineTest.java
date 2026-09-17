@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
-import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.workflow.core.*;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
@@ -218,7 +218,7 @@ class WorkflowEngineTest {
         final List<AgentRunBo> requests = new ArrayList<>();
 
         @Override
-        public Flux<RuntimeEvent> stream(AgentRunBo request) {
+        public Flux<RuntimeRunEventDTO> stream(AgentRunBo request) {
             return Flux.empty();
         }
 

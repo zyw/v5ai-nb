@@ -1,23 +1,23 @@
-package xin.v5ai.nb.runtime.core.mapper;
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-import xin.v5ai.nb.common.agentscope.core.domain.bo.ConversationBo;
-import xin.v5ai.nb.common.agentscope.core.service.ConversationService;
-import xin.v5ai.nb.runtime.core.gateway.RuntimeConversationGateway;
-import xin.v5ai.nb.runtime.core.domain.RuntimeConversationEntity;
-
-@Repository
-@RequiredArgsConstructor
-public class MyBatisConversationRepository implements ConversationService {
-
-    private final RuntimeConversationGateway gateway;
-
-    @Override
-    public void ensureConversation(ConversationBo conversation) {
-        var entity = new RuntimeConversationEntity();
-        entity.setConversationId(conversation.conversationId());
-        entity.setAgentKey(conversation.agentKey());
-        gateway.upsertConversation(entity);
-    }
-}
+//package xin.v5ai.nb.runtime.core.mapper;
+//
+//import lombok.RequiredArgsConstructor;
+//import org.springframework.stereotype.Repository;
+//import xin.v5ai.nb.common.agentscope.core.domain.dto.ConversationDTO;
+//import xin.v5ai.nb.common.agentscope.core.service.ConversationService;
+//import xin.v5ai.nb.runtime.core.gateway.RuntimeConversationGateway;
+//import xin.v5ai.nb.runtime.core.domain.RuntimeConversationEntity;
+//
+//@Repository
+//@RequiredArgsConstructor
+//public class MyBatisConversationRepository implements ConversationService {
+//
+//    private final RuntimeConversationGateway gateway;
+//
+//    @Override
+//    public void ensureConversation(ConversationDTO conversation) {
+//        var entity = new RuntimeConversationEntity();
+//        entity.setConversationId(conversation.conversationId());
+//        entity.setAgentKey(conversation.agentKey());
+//        gateway.upsertConversation(entity);
+//    }
+//}

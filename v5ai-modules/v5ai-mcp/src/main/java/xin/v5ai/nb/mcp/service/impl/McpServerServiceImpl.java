@@ -7,20 +7,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
-import xin.v5ai.nb.common.agentscope.core.McpJsonCodec;
+import xin.v5ai.nb.common.agentscope.utils.McpJsonCodec;
 import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
-import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
-import xin.v5ai.nb.common.agentscope.core.factory.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
-import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.mcp.core.McpClientFactory;
 import xin.v5ai.nb.mcp.core.McpToolPermissionPolicy;
 import xin.v5ai.nb.mcp.core.domain.McpConnectionTestResult;
+import xin.v5ai.nb.mcp.core.domain.dto.McpServerDTO;
+import xin.v5ai.nb.mcp.core.service.McpServerService;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
 import xin.v5ai.nb.mcp.domain.McpServer;
 import xin.v5ai.nb.mcp.domain.McpTool;
@@ -47,7 +48,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class McpServerServiceImpl implements IMcpServerService {
+public class McpServerServiceImpl implements IMcpServerService, McpServerService {
 
     private static final int DEFAULT_TIMEOUT_SECONDS = 30;
     private static final String STATUS_ACTIVE = "ACTIVE";
@@ -358,20 +359,7 @@ public class McpServerServiceImpl implements IMcpServerService {
     }
 
     private McpServerDTO toDto(McpServer server) {
-        var dto = new McpServerDTO();
-        dto.setId(server.getId());
-        dto.setName(server.getName());
-        dto.setTransportType(server.getTransportType());
-        dto.setEndpoint(server.getEndpoint());
-        dto.setArgsJson(server.getArgsJson());
-        dto.setHeadersCiphertext(server.getHeadersCiphertext());
-        dto.setEnvCiphertext(server.getEnvCiphertext());
-        dto.setTimeoutSeconds(server.getTimeoutSeconds());
-        dto.setStatus(server.getStatus());
-        dto.setLastTestStatus(server.getLastTestStatus());
-        dto.setLastTestMessage(server.getLastTestMessage());
-        dto.setLastTestedAt(server.getLastTestedAt());
-        return dto;
+        return buildMcpServerDTO(server);
     }
 
     private McpServerVo toVo(McpServer server) {
@@ -435,4 +423,11 @@ public class McpServerServiceImpl implements IMcpServerService {
             return null;
         }
     }
+
+    @Override
+    public McpServerDTO selectById(Long id) {
+        McpServer entity = serverMapper.selectById(id);
+        return entity == null ? null : buildMcpServerDTO(entity);
+    }
+
 }

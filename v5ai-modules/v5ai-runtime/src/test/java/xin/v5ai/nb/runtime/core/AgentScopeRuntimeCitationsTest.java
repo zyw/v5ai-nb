@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
-import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
@@ -57,7 +57,7 @@ class AgentScopeRuntimeCitationsTest {
                 .collectList().block();
         return events.stream()
                 .filter(event -> event.type() == RuntimeEventType.RETRIEVAL)
-                .map(RuntimeEvent::payload)
+                .map(RuntimeRunEventDTO::payload)
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("未发出 RETRIEVAL 事件：" + events));
     }

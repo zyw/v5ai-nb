@@ -1,4 +1,4 @@
-package xin.v5ai.nb.runtime.controller.vo;
+package xin.v5ai.nb.runtime.domain.bo;
 
 /**
  * Chat 接口请求体（不可变 record）。

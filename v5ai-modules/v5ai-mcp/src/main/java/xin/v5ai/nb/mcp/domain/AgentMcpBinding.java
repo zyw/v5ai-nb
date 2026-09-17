@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 
 /**
@@ -20,7 +22,10 @@ import java.time.OffsetDateTime;
 @Setter
 @ToString
 @TableName("v5ai_agent_mcp")
-public class AgentMcpBinding {
+public class AgentMcpBinding implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @TableId(value = "agent_key")
     private String agentKey;

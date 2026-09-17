@@ -1,10 +1,11 @@
-package xin.v5ai.nb.common.agentscope.core;
+package xin.v5ai.nb.common.agentscope.core.tools;
 
 import io.agentscope.core.message.ToolResultBlock;
 import io.agentscope.core.tool.ToolBase;
 import io.agentscope.core.tool.ToolCallParam;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 
 import java.util.List;

@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
 import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
 import xin.v5ai.nb.common.core.exception.ServiceException;
@@ -77,19 +77,19 @@ public class KnowledgeQaServiceImpl implements IKnowledgeQaService {
     private final AgentModelResolver modelResolver;
 
     @Override
-    public Flux<RuntimeEvent> chatStream(Long knowledgeBaseId, KbChatBo request) {
+    public Flux<RuntimeRunEventDTO> chatStream(Long knowledgeBaseId, KbChatBo request) {
         String runId = UUID.randomUUID().toString();
         return Flux.defer(() -> {
             try {
                 return streamEvents(runId, knowledgeBaseId, request);
             } catch (RuntimeException exception) {
                 log.warn("kb {} qa failed before stream: {}", knowledgeBaseId, exception.getMessage());
-                return Flux.just(RuntimeEvent.failed(runId, exception.getMessage()));
+                return Flux.just(RuntimeRunEventDTO.failed(runId, exception.getMessage()));
             }
         });
     }
 
-    private Flux<RuntimeEvent> streamEvents(String runId, Long knowledgeBaseId, KbChatBo request) {
+    private Flux<RuntimeRunEventDTO> streamEvents(String runId, Long knowledgeBaseId, KbChatBo request) {
         KnowledgeBaseVo base = requireBase(knowledgeBaseId);
         RagConfigDO.ModelParams model = configModel(base);
 
@@ -138,25 +138,25 @@ public class KnowledgeQaServiceImpl implements IKnowledgeQaService {
 
         String retrievalPayload = hitsPayload(hits);
         return Flux.concat(
-                        Flux.just(RuntimeEvent.retrieval(runId, retrievalPayload)),
+                        Flux.just(RuntimeRunEventDTO.retrieval(runId, retrievalPayload)),
                         responses.flatMapIterable(response -> deltas(runId, response)))
-                .concatWith(Flux.just(RuntimeEvent.completed(runId)))
-                .onErrorResume(error -> Flux.just(RuntimeEvent.failed(runId, safeMessage(error))));
+                .concatWith(Flux.just(RuntimeRunEventDTO.completed(runId)))
+                .onErrorResume(error -> Flux.just(RuntimeRunEventDTO.failed(runId, safeMessage(error))));
     }
 
     /**
      * 单个响应分片 → 事件列表：推理内容（ThinkingBlock）与回答（TextBlock）分流为
      * REASONING_DELTA / TEXT_DELTA，让前端把「思考过程」与「回答」分开展示。
      */
-    private static List<RuntimeEvent> deltas(String runId, ChatResponse response) {
-        List<RuntimeEvent> events = new ArrayList<>(2);
+    private static List<RuntimeRunEventDTO> deltas(String runId, ChatResponse response) {
+        List<RuntimeRunEventDTO> events = new ArrayList<>(2);
         String thinking = ChatResponseTexts.thinkingOf(response);
         if (thinking != null && !thinking.isEmpty()) {
-            events.add(RuntimeEvent.reasoningDelta(runId, thinking));
+            events.add(RuntimeRunEventDTO.reasoningDelta(runId, thinking));
         }
         String text = ChatResponseTexts.textOf(response);
         if (text != null && !text.isEmpty()) {
-            events.add(RuntimeEvent.textDelta(runId, text));
+            events.add(RuntimeRunEventDTO.textDelta(runId, text));
         }
         return events;
     }

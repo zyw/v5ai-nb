@@ -101,13 +101,13 @@
 //    }
 //
 //    @Override
-//    public Flux<RuntimeEvent> stream(AgentRunBo request) {
+//    public Flux<RuntimeRunEventDTO> stream(AgentRunBo request) {
 //        // defer：订阅时才执行副作用（落库），避免每次构建 Flux 就写库
 //        return Flux.defer(() -> {
 //            // 若未传 conversationId，则先自动生成一个（normalize 负责）
 //            var normalizedRequest = normalize(request);
 //            // 1) 登记会话 + 保存用户提问
-//            conversationService.ensureConversation(new ConversationBo(normalizedRequest.conversationId(), normalizedRequest.agentKey()));
+//            conversationService.ensureConversation(new ConversationDTO(normalizedRequest.conversationId(), normalizedRequest.agentKey()));
 //            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query()));
 //            // 累积最终回答文本（把 TEXT_DELTA 片段拼起来）
 //            var answer = new StringBuilder();
@@ -159,10 +159,10 @@
 //                        }
 //                        // 同步 runId，避免随后的 doOnComplete 重复记账
 //                        runId[0] = failedRunId;
-//                        runEventService.save(RuntimeEvent.failed(failedRunId, exception.getMessage()));
+//                        runEventService.save(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
 //                        runRecordService.fail(failedRunId, exception.getMessage());
 //                        recordUsage(normalizedRequest, failedRunId, modelName[0], startedAt[0], answer.toString(), false);
-//                        return Flux.just(RuntimeEvent.failed(failedRunId, exception.getMessage()));
+//                        return Flux.just(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
 //                    })
 //                    // 正常结束但从未收到 RUN_STARTED（delegate 没发启动事件）时，
 //                    // 也要把回答落库，保证消息完整
@@ -211,7 +211,7 @@
 //        // 复用 stream()，过滤出文本增量片段并拼接为最终回答
 //        return stream(request)
 //                .filter(event -> event.type() == RuntimeEventType.TEXT_DELTA)
-//                .map(RuntimeEvent::payload)
+//                .map(RuntimeRunEventDTO::payload)
 //                .collectList()
 //                .map(parts -> new AgentRunVo("", String.join("", parts)));
 //    }

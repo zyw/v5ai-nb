@@ -6,10 +6,11 @@ import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.*;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
-import xin.v5ai.nb.common.agentscope.core.service.MessageService;
-import xin.v5ai.nb.common.agentscope.core.service.RunRecordService;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
+import xin.v5ai.nb.runtime.core.service.MessageService;
+import xin.v5ai.nb.runtime.core.service.RunRecordService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,14 +26,14 @@ class PersistingAgentRuntimeTest {
 
     /** 委托运行时：按固定顺序回放事件，不触碰任何外部依赖。 */
     private static final class ScriptedRuntime implements AgentRuntime {
-        private final List<RuntimeEvent> events;
+        private final List<RuntimeRunEventDTO> events;
 
-        ScriptedRuntime(List<RuntimeEvent> events) {
+        ScriptedRuntime(List<RuntimeRunEventDTO> events) {
             this.events = events;
         }
 
         @Override
-        public Flux<RuntimeEvent> stream(AgentRunBo request) {
+        public Flux<RuntimeRunEventDTO> stream(AgentRunBo request) {
             return Flux.fromIterable(events);
         }
 
@@ -47,8 +48,8 @@ class PersistingAgentRuntimeTest {
         private final List<SessionMessage> saved = new ArrayList<>();
 
         @Override
-        public void save(SessionMessage message) {
-            saved.add(message);
+        public boolean save(SessionMessage message) {
+            return saved.add(message);
         }
 
         @Override
@@ -61,16 +62,18 @@ class PersistingAgentRuntimeTest {
         private final List<String> started = new ArrayList<>();
 
         @Override
-        public void start(String runId, AgentRunBo request) {
-            started.add(runId);
+        public boolean start(String runId, AgentRunBo request) {
+            return started.add(runId);
         }
 
         @Override
-        public void complete(String runId) {
+        public boolean complete(String runId) {
+            return true;
         }
 
         @Override
-        public void fail(String runId, String message) {
+        public boolean fail(String runId, String message) {
+            return true;
         }
     }
 
@@ -78,13 +81,13 @@ class PersistingAgentRuntimeTest {
     void reasoningDeltaIsNotPersistedWhileOtherEventsAre() {
         var runId = "run-1";
         var scripted = List.of(
-                RuntimeEvent.started(runId),
-                RuntimeEvent.reasoningDelta(runId, "先看需求"),
-                RuntimeEvent.reasoningDelta(runId, "再给结论"),
-                RuntimeEvent.textDelta(runId, "答案是 42"),
-                RuntimeEvent.completed(runId));
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.reasoningDelta(runId, "先看需求"),
+                RuntimeRunEventDTO.reasoningDelta(runId, "再给结论"),
+                RuntimeRunEventDTO.textDelta(runId, "答案是 42"),
+                RuntimeRunEventDTO.completed(runId));
 
-        var persisted = new ArrayList<RuntimeEvent>();
+        var persisted = new ArrayList<RuntimeRunEventDTO>();
         var runtime = new PersistingAgentRuntime(
                 new ScriptedRuntime(scripted),
                 new RecordingMessageService(),
@@ -96,7 +99,7 @@ class PersistingAgentRuntimeTest {
 
         // 思考增量不落库；其余事件照常落库
         assertThat(persisted).noneMatch(event -> event.type() == RuntimeEventType.REASONING_DELTA);
-        assertThat(persisted).extracting(RuntimeEvent::type).containsExactly(
+        assertThat(persisted).extracting(RuntimeRunEventDTO::type).containsExactly(
                 RuntimeEventType.RUN_STARTED,
                 RuntimeEventType.TEXT_DELTA,
                 RuntimeEventType.RUN_COMPLETED);
@@ -106,10 +109,10 @@ class PersistingAgentRuntimeTest {
     void reasoningContentNeverLeaksIntoThePersistedAnswer() {
         var runId = "run-2";
         var scripted = List.of(
-                RuntimeEvent.started(runId),
-                RuntimeEvent.reasoningDelta(runId, "这段是思考，不该进回答"),
-                RuntimeEvent.textDelta(runId, "正文"),
-                RuntimeEvent.completed(runId));
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.reasoningDelta(runId, "这段是思考，不该进回答"),
+                RuntimeRunEventDTO.textDelta(runId, "正文"),
+                RuntimeRunEventDTO.completed(runId));
 
         var messages = new RecordingMessageService();
         var runtime = new PersistingAgentRuntime(
@@ -117,7 +120,9 @@ class PersistingAgentRuntimeTest {
                 messages,
                 new RecordingRunRecordService(),
                 conversation -> { },
-                event -> { });
+                event -> {
+                    return false;
+                });
 
         runtime.stream(new AgentRunBo("agent-x", "conv-2", "问题")).collectList().block();
 

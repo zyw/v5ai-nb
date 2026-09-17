@@ -27,7 +27,7 @@ Expected:
 - Model credentials are encrypted before persistence.
 - Infrastructure AES credential cipher uses AES-GCM with randomized IV.
 - Runtime rejects unpublished Applications through `PublishedApplicationResolver`.
-- Agent events are mapped to platform-owned `RuntimeEvent`.
+- Agent events are mapped to platform-owned `RuntimeRunEventDTO`.
 - SSE chat endpoint returns typed server-sent events.
 - Runtime endpoint rejects missing or invalid Agent API Keys.
 - User and assistant messages plus run lifecycle are persisted through runtime ports and MyBatis adapters.

@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core.service;
+package xin.v5ai.nb.common.agentscope.core.repository;
 
 import io.agentscope.core.skill.AgentSkill;
 import io.agentscope.core.skill.repository.AgentSkillRepository;
@@ -19,13 +19,13 @@ import java.util.Map;
  *
  * 安全边界：只暴露平台校验并发布的版本内容；单个 Skill 构建失败仅跳过。
  */
-public class ResolvedSkillAgentSkillService implements AgentSkillRepository {
-    private static final Logger log = LoggerFactory.getLogger(ResolvedSkillAgentSkillService.class);
+public class ResolvedSkillAgentSkillRepository implements AgentSkillRepository {
+    private static final Logger log = LoggerFactory.getLogger(ResolvedSkillAgentSkillRepository.class);
 
     private final Map<String, AgentSkill> skills;
     private boolean writeable;
 
-    public ResolvedSkillAgentSkillService(List<ResolvedSkill> resolvedSkills) {
+    public ResolvedSkillAgentSkillRepository(List<ResolvedSkill> resolvedSkills) {
         Map<String, AgentSkill> built = new LinkedHashMap<>();
         if (resolvedSkills != null) {
             for (ResolvedSkill resolved : resolvedSkills) {

@@ -10,27 +10,27 @@ import io.agentscope.core.model.Model;
 import io.agentscope.core.state.InMemoryAgentStateStore;
 import io.agentscope.core.tool.Toolkit;
 import io.agentscope.harness.agent.HarnessAgent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
+import xin.v5ai.nb.common.agentscope.core.*;
+import xin.v5ai.nb.common.agentscope.core.domain.KnowledgeBaseRef;
+import xin.v5ai.nb.common.agentscope.core.domain.ResolvedMcpTool;
+import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
+import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
-import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
-import xin.v5ai.nb.common.agentscope.core.McpConnection;
-import xin.v5ai.nb.common.agentscope.core.PlatformMcpTool;
-import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
-import xin.v5ai.nb.common.agentscope.core.RagSearchTool;
-import xin.v5ai.nb.common.agentscope.core.WebSearchTool;
-import xin.v5ai.nb.common.agentscope.core.domain.*;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
-import xin.v5ai.nb.common.agentscope.core.service.ResolvedSkillAgentSkillService;
+import xin.v5ai.nb.common.agentscope.core.repository.ResolvedSkillAgentSkillRepository;
+import xin.v5ai.nb.common.agentscope.core.tools.PlatformMcpTool;
+import xin.v5ai.nb.common.agentscope.core.tools.RagSearchTool;
+import xin.v5ai.nb.common.agentscope.core.tools.WebSearchTool;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
+import xin.v5ai.nb.common.agentscope.utils.ChatResponseTexts;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -54,8 +54,8 @@ import java.util.stream.Collectors;
  *   （{@code skills/<name>/}）并注册只读 Skill 仓库，让 SkillRuntime 把
  *   {@code <available_skills>} 注入系统提示。
  */
+@Slf4j
 public class ModelStreamTextExecutor implements AgentTextExecutor {
-    private static final Logger log = LoggerFactory.getLogger(ModelStreamTextExecutor.class);
 
     private final Model model;
     private final McpToolResolver mcpToolResolver;
@@ -227,7 +227,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             // 有 Skill：注册只读 Skill 仓库（唯一技能来源，隔离其它应用/历史残留），
             // 并保持动态技能启用（HarnessSkillMiddleware 注入 <available_skills>）
             agent = builder
-                    .skillRepository(new ResolvedSkillAgentSkillService(skills))
+                    .skillRepository(new ResolvedSkillAgentSkillRepository(skills))
                     .build();
         }
 

@@ -8,20 +8,20 @@ import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
-import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
-import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
-import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
+import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.resolver.ModelToolSupportResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
-import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
+import xin.v5ai.nb.runtime.core.service.MessageService;
 
 import java.util.*;
 import java.util.function.Function;
@@ -30,7 +30,7 @@ import java.util.function.Function;
  * AgentScope 运行时：{@link AgentRuntime} 的默认实现。
  *
  * 流程编排：解析 AgentDTO（正式路径仅已发布；也可注入调试解析器允许草稿态）→ 生成 runId →
- * 可选构建 RAG 上下文 → 委托 AgentTextExecutor 流式执行 → 把内部事件映射为统一 RuntimeEvent。
+ * 可选构建 RAG 上下文 → 委托 AgentTextExecutor 流式执行 → 把内部事件映射为统一 RuntimeRunEventDTO。
  * 整个执行是惰性的（Flux.defer），订阅时才真正开始运行。
  */
 @Slf4j
@@ -96,7 +96,7 @@ public class AgentScopeRuntime implements AgentRuntime {
     }
 
     @Override
-    public Flux<RuntimeEvent> stream(AgentRunBo request) {
+    public Flux<RuntimeRunEventDTO> stream(AgentRunBo request) {
         // defer：延迟到订阅时才解析应用、生成 runId，避免每次构建都执行副作用
         return Flux.defer(() -> {
             var agent = agentResolver.apply(request.agentKey());
@@ -110,24 +110,24 @@ public class AgentScopeRuntime implements AgentRuntime {
                     : ragContextProvider.buildContext(agent, req);
             return Flux.concat(
                     // 1) 运行开始事件
-                    Flux.just(RuntimeEvent.started(runId)),
+                    Flux.just(RuntimeRunEventDTO.started(runId)),
                     // 2) 拿到检索结果后执行 AgentDTO
                     contextMono.flatMapMany(rag -> {
                         // 有有效上下文则拼进请求，否则用原请求
                         var enriched = rag.isEmpty()
                                 ? req.withRunId(runId)
                                 : req.withRagContext(rag.context()).withRunId(runId);
-                        // 将内部事件统一映射为平台 RuntimeEvent（工具事件可展开为多个事件）
+                        // 将内部事件统一映射为平台 RuntimeRunEventDTO（工具事件可展开为多个事件）
                         var events = agentTextExecutor.streamText(agent, enriched)
                                 .flatMap(event -> toRuntimeEvents(runId, event));
                         // 有检索上下文时，在 AgentDTO 输出之前先发一个 RETRIEVAL 事件（载荷为引用列表）
                         if (!rag.isEmpty()) {
-                            return Flux.concat(Flux.just(RuntimeEvent.retrieval(runId, citationsPayload(rag.hits()))), events);
+                            return Flux.concat(Flux.just(RuntimeRunEventDTO.retrieval(runId, citationsPayload(rag.hits()))), events);
                         }
                         return events;
                     }),
                     // 3) 运行结束事件
-                    Flux.just(RuntimeEvent.completed(runId)));
+                    Flux.just(RuntimeRunEventDTO.completed(runId)));
         });
     }
 
@@ -137,7 +137,7 @@ public class AgentScopeRuntime implements AgentRuntime {
         // 注意：这里 runId 与 stream 事件流里的不同，是 call 自己生成的
         return stream(request)
                 .filter(event -> event.type() == RuntimeEventType.TEXT_DELTA)
-                .map(RuntimeEvent::payload)
+                .map(RuntimeRunEventDTO::payload)
                 .collectList()
                 .map(parts -> new AgentRunVo(UUID.randomUUID().toString(), String.join("", parts)));
     }
@@ -213,25 +213,25 @@ public class AgentScopeRuntime implements AgentRuntime {
     /**
      * 把执行器内部事件映射为平台事件流。
      */
-    private static Flux<RuntimeEvent> toRuntimeEvents(String runId, AgentTextEvent event) {
+    private static Flux<RuntimeRunEventDTO> toRuntimeEvents(String runId, AgentTextEvent event) {
         return switch (event) {
             case AgentTextEvent.Reasoning reasoning ->
-                    Flux.just(RuntimeEvent.reasoningDelta(runId, reasoning.text()));
-            case AgentTextEvent.Text text -> Flux.just(RuntimeEvent.textDelta(runId, text.text()));
-            case AgentTextEvent.ModelCall call -> Flux.just(RuntimeEvent.modelCall(runId, call.modelName()));
+                    Flux.just(RuntimeRunEventDTO.reasoningDelta(runId, reasoning.text()));
+            case AgentTextEvent.Text text -> Flux.just(RuntimeRunEventDTO.textDelta(runId, text.text()));
+            case AgentTextEvent.ModelCall call -> Flux.just(RuntimeRunEventDTO.modelCall(runId, call.modelName()));
             case AgentTextEvent.ToolCall call -> {
-                var callEvent = Flux.just(RuntimeEvent.toolCall(runId, toolCallPayload(call)));
+                var callEvent = Flux.just(RuntimeRunEventDTO.toolCall(runId, toolCallPayload(call)));
                 // APPROVE 决策：先发出 PERMISSION_REQUIRED 事件（人工审批提示），随后自动放行
                 if (call.permission() == McpToolPermission.APPROVE) {
-                    yield Flux.concat(callEvent, Flux.just(RuntimeEvent.permissionRequired(runId,
+                    yield Flux.concat(callEvent, Flux.just(RuntimeRunEventDTO.permissionRequired(runId,
                             "tool '" + call.toolName() + "' requires approval (auto-approved)")));
                 }
                 yield callEvent;
             }
-            case AgentTextEvent.ToolResult result -> Flux.just(RuntimeEvent.toolResult(runId,
+            case AgentTextEvent.ToolResult result -> Flux.just(RuntimeRunEventDTO.toolResult(runId,
                     result.success() ? result.toolName() : result.toolName() + " failed: " + result.message()));
             case AgentTextEvent.Retrieval retrieval ->
-                    Flux.just(RuntimeEvent.retrieval(runId, citationsPayload(retrieval.hits())));
+                    Flux.just(RuntimeRunEventDTO.retrieval(runId, citationsPayload(retrieval.hits())));
         };
     }
 

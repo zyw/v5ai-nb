@@ -5,8 +5,8 @@ import io.agentscope.core.tool.mcp.McpTool;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
-import xin.v5ai.nb.common.agentscope.core.domain.vo.McpToolCallVo;
 import xin.v5ai.nb.common.agentscope.core.domain.McpToolInfo;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.McpToolCallVo;
 
 import java.util.Collections;
 import java.util.List;

@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core;
+package xin.v5ai.nb.common.agentscope.utils;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;

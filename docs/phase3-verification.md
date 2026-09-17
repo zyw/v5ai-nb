@@ -18,7 +18,7 @@ cd v5ai-ui && npx vue-tsc --noEmit   # 前端类型检查
 ### 新模块 v5ai-mcp（领域层，零传输库依赖）
 
 - 领域模型：`McpServer`（传输类型/Endpoint/参数/Headers/环境变量/超时/状态/最近测试）、
-  `McpToolDefinition`（缓存工具元数据 + 权限）、`McpToolCallAudit`（调用审计）、
+  `McpToolDefinition`（缓存工具元数据 + 权限）、`McpToolCallAuditDTO`（调用审计）、
   `McpToolPermission`（ALLOW/APPROVE/DENY 三态）、`McpConnectionTestResult`。
 - 端口：`McpServerRepository`、`McpToolRepository`、`ApplicationMcpBindingRepository`、
   `McpToolCallAuditRepository`、`McpClientFactory`、`McpConnection`、`StdioCommandPolicy`。

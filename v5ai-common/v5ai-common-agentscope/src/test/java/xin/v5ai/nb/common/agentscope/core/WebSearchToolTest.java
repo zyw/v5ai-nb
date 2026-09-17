@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import io.agentscope.core.message.ToolResultState;
 import io.agentscope.core.tool.ToolCallParam;
 import org.junit.jupiter.api.Test;
+import xin.v5ai.nb.common.agentscope.core.tools.WebSearchTool;
 
 import java.util.Map;
 

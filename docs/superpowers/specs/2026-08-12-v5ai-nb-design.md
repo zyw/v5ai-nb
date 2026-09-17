@@ -221,7 +221,7 @@ AgentScopeRuntime
 6. 创建 MCP Client 并注册可用 Tools；
 7. 创建 AgentScope `HarnessAgent` 或基础 Agent；
 8. 订阅 AgentScope 类型化事件；
-9. 转换为平台 `RuntimeEvent`；
+9. 转换为平台 `RuntimeRunEventDTO`；
 10. 持久化消息、运行状态和事件摘要。
 
 AgentScope 的事件、Middleware、Tool、Permission、Workspace 和 AgentState 是底层运行能力；平台负责配置解析、凭据治理、审计和 API 协议转换。

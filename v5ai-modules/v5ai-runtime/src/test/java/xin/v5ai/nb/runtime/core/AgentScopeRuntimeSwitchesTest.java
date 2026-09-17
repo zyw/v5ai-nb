@@ -10,10 +10,10 @@ import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
-import xin.v5ai.nb.common.agentscope.core.service.MessageService;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
+import xin.v5ai.nb.runtime.core.service.MessageService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,8 +47,8 @@ class AgentScopeRuntimeSwitchesTest {
         }
 
         @Override
-        public void save(SessionMessage message) {
-            messages.add(message);
+        public boolean save(SessionMessage message) {
+            return messages.add(message);
         }
 
         @Override

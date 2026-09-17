@@ -70,7 +70,7 @@ _Avoid_: App Key、appKey（界面残留旧文案，统一用本词条）
 _Avoid_: 聊天记录、对话条目（指整段会话或界面列表，而非「一条消息」）
 
 **运行（Run）**:
-一次 Agent 执行：入参是运行请求（`AgentRunBo`：Agent Key + 会话 + 提问 + 可选 RAG 上下文与历史），产物是运行结果（`AgentRunVo`）与运行事件流（`RuntimeEvent`）；每次运行有唯一运行 ID，运行事件、MCP 调用审计与用量都按它归属。
+一次 Agent 执行：入参是运行请求（`AgentRunBo`：Agent Key + 会话 + 提问 + 可选 RAG 上下文与历史），产物是运行结果（`AgentRunVo`）与运行事件流（`RuntimeRunEventDTO`）；每次运行有唯一运行 ID，运行事件、MCP 调用审计与用量都按它归属。
 _Avoid_: 请求、调用（口语；「运行」是平台内一次完整执行的单位，一个会话包含多次运行）
 
 **Agent 调试（预览与调试）**:

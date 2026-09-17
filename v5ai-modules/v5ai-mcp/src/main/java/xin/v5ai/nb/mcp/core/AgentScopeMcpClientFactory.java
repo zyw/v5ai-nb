@@ -5,12 +5,11 @@ import io.agentscope.core.tool.mcp.McpClientWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
-import xin.v5ai.nb.common.agentscope.core.McpJsonCodec;
+import xin.v5ai.nb.common.agentscope.utils.McpJsonCodec;
 import xin.v5ai.nb.common.agentscope.core.StdioCommandPolicy;
-import xin.v5ai.nb.common.agentscope.core.domain.dto.McpServerDTO;
-import xin.v5ai.nb.common.agentscope.core.factory.McpClientFactory;
 import xin.v5ai.nb.common.agentscope.enums.McpTransportType;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
+import xin.v5ai.nb.mcp.core.domain.dto.McpServerDTO;
 
 import java.time.Duration;
 import java.util.Map;

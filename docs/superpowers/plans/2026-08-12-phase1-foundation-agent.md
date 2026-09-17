@@ -361,7 +361,7 @@ git commit -m "feat: 增加 Agent 草稿发布生命周期"
 - `AgentRuntime.stream(AgentRunRequest)` returns `Flux<RuntimeEvent>`.
 - `AgentRuntime.call(AgentRunRequest)` returns `Mono<AgentRunResult>`.
 - `AgentFactory.create(PublishedApplication application, RuntimeContext context)` returns the configured AgentScope agent.
-- `RuntimeEvent` is platform-owned and contains `runId`, `type`, `payload`, and timestamp.
+- `RuntimeRunEventDTO` is platform-owned and contains `runId`, `type`, `payload`, and timestamp.
 
 - [ ] **Step 1: Write failing runtime tests**
 
@@ -389,7 +389,7 @@ Expected: FAIL because AgentScope runtime adapters do not exist.
 
 - [ ] **Step 3: Implement the minimal AgentScope adapter**
 
-Resolve the published Agent, create the configured `ChatModel`, construct a basic AgentScope Agent, invoke it with the request message, and map AgentScope events into `RuntimeEvent`. Keep RAG, MCP, Skill, and permission resolvers represented by interfaces returning empty implementations in Phase 1.
+Resolve the published Agent, create the configured `ChatModel`, construct a basic AgentScope Agent, invoke it with the request message, and map AgentScope events into `RuntimeRunEventDTO`. Keep RAG, MCP, Skill, and permission resolvers represented by interfaces returning empty implementations in Phase 1.
 
 - [ ] **Step 4: Run the runtime tests**
 

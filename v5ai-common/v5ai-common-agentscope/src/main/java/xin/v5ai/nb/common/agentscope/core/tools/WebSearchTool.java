@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core;
+package xin.v5ai.nb.common.agentscope.core.tools;
 
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -80,7 +80,7 @@ public class WebSearchTool extends ToolBase {
     }
 
     /** 把 Tavily 响应拼成给模型的文本（包内可见，供单测直接喂响应 JSON）。 */
-    static String formatResults(JSONObject response) {
+    public static String formatResults(JSONObject response) {
         var sb = new StringBuilder();
         var answer = response.getStr("answer");
         if (answer != null && !answer.isBlank()) {

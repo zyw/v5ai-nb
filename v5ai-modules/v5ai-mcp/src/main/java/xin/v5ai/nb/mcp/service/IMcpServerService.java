@@ -4,6 +4,7 @@ import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.mcp.core.McpClientFactory;
 import xin.v5ai.nb.mcp.core.domain.McpConnectionTestResult;
 import xin.v5ai.nb.mcp.domain.bo.McpServerBo;
 import xin.v5ai.nb.mcp.domain.vo.McpServerVo;
@@ -15,7 +16,7 @@ import java.util.List;
 /**
  * MCP Server 管理服务：Server 增删改查、连接测试、Tool 发现、AgentDTO 绑定、
  * 权限调整与调用审计查询。本模块不依赖任何具体 MCP 传输库，
- * 连接能力通过 {@link xin.v5ai.nb.mcp.McpClientFactory} 注入（基础设施层实现）。
+ * 连接能力通过 {@link McpClientFactory} 注入（基础设施层实现）。
  *
  * @author ZYW
  * @since 2026-08-22

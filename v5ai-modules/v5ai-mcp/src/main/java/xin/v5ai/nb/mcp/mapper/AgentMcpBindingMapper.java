@@ -1,8 +1,9 @@
 package xin.v5ai.nb.mcp.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
+import xin.v5ai.nb.common.mybatis.core.mapper.BaseMapperPlus;
 import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
+import xin.v5ai.nb.mcp.domain.vo.AgentMcpBindingVo;
 
 /**
  * <p>
@@ -13,5 +14,5 @@ import xin.v5ai.nb.mcp.domain.AgentMcpBinding;
  * @since 2026-08-22
  */
 @Mapper
-public interface AgentMcpBindingMapper extends BaseMapper<AgentMcpBinding> {
+public interface AgentMcpBindingMapper extends BaseMapperPlus<AgentMcpBinding, AgentMcpBindingVo> {
 }

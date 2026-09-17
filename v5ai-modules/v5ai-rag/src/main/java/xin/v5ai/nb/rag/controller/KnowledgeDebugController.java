@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.rag.domain.bo.KbChatBo;
 import xin.v5ai.nb.rag.domain.bo.KbRetrieveBo;
@@ -40,8 +40,8 @@ public class KnowledgeDebugController {
     }
 
     @PostMapping(value = "/chat/stream", produces = "text/event-stream")
-    public Flux<ServerSentEvent<RuntimeEvent>> chatStream(@PathVariable("kbId") Long kbId,
-                                                          @RequestBody(required = false) KbChatBo request) {
+    public Flux<ServerSentEvent<RuntimeRunEventDTO>> chatStream(@PathVariable("kbId") Long kbId,
+                                                                @RequestBody(required = false) KbChatBo request) {
         return qaService.chatStream(kbId, request)
                 .map(event -> ServerSentEvent.builder(event)
                         .event(event.type().name())

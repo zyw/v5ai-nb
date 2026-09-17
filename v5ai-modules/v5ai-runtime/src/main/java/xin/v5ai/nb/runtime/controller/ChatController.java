@@ -1,21 +1,24 @@
 package xin.v5ai.nb.runtime.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
-import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
+import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
-import xin.v5ai.nb.common.agentscope.core.domain.RuntimeEvent;
-import xin.v5ai.nb.common.agentscope.core.service.MessageService;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
+import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.core.domain.R;
-import xin.v5ai.nb.common.core.domain.PageResult;
-import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
-import xin.v5ai.nb.runtime.controller.vo.ChatRequest;
-import xin.v5ai.nb.runtime.controller.vo.ConversationMessageResponse;
+import xin.v5ai.nb.runtime.core.service.MessageService;
+import xin.v5ai.nb.runtime.domain.bo.ChatRequest;
 
+import java.util.List;
+
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/agents/{agentKey}/chat")
@@ -25,7 +28,7 @@ public class ChatController {
     private final MessageService messageService;
 
     @PostMapping("/stream")
-    public Flux<ServerSentEvent<RuntimeEvent>> stream(
+    public Flux<ServerSentEvent<RuntimeRunEventDTO>> stream(
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatRequest request
     ) {
@@ -41,20 +44,19 @@ public class ChatController {
     }
 
     @GetMapping("/conversations/{conversationId}")
-    public R<PageResult<ConversationMessageResponse>> conversationMessages(
+    public R<List<ConversationMessageResult>> conversationMessages(
             @PathVariable("agentKey") String agentKey,
-            @PathVariable("conversationId") String conversationId,
-            PageQuery pageQuery
+            @PathVariable("conversationId") String conversationId
     ) {
         var list = messageService.findByConversationId(conversationId).stream()
-                .map(ConversationMessageResponse::from)
+                .map(ConversationMessageResult::from)
                 .toList();
-//     TODO PageUtils   return R.ok(PageUtils.page(list, pageQuery));
-        return R.ok();
+        log.info("Found {} messages for conversationId: {}", list.size(), conversationId);
+        return R.ok(list);
     }
 
     @PostMapping("/conversations/{conversationId}/resume")
-    public Flux<ServerSentEvent<RuntimeEvent>> resume(
+    public Flux<ServerSentEvent<RuntimeRunEventDTO>> resume(
             @PathVariable("agentKey") String agentKey,
             @PathVariable("conversationId") String conversationId,
             @RequestBody ChatRequest request
@@ -64,10 +66,25 @@ public class ChatController {
         return toSse(agentRuntime.stream(resumeRequest));
     }
 
-    private Flux<ServerSentEvent<RuntimeEvent>> toSse(Flux<RuntimeEvent> events) {
+    private Flux<ServerSentEvent<RuntimeRunEventDTO>> toSse(Flux<RuntimeRunEventDTO> events) {
         return events.map(event -> ServerSentEvent.builder(event)
                 .event(event.type().name())
                 .id(event.runId())
                 .build());
+    }
+
+    /**
+     * 会话消息的 API 响应体（不可变 record）。
+     *
+     * @param role    消息角色（USER/ASSISTANT）
+     * @param content 消息内容
+     */
+    public record ConversationMessageResult(MessageRole role, String content) {
+        /**
+         * 将领域消息 {@link SessionMessage} 转为 API 响应体（去掉会话/应用等内部字段）。
+         */
+        public static ConversationMessageResult from(SessionMessage message) {
+            return new ConversationMessageResult(message.role(), message.content());
+        }
     }
 }

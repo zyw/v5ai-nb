@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core;
+package xin.v5ai.nb.common.agentscope.core.tools;
 
 import io.agentscope.core.message.ToolResultBlock;
 import io.agentscope.core.message.ToolResultState;
@@ -8,8 +8,9 @@ import io.agentscope.core.tool.ToolBase;
 import io.agentscope.core.tool.ToolCallParam;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import xin.v5ai.nb.common.agentscope.core.domain.McpToolCallAudit;
+import xin.v5ai.nb.common.agentscope.core.McpConnection;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedMcpTool;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.McpToolCallAuditDTO;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.common.agentscope.enums.McpToolCallStatus;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
@@ -85,7 +86,7 @@ public class PlatformMcpTool extends ToolBase {
         if (auditRepository == null) {
             return;
         }
-        auditRepository.save(new McpToolCallAudit(
+        auditRepository.save(new McpToolCallAuditDTO(
                 null,
                 runId,
                 serverId,

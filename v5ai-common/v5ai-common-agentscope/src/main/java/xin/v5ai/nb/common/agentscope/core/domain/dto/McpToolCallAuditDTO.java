@@ -1,4 +1,4 @@
-package xin.v5ai.nb.common.agentscope.core.domain;
+package xin.v5ai.nb.common.agentscope.core.domain.dto;
 
 import xin.v5ai.nb.common.agentscope.enums.McpToolCallStatus;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
@@ -20,7 +20,7 @@ import java.time.Instant;
  * @param message          错误信息（失败时）
  * @param createdAt        记录时间
  */
-public record McpToolCallAudit(
+public record McpToolCallAuditDTO(
         Long id,
         String runId,
         Long serverId,
