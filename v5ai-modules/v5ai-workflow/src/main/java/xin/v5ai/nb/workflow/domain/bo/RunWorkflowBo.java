@@ -1,4 +1,4 @@
-package xin.v5ai.nb.workflow.controller;
+package xin.v5ai.nb.workflow.domain.bo;
 
 import java.util.Map;
 
@@ -7,5 +7,5 @@ import java.util.Map;
  *
  * @param inputs 运行输入变量
  */
-public record RunWorkflowRequest(Map<String, Object> inputs) {
+public record RunWorkflowBo(Map<String, Object> inputs) {
 }

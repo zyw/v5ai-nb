@@ -28,6 +28,7 @@ import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
 import xin.v5ai.nb.model.service.IV5aiModelService;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * <p>
@@ -40,7 +41,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class V5aiModelServiceImpl implements IV5aiModelService {
+public class V5aiModelServiceImpl implements IV5aiModelService, Predicate<Long> {
 
     /**
      * 模型作用域: 全局
@@ -312,5 +313,14 @@ public class V5aiModelServiceImpl implements IV5aiModelService {
             throw new IllegalArgumentException("模型不存在，ID: " + id);
         }
         return existing;
+    }
+
+    @Override
+    public boolean test(Long modelId) {
+        if (modelId == null) {
+            return false;
+        }
+        V5aiModel entity = mapper.selectById(modelId);
+        return entity != null && Boolean.TRUE.equals(entity.getEnabled());
     }
 }

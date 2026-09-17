@@ -19,7 +19,9 @@ import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.workflow.core.WorkflowEngine;
 import xin.v5ai.nb.workflow.core.WorkflowRun;
+import xin.v5ai.nb.workflow.domain.bo.RunWorkflowBo;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
+import xin.v5ai.nb.workflow.domain.vo.WorkflowRunDetailVo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
 import xin.v5ai.nb.workflow.service.IWorkflowService;
 
@@ -77,7 +79,7 @@ public class WorkflowController extends BaseController {
     @PostMapping("/{key}/run")
     @Log(title = "运行工作流", businessType = BusinessType.RUN)
     public R<WorkflowRun> run(@PathVariable("key") String key,
-                              @RequestBody(required = false) RunWorkflowRequest request) {
+                              @RequestBody(required = false) RunWorkflowBo request) {
         var inputs = request == null ? null : request.inputs();
         return R.ok(engine.execute(key, inputs));
     }
@@ -89,9 +91,9 @@ public class WorkflowController extends BaseController {
     }
 
     @GetMapping("/runs/{runId}")
-    public R<WorkflowRunDetailResponse> getRun(@PathVariable("runId") String runId) {
+    public R<WorkflowRunDetailVo> getRun(@PathVariable("runId") String runId) {
         var run = workflowService.getRun(runId);
         var nodeRuns = workflowService.getNodeRuns(runId);
-        return R.ok(new WorkflowRunDetailResponse(run, nodeRuns));
+        return R.ok(new WorkflowRunDetailVo(run, nodeRuns));
     }
 }
