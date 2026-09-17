@@ -4,13 +4,18 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDivider,
   NForm,
   NFormItem,
+  NFormItemGi,
+  NGrid,
   NIcon,
   NInput,
   NInputNumber,
   NModal,
   NPagination,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSwitch,
   NTree,
@@ -352,15 +357,20 @@ onMounted(reload)
 
     <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑角色' : '新增角色'" style="width: 520px" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="角色名称" required>
-          <n-input v-model:value="form.roleName" placeholder="如：运营人员" />
-        </n-form-item>
-        <n-form-item label="权限字符" required>
-          <n-input v-model:value="form.roleKey" placeholder="如：operator（字母数字）" />
-        </n-form-item>
+        <n-divider title-placement="left" style="margin: 0 0 16px">基础信息</n-divider>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="角色名称" required>
+            <n-input v-model:value="form.roleName" placeholder="如：运营人员" />
+          </n-form-item-gi>
+          <n-form-item-gi label="权限字符" required>
+            <n-input v-model:value="form.roleKey" placeholder="如：operator（字母数字）" />
+          </n-form-item-gi>
+        </n-grid>
         <n-form-item label="显示顺序">
           <n-input-number v-model:value="form.roleSort" :min="0" style="width: 100%" />
         </n-form-item>
+
+        <n-divider title-placement="left" style="margin: 8px 0 16px">数据权限</n-divider>
         <n-form-item label="数据范围">
           <n-select
             v-model:value="form.dataScope"
@@ -368,11 +378,10 @@ onMounted(reload)
           />
         </n-form-item>
         <n-form-item label="菜单树选择项是否关联显示">
-          <n-select
-            :value="form.menuCheckStrictly ? 'true' : 'false'"
-            :options="[{ label: '关联显示', value: 'true' }, { label: '不关联', value: 'false' }]"
-            @update:value="(v: string) => (form.menuCheckStrictly = v === 'true')"
-          />
+          <n-radio-group v-model:value="form.menuCheckStrictly">
+            <n-radio-button :value="true">关联显示</n-radio-button>
+            <n-radio-button :value="false">不关联</n-radio-button>
+          </n-radio-group>
         </n-form-item>
         <n-form-item label="备注">
           <n-input v-model:value="form.remark" type="textarea" placeholder="备注" />

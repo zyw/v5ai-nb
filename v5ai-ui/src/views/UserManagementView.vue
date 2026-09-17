@@ -4,12 +4,17 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDivider,
   NForm,
   NFormItem,
+  NFormItemGi,
+  NGrid,
   NIcon,
   NInput,
   NModal,
   NPagination,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSpace,
   NSwitch,
@@ -366,24 +371,37 @@ onMounted(() => {
 
     <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑用户' : '新增用户'" style="width: 560px" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="账号" required>
-          <n-input v-model:value="form.userName" :disabled="isEdit" placeholder="登录账号" />
-        </n-form-item>
-        <n-form-item :label="isEdit ? '密码（留空则不修改）' : '密码'" :required="!isEdit">
-          <n-input v-model:value="form.password" type="password" show-password-on="click" placeholder="至少 5 位" />
-        </n-form-item>
-        <n-form-item label="昵称" required>
-          <n-input v-model:value="form.nickName" placeholder="显示名称" />
-        </n-form-item>
-        <n-form-item label="手机号" style="flex: 1">
-          <n-input v-model:value="form.phoneNumber" placeholder="手机号" />
-        </n-form-item>
-        <n-form-item label="邮箱" style="flex: 1">
-          <n-input v-model:value="form.email" placeholder="邮箱" />
-        </n-form-item>
-        <n-form-item label="性别">
-          <n-select v-model:value="form.gender" placeholder="性别" clearable :options="[{ label: '男', value: '0' }, { label: '女', value: '1' }, { label: '未知', value: '2' }]" />
-        </n-form-item>
+        <n-divider title-placement="left" style="margin: 0 0 16px">账号</n-divider>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="账号" required>
+            <n-input v-model:value="form.userName" :disabled="isEdit" placeholder="登录账号" />
+          </n-form-item-gi>
+          <n-form-item-gi :label="isEdit ? '密码（留空则不修改）' : '密码'" :required="!isEdit">
+            <n-input v-model:value="form.password" type="password" show-password-on="click" placeholder="至少 5 位" />
+          </n-form-item-gi>
+        </n-grid>
+
+        <n-divider title-placement="left" style="margin: 8px 0 16px">个人资料</n-divider>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="昵称" required>
+            <n-input v-model:value="form.nickName" placeholder="显示名称" />
+          </n-form-item-gi>
+          <n-form-item-gi label="性别">
+            <n-radio-group v-model:value="form.gender">
+              <n-radio-button value="0">男</n-radio-button>
+              <n-radio-button value="1">女</n-radio-button>
+              <n-radio-button value="2">未知</n-radio-button>
+            </n-radio-group>
+          </n-form-item-gi>
+          <n-form-item-gi label="手机号">
+            <n-input v-model:value="form.phoneNumber" placeholder="手机号" />
+          </n-form-item-gi>
+          <n-form-item-gi label="邮箱">
+            <n-input v-model:value="form.email" placeholder="邮箱" />
+          </n-form-item-gi>
+        </n-grid>
+
+        <n-divider title-placement="left" style="margin: 8px 0 16px">权限与备注</n-divider>
         <n-form-item label="角色">
           <n-select
             v-model:value="form.roleIds"

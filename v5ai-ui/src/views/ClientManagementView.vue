@@ -4,13 +4,18 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDivider,
   NForm,
   NFormItem,
+  NFormItemGi,
+  NGrid,
   NIcon,
   NInput,
   NInputNumber,
   NModal,
   NPagination,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSwitch,
   useDialog,
@@ -317,12 +322,15 @@ onMounted(reload)
 
     <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑客户端' : '新增客户端'" style="width: 560px" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="客户端 Key" required>
-          <n-input v-model:value="form.clientKey" :disabled="isEdit" placeholder="如 pc" />
-        </n-form-item>
-        <n-form-item label="客户端秘钥" required>
-          <n-input v-model:value="form.clientSecret" placeholder="客户端秘钥" />
-        </n-form-item>
+        <n-divider title-placement="left" style="margin: 0 0 16px">客户端信息</n-divider>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="客户端 Key" required>
+            <n-input v-model:value="form.clientKey" :disabled="isEdit" placeholder="如 pc" />
+          </n-form-item-gi>
+          <n-form-item-gi label="客户端秘钥" required>
+            <n-input v-model:value="form.clientSecret" placeholder="客户端秘钥" />
+          </n-form-item-gi>
+        </n-grid>
         <n-form-item label="授权类型" required>
           <n-select
             v-model:value="form.grantTypeList"
@@ -335,29 +343,28 @@ onMounted(reload)
           />
         </n-form-item>
         <n-form-item label="设备类型">
-          <n-select
-            v-model:value="form.deviceType"
-            :options="[
-              { label: 'PC', value: 'pc' },
-              { label: 'APP', value: 'app' },
-              { label: 'H5', value: 'h5' }
-            ]"
-          />
+          <n-radio-group v-model:value="form.deviceType">
+            <n-radio-button value="pc">PC</n-radio-button>
+            <n-radio-button value="app">APP</n-radio-button>
+            <n-radio-button value="h5">H5</n-radio-button>
+          </n-radio-group>
         </n-form-item>
+
+        <n-divider title-placement="left" style="margin: 8px 0 16px">访问与限制</n-divider>
         <n-form-item label="允许访问路径（每行一个，留空不限制）">
           <n-input v-model:value="form.accessPath" type="textarea" :rows="2" placeholder="/api/v1/**" />
         </n-form-item>
         <n-form-item label="IP 白名单（逗号分隔，留空不限制）">
           <n-input v-model:value="form.ipWhitelist" type="textarea" :rows="2" placeholder="如 192.168.1.0/24,10.0.0.1" />
         </n-form-item>
-        <n-space style="width: 100%">
-          <n-form-item label="token 有效期(s)" style="flex: 1">
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="token 有效期(s)">
             <n-input-number v-model:value="form.timeout" :min="60" style="width: 100%" />
-          </n-form-item>
-          <n-form-item label="活跃超时(s)" style="flex: 1">
+          </n-form-item-gi>
+          <n-form-item-gi label="活跃超时(s)">
             <n-input-number v-model:value="form.activeTimeout" :min="60" style="width: 100%" />
-          </n-form-item>
-        </n-space>
+          </n-form-item-gi>
+        </n-grid>
       </n-form>
       <template #footer>
         <n-space justify="end">

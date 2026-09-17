@@ -5,6 +5,7 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDivider,
   NForm,
   NFormItem,
   NIcon,
@@ -12,6 +13,8 @@ import {
   NInputNumber,
   NModal,
   NPagination,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSwitch,
   NTag,
@@ -427,16 +430,23 @@ onMounted(reload)
       v-model:show="showCreateModal"
       preset="card"
       :title="editingId != null ? '编辑 MCP Server' : '新建 MCP Server'"
-      style="width: 50%"
+      style="width: 560px"
       :bordered="false"
     >
       <n-form label-placement="top">
+        <n-divider title-placement="left" style="margin: 0 0 16px">基本信息</n-divider>
         <n-form-item label="名称">
           <n-input v-model:value="form.name" placeholder="平台内唯一标识（也是 MCP 客户端名）" />
         </n-form-item>
         <n-form-item label="传输类型">
-          <n-select v-model:value="form.transportType" :options="transportOptions" />
+          <n-radio-group v-model:value="form.transportType">
+            <n-radio-button value="STREAMABLE_HTTP">HTTP</n-radio-button>
+            <n-radio-button value="SSE">SSE</n-radio-button>
+            <n-radio-button value="STDIO">Stdio</n-radio-button>
+          </n-radio-group>
         </n-form-item>
+
+        <n-divider title-placement="left" style="margin: 8px 0 16px">连接配置</n-divider>
         <n-form-item label="Endpoint（HTTP/SSE 填 URL；Stdio 填可执行命令）">
           <n-input v-model:value="form.endpoint" :placeholder="form.transportType === 'STDIO' ? 'node 或 D:/nvm/v24.9.0/node.exe' : 'https://mcp.example.com/mcp'" />
         </n-form-item>

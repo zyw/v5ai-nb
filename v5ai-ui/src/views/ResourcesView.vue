@@ -12,6 +12,8 @@ import {
   NInputNumber,
   NModal,
   NPagination,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSpace,
   NSpin,
@@ -436,7 +438,9 @@ onMounted(reload)</script>
           </n-upload>
         </n-form-item>
         <n-form-item label="业务类型">
-          <n-select v-model:value="uploadForm.bizType" :options="bizTypeOptions" />
+          <n-radio-group v-model:value="uploadForm.bizType">
+            <n-radio-button v-for="opt in bizTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio-button>
+          </n-radio-group>
         </n-form-item>
       </n-form>
       <template #footer>
@@ -448,10 +452,12 @@ onMounted(reload)</script>
     </n-modal>
 
     <!-- 编辑弹窗 -->
-    <n-modal v-model:show="showEditModal" preset="card" title="编辑资源" style="width: 440px" :bordered="false">
+    <n-modal v-model:show="showEditModal" preset="card" title="编辑资源" style="width: 520px" :bordered="false">
       <n-form label-placement="top">
         <n-form-item label="业务类型">
-          <n-select v-model:value="editForm.bizType" :options="bizTypeOptions" />
+          <n-radio-group v-model:value="editForm.bizType">
+            <n-radio-button v-for="opt in bizTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio-button>
+          </n-radio-group>
         </n-form-item>
         <n-form-item label="关联业务ID">
           <n-input-number v-model:value="editForm.bizId" placeholder="可选" style="width: 100%" clearable />

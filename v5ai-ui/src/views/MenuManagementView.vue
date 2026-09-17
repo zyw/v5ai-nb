@@ -4,22 +4,28 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDivider,
   NForm,
   NFormItem,
+  NFormItemGi,
+  NGrid,
   NIcon,
   NInput,
   NInputNumber,
   NModal,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSwitch,
   NTag,
+  NText,
   useDialog,
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
 import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
-import RowActions from '../components/RowActions.vue'
+import RowActions, { type RowAction } from '../components/RowActions.vue'
 import {
   changeMenuStatus,
   createMenu,
@@ -90,12 +96,12 @@ const renderIconLabel = (option: { value?: unknown }) => iconNode(String(option.
 const renderIconTag = ({ option }: { option: { value?: unknown } }) => iconNode(String(option.value ?? ''))
 
 /**
- * 表格图标列：空值与按钮菜单的 '#' 占位按「无图标」展示；
+ * 表格图标列：按钮菜单（F）不展示图标；空值与 '#' 占位按「无图标」展示；
  * 未注册的 slug 按纯文本展示，避免显示成兜底图标造成误判。
  */
-function renderIconCell(slug?: string | null) {
-  if (!slug || slug === '#') return '-'
-  return MENU_ICON_MAP[slug] ? iconNode(slug) : slug
+function renderIconCell(row: MenuRow) {
+  if (row.menuType === 'F' || !row.icon || row.icon === '#') return '-'
+  return MENU_ICON_MAP[row.icon] ? iconNode(row.icon) : row.icon
 }
 
 const columns: DataTableColumns<MenuRow> = [
@@ -106,7 +112,7 @@ const columns: DataTableColumns<MenuRow> = [
     width: 80,
     render: (r) => h(NTag, { size: 'small', bordered: false, round: true }, { default: () => MENU_TYPE_LABELS[r.menuType] ?? r.menuType })
   },
-  { title: '图标', key: 'icon', width: 150, render: (r) => renderIconCell(r.icon) },
+  { title: '图标', key: 'icon', width: 150, render: (r) => renderIconCell(r) },
   { title: '排序', key: 'orderNum', width: 70, render: (r) => r.orderNum ?? 0 },
   { title: '路由地址', key: 'path', width: 150, render: (r) => r.path ?? '-' },
   { title: '组件路径', key: 'component', width: 170, render: (r) => r.component ?? '-' },
@@ -134,22 +140,25 @@ const columns: DataTableColumns<MenuRow> = [
   {
     title: '操作',
     key: 'actions',
-    width: 180,
-    render: (r) =>
-      h(RowActions, {
-        actions: [
-          { key: 'add', label: '新增', quaternary: true, onClick: () => openCreate(r) },
-          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
-          {
-            key: 'delete',
-            label: '删除',
-            quaternary: true,
-            type: 'error',
-            confirm: `确认删除菜单「${r.menuName}」？`,
-            onClick: () => handleDelete(r)
-          }
-        ]
-      })
+    width: 120,
+    render: (r) => {
+      const actions: RowAction[] = [
+        { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
+        {
+          key: 'delete',
+          label: '删除',
+          quaternary: true,
+          type: 'error',
+          confirm: `确认删除菜单「${r.menuName}」？`,
+          onClick: () => handleDelete(r)
+        }
+      ]
+      // 按钮（F）是最末级，不能再挂子菜单，故不提供「新增」
+      if (r.menuType !== 'F') {
+        actions.unshift({ key: 'add', label: '新增', quaternary: true, onClick: () => openCreate(r) })
+      }
+      return h(RowActions, { maxInline: 1, actions })
+    }
   }
 ]
 
@@ -354,53 +363,47 @@ onMounted(reload)
       />
     </n-card>
 
-    <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑菜单' : '新增菜单'" style="width: 50%" :bordered="false">
+    <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑菜单' : '新增菜单'" style="width: 640px" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="上级菜单">
-          <n-select v-model:value="form.parentId" :options="parentOptions" />
-        </n-form-item>
-        <n-form-item label="菜单名称" required>
-          <n-input v-model:value="form.menuName" placeholder="菜单显示名称" />
-        </n-form-item>
-        <n-form-item label="菜单类型" style="flex: 1">
-          <n-select
-            v-model:value="form.menuType"
-            :options="[
-              { label: '目录 M', value: 'M' },
-              { label: '菜单 C', value: 'C' },
-              { label: '按钮 F', value: 'F' }
-            ]"
-          />
-        </n-form-item>
+        <n-divider title-placement="left" style="margin: 0 0 16px">基础信息</n-divider>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="上级菜单">
+            <n-select v-model:value="form.parentId" :options="parentOptions" />
+          </n-form-item-gi>
+          <n-form-item-gi label="菜单名称" required>
+            <n-input v-model:value="form.menuName" placeholder="菜单显示名称" />
+          </n-form-item-gi>
+          <n-form-item-gi label="菜单类型">
+            <n-radio-group v-model:value="form.menuType">
+              <n-radio-button value="M">目录</n-radio-button>
+              <n-radio-button value="C">菜单</n-radio-button>
+              <n-radio-button value="F">按钮</n-radio-button>
+            </n-radio-group>
+          </n-form-item-gi>
+          <n-form-item-gi label="显示排序">
+            <n-input-number v-model:value="form.orderNum" :min="0" style="width: 100%" />
+          </n-form-item-gi>
+        </n-grid>
 
+        <n-divider title-placement="left" style="margin: 8px 0 16px">路由与权限</n-divider>
         <n-form-item v-if="form.menuType !== 'F'" label="路由地址">
           <n-input v-model:value="form.path" placeholder="如 system/users" />
         </n-form-item>
         <n-form-item v-if="form.menuType === 'C'" label="组件路径">
           <n-input v-model:value="form.component" placeholder="如 system/users/index" />
         </n-form-item>
-        <n-form-item v-if="form.menuType !== 'F'" label="权限标识">
-          <n-input v-model:value="form.perms" placeholder="如 system:user:list" />
-        </n-form-item>
-        <n-form-item v-else label="权限标识" required>
-          <n-input v-model:value="form.perms" placeholder="按钮权限码，如 system:user:add" />
-        </n-form-item>
-        <n-form-item label="路由参数" style="flex: 1">
-          <n-input v-model:value="form.queryParam" placeholder="可选" />
-        </n-form-item>
-        <n-form-item label="显示排序" style="flex: 1">
-          <n-input-number v-model:value="form.orderNum" :min="0" style="width: 100%" />
-        </n-form-item>
-        <n-form-item label="显示状态">
-          <n-select v-model:value="form.visible" :options="[{ label: '显示', value: '0' }, { label: '隐藏', value: '1' }]" />
-        </n-form-item>
-        <n-form-item label="外链">
-          <n-switch :value="form.isFrame === 'Y'" @update:value="(v: boolean) => (form.isFrame = v ? 'Y' : 'N')" />
-        </n-form-item>
-        <n-form-item label="缓存">
-          <n-switch :value="form.isCache === 'Y'" @update:value="(v: boolean) => (form.isCache = v ? 'Y' : 'N')" />
-        </n-form-item>
-        <n-form-item label="图标" style="flex: 1">
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="路由参数">
+            <n-input v-model:value="form.queryParam" placeholder="可选" />
+          </n-form-item-gi>
+          <n-form-item-gi v-if="form.menuType !== 'F'" label="权限标识">
+            <n-input v-model:value="form.perms" placeholder="如 system:user:list" />
+          </n-form-item-gi>
+          <n-form-item-gi v-else label="权限标识" required>
+            <n-input v-model:value="form.perms" placeholder="按钮权限码，如 system:user:add" />
+          </n-form-item-gi>
+        </n-grid>
+        <n-form-item v-if="form.menuType !== 'F'" label="图标">
           <n-select
             :value="form.icon ?? ''"
             :options="MENU_ICON_OPTIONS"
@@ -413,7 +416,35 @@ onMounted(reload)
           />
         </n-form-item>
 
-        <n-form-item label="备注" style="flex: 1">
+        <n-divider title-placement="left" style="margin: 8px 0 16px">显示与行为</n-divider>
+        <n-form-item label="显示状态">
+          <n-radio-group v-model:value="form.visible">
+            <n-radio-button value="0">显示</n-radio-button>
+            <n-radio-button value="1">隐藏</n-radio-button>
+          </n-radio-group>
+        </n-form-item>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="外链">
+            <n-space align="center" :size="10" :wrap="false">
+              <n-switch :value="form.isFrame === 'Y'" @update:value="(v: boolean) => (form.isFrame = v ? 'Y' : 'N')">
+                <template #checked>是</template>
+                <template #unchecked>否</template>
+              </n-switch>
+              <n-text depth="3" style="font-size: 12px">按外部地址打开</n-text>
+            </n-space>
+          </n-form-item-gi>
+          <n-form-item-gi label="缓存">
+            <n-space align="center" :size="10" :wrap="false">
+              <n-switch :value="form.isCache === 'Y'" @update:value="(v: boolean) => (form.isCache = v ? 'Y' : 'N')">
+                <template #checked>是</template>
+                <template #unchecked>否</template>
+              </n-switch>
+              <n-text depth="3" style="font-size: 12px">保留页面状态</n-text>
+            </n-space>
+          </n-form-item-gi>
+        </n-grid>
+
+        <n-form-item label="备注">
           <n-input v-model:value="form.remark" type="textarea" :rows="3" placeholder="可选" />
         </n-form-item>
       </n-form>

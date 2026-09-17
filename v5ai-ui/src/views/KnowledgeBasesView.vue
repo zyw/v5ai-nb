@@ -10,6 +10,7 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDivider,
   NForm,
   NFormItem,
   NFormItemGi,
@@ -28,6 +29,7 @@ import {
   NTabPane,
   NTabs,
   NTag,
+  NText,
   useDialog,
   useMessage,
   type DataTableColumns, SelectOption
@@ -612,145 +614,168 @@ onMounted(() => {
       v-model:show="showKbModal"
       preset="card"
       :title="form.id != null ? '编辑知识库' : '创建知识库'"
-      style="width: 70%"
+      style="width: 760px"
       :bordered="false"
     >
       <div class="kb-form">
-        <div class="form-section">
-          <div class="section-title">基本信息</div>
-          <n-form label-placement="top">
-            <n-grid :cols="24" :x-gap="24">
-              <n-form-item-gi :span="24" label="知识库名称">
-                <n-input v-model:value="form.name" placeholder="请输入 RAG 名称" :maxlength="128" show-count />
-              </n-form-item-gi>
-              <n-form-item-gi :span="24" label="描述">
-                <n-input v-model:value="form.description" type="textarea" :maxlength="1200" show-count :autosize="{ minRows: 3, maxRows: 4 }" placeholder="可选，便于区分用途" />
-              </n-form-item-gi>
-              <n-form-item-gi :span="12" label="嵌入模型">
-                <n-select v-model:value="form.embeddingModelId" placeholder="请选择嵌入模型" :options="embeddingModels" filterable @update:value="handleEmbeddingConfigChange" />
-              </n-form-item-gi>
-              <n-form-item-gi :span="12" label="向量库">
-                <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable @update:value="handleEmbeddingConfigChange" />
-              </n-form-item-gi>
-              <n-form-item-gi :span="12" label="向量维度">
-                <template #label>
-                  <span style="vertical-align: baseline">向量维度</span>
-                  <n-popover trigger="hover">
-                    <template #trigger>
-                      <n-icon><CircleQuestionMark /></n-icon>
-                    </template>
-                    <span class="info">
-                      模型最大维度: {{capability?.modelMaxDimension ?? '未知'}}，向量库最大维度: {{capability?.storeMaxDimension ?? '未知'}}，当前可用上限: {{ capability?.effectiveMaxDimension ?? '未知' }}
-                    </span>
-                  </n-popover>
-                </template>
-                <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 100%" />
-              </n-form-item-gi>
-              <n-form-item-gi :span="12" label="混合检索">
-                <n-switch v-model:value="form.searchEngineEnable" />
-              </n-form-item-gi>
-              <n-form-item-gi v-if="form.searchEngineEnable" :span="12" label="搜索引擎">
-                <n-select v-model:value="form.searchEngineInstanceId" placeholder="选择搜索引擎实例" :options="searchEngineOptions()" filterable />
-              </n-form-item-gi>
-            </n-grid>
-          </n-form>
-        </div>
+        <n-divider title-placement="left" style="margin: 0 0 16px">基本信息</n-divider>
+        <n-form label-placement="top">
+          <n-grid :cols="24" :x-gap="24">
+            <n-form-item-gi :span="24" label="知识库名称">
+              <n-input v-model:value="form.name" placeholder="请输入 RAG 名称" :maxlength="128" show-count />
+            </n-form-item-gi>
+            <n-form-item-gi :span="24" label="描述">
+              <n-input v-model:value="form.description" type="textarea" :maxlength="1200" show-count :autosize="{ minRows: 3, maxRows: 4 }" placeholder="可选，便于区分用途" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="嵌入模型">
+              <n-select v-model:value="form.embeddingModelId" placeholder="请选择嵌入模型" :options="embeddingModels" filterable @update:value="handleEmbeddingConfigChange" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="向量库">
+              <n-select v-model:value="form.vectorStoreInstanceId" placeholder="选择向量库实例（推荐）" :options="vectorStoreOptions()" filterable @update:value="handleEmbeddingConfigChange" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="向量维度">
+              <template #label>
+                <span style="vertical-align: baseline">向量维度</span>
+                <n-popover trigger="hover">
+                  <template #trigger>
+                    <n-icon><CircleQuestionMark /></n-icon>
+                  </template>
+                  <n-text depth="3" style="font-size: 12px">
+                    模型最大维度: {{capability?.modelMaxDimension ?? '未知'}}，向量库最大维度: {{capability?.storeMaxDimension ?? '未知'}}，当前可用上限: {{ capability?.effectiveMaxDimension ?? '未知' }}
+                  </n-text>
+                </n-popover>
+              </template>
+              <n-input-number v-model:value="form.dimensionOfVectorModel" :min="1" :max="65536" style="width: 100%" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="12" label="混合检索">
+              <n-switch v-model:value="form.searchEngineEnable">
+                <template #checked>是</template>
+                <template #unchecked>否</template>
+              </n-switch>
+              <n-text depth="3" style="font-size: 12px; margin-left: 10px">关键词 + 向量混合检索</n-text>
+            </n-form-item-gi>
+            <n-form-item-gi v-if="form.searchEngineEnable" :span="12" label="搜索引擎">
+              <n-select v-model:value="form.searchEngineInstanceId" placeholder="选择搜索引擎实例" :options="searchEngineOptions()" filterable />
+            </n-form-item-gi>
+          </n-grid>
+        </n-form>
 
-        <div class="form-section">
-          <div class="section-title">上传去重</div>
-          <div class="muted section-hint">控制同一知识库内重复文档的判定与处理方式。</div>
-          <n-form label-placement="top">
-            <n-grid :cols="24" :x-gap="24">
-              <n-form-item-gi :span="12" label="去重策略">
-                <n-select v-model:value="form.dedupStrategy" :options="dedupStrategyOptions" />
-              </n-form-item-gi>
-              <n-form-item-gi :span="12" label="冲突动作">
-                <n-select v-model:value="form.dedupAction" :options="dedupActionOptions" />
-              </n-form-item-gi>
-            </n-grid>
-          </n-form>
-        </div>
+        <n-divider title-placement="left" style="margin: 8px 0 16px">上传去重</n-divider>
+        <n-text depth="3" style="display: block; font-size: 12px; margin-bottom: 10px">控制同一知识库内重复文档的判定与处理方式。</n-text>
+        <n-form label-placement="top">
+          <n-grid :cols="24" :x-gap="24">
+            <n-form-item-gi :span="24" label="去重策略">
+              <n-radio-group v-model:value="form.dedupStrategy">
+                <n-radio-button v-for="opt in dedupStrategyOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio-button>
+              </n-radio-group>
+            </n-form-item-gi>
+            <n-form-item-gi :span="24" label="冲突动作">
+              <n-radio-group v-model:value="form.dedupAction">
+                <n-radio-button v-for="opt in dedupActionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</n-radio-button>
+              </n-radio-group>
+            </n-form-item-gi>
+          </n-grid>
+        </n-form>
 
-        <div class="form-section">
-          <div class="section-title">切片策略</div>
-          <div class="muted section-hint">选择文档如何被拆成向量片段；可随时在后台调整（需重新解析文档后生效）。</div>
-          <n-tabs v-model:value="form.sliceStrategy" type="line" animated>
-            <n-tab-pane v-for="opt in sliceStrategyOptions" :key="opt.value" :name="opt.value" :tab="opt.label">
-              <n-alert type="info" style="margin-bottom: 10px;">
-                {{ opt.describe }}
-              </n-alert>
-              <n-form label-placement="top">
-                <n-form-item v-if="form.sliceStrategy === 'delimiter'" label="分隔符">
-                  <n-select
-                      v-model:value="selectedDelimiters"
-                      :options="delimiterSelectOptions"
-                      multiple
-                      filterable
-                      clearable
-                      placeholder="选择一级切分符，可多选"
-                      :max-tag-count="3"
-                      class="delimiter-multi-select"
-                      :render-label="renderDelimiterLabel"
-                      style="width: 60%"
-                  />
-                  <span class="muted" style="margin-left: 8px">一级切分按所选符号拆分；后续递归切片使用下方最大长度与重叠</span>
-                </n-form-item>
-                <n-form-item v-if="form.sliceStrategy === 'regex'" label="一级切分正则">
-                  <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法" type="textarea" :maxlength="2048" show-count :autosize="{ minRows: 3, maxRows: 4 }" style="width: 60%" />
-                  <span class="muted" style="margin-left: 8px">全文将按该正则 split 得到多段，再对每段做最大长度递归切分。</span>
-                </n-form-item>
-                <n-form-item v-if="form.sliceStrategy === 'smart'" label="对话模型">
-                  <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable class="chunk-inp" />
-                  <span class="muted" style="margin-left: 8px">模型将输出 JSON 字符串数组；调用失败时回退为按段落切分</span>
-                </n-form-item>
-                <n-form-item label="切片最大长度">
-                  <n-input-number v-model:value="form.maxChunkLength" :min="1" class="chunk-inp" />
-                  <n-space :size="6" style="margin-left: 10px">
-                    <n-button v-for="v in quickMaxTokens" :key="v" size="tiny" quaternary :type="form.maxChunkLength === v ? 'primary' : 'default'" @click="form.maxChunkLength = v">
-                      {{ v }}
-                    </n-button>
-                  </n-space>
-                  <span class="muted" style="margin-left: 8px">字符量级（递归切分上限）</span>
-                </n-form-item>
-                <n-form-item label="片段重叠">
-                  <n-input-number v-model:value="form.chunkOverlap" :min="0" placeholder="留空" class="chunk-inp" />
-                  <span class="muted" style="margin-left: 8px">留空则使用服务端默认</span>
-                </n-form-item>
-                <n-form-item v-if="form.sliceStrategy === 'length'" label="合并短文本片">
-                  <n-switch v-model:value="form.mergeShortSegments" />
-                </n-form-item>
-              </n-form>
-            </n-tab-pane>
-          </n-tabs>
-        </div>
-
-        <div class="form-section">
-          <div class="section-title">解析引擎</div>
-          <n-radio-group v-model:value="form.parseEngine">
-            <n-radio-button value="default">内置解析器</n-radio-button>
-            <n-radio-button value="docling">Docling 引擎</n-radio-button>
-          </n-radio-group>
-          <template v-if="form.parseEngine === 'docling'">
-            <div class="muted" style="margin: 10px 0">使用外部 Docling Serve 服务，提供更精准的结构化解析、表格识别和图片提取。</div>
-            <n-form label-placement="left" label-width="140">
-              <n-form-item label="OCR 识别">
-                <n-switch v-model:value="form.docling.doOcr" />
-                <span class="muted" style="margin-left: 8px">对扫描件 / 图片型 PDF 启用文字识别</span>
+        <n-divider title-placement="left" style="margin: 8px 0 16px">切片策略</n-divider>
+        <n-text depth="3" style="display: block; font-size: 12px; margin-bottom: 10px">选择文档如何被拆成向量片段；可随时在后台调整（需重新解析文档后生效）。</n-text>
+        <n-tabs v-model:value="form.sliceStrategy" type="line" animated>
+          <n-tab-pane v-for="opt in sliceStrategyOptions" :key="opt.value" :name="opt.value" :tab="opt.label">
+            <n-alert type="info" style="margin-bottom: 10px;">
+              {{ opt.describe }}
+            </n-alert>
+            <n-form label-placement="top">
+              <n-form-item v-if="form.sliceStrategy === 'delimiter'" label="分隔符">
+                <n-select
+                    v-model:value="selectedDelimiters"
+                    :options="delimiterSelectOptions"
+                    multiple
+                    filterable
+                    clearable
+                    placeholder="选择一级切分符，可多选"
+                    :max-tag-count="3"
+                    class="delimiter-multi-select"
+                    :render-label="renderDelimiterLabel"
+                    style="width: 60%"
+                />
+                <n-text depth="3" style="font-size: 12px; margin-left: 8px">一级切分按所选符号拆分；后续递归切片使用下方最大长度与重叠</n-text>
               </n-form-item>
-              <n-form-item label="表格识别">
-                <n-switch v-model:value="form.docling.doTableStructure" />
-                <span class="muted" style="margin-left: 8px">识别并导出文档中的表格结构</span>
+              <n-form-item v-if="form.sliceStrategy === 'regex'" label="一级切分正则">
+                <n-input v-model:value="form.chunkRegex" placeholder="Java Pattern 语法" type="textarea" :maxlength="2048" show-count :autosize="{ minRows: 3, maxRows: 4 }" style="width: 60%" />
+                <n-text depth="3" style="font-size: 12px; margin-left: 8px">全文将按该正则 split 得到多段，再对每段做最大长度递归切分。</n-text>
               </n-form-item>
-              <n-form-item label="保存图片">
-                <n-switch v-model:value="form.docling.saveImages" />
-                <span class="muted" style="margin-left: 8px">将文档中的图片提取保存到资源库</span>
+              <n-form-item v-if="form.sliceStrategy === 'smart'" label="对话模型">
+                <n-select v-model:value="form.chunkModelId" placeholder="请选择用于语义切片的模型（CHAT 类型）" :options="chatModels" filterable class="chunk-inp" />
+                <n-text depth="3" style="font-size: 12px; margin-left: 8px">模型将输出 JSON 字符串数组；调用失败时回退为按段落切分</n-text>
               </n-form-item>
-              <n-form-item label="图片 OCR 增强">
-                <n-switch v-model:value="form.docling.imageOcr" />
+              <n-form-item label="切片最大长度">
+                <n-input-number v-model:value="form.maxChunkLength" :min="1" class="chunk-inp" />
+                <n-space :size="6" style="margin-left: 10px">
+                  <n-button v-for="v in quickMaxTokens" :key="v" size="tiny" quaternary :type="form.maxChunkLength === v ? 'primary' : 'default'" @click="form.maxChunkLength = v">
+                    {{ v }}
+                  </n-button>
+                </n-space>
+                <n-text depth="3" style="font-size: 12px; margin-left: 8px">字符量级（递归切分上限）</n-text>
+              </n-form-item>
+              <n-form-item label="片段重叠">
+                <n-input-number v-model:value="form.chunkOverlap" :min="0" placeholder="留空" class="chunk-inp" />
+                <n-text depth="3" style="font-size: 12px; margin-left: 8px">留空则使用服务端默认</n-text>
+              </n-form-item>
+              <n-form-item v-if="form.sliceStrategy === 'length'" label="合并短文本片">
+                <n-switch v-model:value="form.mergeShortSegments">
+                  <template #checked>是</template>
+                  <template #unchecked>否</template>
+                </n-switch>
               </n-form-item>
             </n-form>
-          </template>
-        </div>
+          </n-tab-pane>
+        </n-tabs>
+
+        <n-divider title-placement="left" style="margin: 8px 0 16px">解析引擎</n-divider>
+        <n-radio-group v-model:value="form.parseEngine">
+          <n-radio-button value="default">内置解析器</n-radio-button>
+          <n-radio-button value="docling">Docling 引擎</n-radio-button>
+        </n-radio-group>
+        <template v-if="form.parseEngine === 'docling'">
+          <n-text depth="3" style="display: block; font-size: 12px; margin: 10px 0">使用外部 Docling Serve 服务，提供更精准的结构化解析、表格识别和图片提取。</n-text>
+          <n-form label-placement="top">
+            <n-grid :cols="2" :x-gap="16">
+              <n-form-item-gi label="OCR 识别">
+                <n-space align="center" :size="10" :wrap="false">
+                  <n-switch v-model:value="form.docling.doOcr">
+                    <template #checked>是</template>
+                    <template #unchecked>否</template>
+                  </n-switch>
+                  <n-text depth="3" style="font-size: 12px">对扫描件 / 图片型 PDF 启用文字识别</n-text>
+                </n-space>
+              </n-form-item-gi>
+              <n-form-item-gi label="表格识别">
+                <n-space align="center" :size="10" :wrap="false">
+                  <n-switch v-model:value="form.docling.doTableStructure">
+                    <template #checked>是</template>
+                    <template #unchecked>否</template>
+                  </n-switch>
+                  <n-text depth="3" style="font-size: 12px">识别并导出文档中的表格结构</n-text>
+                </n-space>
+              </n-form-item-gi>
+              <n-form-item-gi label="保存图片">
+                <n-space align="center" :size="10" :wrap="false">
+                  <n-switch v-model:value="form.docling.saveImages">
+                    <template #checked>是</template>
+                    <template #unchecked>否</template>
+                  </n-switch>
+                  <n-text depth="3" style="font-size: 12px">将文档中的图片提取保存到资源库</n-text>
+                </n-space>
+              </n-form-item-gi>
+              <n-form-item-gi label="图片 OCR 增强">
+                <n-switch v-model:value="form.docling.imageOcr">
+                  <template #checked>是</template>
+                  <template #unchecked>否</template>
+                </n-switch>
+              </n-form-item-gi>
+            </n-grid>
+          </n-form>
+        </template>
       </div>
       <template #footer>
         <n-space justify="end">
@@ -767,31 +792,6 @@ onMounted(() => {
   max-height: 68vh;
   overflow-y: auto;
   padding-right: 4px;
-}
-
-.form-section {
-  padding: 14px 0;
-  border-bottom: 1px dashed rgba(128, 128, 128, 0.25);
-}
-
-.form-section:last-child {
-  border-bottom: none;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.section-hint {
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-
-.muted {
-  font-size: 12px;
-  opacity: 0.9;
 }
 
 .chunk-inp {

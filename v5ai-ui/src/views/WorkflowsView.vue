@@ -7,6 +7,8 @@ import {
   NDataTable,
   NForm,
   NFormItem,
+  NFormItemGi,
+  NGrid,
   NIcon,
   NInput,
   NModal,
@@ -308,12 +310,14 @@ onMounted(reload)
 
     <n-modal v-model:show="showCreateModal" preset="card" title="新建工作流" style="width: 520px" :bordered="false">
       <n-form label-placement="top">
-        <n-form-item label="名称">
-          <n-input v-model:value="form.name" placeholder="工作流显示名称" />
-        </n-form-item>
-        <n-form-item label="Key（唯一标识）">
-          <n-input v-model:value="form.workflowKey" placeholder="如 support-ticket" />
-        </n-form-item>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="名称">
+            <n-input v-model:value="form.name" placeholder="工作流显示名称" />
+          </n-form-item-gi>
+          <n-form-item-gi label="Key（唯一标识）">
+            <n-input v-model:value="form.workflowKey" placeholder="如 support-ticket" />
+          </n-form-item-gi>
+        </n-grid>
         <n-form-item label="描述">
           <n-input v-model:value="form.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="可选" />
         </n-form-item>

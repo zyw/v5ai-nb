@@ -4,16 +4,21 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NDivider,
   NForm,
+  NGridItem,
   NIcon,
   NInput,
   NInputNumber,
   NModal,
   NPagination,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSpace,
   NSwitch,
   NTag,
+  NText,
   useDialog,
   useMessage,
   type DataTableColumns,
@@ -599,9 +604,12 @@ onMounted(reload)
       />
     </n-card>
 
-    <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 60%" :bordered="false">
+    <n-modal v-model:show="showModal" preset="card" :title="editingId != null ? '编辑存储实例' : '新建存储实例'" style="width: 720px" :bordered="false">
       <n-form ref="formRef" label-placement="top" :model="formModel" :rules="rules">
         <n-grid :cols="24" :x-gap="24">
+          <n-grid-item :span="24">
+            <n-divider title-placement="left" style="margin: 0 0 16px">基本信息</n-divider>
+          </n-grid-item>
           <n-form-item-gi :span="24" label="实例名称" path="name">
             <n-input v-model:value="form.name" placeholder="实例显示名称" />
           </n-form-item-gi>
@@ -620,6 +628,9 @@ onMounted(reload)
           <n-form-item-gi :span="12" label="类型">
             <n-select v-model:value="form.type" :options="formTypeOptions" @update:value="handleTypeChange" />
           </n-form-item-gi>
+          <n-grid-item :span="24">
+            <n-divider title-placement="left" style="margin: 8px 0 16px">连接参数</n-divider>
+          </n-grid-item>
           <!-- 连接参数：按类型动态渲染，保存时自动生成对应 DO 的 JSON -->
           <template v-if="form.type === 1 || form.type === 4">
             <n-form-item-gi :span="12" label="主机地址" path="configForm.host">
@@ -638,7 +649,13 @@ onMounted(reload)
               <n-input v-model:value="configForm.database" placeholder="v5ai_ai" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="启用 SSL">
-              <n-switch v-model:value="configForm.sslEnabled" />
+              <n-space align="center" :size="10" :wrap="false">
+                <n-switch v-model:value="configForm.sslEnabled">
+                  <template #checked>是</template>
+                  <template #unchecked>否</template>
+                </n-switch>
+                <n-text depth="3" style="font-size: 12px">加密连接</n-text>
+              </n-space>
             </n-form-item-gi>
           </template>
           <template v-else-if="form.type === 2">
@@ -662,13 +679,16 @@ onMounted(reload)
             </n-form-item-gi>
           </template>
           <template v-else>
-            <n-form-item-gi :span="3" label="协议">
-              <n-select v-model:value="configForm.scheme" :options="[{ label: 'http', value: 'http' }, { label: 'https', value: 'https' }]" />
+            <n-form-item-gi :span="8" label="协议">
+              <n-radio-group v-model:value="configForm.scheme">
+                <n-radio-button value="http">http</n-radio-button>
+                <n-radio-button value="https">https</n-radio-button>
+              </n-radio-group>
             </n-form-item-gi>
-            <n-form-item-gi :span="9" label="主机地址" path="configForm.host">
+            <n-form-item-gi :span="8" label="主机地址" path="configForm.host">
               <n-input v-model:value="configForm.host" placeholder="localhost" />
             </n-form-item-gi>
-            <n-form-item-gi :span="12" label="端口" path="configForm.port">
+            <n-form-item-gi :span="8" label="端口" path="configForm.port">
               <n-input-number v-model:value="configForm.port" :min="1" :max="65535" style="width: 100%" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="用户名">
@@ -678,7 +698,13 @@ onMounted(reload)
               <n-input v-model:value="configForm.password" type="password" show-password-on="mousedown" placeholder="留空表示不启用 Basic 认证" />
             </n-form-item-gi>
             <n-form-item-gi :span="12" label="关闭 SSL 证书校验">
-              <n-switch v-model:value="configForm.sslVerificationDisabled" />
+              <n-space align="center" :size="10" :wrap="false">
+                <n-switch v-model:value="configForm.sslVerificationDisabled">
+                  <template #checked>是</template>
+                  <template #unchecked>否</template>
+                </n-switch>
+                <n-text depth="3" style="font-size: 12px">自签证书场景</n-text>
+              </n-space>
             </n-form-item-gi>
           </template>
         </n-grid>

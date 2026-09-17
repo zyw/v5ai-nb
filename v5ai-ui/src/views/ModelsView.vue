@@ -6,18 +6,25 @@ import {
   NCollapse,
   NCollapseItem,
   NDataTable,
+  NDivider,
   NForm,
   NFormItem,
+  NFormItemGi,
+  NGrid,
+  NGridItem,
   NIcon,
   NInput,
   NInputNumber,
   NModal,
   NPagination,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSlider,
   NSpace,
   NSwitch,
   NTag,
+  NText,
   useDialog,
   useMessage,
   type DataTableColumns
@@ -161,11 +168,6 @@ function onModelTypeChange(modelType: string) {
   modelForm.modelType = modelType
   modelForm.adapterKey = defaultAdapterKey(modelType)
 }
-
-const scopeOptions = [
-  { label: '全局（GLOBAL）', value: 'GLOBAL' },
-  { label: '个人（PERSONAL）', value: 'PERSONAL' }
-]
 
 const providerOptions = () =>
   allProviders.value.map((item) => ({ label: `${item.name} (${item.providerKey})`, value: item.id }))
@@ -899,16 +901,18 @@ onMounted(reload)
       v-model:show="showProviderModal"
       preset="card"
       :title="editingProviderId != null ? '编辑供应商' : '新建供应商'"
-      style="width: 60%"
+      style="width: 560px"
       :bordered="false"
     >
       <n-form label-placement="top">
-        <n-form-item label="供应商Key">
-          <n-input v-model:value="providerForm.providerKey" :disabled="editingProviderId != null" placeholder="如 openai" />
-        </n-form-item>
-        <n-form-item label="名称">
-          <n-input v-model:value="providerForm.name" placeholder="如 OpenAI" />
-        </n-form-item>
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="供应商Key">
+            <n-input v-model:value="providerForm.providerKey" :disabled="editingProviderId != null" placeholder="如 openai" />
+          </n-form-item-gi>
+          <n-form-item-gi label="名称">
+            <n-input v-model:value="providerForm.name" placeholder="如 OpenAI" />
+          </n-form-item-gi>
+        </n-grid>
         <n-form-item label="描述">
           <n-input v-model:value="providerForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 3, maxRows: 5 }" placeholder="请输入提供商描述" />
         </n-form-item>
@@ -949,16 +953,22 @@ onMounted(reload)
       v-model:show="showModelModal"
       preset="card"
       :title="editingModelId != null ? '编辑模型' : '新建模型'"
-      style="width: 70%"
+      style="width: 760px"
       :bordered="false"
     >
       <n-form label-placement="top">
         <n-grid :cols="24" :x-gap="24">
-        <n-form-item-gi :span="12" label="请选择提供商">
+          <n-grid-item :span="24">
+            <n-divider title-placement="left" style="margin: 0 0 16px">基本信息</n-divider>
+          </n-grid-item>
+          <n-form-item-gi :span="12" label="请选择提供商">
           <n-select v-model:value="modelForm.providerId" filterable :options="providerOptions()" />
         </n-form-item-gi>
           <n-form-item-gi :span="12" label="作用域">
-            <n-select v-model:value="modelForm.scope" :options="scopeOptions" />
+            <n-radio-group v-model:value="modelForm.scope">
+              <n-radio-button value="GLOBAL">全局</n-radio-button>
+              <n-radio-button value="PERSONAL">个人</n-radio-button>
+            </n-radio-group>
           </n-form-item-gi>
         <n-form-item-gi :span="12" label="模型名称">
           <n-input v-model:value="modelForm.modelName" :maxlength="255" show-count placeholder="如 GPT-4o Mini" />
@@ -969,9 +979,16 @@ onMounted(reload)
           <n-form-item-gi :span="24" label="描述">
             <n-input v-model:value="modelForm.description" type="textarea" :maxlength="1000" show-count :autosize="{ minRows: 3, maxRows: 5 }" placeholder="请输入模型描述" />
           </n-form-item-gi>
-        <n-form-item-gi :span="12" label="类型">
-          <n-select :value="modelForm.modelType" :options="modelTypeOptions" @update:value="onModelTypeChange" />
-        </n-form-item-gi>
+          <n-grid-item :span="24">
+            <n-divider title-placement="left" style="margin: 8px 0 16px">连接与凭据</n-divider>
+          </n-grid-item>
+          <n-form-item-gi :span="12" label="类型">
+            <n-radio-group :value="modelForm.modelType" @update:value="onModelTypeChange">
+              <n-radio-button value="CHAT">对话模型</n-radio-button>
+              <n-radio-button value="EMBEDDING">向量模型</n-radio-button>
+              <n-radio-button value="RERANK">重排模型</n-radio-button>
+            </n-radio-group>
+          </n-form-item-gi>
         <n-form-item-gi :span="12" label="适配器">
           <n-select v-model:value="modelForm.adapterKey" :options="adapterKeyOptions" />
         </n-form-item-gi>
@@ -990,12 +1007,18 @@ onMounted(reload)
               <template v-if="modelForm.modelType === 'CHAT'">
                 <n-grid :cols="24" :x-gap="24">
                 <n-form-item-gi :span="12" label="支持图片输入">
-                  <n-switch v-model:value="modelForm.imageInput" />
-                  <span class="param-hint">开启后该模型可接收图片消息</span>
+                  <n-switch v-model:value="modelForm.imageInput">
+                    <template #checked>是</template>
+                    <template #unchecked>否</template>
+                  </n-switch>
+                  <n-text depth="3" style="font-size: 12px; margin-left: 10px">开启后该模型可接收图片消息</n-text>
                 </n-form-item-gi>
                 <n-form-item-gi :span="12" label="作为 OCR 视觉兜底模型">
-                  <n-switch v-model:value="modelForm.ocrFallback" />
-                  <span class="param-hint">开启后作为 OCR 视觉兜底模型使用</span>
+                  <n-switch v-model:value="modelForm.ocrFallback">
+                    <template #checked>是</template>
+                    <template #unchecked>否</template>
+                  </n-switch>
+                  <n-text depth="3" style="font-size: 12px; margin-left: 10px">开启后作为 OCR 视觉兜底模型使用</n-text>
                 </n-form-item-gi>
                 <n-form-item-gi :span="12" label="Temperature">
                   <n-slider v-model:value="modelForm.temperature" :min="0" :max="2" :step="0.1" :format-tooltip="(v: number) => v.toFixed(1)" style="flex: 1" />
@@ -1034,7 +1057,10 @@ onMounted(reload)
                       <span class="muted">支持 dimensions 参数的模型（如 OpenAI text-embedding-3）：可对每个知识库冻结更低的输出维度</span>
                     </n-popover>
                   </template>
-                  <n-switch v-model:value="modelForm.dimensionAdjustable" />
+                  <n-switch v-model:value="modelForm.dimensionAdjustable">
+                    <template #checked>是</template>
+                    <template #unchecked>否</template>
+                  </n-switch>
                 </n-form-item-gi>
                 <n-form-item-gi v-if="modelForm.dimensionAdjustable" :span="12" label="可调上限">
                   <n-input-number v-model:value="modelForm.maxDimension" :min="1" :max="65536" style="width: 100%" placeholder="默认等于嵌入维度" />
@@ -1074,12 +1100,6 @@ onMounted(reload)
 </template>
 
 <style scoped>
-.param-hint {
-  font-size: 12px;
-  opacity: 0.6;
-  margin-left: 10px;
-}
-
 .param-value {
   min-width: 44px;
   margin-left: 12px;

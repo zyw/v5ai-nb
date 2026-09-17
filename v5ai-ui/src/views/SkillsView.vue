@@ -402,7 +402,7 @@ onMounted(reload)
       v-model:show="showCreateModal"
       preset="card"
       title="在线新建 Skill"
-      style="width: 50%"
+      style="width: 520px"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
@@ -431,7 +431,7 @@ onMounted(reload)
       v-model:show="showUploadModal"
       preset="card"
       title="上传 Skill 包"
-      style="width: 50%"
+      style="width: 520px"
       :bordered="false"
     >
       <n-alert type="info" :bordered="false" style="margin-bottom: 16px">
