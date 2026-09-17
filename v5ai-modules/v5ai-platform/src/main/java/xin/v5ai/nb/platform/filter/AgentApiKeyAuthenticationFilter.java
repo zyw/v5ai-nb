@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
  * 应用，此过滤器实际不生效；真正生效的是 {@link AgentApiKeyServletFilter}
  * （注册见 {@code AgentApiKeyConfiguration}）。
  */
+@Deprecated // Replaced by AgentApiKeyServletFilter
 public class AgentApiKeyAuthenticationFilter implements WebFilter {
     /** 运行期接口前缀：/api/v1/agents/{agentKey}/... */
     private static final String RUNTIME_PREFIX = "/api/v1/agents/";
