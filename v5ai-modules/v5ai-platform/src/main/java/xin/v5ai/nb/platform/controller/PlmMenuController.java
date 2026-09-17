@@ -141,6 +141,20 @@ public class PlmMenuController extends BaseController {
     }
 
     /**
+     * 修改菜单状态。
+     *
+     * @param menu 菜单状态参数
+     * @return 操作结果
+     */
+    @SaCheckRole(SystemConstants.SUPER_ADMIN_ROLE_KEY)
+    @SaCheckPermission("system:menu:edit")
+    @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/changeStatus")
+    public R<Void> changeStatus(@RequestBody PlmMenuBo menu) {
+        return toAjax(menuService.updateMenuStatus(menu.getId(), menu.getStatus()));
+    }
+
+    /**
      * 删除菜单
      *
      * @param menuId 菜单ID

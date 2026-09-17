@@ -12,6 +12,7 @@ import {
   NPagination,
   NSelect,
   NSpace,
+  NSwitch,
   NTag,
   useDialog,
   useMessage,
@@ -51,8 +52,8 @@ const columns: DataTableColumns<UserAccount> = [
   { title: '账号', key: 'userName', width: 140 },
   { title: '昵称', key: 'nickName', width: 120, render: (r) => r.nickName ?? '-' },
   { title: '手机号', key: 'phoneNumber', width: 130, render: (r) => r.phoneNumber ?? '-' },
-  { title: '邮箱', key: 'email', render: (r) => r.email ?? '-' },
-  {
+  { title: '邮箱', key: 'email', width: 140, render: (r) => r.email ?? '-' },
+  /*{
     title: '角色',
     key: 'roles',
     width: 180,
@@ -60,26 +61,32 @@ const columns: DataTableColumns<UserAccount> = [
       h(NSpace, { size: 4 }, {
         default: () => (r.roles ?? []).map((role) => h(NTag, { size: 'small', bordered: false, round: true }, { default: () => role.roleName }))
       })
-  },
+  },*/
   {
     title: '状态',
     key: 'status',
-    width: 80,
-    render: (r) => (r.status === '0'
-      ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '正常' })
-      : h(NTag, { type: 'default', size: 'small', bordered: false, round: true }, { default: () => '停用' }))
+    width: 90,
+    render: (r) =>
+      h(NSwitch, {
+        value: r.status === '0',
+        loading: togglingId.value === r.id,
+        onUpdateValue: () => toggleStatus(r)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '停')
+      })
   },
-  { title: '最后登录', key: 'loginDate', width: 170, render: (r) => (r.loginDate ? (formatDateTime(r.loginDate) ?? '-') : '-') },
+  { title: '最后登录', key: 'loginDate', width: 185, render: (r) => (r.loginDate ? (formatDateTime(r.loginDate) ?? '-') : '-') },
   {
     title: '操作',
     key: 'actions',
-    width: 240,
+    width: 150,
     render: (r) =>
       h(RowActions, {
+        maxInline: 1,
         actions: [
           { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
           { key: 'resetPwd', label: '重置密码', quaternary: true, onClick: () => openResetPwd(r) },
-          { key: 'toggle', label: r.status === '0' ? '停用' : '启用', quaternary: true, onClick: () => toggleStatus(r) },
           ...(r.status === '1'
             ? [{ key: 'unlock', label: '解锁', quaternary: true, onClick: () => handleUnlock(r) }]
             : []),
@@ -97,6 +104,7 @@ const columns: DataTableColumns<UserAccount> = [
 ]
 
 const selectedIds = ref<number[]>([])
+const togglingId = ref<number | null>(null)
 
 async function reload() {
   loading.value = true
@@ -236,12 +244,15 @@ async function handleResetPwd() {
 
 async function toggleStatus(row: UserAccount) {
   const next = row.status === '0' ? '1' : '0'
+  togglingId.value = row.id
   try {
     await changeUserStatus(adminToken.value, row.id, next)
     message.success(next === '0' ? '已启用' : '已停用')
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '操作失败')
+  } finally {
+    togglingId.value = null
   }
 }
 
@@ -265,17 +276,21 @@ async function handleDelete(targets: UserAccount[]) {
 }
 
 function handleBatchDelete() {
-  const targets = rows.value.filter((r) => selectedIds.value.includes(r.id))
-  if (targets.length === 0) {
-    message.warning('请先选择用户')
-    return
-  }
   dialog.warning({
-    title: '批量删除',
-    content: `确认删除选中的 ${targets.length} 个用户？`,
+    title: '批量删除确认',
+    content: `确认删除选中的 ${selectedIds.value.length} 个用户？`,
     positiveText: '删除',
     negativeText: '取消',
-    onPositiveClick: async () => handleDelete(targets)
+    onPositiveClick: async () => {
+      try {
+        await deleteUsers(adminToken.value, selectedIds.value)
+        message.success('已删除所选用户')
+        selectedIds.value = []
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除失败')
+      }
+    }
   })
 }
 
@@ -294,7 +309,6 @@ onMounted(() => {
             <template #icon><n-icon :component="Plus" /></template>
             新增用户
           </n-button>
-          <n-button size="small" secondary type="error" @click="handleBatchDelete">批量删除</n-button>
         </n-space>
       </template>
     </PageHeader>
@@ -317,6 +331,15 @@ onMounted(() => {
         <n-button size="small" quaternary @click="handleSearch">
           <template #icon><n-icon :component="RefreshCw" /></template>
           刷新
+        </n-button>
+        <n-button
+          v-if="selectedIds.length > 0"
+          size="small"
+          type="error"
+          secondary
+          @click="handleBatchDelete"
+        >
+          删除所选（{{ selectedIds.length }}）
         </n-button>
       </n-space>
 
@@ -352,22 +375,15 @@ onMounted(() => {
         <n-form-item label="昵称" required>
           <n-input v-model:value="form.nickName" placeholder="显示名称" />
         </n-form-item>
-        <n-space style="width: 100%">
-          <n-form-item label="手机号" style="flex: 1">
-            <n-input v-model:value="form.phoneNumber" placeholder="手机号" />
-          </n-form-item>
-          <n-form-item label="邮箱" style="flex: 1">
-            <n-input v-model:value="form.email" placeholder="邮箱" />
-          </n-form-item>
-        </n-space>
-        <n-space style="width: 100%">
-          <n-form-item label="性别" style="flex: 1">
-            <n-select v-model:value="form.gender" placeholder="性别" clearable :options="[{ label: '男', value: '0' }, { label: '女', value: '1' }, { label: '未知', value: '2' }]" />
-          </n-form-item>
-          <n-form-item label="状态" style="flex: 1">
-            <n-select v-model:value="form.status" :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]" />
-          </n-form-item>
-        </n-space>
+        <n-form-item label="手机号" style="flex: 1">
+          <n-input v-model:value="form.phoneNumber" placeholder="手机号" />
+        </n-form-item>
+        <n-form-item label="邮箱" style="flex: 1">
+          <n-input v-model:value="form.email" placeholder="邮箱" />
+        </n-form-item>
+        <n-form-item label="性别">
+          <n-select v-model:value="form.gender" placeholder="性别" clearable :options="[{ label: '男', value: '0' }, { label: '女', value: '1' }, { label: '未知', value: '2' }]" />
+        </n-form-item>
         <n-form-item label="角色">
           <n-select
             v-model:value="form.roleIds"

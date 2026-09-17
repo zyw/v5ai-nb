@@ -312,7 +312,15 @@ onMounted(reloadLogin)
               刷新
             </n-button>
             <n-space style="margin-left: auto" :size="8">
-              <n-button size="small" secondary type="error" @click="handleDeleteLoginLogs(loginSelected)">删除选中</n-button>
+              <n-button
+                v-if="loginSelected.length > 0"
+                size="small"
+                secondary
+                type="error"
+                @click="handleDeleteLoginLogs(loginSelected)"
+              >
+                删除所选（{{ loginSelected.length }}）
+              </n-button>
               <n-button size="small" secondary type="error" @click="handleCleanLoginLogs">清空</n-button>
             </n-space>
           </n-space>
@@ -359,7 +367,15 @@ onMounted(reloadLogin)
               刷新
             </n-button>
             <n-space style="margin-left: auto" :size="8">
-              <n-button size="small" secondary type="error" @click="handleDeleteOperLogs(operSelected)">删除选中</n-button>
+              <n-button
+                v-if="operSelected.length > 0"
+                size="small"
+                secondary
+                type="error"
+                @click="handleDeleteOperLogs(operSelected)"
+              >
+                删除所选（{{ operSelected.length }}）
+              </n-button>
               <n-button size="small" secondary type="error" @click="handleCleanOperLogs">清空</n-button>
             </n-space>
           </n-space>

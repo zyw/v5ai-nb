@@ -21,6 +21,7 @@ import { Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import {
+  changeMenuStatus,
   createMenu,
   deleteMenu,
   deleteMenusCascade,
@@ -95,10 +96,16 @@ const columns: DataTableColumns<MenuRow> = [
   {
     title: '状态',
     key: 'status',
-    width: 70,
-    render: (r) => (r.status === '0'
-      ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '正常' })
-      : h(NTag, { type: 'default', size: 'small', bordered: false, round: true }, { default: () => '停用' }))
+    width: 90,
+    render: (r) =>
+      h(NSwitch, {
+        value: r.status === '0',
+        loading: togglingId.value === r.id,
+        onUpdateValue: () => toggleStatus(r)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '停')
+      })
   },
   {
     title: '操作',
@@ -225,7 +232,23 @@ async function handleSave() {
   }
 }
 
-// ---- 删除 ----
+// ---- 状态 / 删除 ----
+
+const togglingId = ref<number | null>(null)
+
+async function toggleStatus(row: Menu) {
+  const next = row.status === '0' ? '1' : '0'
+  togglingId.value = row.id
+  try {
+    await changeMenuStatus(adminToken.value, row.id, next)
+    message.success(next === '0' ? '已启用' : '已停用')
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '操作失败')
+  } finally {
+    togglingId.value = null
+  }
+}
 
 async function handleDelete(row: MenuRow) {
   try {
@@ -350,14 +373,9 @@ onMounted(reload)
             <n-input v-model:value="form.queryParam" placeholder="可选" />
           </n-form-item>
         </n-space>
-        <n-space style="width: 100%">
-          <n-form-item label="显示状态" style="flex: 1">
-            <n-select v-model:value="form.visible" :options="[{ label: '显示', value: '0' }, { label: '隐藏', value: '1' }]" />
-          </n-form-item>
-          <n-form-item label="菜单状态" style="flex: 1">
-            <n-select v-model:value="form.status" :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]" />
-          </n-form-item>
-        </n-space>
+        <n-form-item label="显示状态">
+          <n-select v-model:value="form.visible" :options="[{ label: '显示', value: '0' }, { label: '隐藏', value: '1' }]" />
+        </n-form-item>
         <n-space style="width: 100%">
           <n-form-item label="外链">
             <n-switch :value="form.isFrame === 'Y'" @update:value="(v: boolean) => (form.isFrame = v ? 'Y' : 'N')" />

@@ -12,7 +12,7 @@ import {
   NModal,
   NPagination,
   NSelect,
-  NTag,
+  NSwitch,
   useDialog,
   useMessage,
   type DataTableColumns
@@ -42,23 +42,30 @@ const search = reactive({ clientKey: '', status: null as string | null })
 const columns: DataTableColumns<Client> = [
   { type: 'selection' },
   { title: 'ID', key: 'id', width: 64 },
-  { title: '客户端ID', key: 'clientId', width: 240, render: (r) => r.clientId || '-' },
+  { title: '客户端ID', key: 'clientId', width: 305, render: (r) => r.clientId || '-' },
   { title: '客户端Key', key: 'clientKey', width: 110 },
   { title: '授权类型', key: 'grantType', width: 130, render: (r) => r.grantType || (r.grantTypeList ?? []).join(',') || '-' },
   { title: '设备类型', key: 'deviceType', width: 100, render: (r) => r.deviceType ?? '-' },
   {
     title: '访问路径',
     key: 'accessPath',
+    width: 200,
     render: (r) => (r.accessPathList && r.accessPathList.length ? r.accessPathList.join(' ; ') : r.accessPath ?? '-')
   },
   { title: '有效期(s)', key: 'timeout', width: 90, render: (r) => r.timeout ?? '-' },
   {
     title: '状态',
     key: 'status',
-    width: 80,
-    render: (r) => (r.status === '0'
-      ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '正常' })
-      : h(NTag, { type: 'default', size: 'small', bordered: false, round: true }, { default: () => '停用' }))
+    width: 90,
+    render: (r) =>
+      h(NSwitch, {
+        value: r.status === '0',
+        loading: togglingId.value === r.id,
+        onUpdateValue: () => toggleStatus(r)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '停')
+      })
   },
   {
     title: '操作',
@@ -68,7 +75,6 @@ const columns: DataTableColumns<Client> = [
       h(RowActions, {
         actions: [
           { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
-          { key: 'toggle', label: r.status === '0' ? '停用' : '启用', quaternary: true, onClick: () => toggleStatus(r) },
           {
             key: 'delete',
             label: '删除',
@@ -83,6 +89,7 @@ const columns: DataTableColumns<Client> = [
 ]
 
 const selectedIds = ref<number[]>([])
+const togglingId = ref<number | null>(null)
 
 async function reload() {
   loading.value = true
@@ -201,12 +208,15 @@ async function handleSave() {
 
 async function toggleStatus(row: Client) {
   const next = row.status === '0' ? '1' : '0'
+  togglingId.value = row.id
   try {
     await changeClientStatus(adminToken.value, row.clientId, next)
     message.success(next === '0' ? '已启用' : '已停用')
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '操作失败')
+  } finally {
+    togglingId.value = null
   }
 }
 
@@ -221,17 +231,21 @@ async function handleDelete(targets: Client[]) {
 }
 
 function handleBatchDelete() {
-  const targets = rows.value.filter((r) => selectedIds.value.includes(r.id))
-  if (targets.length === 0) {
-    message.warning('请先选择客户端')
-    return
-  }
   dialog.warning({
-    title: '批量删除',
-    content: `确认删除选中的 ${targets.length} 个客户端？`,
+    title: '批量删除确认',
+    content: `确认删除选中的 ${selectedIds.value.length} 个客户端？`,
     positiveText: '删除',
     negativeText: '取消',
-    onPositiveClick: async () => handleDelete(targets)
+    onPositiveClick: async () => {
+      try {
+        await deleteClients(adminToken.value, selectedIds.value)
+        message.success('已删除所选客户端')
+        selectedIds.value = []
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除失败')
+      }
+    }
   })
 }
 
@@ -247,7 +261,6 @@ onMounted(reload)
             <template #icon><n-icon :component="Plus" /></template>
             新增客户端
           </n-button>
-          <n-button size="small" secondary type="error" @click="handleBatchDelete">批量删除</n-button>
         </n-space>
       </template>
     </PageHeader>
@@ -269,6 +282,15 @@ onMounted(reload)
         <n-button size="small" quaternary @click="handleSearch">
           <template #icon><n-icon :component="RefreshCw" /></template>
           刷新
+        </n-button>
+        <n-button
+          v-if="selectedIds.length > 0"
+          size="small"
+          type="error"
+          secondary
+          @click="handleBatchDelete"
+        >
+          删除所选（{{ selectedIds.length }}）
         </n-button>
       </n-space>
 
@@ -312,21 +334,16 @@ onMounted(reload)
             ]"
           />
         </n-form-item>
-        <n-space style="width: 100%">
-          <n-form-item label="设备类型" style="flex: 1">
-            <n-select
-              v-model:value="form.deviceType"
-              :options="[
-                { label: 'PC', value: 'pc' },
-                { label: 'APP', value: 'app' },
-                { label: 'H5', value: 'h5' }
-              ]"
-            />
-          </n-form-item>
-          <n-form-item label="状态" style="flex: 1">
-            <n-select v-model:value="form.status" :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]" />
-          </n-form-item>
-        </n-space>
+        <n-form-item label="设备类型">
+          <n-select
+            v-model:value="form.deviceType"
+            :options="[
+              { label: 'PC', value: 'pc' },
+              { label: 'APP', value: 'app' },
+              { label: 'H5', value: 'h5' }
+            ]"
+          />
+        </n-form-item>
         <n-form-item label="允许访问路径（每行一个，留空不限制）">
           <n-input v-model:value="form.accessPath" type="textarea" :rows="2" placeholder="/api/v1/**" />
         </n-form-item>

@@ -12,7 +12,7 @@ import {
   NModal,
   NPagination,
   NSelect,
-  NTag,
+  NSwitch,
   NTree,
   useDialog,
   useMessage,
@@ -52,6 +52,7 @@ const DATA_SCOPE_LABELS: Record<string, string> = {
 }
 
 const columns: DataTableColumns<Role> = [
+  { type: 'selection' },
   { title: 'ID', key: 'id', width: 64 },
   { title: '角色名称', key: 'roleName', width: 150 },
   { title: '权限字符', key: 'roleKey', width: 130 },
@@ -60,22 +61,28 @@ const columns: DataTableColumns<Role> = [
   {
     title: '状态',
     key: 'status',
-    width: 80,
-    render: (r) => (r.status === '0'
-      ? h(NTag, { type: 'success', size: 'small', bordered: false, round: true }, { default: () => '正常' })
-      : h(NTag, { type: 'default', size: 'small', bordered: false, round: true }, { default: () => '停用' }))
+    width: 90,
+    render: (r) =>
+      h(NSwitch, {
+        value: r.status === '0',
+        loading: togglingId.value === r.id,
+        onUpdateValue: () => toggleStatus(r)
+      }, {
+        checked: () => h('span', '启'),
+        unchecked: () => h('span', '停')
+      })
   },
   { title: '备注', key: 'remark', render: (r) => r.remark ?? '-' },
   {
     title: '操作',
     key: 'actions',
-    width: 220,
+    width: 180,
     render: (r) =>
       h(RowActions, {
+        maxInline: 1,
         actions: [
-          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
           { key: 'permission', label: '菜单权限', quaternary: true, onClick: () => openPermission(r) },
-          { key: 'toggle', label: r.status === '0' ? '停用' : '启用', quaternary: true, onClick: () => toggleStatus(r) },
+          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEdit(r) },
           {
             key: 'delete',
             label: '删除',
@@ -90,6 +97,7 @@ const columns: DataTableColumns<Role> = [
 ]
 
 const selectedIds = ref<number[]>([])
+const togglingId = ref<number | null>(null)
 
 async function reload() {
   loading.value = true
@@ -185,7 +193,7 @@ const permRole = ref<Role | null>(null)
 const menuTreeOptions = ref<TreeOption[]>([])
 const checkedKeys = ref<Array<string | number>>([])
 const permDataScope = ref('1')
-const menuTreeRef = ref<{ getHalfCheckedKeys?: () => Array<string | number> } | null>(null)
+const menuTreeRef = ref<{ getIndeterminateData: () => { keys: Array<string | number> } } | null>(null)
 
 function toTreeOptions(nodes: MenuTreeNode[] | undefined): TreeOption[] {
   return (nodes ?? []).map((n) => ({
@@ -213,7 +221,7 @@ async function handleSavePermission() {
   permSaving.value = true
   try {
     // 合并全选与半选节点，避免父节点勾选丢失
-    const half = menuTreeRef.value?.getHalfCheckedKeys?.() ?? []
+    const half = menuTreeRef.value?.getIndeterminateData().keys ?? []
     const menuIds = [...new Set([...checkedKeys.value, ...half])].filter((k) => typeof k === 'number') as number[]
     await updateRolePermission(adminToken.value, {
       id: permRole.value.id,
@@ -234,12 +242,15 @@ async function handleSavePermission() {
 
 async function toggleStatus(row: Role) {
   const next = row.status === '0' ? '1' : '0'
+  togglingId.value = row.id
   try {
     await changeRoleStatus(adminToken.value, row.id, next)
     message.success(next === '0' ? '已启用' : '已停用')
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '操作失败')
+  } finally {
+    togglingId.value = null
   }
 }
 
@@ -254,17 +265,21 @@ async function handleDelete(targets: Role[]) {
 }
 
 function handleBatchDelete() {
-  const targets = rows.value.filter((r) => selectedIds.value.includes(r.id))
-  if (targets.length === 0) {
-    message.warning('请先选择角色')
-    return
-  }
   dialog.warning({
-    title: '批量删除',
-    content: `确认删除选中的 ${targets.length} 个角色？`,
+    title: '批量删除确认',
+    content: `确认删除选中的 ${selectedIds.value.length} 个角色？`,
     positiveText: '删除',
     negativeText: '取消',
-    onPositiveClick: async () => handleDelete(targets)
+    onPositiveClick: async () => {
+      try {
+        await deleteRoles(adminToken.value, selectedIds.value)
+        message.success('已删除所选角色')
+        selectedIds.value = []
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除失败')
+      }
+    }
   })
 }
 
@@ -280,7 +295,6 @@ onMounted(reload)
             <template #icon><n-icon :component="Plus" /></template>
             新增角色
           </n-button>
-          <n-button size="small" secondary type="error" @click="handleBatchDelete">批量删除</n-button>
         </n-space>
       </template>
     </PageHeader>
@@ -303,6 +317,15 @@ onMounted(reload)
         <n-button size="small" quaternary @click="handleSearch">
           <template #icon><n-icon :component="RefreshCw" /></template>
           刷新
+        </n-button>
+        <n-button
+          v-if="selectedIds.length > 0"
+          size="small"
+          type="error"
+          secondary
+          @click="handleBatchDelete"
+        >
+          删除所选（{{ selectedIds.length }}）
         </n-button>
       </n-space>
 
@@ -335,14 +358,9 @@ onMounted(reload)
         <n-form-item label="权限字符" required>
           <n-input v-model:value="form.roleKey" placeholder="如：operator（字母数字）" />
         </n-form-item>
-        <n-space style="width: 100%">
-          <n-form-item label="显示顺序" style="flex: 1">
-            <n-input-number v-model:value="form.roleSort" :min="0" style="width: 100%" />
-          </n-form-item>
-          <n-form-item label="状态" style="flex: 1">
-            <n-select v-model:value="form.status" :options="[{ label: '正常', value: '0' }, { label: '停用', value: '1' }]" />
-          </n-form-item>
-        </n-space>
+        <n-form-item label="显示顺序">
+          <n-input-number v-model:value="form.roleSort" :min="0" style="width: 100%" />
+        </n-form-item>
         <n-form-item label="数据范围">
           <n-select
             v-model:value="form.dataScope"
@@ -380,11 +398,12 @@ onMounted(reload)
           <div style="max-height: 360px; overflow: auto; width: 100%; border: 1px solid rgba(128,128,128,.2); border-radius: 8px; padding: 8px">
             <n-tree
               ref="menuTreeRef"
-              :options="menuTreeOptions"
+              :data="menuTreeOptions"
               :checked-keys="checkedKeys"
               checkable
               selectable
               cascade
+              default-expand-all
               @update:checked-keys="(keys: Array<string | number>) => (checkedKeys = keys)"
             />
           </div>

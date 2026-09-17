@@ -430,7 +430,7 @@ onBeforeUnmount(stopPolling)
             批量重新解析（{{ checkedRowKeys.length }}）
           </n-button>
           <n-button size="small" secondary type="error" @click="handleBatchDelete">
-            批量删除（{{ checkedRowKeys.length }}）
+            删除所选（{{ checkedRowKeys.length }}）
           </n-button>
         </template>
       </n-space>

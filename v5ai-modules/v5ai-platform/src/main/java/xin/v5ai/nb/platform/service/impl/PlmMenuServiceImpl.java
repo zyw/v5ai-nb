@@ -309,6 +309,21 @@ public class PlmMenuServiceImpl implements IPlmMenuService {
     }
 
     /**
+     * 修改菜单状态
+     *
+     * @param menuId 菜单ID
+     * @param status 菜单状态（0正常 1停用）
+     * @return 结果
+     */
+    @Override
+    public int updateMenuStatus(Long menuId, String status) {
+        return baseMapper.lambda()
+                .set(PlmMenu::getStatus, status)
+                .eq(PlmMenu::getId, menuId)
+                .updateCount();
+    }
+
+    /**
      * 删除菜单管理信息
      *
      * @param menuId 菜单ID

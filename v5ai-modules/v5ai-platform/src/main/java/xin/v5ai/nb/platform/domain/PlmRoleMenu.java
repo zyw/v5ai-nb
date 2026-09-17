@@ -1,11 +1,12 @@
 package xin.v5ai.nb.platform.domain;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 import java.io.Serial;
+import java.io.Serializable;
 
 /**
  * 角色和菜单关联对象 sys_role_menu
@@ -14,9 +15,8 @@ import java.io.Serial;
  * @date 2026-08-26
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
 @TableName("plm_role_menu")
-public class PlmRoleMenu extends BaseEntity {
+public class PlmRoleMenu implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;

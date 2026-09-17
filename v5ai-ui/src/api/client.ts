@@ -2055,6 +2055,14 @@ export function updateMenu(adminToken: string, form: MenuForm): Promise<void> {
   }, adminToken)
 }
 
+/** 修改菜单状态（'0' 正常 / '1' 停用）。 */
+export function changeMenuStatus(adminToken: string, id: number, status: string): Promise<void> {
+  return requestJson<void>('/api/admin/menus/changeStatus', {
+    method: 'PUT',
+    body: JSON.stringify({ id, status })
+  }, adminToken)
+}
+
 export function deleteMenu(adminToken: string, id: number): Promise<void> {
   return requestJson<void>(`/api/admin/menus/${id}`, { method: 'DELETE' }, adminToken)
 }
