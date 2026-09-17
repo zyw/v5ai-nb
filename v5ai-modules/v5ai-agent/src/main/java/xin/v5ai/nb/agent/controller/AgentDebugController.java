@@ -1,4 +1,4 @@
-package xin.v5ai.nb.runtime.controller;
+package xin.v5ai.nb.agent.controller;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.codec.ServerSentEvent;
@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.ChatBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
-import xin.v5ai.nb.runtime.domain.bo.ChatRequest;
 
 /**
  * 管理端 AgentDTO 调试接口：使用管理端 Sa-Token 鉴权（/api/admin/** 拦截），
@@ -31,9 +31,9 @@ public class AgentDebugController {
     @PostMapping(value = "/stream", produces = "text/event-stream")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> stream(
             @PathVariable("agentKey") String agentKey,
-            @RequestBody ChatRequest request
+            @RequestBody ChatBo bo
     ) {
-        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, request.conversationId(), request.query())));
+        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, bo.conversationId(), bo.query())));
     }
 
     private static Flux<ServerSentEvent<RuntimeRunEventDTO>> toSse(Flux<RuntimeRunEventDTO> events) {

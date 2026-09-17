@@ -12,7 +12,9 @@ import io.agentscope.core.tool.Toolkit;
 import io.agentscope.harness.agent.HarnessAgent;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
-import xin.v5ai.nb.common.agentscope.core.*;
+import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
+import xin.v5ai.nb.common.agentscope.core.McpConnection;
+import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
 import xin.v5ai.nb.common.agentscope.core.domain.KnowledgeBaseRef;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedMcpTool;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
@@ -20,10 +22,10 @@ import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.repository.ResolvedSkillAgentSkillRepository;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
-import xin.v5ai.nb.common.agentscope.core.repository.ResolvedSkillAgentSkillRepository;
 import xin.v5ai.nb.common.agentscope.core.tools.PlatformMcpTool;
 import xin.v5ai.nb.common.agentscope.core.tools.RagSearchTool;
 import xin.v5ai.nb.common.agentscope.core.tools.WebSearchTool;
@@ -48,9 +50,9 @@ import java.util.stream.Collectors;
  * - 支持多轮对话历史回放（request.history 拼进消息列表）；
  * - 支持注入 RAG 上下文（放进系统提示）；
  * - 发起模型请求前先发 {@code MODEL_CALL} 标记，供运行时转为平台事件；
- * - 可选 MCP 集成：AgentDTO 绑定 MCP Server 时，动态注册工具到
+ * - 可选 MCP 集成：Agent 绑定 MCP Server 时，动态注册工具到
  *   HarnessAgent Toolkit，并通过 AgentScope 事件流映射出 ToolCall/ToolResult 事件；
- * - 可选 Skill 集成：AgentDTO 绑定 Skill 时，把已发布版本文件注入 workspace
+ * - 可选 Skill 集成：Agent 绑定 Skill 时，把已发布版本文件注入 workspace
  *   （{@code skills/<name>/}）并注册只读 Skill 仓库，让 SkillRuntime 把
  *   {@code <available_skills>} 注入系统提示。
  */
@@ -118,27 +120,27 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     }
 
     @Override
-    public Flux<AgentTextEvent> streamText(AgentDTO application, AgentRunBo request) {
+    public Flux<AgentTextEvent> streamText(AgentDTO agentDTO, AgentRunBo request) {
         // 能力开关门控：关闭时不加载绑定（MCP/Skill），联网搜索按开关注册独立工具
-        var tools = (application.mcpEnabled() && mcpToolResolver != null)
-                ? mcpToolResolver.resolveTools(application) : List.<ResolvedMcpTool>of();
-        var skills = (application.skillEnabled() && skillWorkspaceResolver != null)
-                ? skillWorkspaceResolver.resolveSkills(application) : List.<ResolvedSkill>of();
-        boolean webSearch = application.webSearchEnabled();
+        var tools = (agentDTO.mcpEnabled() && mcpToolResolver != null)
+                ? mcpToolResolver.resolveTools(agentDTO) : List.<ResolvedMcpTool>of();
+        var skills = (agentDTO.skillEnabled() && skillWorkspaceResolver != null)
+                ? skillWorkspaceResolver.resolveSkills(agentDTO) : List.<ResolvedSkill>of();
+        boolean webSearch = agentDTO.webSearchEnabled();
         // 智能调用：注册 rag_search 工具 + 注入可用知识库列表；强制调用由 AgentScopeRuntime
         // 在 pre-step 检索并把上下文放进 request.ragContext()，此处不再注册工具
-        boolean smartRag = isSmartRag(application, request) && ragSearchProvider != null;
+        boolean smartRag = isSmartRag(agentDTO, request) && ragSearchProvider != null;
         List<KnowledgeBaseRef> knowledgeBases = smartRag
-                ? ragSearchProvider.listBoundKnowledgeBases(application.agentKey()) : List.of();
+                ? ragSearchProvider.listBoundKnowledgeBases(agentDTO.agentKey()) : List.of();
         if (knowledgeBases.isEmpty() && tools.isEmpty() && skills.isEmpty() && !webSearch) {
-            return streamDirect(application, request);
+            return streamDirect(agentDTO, request);
         }
-        return streamWithExtensions(application, request, tools, skills, webSearch, knowledgeBases);
+        return streamWithExtensions(agentDTO, request, tools, skills, webSearch, knowledgeBases);
     }
 
     /** 是否走智能调用工具路径：仅当 ragEnabled 且 rag_call_mode=SMART 且请求未携带强制检索上下文。 */
-    private static boolean isSmartRag(AgentDTO application, AgentRunBo request) {
-        if (!application.ragEnabled() || application.ragCallMode() != RagCallMode.SMART.value()) {
+    private static boolean isSmartRag(AgentDTO agentDTO, AgentRunBo request) {
+        if (!agentDTO.ragEnabled() || agentDTO.ragCallMode() != RagCallMode.SMART.value()) {
             return false;
         }
         return request.ragContext() == null || request.ragContext().isBlank();
@@ -147,8 +149,8 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     /**
      * 无 MCP/Skill 的轻量路径：直接调用模型流式接口。
      */
-    private Flux<AgentTextEvent> streamDirect(AgentDTO application, AgentRunBo request) {
-        List<Msg> messages = buildMessages(application, request);
+    private Flux<AgentTextEvent> streamDirect(AgentDTO agentDTO, AgentRunBo request) {
+        List<Msg> messages = buildMessages(agentDTO, request);
         return Flux.concat(
                 Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
                 model.stream(messages, List.of(), generateOptions())
@@ -163,7 +165,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      * 并映射为平台事件。
      */
     private Flux<AgentTextEvent> streamWithExtensions(
-            AgentDTO application, AgentRunBo request,
+            AgentDTO agentDTO, AgentRunBo request,
             List<ResolvedMcpTool> tools, List<ResolvedSkill> skills, boolean webSearch,
             List<KnowledgeBaseRef> knowledgeBases) {
         ensureWorkspaceExists();
@@ -186,7 +188,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         // 智能调用 RAG：注册 rag_search 工具；命中通过 outbox 回传，在 TOOL_RESULT 后追加 RETRIEVAL
         Deque<List<RagHit>> ragOutbox = new ConcurrentLinkedDeque<>();
         if (!knowledgeBases.isEmpty()) {
-            toolkit.registerAgentTool(new RagSearchTool(application.agentKey(), ragSearchProvider, ragOutbox::addLast));
+            toolkit.registerAgentTool(new RagSearchTool(agentDTO.agentKey(), ragSearchProvider, ragOutbox::addLast));
             toolNames.add(RagSearchTool.TOOL_NAME);
             toolPermissions.put(RagSearchTool.TOOL_NAME, McpToolPermission.ALLOW);
         }
@@ -196,11 +198,11 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         injectSkillsToWorkspace(workspace, skills);
 
         HarnessAgent.Builder builder = HarnessAgent.builder()
-                .name(application.name())
+                .name(agentDTO.name())
                 .description("v5ai AgentScope runtime with MCP tools and skills")
                 // MCP/Skill 路径不走 buildMessages，须显式注入系统提示（含 RAG 上下文/可用知识库列表），
                 // 否则 application.systemPrompt() 与 request.ragContext() 都会丢失
-                .sysPrompt(buildSystemPrompt(application, request, knowledgeBases))
+                .sysPrompt(buildSystemPrompt(agentDTO, request, knowledgeBases))
                 .model(model)
                 // 每次运行使用全新内存状态存储：上一次运行中断（如工具调用未完成）
                 // 残留的 pending tool call 不会泄漏到本次运行，避免
@@ -209,22 +211,31 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
                 .enablePendingToolRecovery(true)
                 .workspace(workspace)
                 .toolkit(toolkit)
+                // 禁用文件系统工具
                 .disableFilesystemTools()
+                // 禁用 Shell 工具
                 .disableShellTool()
+                // 禁用记忆工具
                 .disableMemoryTools()
+                // 禁用会话持久化
                 .disableSessionPersistence()
+                // 禁用工作区上下文
                 .disableWorkspaceContext()
+                // 禁用子代理
                 .disableSubagents()
+                // 禁用动态子代理
                 .disableDynamicSubagents();
 
         HarnessAgent agent;
         if (skills.isEmpty()) {
             agent = builder
+                    // 禁用动态技能
                     .disableDynamicSkills()
+                    // 禁用默认工作区技能
                     .disableDefaultWorkspaceSkills()
                     .build();
         } else {
-            // 有 Skill：注册只读 Skill 仓库（唯一技能来源，隔离其它应用/历史残留），
+            // 有 Skill：注册只读 Skill 仓库（唯一技能来源，隔离其它 Agent/历史残留），
             // 并保持动态技能启用（HarnessSkillMiddleware 注入 <available_skills>）
             agent = builder
                     .skillRepository(new ResolvedSkillAgentSkillRepository(skills))
@@ -323,7 +334,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
 
     /**
      * 组装发送给模型的完整消息列表：
-     * 1) SYSTEM 提示：应用身份 + 描述 + 可选的 RAG 知识上下文；
+     * 1) SYSTEM 提示：Agent 身份 + 描述 + 可选的 RAG 知识上下文；
      * 2) 历史消息：按角色映射为 USER/ASSISTANT；
      * 3) 当前用户提问。
      */
@@ -350,7 +361,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     }
 
     /**
-     * 组装系统提示：应用系统提示词（或默认身份+描述）+ RAG 知识上下文。
+     * 组装系统提示：Agent 系统提示词（或默认身份+描述）+ RAG 知识上下文。
      * 直连路径经 buildMessages 注入，MCP/Skill 路径经 HarnessAgent.sysPrompt 注入，两路共用同一口径。
      */
     private static String buildSystemPrompt(AgentDTO application, AgentRunBo request) {
@@ -358,14 +369,14 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     }
 
     /**
-     * 组装系统提示：应用系统提示词（或默认身份+描述）+ RAG 知识上下文；
+     * 组装系统提示：Agent 系统提示词（或默认身份+描述）+ RAG 知识上下文；
      * 智能调用模式下额外注入「可用知识库列表」（{@code knowledgeBases}），供模型决定何时调用 {@code rag_search}。
      * 直连路径经 buildMessages 注入，MCP/Skill 路径经 HarnessAgent.sysPrompt 注入，两路共用同一口径。
      */
     private static String buildSystemPrompt(AgentDTO application, AgentRunBo request,
                                             List<KnowledgeBaseRef> knowledgeBases) {
         var system = new StringBuilder();
-        // 配置了系统提示词则优先使用，否则回退默认（应用身份 + 描述）
+        // 配置了系统提示词则优先使用，否则回退默认（Agent 身份 + 描述）
         if (application.systemPrompt() != null && !application.systemPrompt().isBlank()) {
             system.append(application.systemPrompt());
         } else {

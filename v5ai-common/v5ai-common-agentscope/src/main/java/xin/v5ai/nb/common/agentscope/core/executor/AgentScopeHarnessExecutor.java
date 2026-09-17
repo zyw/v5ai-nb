@@ -18,8 +18,8 @@ import java.nio.file.Path;
 /**
  * 基于 AgentScope HarnessAgent 的文本流式执行器。
  *
- * 把应用配置（AgentDTO）与模型绑定到一个 HarnessAgent 上，
- * 以响应式流的形式对外暴露 AgentDTO 的文本输出。
+ * 把 Agent 配置（AgentDTO）与模型绑定到一个 HarnessAgent 上，
+ * 以响应式流的形式对外暴露 Agent 的文本输出。
  *
  * 说明：这里刻意禁用了文件系统工具、Shell、记忆、子代理、技能等
  * 高级能力，只保留"模型直接回答"的最小运行形态。
@@ -27,9 +27,9 @@ import java.nio.file.Path;
 public class AgentScopeHarnessExecutor implements AgentTextExecutor {
     /** 绑定的模型（由 AgentModelResolver 解析得到） */
     private final Model model;
-    /** 状态存储：保存 AgentDTO 运行状态（会话/上下文） */
+    /** 状态存储：保存 Agent 运行状态（会话/上下文） */
     private final AgentStateStore stateStore;
-    /** 工作目录：AgentDTO 可用的运行空间 */
+    /** 工作目录：Agent 可用的运行空间 */
     private final Path workspace;
 
     /**
@@ -57,32 +57,42 @@ public class AgentScopeHarnessExecutor implements AgentTextExecutor {
 
     @Override
     public Flux<AgentTextEvent> streamText(AgentDTO application, AgentRunBo request) {
+        // 确保工作目录存在
         ensureWorkspaceExists();
-        // 按应用信息构建 HarnessAgent，并关闭各类扩展能力（最小运行形态）
+        // 按 Agent 信息构建 HarnessAgent，并关闭各类扩展能力（最小运行形态）
         HarnessAgent agent = HarnessAgent.builder()
                 .name(application.name())
                 .description("v5ai AgentScope Java minimum runtime")
                 .model(model)
                 .stateStore(stateStore)
                 .workspace(workspace)
+                // 禁用文件系统工具
                 .disableFilesystemTools()
+                // 禁用 Shell 工具
                 .disableShellTool()
+                // 禁用记忆工具
                 .disableMemoryTools()
+                // 禁用会话持久化
                 .disableSessionPersistence()
+                // 禁用工作区上下文
                 .disableWorkspaceContext()
+                // 禁用子代理
                 .disableSubagents()
+                // 禁用动态子代理
                 .disableDynamicSubagents()
+                // 禁用动态技能
                 .disableDynamicSkills()
+                // 禁用默认工作区技能
                 .disableDefaultWorkspaceSkills()
                 .build();
         return Flux.concat(
                         // 先发一个"模型调用开始"标记（供上层转为 MODEL_CALL 事件）
                         Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
-                        // 执行 AgentDTO，把返回的消息转换为文本事件流
+                        // 执行 Agent，把返回的消息转换为文本事件流
                         agent.call(request.query(), RuntimeContext.empty())
                                 .map(message -> (AgentTextEvent) new AgentTextEvent.Text(message.getTextContent()))
                                 .flux())
-                // 流结束后（正常/异常/取消）关闭 AgentDTO 释放资源
+                // 流结束后（正常/异常/取消）关闭 Agent 释放资源
                 .doFinally(signal -> agent.close());
     }
 

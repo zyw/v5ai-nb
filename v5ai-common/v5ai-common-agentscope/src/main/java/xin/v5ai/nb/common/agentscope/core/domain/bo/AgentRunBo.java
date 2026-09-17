@@ -5,16 +5,16 @@ import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import java.util.List;
 
 /**
- * AgentDTO 运行请求的参数载体（不可变 record）。
+ * Agent 运行请求的参数载体（不可变 record）。
  *
  * 通过构造器链式设置各字段，字段越往后越"高级"：
  * - 最简单的调用只需要 agentKey + conversationId + query；
  * - 可选追加 RAG 上下文（知识库检索结果）、历史消息与平台运行 ID（runId）。
  */
 public record AgentRunBo(
-        /** 应用标识：调用哪个 AgentDTO 应用 */
+        /** Agent 标识（agentKey）：调用哪个 Agent */
         String agentKey,
-        /** 会话 ID：区分同一应用下的不同对话 */
+        /** 会话 ID：区分同一 Agent 下的不同对话 */
         String conversationId,
         /** 用户本次提问的内容 */
         String query,

@@ -4,6 +4,7 @@ import io.agentscope.core.skill.AgentSkill;
 import io.agentscope.core.skill.repository.AgentSkillRepository;
 import io.agentscope.core.skill.repository.AgentSkillRepositoryInfo;
 import io.agentscope.core.skill.util.SkillUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
@@ -19,8 +20,8 @@ import java.util.Map;
  *
  * 安全边界：只暴露平台校验并发布的版本内容；单个 Skill 构建失败仅跳过。
  */
+@Slf4j
 public class ResolvedSkillAgentSkillRepository implements AgentSkillRepository {
-    private static final Logger log = LoggerFactory.getLogger(ResolvedSkillAgentSkillRepository.class);
 
     private final Map<String, AgentSkill> skills;
     private boolean writeable;

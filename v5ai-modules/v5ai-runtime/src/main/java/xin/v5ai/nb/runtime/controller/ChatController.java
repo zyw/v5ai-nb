@@ -9,12 +9,12 @@ import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.ChatBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.runtime.core.service.MessageService;
-import xin.v5ai.nb.runtime.domain.bo.ChatRequest;
 
 import java.util.List;
 
@@ -30,17 +30,17 @@ public class ChatController {
     @PostMapping("/stream")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> stream(
             @PathVariable("agentKey") String agentKey,
-            @RequestBody ChatRequest request
+            @RequestBody ChatBo bo
     ) {
-        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, request.conversationId(), request.query())));
+        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, bo.conversationId(), bo.query())));
     }
 
     @PostMapping
     public Mono<AgentRunVo> call(
             @PathVariable("agentKey") String agentKey,
-            @RequestBody ChatRequest request
+            @RequestBody ChatBo bo
     ) {
-        return agentRuntime.call(new AgentRunBo(agentKey, request.conversationId(), request.query()));
+        return agentRuntime.call(new AgentRunBo(agentKey, bo.conversationId(), bo.query()));
     }
 
     @GetMapping("/conversations/{conversationId}")
@@ -59,10 +59,10 @@ public class ChatController {
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> resume(
             @PathVariable("agentKey") String agentKey,
             @PathVariable("conversationId") String conversationId,
-            @RequestBody ChatRequest request
+            @RequestBody ChatBo bo
     ) {
         var history = messageService.findByConversationId(conversationId);
-        var resumeRequest = new AgentRunBo(agentKey, conversationId, request.query()).withHistory(history);
+        var resumeRequest = new AgentRunBo(agentKey, conversationId, bo.query()).withHistory(history);
         return toSse(agentRuntime.stream(resumeRequest));
     }
 
