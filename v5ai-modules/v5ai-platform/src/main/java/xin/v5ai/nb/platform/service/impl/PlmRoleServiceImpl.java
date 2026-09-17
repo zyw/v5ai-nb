@@ -303,7 +303,9 @@ public class PlmRoleServiceImpl implements IPlmRoleService {
         // 新增角色信息
         baseMapper.insert(role);
         bo.setId(role.getId());
-        return insertRoleMenu(bo);
+        // 菜单权限为可选入参：新增角色弹框不含菜单树，未提交 menuIds 时不建关联行，
+        // 菜单权限由「菜单权限」弹框（updateRolePermission）单独维护。
+        return bo.getMenuIds() == null || bo.getMenuIds().length == 0 ? 1 : insertRoleMenu(bo);
     }
 
     /**
