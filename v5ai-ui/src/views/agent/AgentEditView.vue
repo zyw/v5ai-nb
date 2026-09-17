@@ -569,8 +569,17 @@ onMounted(load)
                     <n-button size="tiny" secondary @click="openKbPicker">+ 添加知识库</n-button>
                   </div>
                 </div>
-                <div v-if="form.ragEnabled" style="display:flex;align-items:center;gap:10px;padding:2px 0 6px;font-size:12px;color:var(--n-text-color-3);">
-                  <span>调用方式</span>
+                <div v-if="!!selectedKbs.length" class="rag-call-mode-wrapper">
+                  <span>
+                    调用方式
+                    <n-tooltip placement="top">
+                      <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+                      <div style="font-size: 14px;font-weight: bold;">智能调用</div>
+                      <span style="font-size: 12px;">由 LLM 自主判断是否需要检索知识库。模型会根据用户问题的上下文和已有信息决定何时调用 RAG。</span>
+                      <div style="font-size: 14px;font-weight: bold;">强制调用</div>
+                      <span style="font-size: 12px;">每次对话都强制检索知识库。适用于需要确保每次回答都基于知识库内容的场景。</span>
+                    </n-tooltip>
+                  </span>
                   <n-radio-group v-model:value="form.ragCallMode" size="small">
                     <n-radio-button :value="2">强制调用</n-radio-button>
                     <n-radio-button :value="1">智能调用</n-radio-button>
@@ -1029,5 +1038,14 @@ onMounted(load)
   flex-wrap: wrap;
   gap: 20px;
   padding-left: 8px;
+}
+.rag-call-mode-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0 6px;
+  font-size: 12px;
+  margin-top: 6px;
+  color: var(--n-text-color-3);
 }
 </style>
