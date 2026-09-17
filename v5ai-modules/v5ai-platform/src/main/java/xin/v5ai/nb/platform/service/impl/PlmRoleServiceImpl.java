@@ -332,7 +332,7 @@ public class PlmRoleServiceImpl implements IPlmRoleService {
      * @param bo 角色权限参数
      * @return 结果
      */
-    @CacheEvict(cacheNames = CacheNames.SYS_ROLE_CUSTOM, key = "#bo.roleId")
+    @CacheEvict(cacheNames = CacheNames.SYS_ROLE_CUSTOM, key = "#bo.id")
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int updateRolePermission(PlmRoleBo bo) {
@@ -527,7 +527,7 @@ public class PlmRoleServiceImpl implements IPlmRoleService {
             if (ObjectUtil.isNull(loginUser) || CollUtil.isEmpty(loginUser.getRoles())) {
                 return;
             }
-            if (loginUser.getRoles().stream().anyMatch(r -> r.getRoleId().equals(roleId))) {
+            if (loginUser.getRoles().stream().anyMatch(r -> roleId.equals(r.getRoleId()))) {
                 try {
                     StpUtil.logoutByTokenValue(token);
                 } catch (NotLoginException ignored) {

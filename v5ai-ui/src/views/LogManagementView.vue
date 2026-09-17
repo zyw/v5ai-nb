@@ -405,9 +405,9 @@ onMounted(reloadLogin)
     </n-card>
 
     <!-- 操作日志详情 -->
-    <n-modal v-model:show="showDetail" preset="card" title="操作日志详情" style="width: 640px" :bordered="false">
+    <n-modal v-model:show="showDetail" preset="card" title="操作日志详情" style="width: 50%;" :bordered="false">
       <n-descriptions v-if="detailOper" :column="2" label-placement="left" bordered size="small">
-        <n-descriptions-item label="模块">{{ detailOper.title ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="模块" label-style="width: 85px;">{{ detailOper.title ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="类型">{{ BUSINESS_TYPE_LABELS[detailOper.businessType ?? 0] ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="操作人">{{ detailOper.operName ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="请求方式">{{ detailOper.requestMethod ?? '-' }}</n-descriptions-item>

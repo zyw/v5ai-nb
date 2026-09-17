@@ -330,29 +330,25 @@ onMounted(reload)
       />
     </n-card>
 
-    <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑菜单' : '新增菜单'" style="width: 560px" :bordered="false">
+    <n-modal v-model:show="showModal" preset="card" :title="isEdit ? '编辑菜单' : '新增菜单'" style="width: 50%" :bordered="false">
       <n-form label-placement="top">
         <n-form-item label="上级菜单">
           <n-select v-model:value="form.parentId" :options="parentOptions" />
         </n-form-item>
-        <n-space style="width: 100%">
-          <n-form-item label="菜单类型" style="flex: 1">
-            <n-select
-              v-model:value="form.menuType"
-              :options="[
-                { label: '目录 M', value: 'M' },
-                { label: '菜单 C', value: 'C' },
-                { label: '按钮 F', value: 'F' }
-              ]"
-            />
-          </n-form-item>
-          <n-form-item label="显示排序" style="flex: 1">
-            <n-input-number v-model:value="form.orderNum" :min="0" style="width: 100%" />
-          </n-form-item>
-        </n-space>
         <n-form-item label="菜单名称" required>
           <n-input v-model:value="form.menuName" placeholder="菜单显示名称" />
         </n-form-item>
+        <n-form-item label="菜单类型" style="flex: 1">
+          <n-select
+            v-model:value="form.menuType"
+            :options="[
+              { label: '目录 M', value: 'M' },
+              { label: '菜单 C', value: 'C' },
+              { label: '按钮 F', value: 'F' }
+            ]"
+          />
+        </n-form-item>
+
         <n-form-item v-if="form.menuType !== 'F'" label="路由地址">
           <n-input v-model:value="form.path" placeholder="如 system/users" />
         </n-form-item>
@@ -365,28 +361,28 @@ onMounted(reload)
         <n-form-item v-else label="权限标识" required>
           <n-input v-model:value="form.perms" placeholder="按钮权限码，如 system:user:add" />
         </n-form-item>
-        <n-space style="width: 100%">
-          <n-form-item label="图标" style="flex: 1">
-            <n-input v-model:value="form.icon" placeholder="图标名（lucide）" />
-          </n-form-item>
-          <n-form-item label="路由参数" style="flex: 1">
-            <n-input v-model:value="form.queryParam" placeholder="可选" />
-          </n-form-item>
-        </n-space>
+        <n-form-item label="路由参数" style="flex: 1">
+          <n-input v-model:value="form.queryParam" placeholder="可选" />
+        </n-form-item>
+        <n-form-item label="显示排序" style="flex: 1">
+          <n-input-number v-model:value="form.orderNum" :min="0" style="width: 100%" />
+        </n-form-item>
         <n-form-item label="显示状态">
           <n-select v-model:value="form.visible" :options="[{ label: '显示', value: '0' }, { label: '隐藏', value: '1' }]" />
         </n-form-item>
-        <n-space style="width: 100%">
-          <n-form-item label="外链">
-            <n-switch :value="form.isFrame === 'Y'" @update:value="(v: boolean) => (form.isFrame = v ? 'Y' : 'N')" />
-          </n-form-item>
-          <n-form-item label="缓存">
-            <n-switch :value="form.isCache === 'Y'" @update:value="(v: boolean) => (form.isCache = v ? 'Y' : 'N')" />
-          </n-form-item>
-          <n-form-item label="备注" style="flex: 1">
-            <n-input v-model:value="form.remark" placeholder="可选" />
-          </n-form-item>
-        </n-space>
+        <n-form-item label="外链">
+          <n-switch :value="form.isFrame === 'Y'" @update:value="(v: boolean) => (form.isFrame = v ? 'Y' : 'N')" />
+        </n-form-item>
+        <n-form-item label="缓存">
+          <n-switch :value="form.isCache === 'Y'" @update:value="(v: boolean) => (form.isCache = v ? 'Y' : 'N')" />
+        </n-form-item>
+        <n-form-item label="图标" style="flex: 1">
+          <n-input v-model:value="form.icon" placeholder="图标名（lucide）" />
+        </n-form-item>
+
+        <n-form-item label="备注" style="flex: 1">
+          <n-input v-model:value="form.remark" type="textarea" :rows="3" placeholder="可选" />
+        </n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="end">

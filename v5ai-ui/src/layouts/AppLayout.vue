@@ -190,7 +190,7 @@ onMounted(() => {
       <div class="sider-brand" :class="{ collapsed }">
         <div class="brand-mark"><n-icon :component="Bot" :size="20" /></div>
         <div v-if="!collapsed" class="brand-text">
-          <div class="brand-name">v5ai-nb</div>
+          <div class="brand-name">V5Ai-NB</div>
           <div class="brand-sub">Agent Platform</div>
         </div>
       </div>

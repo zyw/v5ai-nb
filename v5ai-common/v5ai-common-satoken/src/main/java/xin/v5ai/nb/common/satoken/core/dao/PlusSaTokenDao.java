@@ -4,6 +4,8 @@ import cn.dev33.satoken.dao.auto.SaTokenDaoBySessionFollowObject;
 import cn.dev33.satoken.util.SaFoxUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.redis.utils.RedisUtils;
 
@@ -22,6 +24,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Lion Li
  */
+@Slf4j
 public class PlusSaTokenDao implements SaTokenDaoBySessionFollowObject {
 
     private static final Cache<String, Object> CAFFEINE = Caffeine.newBuilder()
@@ -168,13 +171,49 @@ public class PlusSaTokenDao implements SaTokenDaoBySessionFollowObject {
 
     /**
      * 从缓存读取对象。
+     * <p>
+     * 会话数据由 Jackson 按类型标识（含全限定类名）序列化，历史数据中的类可能已改包名或改名而无法反序列化。
+     * 这类数据已不可恢复，按「会话不存在」处理并清理，避免每次读取都抛异常并波及业务调用方。
+     * </p>
      *
      * @param key 缓存键
      * @return 缓存值
      */
     @SuppressWarnings("unchecked")
     private <T> T getCacheValue(String key) {
-        return (T) CAFFEINE.get(key, RedisUtils::getCacheObject);
+        try {
+            return (T) CAFFEINE.get(key, RedisUtils::getCacheObject);
+        } catch (RuntimeException e) {
+            if (!isUnreadablePayload(e)) {
+                throw e;
+            }
+            log.warn("会话数据反序列化失败，已按失效处理并清理：key={}", key);
+            invalidate(key);
+            try {
+                RedisUtils.deleteObject(key);
+            } catch (RuntimeException deleteError) {
+                log.warn("清理失效会话数据失败：key={}", key, deleteError);
+            }
+            return null;
+        }
+    }
+
+    /**
+     * 判断异常是否由反序列化失败引起（Jackson 无法按类型标识还原对象）。
+     *
+     * @param e 异常
+     * @return true 表示数据无法反序列化
+     */
+    private static boolean isUnreadablePayload(Throwable e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof JacksonException) {
+                return true;
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return false;
     }
 
     /**

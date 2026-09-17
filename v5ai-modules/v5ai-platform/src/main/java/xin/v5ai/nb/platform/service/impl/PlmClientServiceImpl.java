@@ -142,7 +142,7 @@ public class PlmClientServiceImpl implements IPlmClientService {
      * @param bo 客户端业务对象
      * @return 修改成功返回 {@code true}
      */
-    @CacheEvict(cacheNames = CacheNames.SYS_CLIENT, key = "#bo.clientId")
+    @CacheEvict(cacheNames = CacheNames.SYS_CLIENT, key = "#bo.id")
     @Override
     public Boolean updateByBo(PlmClientBo bo) {
         PlmClient update = MapstructUtils.convert(bo, PlmClient.class);

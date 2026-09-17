@@ -348,7 +348,7 @@ onMounted(reload)
           <n-input v-model:value="form.accessPath" type="textarea" :rows="2" placeholder="/api/v1/**" />
         </n-form-item>
         <n-form-item label="IP 白名单（逗号分隔，留空不限制）">
-          <n-input v-model:value="form.ipWhitelist" placeholder="如 192.168.1.0/24,10.0.0.1" />
+          <n-input v-model:value="form.ipWhitelist" type="textarea" :rows="2" placeholder="如 192.168.1.0/24,10.0.0.1" />
         </n-form-item>
         <n-space style="width: 100%">
           <n-form-item label="token 有效期(s)" style="flex: 1">

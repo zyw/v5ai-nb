@@ -3,8 +3,10 @@ package xin.v5ai.nb.starter;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+@EnableAsync
 @EnableScheduling
 @SpringBootApplication(scanBasePackages = "xin.v5ai.nb")
 public class V5aiApplication {

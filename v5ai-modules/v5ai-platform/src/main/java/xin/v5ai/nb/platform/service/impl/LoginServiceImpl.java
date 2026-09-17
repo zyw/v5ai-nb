@@ -281,7 +281,12 @@ public class LoginServiceImpl implements ILoginService {
             loginUser.setRolePermission(permissionService.getRolePermission(userId));
         }, () -> {
             List<PlmRoleVo> roles = roleService.selectRolesByUserId(userId);
-            List<RoleDTO> roleDtos = BeanUtil.copyToList(roles, RoleDTO.class);
+            // PlmRoleVo 的角色主键字段为 id，RoleDTO 沿用 roleId 命名，BeanUtil 按属性名拷贝无法映射，需显式赋值。
+            List<RoleDTO> roleDtos = StreamUtils.toList(roles, role -> {
+                RoleDTO roleDto = BeanUtil.toBean(role, RoleDTO.class);
+                roleDto.setRoleId(role.getId());
+                return roleDto;
+            });
             loginUser.setRoles(roleDtos);
             loginUser.setDataScopeRoleMap(permissionService.getDataScopeRoleMap(roleDtos));
         });
