@@ -200,12 +200,21 @@ const checkedKeys = ref<Array<string | number>>([])
 const permDataScope = ref('1')
 const menuTreeRef = ref<{ getIndeterminateData: () => { keys: Array<string | number> } } | null>(null)
 
+/**
+ * 菜单树数据：只给真正有子节点的节点挂 children。
+ *
+ * Naive UI 的 isLeaf 由 treemate 判定——children 字段「存在」即视为非叶子（空数组也算），
+ * 于是叶子节点也会画出折叠箭头且点击无效果。所以叶子节点必须不带 children 字段。
+ */
 function toTreeOptions(nodes: MenuTreeNode[] | undefined): TreeOption[] {
-  return (nodes ?? []).map((n) => ({
-    key: n.id ?? -1,
-    label: n.label ?? '',
-    children: toTreeOptions(n.children)
-  }))
+  return (nodes ?? []).map((n) => {
+    const children = toTreeOptions(n.children)
+    return {
+      key: n.id ?? -1,
+      label: n.label ?? '',
+      ...(children.length > 0 ? { children } : {})
+    }
+  })
 }
 
 async function openPermission(row: Role) {

@@ -11,6 +11,7 @@ import {
   NLayoutHeader,
   NLayoutSider,
   NMenu,
+  useDialog,
   type MenuOption
 } from 'naive-ui'
 import { Bot, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-vue-next'
@@ -21,6 +22,7 @@ import { logout, type RouterVo } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
+const dialog = useDialog()
 
 const collapsed = ref(window.innerWidth < 900)
 
@@ -105,17 +107,27 @@ function handleMenuUpdate(key: string) {
 
 const userOptions = [{ label: '退出登录', key: 'logout', icon: icon(LogOut) }]
 
-async function handleUserSelect(key: string) {
-  if (key === 'logout') {
-    // 吊销服务端会话与刷新令牌（失败不阻断本地清理）
-    try {
-      await logout(adminToken.value, refreshToken.value)
-    } catch {
-      // 忽略：本地会话照常清理
-    }
-    clearAdminToken()
-    router.push({ name: 'login' })
+function handleUserSelect(key: string) {
+  if (key !== 'logout') {
+    return
   }
+  // 退出会吊销服务端会话并跳回登录页，先二次确认避免误触
+  dialog.warning({
+    title: '退出登录',
+    content: '确认退出当前账号？退出后需要重新登录。',
+    positiveText: '退出登录',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      // 吊销服务端会话与刷新令牌（失败不阻断本地清理）
+      try {
+        await logout(adminToken.value, refreshToken.value)
+      } catch {
+        // 忽略：本地会话照常清理
+      }
+      clearAdminToken()
+      router.push({ name: 'login' })
+    }
+  })
 }
 
 onMounted(() => {
