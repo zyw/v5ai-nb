@@ -1,4 +1,4 @@
-package xin.v5ai.nb.mcp.core.service;//package xin.v5ai.nb.common.agentscope.core.service;
+package xin.v5ai.nb.mcp.core.service;
 
 import xin.v5ai.nb.mcp.core.domain.dto.McpServerDTO;
 import xin.v5ai.nb.mcp.domain.McpServer;

@@ -957,8 +957,8 @@ async function streamSse(
   }
 }
 
-export function getConversationMessages(agentKey: string, apiKey: string, conversationId: string): Promise<PageResult<ConversationMessageResponse>> {
-  return requestJson<PageResult<ConversationMessageResponse>>(
+export function getConversationMessages(agentKey: string, apiKey: string, conversationId: string): Promise<ConversationMessageResponse[]> {
+  return requestJson<ConversationMessageResponse[]>(
     `/api/v1/agents/${encodeURIComponent(agentKey)}/chat/conversations/${encodeURIComponent(conversationId)}`,
     { headers: { Authorization: normalizeBearer(apiKey) } }
   )
