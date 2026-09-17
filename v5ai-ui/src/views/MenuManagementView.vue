@@ -31,6 +31,7 @@ import {
   type MenuForm
 } from '../api/client'
 import { adminToken } from '../stores/session'
+import { MENU_ICON_MAP, MENU_ICON_OPTIONS, resolveMenuIcon } from '../utils/menuIcons'
 
 type MenuRow = Menu & { children?: MenuRow[] }
 
@@ -74,6 +75,29 @@ const parentOptions = computed(() => {
   return opts
 })
 
+/** 图标 + slug 的展示节点：下拉选项、已选值、表格列共用。 */
+function iconNode(slug: string) {
+  return h('span', { style: 'display:inline-flex;align-items:center;gap:8px' }, [
+    h(NIcon, { component: resolveMenuIcon(slug) }),
+    h('span', slug)
+  ])
+}
+
+/** 下拉选项：左侧画真实图标，右侧显示 slug（与侧边栏同一份注册表）。 */
+const renderIconLabel = (option: { value?: unknown }) => iconNode(String(option.value ?? ''))
+
+/** 已选值同样带图标预览。 */
+const renderIconTag = ({ option }: { option: { value?: unknown } }) => iconNode(String(option.value ?? ''))
+
+/**
+ * 表格图标列：空值与按钮菜单的 '#' 占位按「无图标」展示；
+ * 未注册的 slug 按纯文本展示，避免显示成兜底图标造成误判。
+ */
+function renderIconCell(slug?: string | null) {
+  if (!slug || slug === '#') return '-'
+  return MENU_ICON_MAP[slug] ? iconNode(slug) : slug
+}
+
 const columns: DataTableColumns<MenuRow> = [
   { title: '菜单名称', key: 'menuName', width: 220 },
   {
@@ -82,7 +106,7 @@ const columns: DataTableColumns<MenuRow> = [
     width: 80,
     render: (r) => h(NTag, { size: 'small', bordered: false, round: true }, { default: () => MENU_TYPE_LABELS[r.menuType] ?? r.menuType })
   },
-  { title: '图标', key: 'icon', width: 80, render: (r) => r.icon ?? '-' },
+  { title: '图标', key: 'icon', width: 150, render: (r) => renderIconCell(r.icon) },
   { title: '排序', key: 'orderNum', width: 70, render: (r) => r.orderNum ?? 0 },
   { title: '路由地址', key: 'path', width: 150, render: (r) => r.path ?? '-' },
   { title: '组件路径', key: 'component', width: 170, render: (r) => r.component ?? '-' },
@@ -377,7 +401,16 @@ onMounted(reload)
           <n-switch :value="form.isCache === 'Y'" @update:value="(v: boolean) => (form.isCache = v ? 'Y' : 'N')" />
         </n-form-item>
         <n-form-item label="图标" style="flex: 1">
-          <n-input v-model:value="form.icon" placeholder="图标名（lucide）" />
+          <n-select
+            :value="form.icon ?? ''"
+            :options="MENU_ICON_OPTIONS"
+            :render-label="renderIconLabel"
+            :render-tag="renderIconTag"
+            filterable
+            clearable
+            placeholder="从图标库中选择"
+            @update:value="(v: string | null) => (form.icon = v ?? '')"
+          />
         </n-form-item>
 
         <n-form-item label="备注" style="flex: 1">

@@ -13,33 +13,8 @@ import {
   NMenu,
   type MenuOption
 } from 'naive-ui'
-import {
-  Activity,
-  Bot,
-  Boxes,
-  Cable,
-  Database,
-  Files,
-  Gauge,
-  Info,
-  KeyRound,
-  Layers,
-  LayoutDashboard,
-  ListTree,
-  LogOut,
-  MessageSquare,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ScrollText,
-  Server,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-  Sun,
-  Users,
-  Workflow
-} from 'lucide-vue-next'
+import { Bot, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-vue-next'
+import { resolveMenuIcon } from '../utils/menuIcons'
 import { isDark, toggleTheme } from '../stores/theme'
 import { adminToken, clearAdminToken, currentMenus, displayName, ensureSession, isAdmin, refreshToken } from '../stores/session'
 import { logout, type RouterVo } from '../api/client'
@@ -54,34 +29,6 @@ function icon(component: Component) {
 }
 
 type NavItem = MenuOption & { key: string }
-
-// 菜单 icon 名 → lucide 组件映射（与后端种子 / 菜单管理界面填写的 icon 字段一致）
-const iconMap: Record<string, Component> = {
-  dashboard: LayoutDashboard,
-  resource: Layers,
-  system: Settings,
-  ops: Gauge,
-  models: Boxes,
-  agents: Bot,
-  'knowledge-bases': Database,
-  'store-instances': Server,
-  files: Files,
-  'mcp-servers': Cable,
-  skills: Sparkles,
-  workflows: Workflow,
-  users: Users,
-  roles: ShieldCheck,
-  menus: ListTree,
-  clients: KeyRound,
-  logs: ScrollText,
-  observability: Activity,
-  chat: MessageSquare,
-  settings: Info
-}
-
-function iconFor(name?: string | null): Component {
-  return (name && iconMap[name]) || LayoutDashboard
-}
 
 // 由 getRouters 返回的路由菜单树构建导航（目录 -> submenu，叶子 -> 按 path 跳转）
 function normalizePath(path?: string): string {
@@ -102,7 +49,7 @@ const nav = computed<NavItem[]>(() => {
               type: 'submenu' as const,
               label: m.meta?.title ?? m.name,
               key: m.path,
-              icon: icon(iconFor(m.meta?.icon)),
+              icon: icon(resolveMenuIcon(m.meta?.icon)),
               children: build(m.children)
             }
           }
@@ -110,13 +57,13 @@ const nav = computed<NavItem[]>(() => {
           return {
             label: only.meta?.title ?? only.name,
             key: normalizePath(only.path),
-            icon: icon(iconFor(only.meta?.icon ?? m.meta?.icon))
+            icon: icon(resolveMenuIcon(only.meta?.icon ?? m.meta?.icon))
           }
         }
         return {
           label: m.meta?.title ?? m.name,
           key: normalizePath(m.path),
-          icon: icon(iconFor(m.meta?.icon))
+          icon: icon(resolveMenuIcon(m.meta?.icon))
         }
       })
   return build(currentMenus.value)
