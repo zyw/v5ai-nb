@@ -33,7 +33,8 @@ public class AgentDebugController {
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatBo bo
     ) {
-        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, bo.conversationId(), bo.query())));
+        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, bo.conversationId(), bo.query())
+                .withWebSearch(bo.webSearch())));
     }
 
     private static Flux<ServerSentEvent<RuntimeRunEventDTO>> toSse(Flux<RuntimeRunEventDTO> events) {

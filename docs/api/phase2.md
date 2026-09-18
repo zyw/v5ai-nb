@@ -240,6 +240,21 @@ DELETE /api/admin/api-keys/{ids}         # 批量删除（逗号分隔主键，�
 `403` = Key 有效但未绑定该 agentKey；`429` = 按 agentKey 的限流/配额超限。
 鉴权成功会刷新 `last_used_at`。
 
+## 对话门户（终端用户侧，API Key 鉴权）
+
+独立前端 `v5ai-ui-chat` 只用 API Key（Header `Authorization: Bearer <api-key>`）访问：
+
+```http
+GET /api/v1/agents/auth/bootstrap            # Key 信息（名称/跟踪 ID/归属用户）+ 该 Key 可访问且仍已发布的 Agent
+                                             # 每个 Agent 含 name/description/avatarUrl/greeting/presetQuestions/webSearchEnabled
+GET /api/v1/agents/auth/{agentKey}/avatar   # 代读上传的头像（管理端资源地址受登录态保护，门户拿不到令牌）
+```
+
+- `/api/v1/agents/auth/bootstrap` 落在 `/api/v1/agents/*` 前缀下但不带 agentKey：只校验 Key，不校验绑定、不计配额/限流。
+- 门户端点统一在 `/api/v1/agents/auth/**` 下：`/auth/bootstrap` 只校验 Key；`/auth/{agentKey}/avatar` 额外校验绑定，且不计入 Agent 配额/限流（429 只作用于 `/api/v1/agents/{agentKey}/**` 运行路径）。
+- 会话 id 由前端生成（UUID）并随每次提问提交；历史通过 `GET /api/v1/agents/{agentKey}/chat/conversations/{id}` 读取；会话清单只存在浏览器本地。
+- `chat/stream` 请求体新增可选 `webSearch`：`null`=按 Agent 配置（默认）、`false`=本次显式关闭、`true`=请求开启。**只能收窄不能放大**：Agent 未开启联网时怎么传都不会联网。
+
 ## 运行时（RAG 注入）
 
 `POST /api/v1/agents/{agentKey}/chat/stream` 会自动：

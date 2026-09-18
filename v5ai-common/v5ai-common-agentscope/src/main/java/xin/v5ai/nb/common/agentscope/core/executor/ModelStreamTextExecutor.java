@@ -126,7 +126,8 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
                 ? mcpToolResolver.resolveTools(agentDTO) : List.<ResolvedMcpTool>of();
         var skills = (agentDTO.skillEnabled() && skillWorkspaceResolver != null)
                 ? skillWorkspaceResolver.resolveSkills(agentDTO) : List.<ResolvedSkill>of();
-        boolean webSearch = agentDTO.webSearchEnabled();
+        // 联网：Agent 开关为准，请求只能显式关闭（门户开关关闭时不注册 WebSearchTool）
+        boolean webSearch = request.resolveWebSearch(agentDTO.webSearchEnabled());
         // 智能调用：注册 rag_search 工具 + 注入可用知识库列表；强制调用由 AgentScopeRuntime
         // 在 pre-step 检索并把上下文放进 request.ragContext()，此处不再注册工具
         boolean smartRag = isSmartRag(agentDTO, request) && ragSearchProvider != null;

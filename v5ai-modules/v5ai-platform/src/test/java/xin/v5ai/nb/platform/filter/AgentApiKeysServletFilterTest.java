@@ -128,6 +128,67 @@ class AgentApiKeysServletFilterTest {
         verify(request, never()).getHeader(anyString());
     }
 
+    /**
+     * 门户初始化（/api/v1/agents/auth/bootstrap）只需要 Key 有效：它落在 /api/v1/agents/ 前缀下
+     * 但不带 agentKey，不能被当成 agentKey=auth 去校验绑定；也不占 Agent 配额。
+     */
+    @Test
+    void authBootstrapOnlyRequiresValidKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/auth/bootstrap");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("a1")));
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(quotaService);
+    }
+
+    /** 门户平级资源（头像）仍要校验绑定，但不计入模型配额。 */
+    @Test
+    void authAvatarChecksBindingAndSkipsQuota() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/auth/a2/avatar");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("a1")));
+
+        filter.doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verify(chain, never()).doFilter(any(), any());
+        verifyNoInteractions(quotaService);
+    }
+
+    /** 已绑定的 Agent 头像：放行，且不消耗配额。 */
+    @Test
+    void authAvatarForBoundAgentPassesWithoutQuota() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/auth/a1/avatar");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("a1")));
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(response, never()).setStatus(anyInt());
+        verifyNoInteractions(quotaService);
+    }
+
+    /**
+     * 回归：名字恰好叫 auth 的 Agent，其运行路径不能被 auth/ 前缀「吃掉」——
+     * 只有 bootstrap 精确路径与 auth/{agentKey}/avatar 才算门户端点。
+     */
+    @Test
+    void agentNamedAuthStillRunsAsAgentKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/auth/chat/stream");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("auth")));
+        when(quotaService.checkAllowed("auth")).thenReturn(true);
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(quotaService).checkAllowed("auth");
+    }
+
     private ApiKeysAuthDTO auth(Set<String> agentKeys) {
         return new ApiKeysAuthDTO(1L, 7L, "生产环境", "abcdefghijkl", true, agentKeys);
     }

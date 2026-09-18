@@ -39,6 +39,7 @@
 - `v5ai-api`: 管理 API（含租户/用户/配额/用量/审计/统计/健康）、运行 API（SSE + 限流/配额）、API Key 过滤器、Sa-Token 管理拦截（RBAC）
 - `v5ai-starter`: Spring Boot 启动模块（`scanBasePackages="xin.v5ai.nb"` + `@MapperScan` + `@EnableScheduling`）
 - `v5ai-ui`: Vue 3 + Vite + TypeScript + Naive UI 管理前端
+- `v5ai-ui-chat`: 独立对话门户前端（终端用户侧，API Key 登录，独立部署）
 
 ## 运行时调用链路（RAG / MCP / Skill / Tool 装配）
 
@@ -169,6 +170,11 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 ```bash
 mvn -Dmaven.repo.local=/private/tmp/v5ai-m2 clean verify -Dsurefire.failIfNoSpecifiedTests=false
 cd v5ai-ui
+npm install
+npm run build
+
+# 对话门户（独立前端，可与管理端分别部署）
+cd ../v5ai-ui-chat
 npm install
 npm run build
 ```

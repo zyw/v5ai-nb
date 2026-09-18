@@ -3,6 +3,7 @@ package xin.v5ai.nb.platform.filter;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import xin.v5ai.nb.platform.api.ApiKeyAuthAttributes;
 import xin.v5ai.nb.platform.api.ApiKeysService;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 
@@ -12,21 +13,26 @@ import java.nio.charset.StandardCharsets;
 /**
  * 运行期 API Key 鉴权过滤器（Servlet 版本）。
  *
- * <p>守卫 {@code /api/v1/agents/{agentKey}/...}：从 {@code Authorization: Bearer <api-key>}
- * 取明文 Key 交给 {@link ApiKeysService#authenticate(String)}——它按 Key 内嵌的 tracking id
- * 定位密钥行并做 BCrypt 校验，同时返回该 Key 可访问的 Agent 集合。</p>
- *
- * <p>处理结果：</p>
+ * <p>守卫 {@code /api/v1/agents/**}，从 {@code Authorization: Bearer <api-key>} 取明文 Key 交给
+ * {@link ApiKeysService#authenticate(String)}（按明文 SHA-256 摘要定位密钥行 + BCrypt 校验），
+ * 并把鉴权结果放进请求属性 {@link ApiKeyAuthAttributes#REQUEST_ATTRIBUTE} 供控制器复用：</p>
  * <ul>
- *   <li>401：缺少/格式错误的 Bearer、Key 不存在、已停用或密码不匹配；</li>
- *   <li>403：Key 有效但未绑定路径中的 agentKey（换 Key 无用，需在「API Key 管理」补绑定）；</li>
- *   <li>429：按 agentKey 的每分钟限流或每日配额超限；</li>
- *   <li>通过则继续过滤器链（Agent 是否已发布由运行时 PublishedAgentResolver 兜底判定）。</li>
+ *   <li>{@code /api/v1/agents/auth/bootstrap}：门户初始化，只校验 Key；</li>
+ *   <li>{@code /api/v1/agents/auth/{agentKey}/avatar}：门户平级资源，校验 Key + 绑定，不计配额；</li>
+ *   <li>{@code /api/v1/agents/{agentKey}/...}：运行路径，校验 Key + 该 Key 绑定 + 配额/限流。</li>
  * </ul>
+ *
+ * <p>处理结果：401=缺少/格式错误的 Bearer 或 Key 无效、已停用；403=Key 有效但未绑定路径中的 agentKey；
+ * 429=按 agentKey 的每分钟限流或每日配额超限；通过则继续过滤器链。</p>
  */
 public class AgentApiKeysServletFilter implements Filter {
 
     private static final String RUNTIME_PREFIX = "/api/v1/agents/";
+    /** 门户初始化：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key（不校验绑定、不计配额） */
+    private static final String AUTH_BOOTSTRAP_PATH = "/api/v1/agents/auth/bootstrap";
+    /** 门户凭据平级资源（如 Agent 头像）的前缀与后缀：这些路径要校验绑定，但不消耗模型配额 */
+    private static final String AUTH_PREFIX = "/api/v1/agents/auth/";
+    private static final String AUTH_RESOURCE_SUFFIX = "/avatar";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String FORBIDDEN_BODY = """
             {"code":403,"msg":"当前 API Key 无权访问该 Agent"}
@@ -49,36 +55,52 @@ public class AgentApiKeysServletFilter implements Filter {
         var request = (HttpServletRequest) servletRequest;
         var response = (HttpServletResponse) servletResponse;
         var path = request.getRequestURI();
+        boolean bootstrap = AUTH_BOOTSTRAP_PATH.equals(path);
+        // 注意：/api/v1/agents/auth/{agentKey}/avatar 的第一段是 auth 而不是 agentKey，
+        // 只按「auth 前缀 + /avatar 后缀」识别，这样叫 auth 的 Agent 的运行路径仍按 agentKey=auth 正常解析。
+        boolean authResource = path.startsWith(AUTH_PREFIX) && path.endsWith(AUTH_RESOURCE_SUFFIX);
+        boolean runtime = !bootstrap && path.startsWith(RUNTIME_PREFIX);
         // 非运行期路径不拦截，直接放行
-        if (!path.startsWith(RUNTIME_PREFIX)) {
+        if (!runtime && !bootstrap) {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
 
-        // 从路径提取 agentKey，并要求携带 Bearer 形式的 API Key
-        var agentKey = extractAgentKey(path);
+        // 要求携带 Bearer 形式的 API Key
         var authorization = request.getHeader("Authorization");
-        if (agentKey == null || authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
-
-        // 校验 API Key：按 tracking id 定位密钥行 + BCrypt 校验，失败返回 401
         var apiKey = authorization.substring(BEARER_PREFIX.length()).trim();
         var auth = apiKey.isEmpty() ? null : apiKeyService.authenticate(apiKey);
         if (auth == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
+        request.setAttribute(ApiKeyAuthAttributes.REQUEST_ATTRIBUTE, auth);
 
-        // 密钥有效但未绑定路径中的 Agent：403（区别于 401，属于授权范围问题）
+        // 门户初始化只要求 Key 有效：没有 agentKey，也就没有绑定与配额
+        if (bootstrap) {
+            chain.doFilter(servletRequest, servletResponse);
+            return;
+        }
+
+        // 取 agentKey：auth 平级资源取 auth/ 之后的段，其余运行路径取 agents/ 之后的段
+        String agentKey = authResource
+                ? extractAgentKey(path, AUTH_PREFIX)
+                : extractAgentKey(path, RUNTIME_PREFIX);
+        if (agentKey == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+        // Key 有效但未绑定路径中的 Agent：403（区别于 401，属于授权范围问题）
         if (!auth.allows(agentKey)) {
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, FORBIDDEN_BODY);
             return;
         }
-
-        // 限流 + 配额：配额/限流为 0 表示不限，超限返回 429
-        if (!quotaService.checkAllowed(agentKey)) {
+        // 限流 + 配额只作用于按 Agent 运行的路径（读头像等平级资源不计入模型配额）
+        if (!authResource && !quotaService.checkAllowed(agentKey)) {
             writeJson(response, 429, RATE_LIMITED_BODY);
             return;
         }
@@ -86,11 +108,15 @@ public class AgentApiKeysServletFilter implements Filter {
     }
 
     /**
-     * 从运行期路径中提取 agentKey（第一个路径段）。
-     * 形如 /api/v1/agents/{agentKey}/chat/stream → {agentKey}
+     * 从受守卫路径中提取 agentKey（前缀后的第一个路径段）。
+     * 形如 /api/v1/agents/{agentKey}/chat/stream 或 /api/v1/agents/auth/{agentKey}/avatar
+     *
+     * @param path   请求路径
+     * @param prefix 该族路径的前缀（含结尾斜杠）
+     * @return agentKey；路径结构不符合预期时返回 null
      */
-    private String extractAgentKey(String path) {
-        var rest = path.substring(RUNTIME_PREFIX.length());
+    private String extractAgentKey(String path, String prefix) {
+        var rest = path.substring(prefix.length());
         var slash = rest.indexOf('/');
         if (slash <= 0) {
             return null;

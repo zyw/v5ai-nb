@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { NCard } from 'naive-ui'
+import { NButton, NCard, NIcon } from 'naive-ui'
+import { ExternalLink } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 
 const baseline = [
@@ -10,6 +11,12 @@ const baseline = [
   { label: 'Vector DB', value: 'PostgreSQL + pgvector' },
   { label: 'Migrations', value: 'Flyway' }
 ]
+/** 独立对话门户（v5ai-ui-chat）地址；未配置时不显示入口，避免死链。 */
+const chatPortalUrl = import.meta.env.VITE_CHAT_UI_URL ?? ''
+
+function openChatPortal() {
+  window.open(chatPortalUrl, '_blank', 'noopener')
+}
 </script>
 
 <template>
@@ -23,6 +30,17 @@ const baseline = [
           <strong class="baseline-value">{{ item.value }}</strong>
         </div>
       </div>
+    </n-card>
+
+    <n-card v-if="chatPortalUrl" title="对话门户" :bordered="true">
+      <p style="margin: 0 0 12px; font-size: 13px; opacity: 0.75">
+        终端用户对话页（独立应用 <code>v5ai-ui-chat</code>）：进入后用 API Key 登录，只能访问该 Key 绑定的已发布 Agent。
+        Key 在「API Key 管理」里签发与绑定。
+      </p>
+      <n-button type="primary" secondary size="small" @click="openChatPortal">
+        <template #icon><n-icon :component="ExternalLink" :size="15" /></template>
+        打开对话门户
+      </n-button>
     </n-card>
 
     <n-card title="运行时说明" :bordered="true">

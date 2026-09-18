@@ -1,0 +1,29 @@
+/* 对话门户基础样式：只放全局重置与语义令牌，组件样式一律用 Naive 主题变量，禁止硬编码颜色。 */
+
+:root {
+  --portal-topbar-height: 56px;
+  --portal-sidebar-width: 260px;
+  --portal-radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 长内容（代码块、表格）不在页面级别撑破布局 */
+.portal-main,
+.portal-sidebar {
+  min-width: 0;
+}

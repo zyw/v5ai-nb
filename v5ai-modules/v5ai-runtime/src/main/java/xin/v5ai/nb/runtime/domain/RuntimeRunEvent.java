@@ -16,7 +16,7 @@ public class RuntimeRunEvent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @TableId
-    private String id;
+    private Long id;
 
     /**
      * 运行ID

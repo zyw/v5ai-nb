@@ -254,6 +254,6 @@ public class PersistingAgentRuntime implements AgentRuntime {
             return request;
         }
         return new AgentRunBo(request.agentKey(), UUID.randomUUID().toString(), request.query(),
-                request.ragContext(), request.history(), request.runId());
+                request.ragContext(), request.history(), request.runId(), request.webSearch());
     }
 }

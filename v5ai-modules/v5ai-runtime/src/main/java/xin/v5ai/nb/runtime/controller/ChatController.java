@@ -32,7 +32,8 @@ public class ChatController {
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatBo bo
     ) {
-        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, bo.conversationId(), bo.query())));
+        return toSse(agentRuntime.stream(new AgentRunBo(agentKey, bo.conversationId(), bo.query())
+                .withWebSearch(bo.webSearch())));
     }
 
     @PostMapping
@@ -40,7 +41,8 @@ public class ChatController {
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatBo bo
     ) {
-        return agentRuntime.call(new AgentRunBo(agentKey, bo.conversationId(), bo.query()));
+        return agentRuntime.call(new AgentRunBo(agentKey, bo.conversationId(), bo.query())
+                .withWebSearch(bo.webSearch()));
     }
 
     @GetMapping("/conversations/{conversationId}")
@@ -62,7 +64,9 @@ public class ChatController {
             @RequestBody ChatBo bo
     ) {
         var history = messageService.findByConversationId(conversationId);
-        var resumeRequest = new AgentRunBo(agentKey, conversationId, bo.query()).withHistory(history);
+        var resumeRequest = new AgentRunBo(agentKey, conversationId, bo.query())
+                .withHistory(history)
+                .withWebSearch(bo.webSearch());
         return toSse(agentRuntime.stream(resumeRequest));
     }
 

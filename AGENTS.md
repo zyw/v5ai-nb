@@ -197,6 +197,7 @@ flowchart LR
 - Vue 3 + Vite 7 + TypeScript + Naive UI + Pinia + Vue Router。
 - 结构：`src/api/client.ts`（API 类型与客户端）、`src/views/`（每页一个视图：Login、Dashboard、Agents、Models、KnowledgeBases、McpServers、Skills、Workflows、WorkflowEditor、UserManagement、RoleManagement、MenuManagement、ClientManagement、LogManagement、Observability、ChatDebug、Settings）、`src/router/index.ts`、`src/stores/`（session、theme）。
 - 构建：`cd v5ai-ui && npm install && npm run build`（产物在 `dist/`）。
+- **独立对话门户**：`v5ai-ui-chat/`（Vue 3 + Vite 独立项目，终端用户用 API Key 登录：初始化 `GET /api/v1/agents/auth/bootstrap`、Agent 头像 `GET /api/v1/agents/auth/{agentKey}/avatar`、对话复用 `/api/v1/agents/{agentKey}/chat/stream`）；构建 `cd v5ai-ui-chat && npm install && npm run build`；管理端「系统信息」页在 `VITE_CHAT_UI_URL` 配置时显示入口。
 - **Naive UI 表格横向滚动约定**：`n-data-table` 是否出现横向滚动条取决于「列是否带 `ellipsis`」。任一列配置 `ellipsis` 时，Naive UI 会把表格切为 `table-layout: fixed`（源码 `DataTable.mjs` 的 `mergedTableLayoutRef`：`virtualScroll || flexHeight || maxHeight !== undefined || hasEllipsis` → `fixed`）；fixed 布局下**只有显式绑定 `:scroll-x="列宽总和"` 才会出现横向滚动条**，否则列宽被压缩而不滚动。反之，无 `ellipsis` 的表格保持 `table-layout: auto`，内容超宽时会自动横向滚动、无需 `scroll-x`（例：`StoreInstancesView.vue`）。因此约定：**列一旦用 `ellipsis`，就必须同时给 `:scroll-x`**，列宽总和用 `columns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)` 计算，参考 `WorkflowsView.vue` / `SkillsView.vue` / `ModelsView.vue`。
 
 ## 9. 构建与本地运行
