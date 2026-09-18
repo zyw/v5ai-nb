@@ -54,10 +54,10 @@ public interface IV5aiApiKeysService {
     void changeEnabled(Long id, Long userId, Boolean enabled);
 
     /**
-     * 删除 Key（绑定关系由外键级联删除）。
+     * 批量删除 Key（绑定关系由外键级联删除）。任一 id 不属于 userId 时整体拒绝，不做部分删除。
      *
-     * @param id     Key 主键（必须属于 userId）
+     * @param ids    Key 主键列表（每个都必须属于 userId）
      * @param userId 当前登录用户
      */
-    void deleteApiKey(Long id, Long userId);
+    void deleteApiKeys(List<Long> ids, Long userId);
 }

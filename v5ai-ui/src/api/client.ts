@@ -1450,8 +1450,9 @@ export function changeApiKeyEnabled(adminToken: string, id: number, enabled: boo
   }, adminToken)
 }
 
-export function deleteApiKey(adminToken: string, id: number): Promise<void> {
-  return requestJson<void>(`/api/admin/api-keys/${id}`, {
+/** 批量删除 API Key（路径上逗号分隔主键，与「角色管理」的批量删除一致）。 */
+export function deleteApiKeys(adminToken: string, ids: number[]): Promise<void> {
+  return requestJson<void>(`/api/admin/api-keys/${ids.join(',')}`, {
     method: 'DELETE'
   }, adminToken)
 }

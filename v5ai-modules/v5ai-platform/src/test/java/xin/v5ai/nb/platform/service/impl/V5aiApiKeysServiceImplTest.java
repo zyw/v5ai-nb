@@ -44,9 +44,9 @@ import static org.mockito.Mockito.when;
  */
 class V5aiApiKeysServiceImplTest {
 
-    /** 明文 Key：v5ai_ + 32 位随机主体，tracking id 为第 6-17 位（12 位）。 */
-    private static final String PLAINTEXT_KEY = "v5ai_abcdefghijklmnopqrstuvwxyz012345";
-    private static final String TRACKING_ID = "abcdefghijkl";
+    /** 明文 Key：v5ai_ + UUID（tracking id）+ 32 位随机主体。 */
+    private static final String TRACKING_ID = "2462f9cb-a292-44da-b33d-dcc9a9737ad6";
+    private static final String PLAINTEXT_KEY = "v5ai_" + TRACKING_ID + "abcdefghijklmnopqrstuvwxyz012345";
 
     private V5aiApiKeysMapper baseMapper;
     private V5aiApiKeysAgentMapper bindingMapper;
@@ -181,6 +181,33 @@ class V5aiApiKeysServiceImplTest {
         verify(baseMapper, never()).touchLastUsed(any());
     }
 
+    /**
+     * 批量删除：任一条不属于当前用户就整体拒绝，不能只删掉属于自己的那部分——
+     * 否则越权者能通过「部分成功」反推哪些 id 存在。
+     */
+    @Test
+    void deleteApiKeysRejectsBatchContainingAnotherUsersKey() {
+        when(baseMapper.selectByIds(List.of(1L, 2L)))
+                .thenReturn(List.of(apiKey(1L, 7L, true), apiKey(2L, 999L, true)));
+
+        assertThatThrownBy(() -> service.deleteApiKeys(List.of(1L, 2L), 7L))
+                .isInstanceOf(V5aiException.class)
+                .hasMessageContaining("不存在");
+
+        verify(baseMapper, never()).deleteByIds(any());
+    }
+
+    /** 全部属于当前用户时按 id 批量删除（绑定关系由外键级联删除）。 */
+    @Test
+    void deleteApiKeysRemovesOwnedKeys() {
+        when(baseMapper.selectByIds(List.of(1L, 2L)))
+                .thenReturn(List.of(apiKey(1L, 7L, true), apiKey(2L, 7L, false)));
+
+        service.deleteApiKeys(List.of(1L, 2L, 2L), 7L);
+
+        verify(baseMapper).deleteByIds(List.of(1L, 2L));
+    }
+
     private V5aiApiKeys apiKey(Long id, Long userId, boolean enabled) {
         var entity = new V5aiApiKeys();
         entity.setId(id);
@@ -199,7 +226,7 @@ class V5aiApiKeysServiceImplTest {
     }
 
     /**
-     * 可控的 AgentApiKeysVerifier 替身：避开 BCrypt 计算，同时保持「明文第 6-17 位 = tracking id」的格式约定。
+     * 可控的 AgentApiKeysVerifier 替身：避开 BCrypt 计算，同时保持「明文内嵌 UUID = tracking id」的格式约定。
      */
     private static final class StubApiKeyVerifier implements AgentApiKeysVerifier {
 
@@ -217,10 +244,11 @@ class V5aiApiKeysServiceImplTest {
 
         @Override
         public String trackingIdOf(String apiKey) {
-            if (apiKey == null || !apiKey.startsWith("v5ai_") || apiKey.length() != 37) {
+            // v5ai_ + UUID(36) + 随机主体(32)
+            if (apiKey == null || !apiKey.startsWith("v5ai_") || apiKey.length() != 5 + 36 + 32) {
                 return null;
             }
-            return apiKey.substring(5, 17);
+            return apiKey.substring(5, 41);
         }
     }
 }

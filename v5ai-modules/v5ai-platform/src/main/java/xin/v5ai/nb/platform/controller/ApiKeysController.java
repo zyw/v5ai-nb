@@ -116,16 +116,17 @@ public class ApiKeysController extends BaseController {
     }
 
     /**
-     * 删除 API Key（绑定关系一并删除，使用该 Key 的调用立即失效）。
+     * 批量删除 API Key（路径上逗号分隔主键，与「角色管理」的批量删除一致）；
+     * 绑定关系一并删除，使用这些 Key 的调用立即失效。
      *
-     * @param id 主键
+     * @param ids 主键串（一个或多个，逗号分隔）
      * @return 操作结果
      */
     @SaCheckPermission("apiKeys:keys:remove")
     @Log(title = "API Key 管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{id}")
-    public R<Void> remove(@PathVariable("id") Long id) {
-        apiKeyService.deleteApiKey(id, LoginHelper.getUserId());
+    @DeleteMapping("/{ids}")
+    public R<Void> remove(@PathVariable("ids") Long[] ids) {
+        apiKeyService.deleteApiKeys(List.of(ids), LoginHelper.getUserId());
         return R.ok();
     }
 }

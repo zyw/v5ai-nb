@@ -116,12 +116,27 @@ public class V5aiApiKeysServiceImpl implements IV5aiApiKeysService, ApiKeysServi
         baseMapper.updateById(entity);
     }
 
+    /**
+     * 批量删除：删除前逐条校验归属（与角色管理的「批量删除」一致，但这里不允许删他人的 Key），
+     * 任一条不存在或不属于当前用户就整体拒绝，避免部分删除后被越权探测出哪些 id 存在。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteApiKey(Long id, Long userId) {
-        var entity = requireOwned(id, userId);
+    public void deleteApiKeys(List<Long> ids, Long userId) {
+        List<Long> targets = ids == null ? List.of() : ids.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (targets.isEmpty()) {
+            throw new V5aiException(ErrorCode.INVALID_ARGUMENT, "请选择要删除的 API Key");
+        }
+        var owned = baseMapper.selectByIds(targets);
+        if (owned.size() != targets.size()
+                || owned.stream().anyMatch(key -> !Objects.equals(key.getUserId(), userId))) {
+            throw new V5aiException(ErrorCode.NOT_FOUND, "API Key 不存在");
+        }
         // 绑定关系由 v5ai_api_keys_agent.api_key_id 外键级联删除
-        baseMapper.deleteById(entity.getId());
+        baseMapper.deleteByIds(targets);
     }
 
     /**

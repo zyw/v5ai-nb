@@ -18,7 +18,7 @@ public interface V5aiApiKeysMapper extends BaseMapperPlus<V5aiApiKeys, V5aiApiKe
     /**
      * 按 tracking id 定位密钥行（唯一索引）。
      *
-     * @param trackingId 明文 Key 第 6-17 位
+     * @param trackingId 明文 Key 内嵌的 UUID（36 位）
      * @return 匹配的密钥行，不存在时返回 null
      */
     default V5aiApiKeys selectByTrackingId(String trackingId) {

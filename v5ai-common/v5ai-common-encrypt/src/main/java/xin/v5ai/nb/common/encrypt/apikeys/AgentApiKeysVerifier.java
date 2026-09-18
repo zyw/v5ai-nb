@@ -20,7 +20,8 @@ public interface AgentApiKeysVerifier {
     /**
      * 取明文 ApiKey 内嵌的 tracking id（跟踪 ID）。
      *
-     * <p>密文（BCrypt）无法反查密钥行，明文 Key 因此内嵌一段固定位置的随机串作为定位手柄：
+     * <p>密文（BCrypt）无法反查密钥行，明文 Key 因此内嵌一个 UUID 作为定位手柄
+     * （明文形如 {@code v5ai_<UUID 36 位><32 位随机主体>}）：
      * 运行时先用它命中 v5ai_api_keys.tracking_id 唯一索引，再做全串 BCrypt 校验。</p>
      *
      * @param apiKey 明文 ApiKey

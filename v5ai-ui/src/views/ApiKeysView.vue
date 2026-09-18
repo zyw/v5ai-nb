@@ -32,7 +32,7 @@ import RowActions from '../components/RowActions.vue'
 import {
   changeApiKeyEnabled,
   createApiKey,
-  deleteApiKey,
+  deleteApiKeys,
   listAgents,
   listApiKeys,
   loadImagePreview,
@@ -125,19 +125,44 @@ onBeforeUnmount(() => {
 
 const togglingId = ref<number | null>(null)
 
+/** 批量删除选中的 Key 主键（与「角色管理」的批量删除一致）。 */
+const selectedIds = ref<number[]>([])
+
 const columns: DataTableColumns<ApiKeyRecord> = [
-  { type: 'selection' },
+  { type: 'selection', width: 40 },
   { title: 'ID', key: 'id', width: 64 },
-  { title: '名称', key: 'name', width: 180, ellipsis: { tooltip: true } },
+  {
+    title: '名称',
+    key: 'name',
+    width: 200,
+    // 不用列级 ellipsis.tooltip：内容里是按钮，Naive 的省略 tooltip 会把按钮复制进浮层；
+    // 截断与悬浮全名交给单元格内的 span（tooltip 由时间列承担，表格仍是 fixed 布局 + scroll-x）。
+    render: (r) =>
+      h(
+        NButton,
+        { text: true, type: 'primary', title: '点击查看可访问的 Agent', onClick: () => openAgentsModal(r) },
+        {
+          default: () =>
+            h(
+              'span',
+              {
+                title: r.name,
+                style:
+                  'display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom'
+              },
+              r.name
+            )
+        }
+      )
+  },
   {
     title: '跟踪 ID',
     key: 'trackingId',
-    width: 210,
-    render: (r) => {
-      const masked = `v5ai_${r.trackingId}${'•'.repeat(8)}`
-      return h(NSpace, { size: 4, align: 'center', wrap: false }, {
+    width: 320,
+    render: (r) =>
+      h(NSpace, { size: 4, align: 'center', wrap: false }, {
         default: () => [
-          h('span', { style: 'font-family: ui-monospace, SFMono-Regular, Menlo, monospace' }, masked),
+          h('span', { style: 'font-family: ui-monospace, SFMono-Regular, Menlo, monospace' }, r.trackingId),
           h(
             NTooltip,
             { trigger: 'hover' },
@@ -152,31 +177,6 @@ const columns: DataTableColumns<ApiKeyRecord> = [
           )
         ]
       })
-    }
-  },
-  {
-    title: '可访问 Agent',
-    key: 'agentKeys',
-    width: 240,
-    ellipsis: { tooltip: false },
-    render: (r) => {
-      const keys = r.agentKeys ?? []
-      if (keys.length === 0) {
-        return h('span', { class: 'muted' }, '—')
-      }
-      const shown = keys.slice(0, 2)
-      return h(NSpace, { size: 4, wrap: false, align: 'center' }, {
-        default: () => [
-          ...shown.map((key) => agentTag(key)),
-          keys.length > 2
-            ? h(NTooltip, { trigger: 'hover' }, {
-                trigger: () => h(NTag, { size: 'small', bordered: false }, { default: () => `+${keys.length - 2}` }),
-                default: () => keys.slice(2).map((key) => h('div', null, agentLabel(key)))
-              })
-            : null
-        ]
-      })
-    }
   },
   {
     title: '状态',
@@ -196,14 +196,15 @@ const columns: DataTableColumns<ApiKeyRecord> = [
   {
     title: '最新使用时间',
     key: 'lastUsedAt',
-    width: 180,
+    width: 185,
+    ellipsis: { tooltip: true },
     render: (r) => (r.lastUsedAt ? (formatDateTime(r.lastUsedAt) ?? '—') : '从未使用')
   },
-  { title: '创建时间', key: 'createdAt', width: 180, render: (r) => formatDateTime(r.createdAt) ?? '—' },
+  { title: '创建时间', key: 'createdAt', width: 185, render: (r) => formatDateTime(r.createdAt) ?? '—' },
   {
     title: '操作',
     key: 'actions',
-    width: 150,
+    width: 125,
     render: (r) =>
       h(RowActions, {
         actions: [
@@ -214,7 +215,7 @@ const columns: DataTableColumns<ApiKeyRecord> = [
             quaternary: true,
             type: 'error',
             confirm: `确认删除「${r.name}」？删除后使用该 Key 的调用将立即失败，且不可恢复。`,
-            onClick: () => handleDelete(r)
+            onClick: () => handleDelete([r])
           }
         ]
       })
@@ -229,13 +230,6 @@ function agentLabel(agentKey: string): string {
   const name = agentNameOf(agentKey)
   const suffix = publishedKeys.value.has(agentKey) ? '' : ' · 已失效'
   return name === agentKey ? `${agentKey}${suffix}` : `${name}（${agentKey}）${suffix}`
-}
-
-function agentTag(agentKey: string) {
-  const stale = !publishedKeys.value.has(agentKey)
-  return h(NTag, { size: 'small', type: stale ? 'error' : 'info', bordered: false }, {
-    default: () => agentLabel(agentKey)
-  })
 }
 
 async function copyText(text: string, label: string) {
@@ -396,6 +390,37 @@ function requestCloseKeyModal() {
   })
 }
 
+// ---- 可访问 Agent 明细弹窗（点列表里的名称打开） ----
+
+const showAgentsModal = ref(false)
+const agentsModalKey = ref<ApiKeyRecord | null>(null)
+
+/** 弹窗里的 Agent 明细：以该 Key 的绑定 agentKey 为准，补上目录里的名称/描述/图标与当前发布状态。 */
+const agentsModalRows = computed(() =>
+  (agentsModalKey.value?.agentKeys ?? []).map((agentKey) => {
+    const agent = agentCatalog.value.find((a) => a.agentKey === agentKey)
+    return {
+      agentKey,
+      name: agent?.name ?? agentKey,
+      description: agent?.description ?? '',
+      avatar: agent?.avatar ?? '',
+      status: agent?.status ?? ''
+    }
+  })
+)
+
+const agentsModalTitle = computed(() =>
+  agentsModalKey.value
+    ? `${agentsModalKey.value.name} · 可访问的 Agent（${agentsModalRows.value.length}）`
+    : '可访问的 Agent'
+)
+
+function openAgentsModal(row: ApiKeyRecord) {
+  agentsModalKey.value = row
+  showAgentsModal.value = true
+  void ensureAgentIcons()
+}
+
 // ---- 状态 / 删除 ----
 
 function handleToggle(row: ApiKeyRecord, next: boolean) {
@@ -425,14 +450,34 @@ async function applyToggle(row: ApiKeyRecord, enabled: boolean) {
   }
 }
 
-async function handleDelete(row: ApiKeyRecord) {
+async function handleDelete(targets: ApiKeyRecord[]) {
   try {
-    await deleteApiKey(adminToken.value, row.id)
+    await deleteApiKeys(adminToken.value, targets.map((t) => t.id))
     message.success('已删除')
+    selectedIds.value = []
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '删除失败')
   }
+}
+
+function handleBatchDelete() {
+  dialog.warning({
+    title: '批量删除确认',
+    content: `确认删除选中的 ${selectedIds.value.length} 个 API Key？删除后使用这些 Key 的调用将立即失败，且不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteApiKeys(adminToken.value, selectedIds.value)
+        message.success('已删除所选 API Key')
+        selectedIds.value = []
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '删除失败')
+      }
+    }
+  })
 }
 
 onMounted(async () => {
@@ -489,6 +534,15 @@ onMounted(async () => {
           <template #icon><n-icon :component="RefreshCw" /></template>
           刷新
         </n-button>
+        <n-button
+          v-if="selectedIds.length > 0"
+          size="small"
+          type="error"
+          secondary
+          @click="handleBatchDelete"
+        >
+          删除所选（{{ selectedIds.length }}）
+        </n-button>
       </n-space>
 
       <n-alert v-if="publishedAgents.length === 0" type="info" :bordered="false" style="margin-bottom: 12px">
@@ -501,6 +555,8 @@ onMounted(async () => {
         :columns="columns"
         :data="rows"
         :row-key="(r: ApiKeyRecord) => r.id"
+        :checked-row-keys="selectedIds"
+        @update:checked-row-keys="(keys: Array<string | number>) => (selectedIds = keys as number[])"
         :scroll-x="scrollX"
         :bordered="false"
       >
@@ -659,6 +715,46 @@ onMounted(async () => {
         </n-space>
       </template>
     </n-modal>
+
+    <!-- 可访问 Agent 明细：点列表里的名称打开 -->
+    <n-modal
+      v-model:show="showAgentsModal"
+      preset="card"
+      :title="agentsModalTitle"
+      style="width: 560px"
+      :bordered="false"
+    >
+      <div v-if="agentsModalRows.length === 0" class="agent-picker-empty" :style="pickerVars">
+        该 Key 还没有绑定任何 Agent，运行时会返回 403。可在「编辑」里绑定已发布的 Agent。
+      </div>
+      <n-scrollbar v-else :style="pickerVars" class="agent-modal-scroll">
+        <div class="agent-modal-list">
+          <div v-for="agent in agentsModalRows" :key="agent.agentKey" class="agent-modal-item">
+            <span class="agent-picker-avatar" aria-hidden="true">
+              <img
+                v-if="agentIconUrl(agent.avatar)"
+                :src="agentIconUrl(agent.avatar)"
+                alt=""
+                @error="markAvatarBroken(agent.avatar)"
+              />
+              <n-icon v-else :component="Bot" :size="16" />
+            </span>
+            <span class="agent-picker-text">
+              <span class="agent-picker-name">
+                {{ agent.name }}
+                <span class="agent-picker-key">（{{ agent.agentKey }}）</span>
+                <n-tag v-if="agent.status && agent.status !== 'PUBLISHED'" size="tiny" type="error" :bordered="false">
+                  已失效
+                </n-tag>
+              </span>
+              <span class="agent-picker-desc">
+                {{ agent.description || (agent.status === 'PUBLISHED' ? '暂无描述' : '该 Agent 当前不是发布状态') }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </n-scrollbar>
+    </n-modal>
   </div>
 </template>
 
@@ -816,5 +912,28 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---- 「可访问的 Agent」明细弹窗（只读列表，复用上面的行视觉） ---- */
+
+.agent-modal-scroll {
+  max-height: 360px;
+}
+
+.agent-modal-list {
+  padding: 4px;
+}
+
+.agent-modal-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.agent-modal-item:hover {
+  background: var(--agent-hover);
 }
 </style>
