@@ -48,7 +48,7 @@ const baseline = [
         <ol>
           <li>
             前置准备：先在管理面创建并<strong>发布</strong> Agent（获得 <code>agentKey</code>），
-            再到<strong>「API Key 管理」</strong>页面新建 Key 并勾选该 Key 可访问的已发布 Agent：
+            再到<strong>「API Keys 管理」</strong>页面新建 Key 并勾选该 Key 可访问的已发布 Agent：
             <code>POST /api/admin/api-keys</code>，请求体
             <code>{"name": "生产环境", "agentKeys": ["你的agentKey"]}</code>
             （明文 Key 仅创建时返回一次，请妥善保存）。

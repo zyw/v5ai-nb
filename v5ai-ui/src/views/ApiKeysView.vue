@@ -126,6 +126,8 @@ onBeforeUnmount(() => {
 const togglingId = ref<number | null>(null)
 
 const columns: DataTableColumns<ApiKeyRecord> = [
+  { type: 'selection' },
+  { title: 'ID', key: 'id', width: 64 },
   { title: '名称', key: 'name', width: 180, ellipsis: { tooltip: true } },
   {
     title: '跟踪 ID',
@@ -188,7 +190,7 @@ const columns: DataTableColumns<ApiKeyRecord> = [
           loading: togglingId.value === r.id,
           onUpdateValue: (value: boolean) => handleToggle(r, value)
         },
-        { checked: () => h('span', '启用'), unchecked: () => h('span', '停用') }
+        { checked: () => h('span', '启'), unchecked: () => h('span', '停') }
       )
   },
   {
@@ -442,7 +444,7 @@ onMounted(async () => {
 <template>
   <div class="page">
     <PageHeader
-      title="API Key 管理"
+      title="API Keys 管理"
       description="创建访问运行期接口（/api/v1/agents/{agentKey}/chat）的 API Key，并绑定该 Key 可以访问的已发布 Agent。Key 归属创建者本人，明文仅创建时展示一次。"
     >
       <template #actions>
@@ -593,12 +595,12 @@ onMounted(async () => {
             </n-scrollbar>
           </div>
         </n-form-item>
-        <n-form-item v-if="isEdit" label="启用状态">
+<!--        <n-form-item v-if="isEdit" label="启用状态">
           <n-switch v-model:value="form.enabled">
             <template #checked>启用</template>
             <template #unchecked>停用</template>
           </n-switch>
-        </n-form-item>
+        </n-form-item>-->
         <n-alert v-if="isEdit" type="info" :bordered="false">
           取消某个 Agent 的绑定后，使用本 Key 调用该 Agent 将立即返回 403。
         </n-alert>
