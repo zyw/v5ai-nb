@@ -79,14 +79,14 @@ public class ChatAuthController {
      * @param ownerName 归属用户昵称（取不到时为 null）
      * @param agents    该 Key 可访问且仍已发布的 Agent
      */
-    public record PortalBootstrap(String keyName, String trackingId, String ownerName, List<ChatAgent> agents) {
+    public record ChatBootstrap(String keyName, String trackingId, String ownerName, List<ChatAgent> agents) {
     }
 
     /**
      * 门户初始化：校验通过后拿到当前 Key 的信息与可用 Agent 列表。
      */
     @GetMapping("/bootstrap")
-    public R<PortalBootstrap> bootstrap(HttpServletRequest request) {
+    public R<ChatBootstrap> bootstrap(HttpServletRequest request) {
         var auth = (ApiKeysAuthDTO) request.getAttribute(ApiKeyAuthAttributes.REQUEST_ATTRIBUTE);
         if (auth == null) {
             // 过滤器已拦截；这里只是防止绕过过滤器直接调用的兜底
@@ -97,11 +97,11 @@ public class ChatAuthController {
             var agent = resolvePublished(agentKey);
             // 绑定残留但已下线/未发布的 Agent 直接跳过，门户只展示当前可用的
             if (agent != null) {
-                agents.add(toPortalAgent(agent));
+                agents.add(toChatAgent(agent));
             }
         }
         String ownerName = auth.userId() == null ? null : userService.selectNicknameById(auth.userId());
-        return R.ok(new PortalBootstrap(auth.name(), auth.trackingId(), ownerName, agents));
+        return R.ok(new ChatBootstrap(auth.name(), auth.trackingId(), ownerName, agents));
     }
 
     /**
@@ -138,7 +138,7 @@ public class ChatAuthController {
         }
     }
 
-    private ChatAgent toPortalAgent(AgentDTO agent) {
+    private ChatAgent toChatAgent(AgentDTO agent) {
         return new ChatAgent(agent.agentKey(), agent.name(), agent.description(),
                 avatarUrlOf(agent), agent.greeting(), parsePresetQuestions(agent.presetQuestions()),
                 agent.webSearchEnabled(), modelImageSupportResolver.supportsImageInput(agent.modelId()));
