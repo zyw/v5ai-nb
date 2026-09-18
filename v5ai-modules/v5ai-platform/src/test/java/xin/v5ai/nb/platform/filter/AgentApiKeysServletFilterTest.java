@@ -263,6 +263,41 @@ class AgentApiKeysServletFilterTest {
         verifyNoInteractions(quotaService);
     }
 
+    /**
+     * 回归：agentKey **以 auth 开头**的 Agent（如 authfoo）不能被 auth 保留族吃掉——
+     * 保留族是完整的 {@code /api/v1/agents/auth/} 前缀，不是 {@code /api/v1/agents/auth} 的字符串前缀。
+     */
+    @Test
+    void agentKeyStartingWithAuthStillRunsAsAgentKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/authfoo/chat/stream");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("authfoo")));
+        when(quotaService.checkAllowed("authfoo")).thenReturn(true);
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(quotaService).checkAllowed("authfoo");
+    }
+
+    /**
+     * 回归：门户会话列表与对话流共用同一套 agentKey 提取。
+     * 前缀少一个结尾斜杠时，提取出的首段以 {@code /} 开头被判空，**所有**运行接口都变成 401。
+     */
+    @Test
+    void conversationListIsGuardedLikeAnyOtherRuntimePath() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/java/chat/conversations");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("java")));
+        when(quotaService.checkAllowed("java")).thenReturn(true);
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(response, never()).setStatus(anyInt());
+        verify(quotaService).checkAllowed("java");
+    }
+
     private ApiKeysAuthDTO auth(Set<String> agentKeys) {
         return new ApiKeysAuthDTO(1L, 7L, "生产环境", "abcdefghijkl", true, agentKeys);
     }

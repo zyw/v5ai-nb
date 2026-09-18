@@ -29,17 +29,19 @@ import java.nio.charset.StandardCharsets;
  */
 public class AgentApiKeysServletFilter implements Filter {
 
-    private static final String RUNTIME_PREFIX = "/api/v1/agents";
+    private static final String RUNTIME_PREFIX = "/api/v1/agents/";
+    /** 门户附件上传：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key */
+    private static final String RESOURCE_UPLOAD_PATH = RUNTIME_PREFIX + "resource/upload";
+    /** 门户附件读取前缀，其后应为纯数字资源 id */
+    private static final String ATTACHMENTS_PREFIX = RUNTIME_PREFIX + "attachments/";
+
     /** 门户凭据平级资源（如 Agent 头像）的前缀与后缀：这些路径要校验绑定，但不消耗模型配额 */
-    private static final String AUTH_PREFIX = RUNTIME_PREFIX + "/auth";
+    private static final String AUTH_PREFIX = RUNTIME_PREFIX + "auth/";
     /** 门户初始化：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key（不校验绑定、不计配额） */
-    private static final String AUTH_BOOTSTRAP_PATH = AUTH_PREFIX + "/bootstrap";
+    private static final String AUTH_BOOTSTRAP_PATH = AUTH_PREFIX + "bootstrap";
 
     private static final String AUTH_RESOURCE_SUFFIX = "/avatar";
-    /** 门户附件上传：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key */
-    private static final String RESOURCE_UPLOAD_PATH = RUNTIME_PREFIX + "/resource/upload";
-    /** 门户附件读取前缀，其后应为纯数字资源 id */
-    private static final String ATTACHMENTS_PREFIX = RUNTIME_PREFIX + "/attachments/";
+
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String FORBIDDEN_BODY = """
             {"code":403,"msg":"当前 API Key 无权访问该 Agent"}
@@ -137,12 +139,19 @@ public class AgentApiKeysServletFilter implements Filter {
      * 从受守卫路径中提取 agentKey（前缀后的第一个路径段）。
      * 形如 /api/v1/agents/{agentKey}/chat/stream 或 /api/v1/agents/auth/{agentKey}/avatar
      *
+     * <p>前缀的结尾斜杠可有可无（历史上两种写法都出现过）。这里统一容忍：
+     * 少一个斜杠只会让提取失败、进而让**所有**运行接口 401，属于「静默全站不可用」级别的坑，
+     * 不值得依赖调用方拼对那一个字符。</p>
+     *
      * @param path   请求路径
-     * @param prefix 该族路径的前缀（含结尾斜杠）
+     * @param prefix 该族路径的前缀（结尾斜杠可有可无）
      * @return agentKey；路径结构不符合预期时返回 null
      */
     private String extractAgentKey(String path, String prefix) {
         var rest = path.substring(prefix.length());
+        if (rest.startsWith("/")) {
+            rest = rest.substring(1);
+        }
         var slash = rest.indexOf('/');
         if (slash <= 0) {
             return null;
