@@ -139,21 +139,29 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 
 ### `GET /api/v1/agents/{agentKey}/chat/conversations/{conversationId}`
 
-会话历史，按 `created_at, id` 稳定排序（同一次运行的提问与回答可能同刻写入，故用自增主键兜底）。
-每条消息带 `attachments`：
+会话历史，按 `created_at, id` 稳定排序（同一次运行的提问与回答可能同刻写入，故用自增主键兜底），**不含已作废的消息**。
+每条消息带 `messageId`（「重新生成」的锚点）与 `attachments`，助手消息还带 `usage`（用量与用时；用户消息与 V39 之前落库的历史消息为 `null`）：
 
 ```json
 {
   "code": 200,
   "data": [
     {
+      "messageId": 55,
       "role": "USER",
       "content": "这张图里是什么？",
       "attachments": [
         { "type": "IMAGE", "resourceId": 42, "accessUrl": "/api/v1/agents/attachments/42" }
-      ]
+      ],
+      "usage": null
     },
-    { "role": "ASSISTANT", "content": "图里是…", "attachments": [] }
+    {
+      "messageId": 56,
+      "role": "ASSISTANT",
+      "content": "图里是…",
+      "attachments": [],
+      "usage": { "promptTokens": 128, "completionTokens": 512, "totalTokens": 640, "durationMs": 3210 }
+    }
   ]
 }
 ```
@@ -187,6 +195,47 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 
 历史回放中的图片按**最近优先**累计，总预算 16MB（`v5ai.portal.attachment.history-budget-bytes`）。
 超出预算的图片不会去读字节，直接退化为 `[图片]` 文字占位 —— 更早的图片会从上下文里消失。
+
+### 完成事件携带用量
+
+```json
+RUN_COMPLETED
+{ "promptTokens": 128, "completionTokens": 512, "totalTokens": 640, "durationMs": 3210 }
+```
+
+对话流最后一个事件 `RUN_COMPLETED` 的载荷是本次运行的用量汇总（JSON），门户的「用量 / 用时」直接读它：
+
+- token 是平台**按字符数估算**的值（输入 = 提问 + RAG 上下文，输出 = 回答，每 4 字符约 1 token）。
+  它与写进 `v5ai_model_usage`、扣减配额的**是同一份数字**：运行时在事件推送与落库之前只算一次，两边不会各估一套；
+- `durationMs` 是服务端从 `RUN_STARTED` 到收尾的墙钟耗时（含 RAG 检索与工具调用）；
+- 同一个形状也随助手消息落库（`v5ai_message` 的 `prompt_tokens`/`completion_tokens`/`duration_ms`），历史接口读它还原 `usage` —— 否则刷新页面后历史回答就没有这两个数字了；
+- 被停止（`CANCELED`）的运行**没有** `RUN_COMPLETED` 事件、因而流里不带载荷，但它的半截回答照样带着用量落库（停止不等于没消耗）；失败（`RUN_FAILED`）的运行两者都没有；
+- 知识库问答调试链路（`/api/admin/knowledge-bases/{id}/qa/stream`）不带用量，载荷仍是空串。
+
+### `POST /api/v1/agents/{agentKey}/chat/conversations/{conversationId}/regenerate`
+
+重新生成某一轮的回答。**这是服务端语义**：把该轮提问**之后**的消息全部标记为「作废」（软状态，见下），
+然后**复用那条提问**重跑一次——提问行保持有效、不重新插入，所以历史里不会出现两条相同的提问，
+作废的回答也不会再进入模型上下文。
+
+```json
+{ "fromMessageId": 55, "webSearch": false }
+```
+
+- `fromMessageId`：该轮**提问**的消息 id（历史消息里的 `messageId`，或本轮 `RUN_STARTED` 载荷的 `userMessageId`）。
+- 校验顺序是刻意的，**任何拒绝都发生在作废之前**：会话不属于本 Key → 404；会话已归档 → 409；
+  锚点不存在 / 不属于该会话 / 不是用户消息 → 404；锚点那轮有图片但当前模型不支持图片 → 400。
+- 通过后：作废锚点之后的全部消息（含被替换的回答与更晚的整轮问答），再以锚点的提问内容与附件重跑。
+- 返回与 `/chat/stream` **完全相同的事件流**（含 `RUN_STARTED`/`RUN_COMPLETED` 的载荷）。
+- **不幂等但可重复**：连点两次会再作废第一次的产物并重跑，最终仍只有一条可见回答。
+
+#### 作废（superseded）
+
+`v5ai_message.superseded_at` 非空即为「作废」。数据全部保留（可审计、可反悔、附件引用不断），
+只是不再参与展示与记忆回放——这是**软**替换而不是删除，好处是「消息序列」与「已计费用量」始终对得上。
+
+读取侧只在两处过滤：会话历史（`findByConversationId`，历史接口 / `resume` / 记忆回放共用）与会话列表的首条提问预览。
+**附件读取的推导式鉴权刻意不过滤**——那是「这把 Key 是否处置过该资源」的归属判定，不是展示查询。
 
 ### 停止对话
 

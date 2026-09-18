@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
-import { NButton, NIcon, NInput, NSwitch, useThemeVars } from 'naive-ui'
-import { Archive, ArchiveRestore, Check, MessageSquare, Pencil, X } from 'lucide-vue-next'
+import { h, nextTick, ref } from 'vue'
+import type { Component, ComponentPublicInstance, VNode } from 'vue'
+import { NButton, NDropdown, NIcon, NInput, NSwitch, useThemeVars } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
+import { Archive, ArchiveRestore, Check, MessageSquare, MoreHorizontal, Pencil, X } from 'lucide-vue-next'
 import type { ConversationSummary } from '../api/client'
 
 /**
  * 左栏会话列表：服务端返回的会话（限本 Key 本 Agent，按最近活跃倒序），
  * 支持切换、行内改名、归档 / 取消归档，以及「显示已归档」开关。
  *
- * 未命名会话用首条提问预览做标题（名称与预览的取值由 store 的 sessionTitle 统一）。
+ * 每行的操作收在「…」菜单里（重命名 / 归档），鼠标悬停或该行处于当前会话时显示，
+ * 避免两个图标常驻挤压标题空间。未命名会话用首条提问预览做标题
+ * （名称与预览的取值由 store 的 sessionTitle 统一）。
  */
 const props = defineProps<{
   items: ConversationSummary[]
@@ -27,6 +31,8 @@ const emit = defineEmits<{
 const themeVars = useThemeVars()
 const editingId = ref('')
 const editingName = ref('')
+/** 当前展开「…」菜单的会话：菜单开着的时候触发器要保持可见（鼠标移开也不再 hover） */
+const openMenuId = ref('')
 const nameInput = ref<InstanceType<typeof NInput> | null>(null)
 
 function formatTime(value?: string | null): string {
@@ -38,10 +44,32 @@ function formatTime(value?: string | null): string {
   return date.toDateString() === today.toDateString() ? time : `${date.getMonth() + 1}/${date.getDate()}`
 }
 
+/**
+ * 改名输入框的模板 ref：列表是 v-for 渲染的，字符串 ref 会被 Vue 收集成数组
+ * （vnode 上带 `ref_for`），拿不到组件实例，因此用函数 ref 只记录正在改名的那一个。
+ */
+function setNameInput(el: Element | ComponentPublicInstance | null) {
+  // 卸载时 Vue 会回调 null；忽略它，免得「新行先挂载、旧行后卸载」把新实例冲掉
+  if (el) nameInput.value = el as InstanceType<typeof NInput>
+}
+
 function startRename(session: ConversationSummary) {
   editingId.value = session.conversationId
   editingName.value = session.name ?? props.titleOf(session)
   void nextTick(() => nameInput.value?.focus())
+}
+
+/**
+ * 改名输入框的按键：Enter 保存、Esc 取消，并阻断冒泡以免触发行上的「回车打开会话」。
+ * 不写成 `@keydown.enter` + `@keydown.esc`：同一元素的多个 keydown 监听会被编译成数组，
+ * 而 n-input 的 `onKeydown` 只接受单个函数（Vue 会报 Invalid prop 警告）。
+ */
+function onRenameKeydown(event: KeyboardEvent, session: ConversationSummary) {
+  if (event.key !== 'Enter' && event.key !== 'Escape') return
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.key === 'Enter') confirmRename(session)
+  else cancelRename()
 }
 
 function cancelRename() {
@@ -54,6 +82,33 @@ function confirmRename(session: ConversationSummary) {
   if (!name) return
   emit('rename', session, name)
   cancelRename()
+}
+
+/** 下拉项图标：naive-ui 的 `icon` 要求一个返回 VNode 的函数，不能直接给组件。 */
+function renderIcon(icon: Component): () => VNode {
+  return () => h(NIcon, { size: 14 }, { default: () => h(icon) })
+}
+
+/** 每行的「…」菜单：重命名 / 归档（已归档的会话则是取消归档）。 */
+function menuOptions(session: ConversationSummary): DropdownOption[] {
+  return [
+    { label: '重命名', key: 'rename', icon: renderIcon(Pencil) },
+    {
+      label: session.archived ? '取消归档' : '归档',
+      key: 'archive',
+      icon: renderIcon(session.archived ? ArchiveRestore : Archive)
+    }
+  ]
+}
+
+function onMenuSelect(key: string | number, session: ConversationSummary) {
+  if (key === 'rename') {
+    startRename(session)
+    return
+  }
+  if (key === 'archive') {
+    emit('archive', session, !session.archived)
+  }
 }
 </script>
 
@@ -78,7 +133,11 @@ function confirmRename(session: ConversationSummary) {
       v-for="session in items"
       :key="session.conversationId"
       class="session-item"
-      :class="{ 'is-active': session.conversationId === currentId, 'is-archived': session.archived }"
+      :class="{
+        'is-active': session.conversationId === currentId,
+        'is-archived': session.archived,
+        'is-menu-open': openMenuId === session.conversationId
+      }"
       :style="session.conversationId === currentId ? { background: themeVars.actionColor } : undefined"
       role="button"
       tabindex="0"
@@ -88,14 +147,13 @@ function confirmRename(session: ConversationSummary) {
     >
       <template v-if="editingId === session.conversationId">
         <n-input
-          ref="nameInput"
+          :ref="setNameInput"
           v-model:value="editingName"
           size="tiny"
           maxlength="100"
           :aria-label="'会话名称'"
           @click.stop
-          @keydown.enter.stop.prevent="confirmRename(session)"
-          @keydown.esc.stop.prevent="cancelRename"
+          @keydown="onRenameKeydown($event, session)"
         />
         <n-button text size="tiny" aria-label="保存名称" @click.stop="confirmRename(session)">
           <template #icon><n-icon :component="Check" :size="14" /></template>
@@ -113,21 +171,17 @@ function confirmRename(session: ConversationSummary) {
             {{ formatTime(session.updatedAt) }}
           </span>
         </span>
-        <span class="session-actions">
-          <n-button text size="tiny" aria-label="重命名" @click.stop="startRename(session)">
-            <template #icon><n-icon :component="Pencil" :size="14" /></template>
+        <n-dropdown
+          trigger="click"
+          placement="bottom-end"
+          :options="menuOptions(session)"
+          @select="(key: string | number) => onMenuSelect(key, session)"
+          @update:show="(show: boolean) => (openMenuId = show ? session.conversationId : '')"
+        >
+          <n-button text size="tiny" class="session-more" aria-label="更多操作" @click.stop>
+            <template #icon><n-icon :component="MoreHorizontal" :size="16" /></template>
           </n-button>
-          <n-button
-            text
-            size="tiny"
-            :aria-label="session.archived ? '取消归档' : '归档'"
-            @click.stop="emit('archive', session, !session.archived)"
-          >
-            <template #icon>
-              <n-icon :component="session.archived ? ArchiveRestore : Archive" :size="14" />
-            </template>
-          </n-button>
-        </span>
+        </n-dropdown>
       </template>
     </div>
   </div>
@@ -213,16 +267,15 @@ function confirmRename(session: ConversationSummary) {
   opacity: 0.9;
 }
 
-.session-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+.session-more {
   flex: none;
   opacity: 0;
 }
 
-.session-item:hover .session-actions,
-.session-item:focus-within .session-actions {
+.session-item:hover .session-more,
+.session-item:focus-within .session-more,
+.session-item.is-active .session-more,
+.session-item.is-menu-open .session-more {
   opacity: 1;
 }
 </style>

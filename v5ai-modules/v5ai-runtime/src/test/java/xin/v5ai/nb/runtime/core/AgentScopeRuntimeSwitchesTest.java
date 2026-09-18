@@ -18,6 +18,7 @@ import xin.v5ai.nb.runtime.core.service.MessageService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,8 +50,19 @@ class AgentScopeRuntimeSwitchesTest {
         }
 
         @Override
-        public boolean save(SessionMessage message) {
-            return messages.add(message);
+        public Long save(SessionMessage message) {
+            messages.add(message);
+            return (long) messages.size();
+        }
+
+        @Override
+        public Optional<SessionMessage> findActiveMessage(Long messageId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public int supersedeAfter(String conversationId, Long messageId) {
+            return 0;
         }
 
         @Override

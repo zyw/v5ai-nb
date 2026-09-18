@@ -213,7 +213,7 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
 说明：
 
 - 未配置 EMBEDDING 模型时，向量化回退到确定性本地 Hash 嵌入（维度 1536），便于本地端到端验证；
-- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V38 门户会话/附件，需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；
+- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V39 门户会话/附件/用量落库，需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；
 - MCP 运行时使用已发现的 Tool 元数据：先"发现工具"再"绑定 + 发布"，运行时才会注册工具；
 - Skill 上传生成 DRAFT 版本，发布后成为"当前版本"，运行时注入当前版本文件（回滚改变当前版本）；
 - Stdio MCP 命令受白名单限制（`V5AI_MCP_STDIO_COMMAND_WHITELIST`，生产环境必须配置）；

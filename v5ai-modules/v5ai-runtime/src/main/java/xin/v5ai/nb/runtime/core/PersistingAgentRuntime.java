@@ -1,10 +1,12 @@
 package xin.v5ai.nb.runtime.core;
 
+import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.domain.RunUsage;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
@@ -178,9 +180,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     normalizedRequest.conversationId(), normalizedRequest.agentKey(),
                     normalizedRequest.apiKeyId(), normalizedRequest.userId(),
                     null, null, null, null));
-            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(),
-                    MessageRole.USER, normalizedRequest.query())
-                    .withAttachments(normalizedRequest.attachments()));
+            // 「重新生成」复用的是既有提问行（提问保持有效、只替换回答），因此不再新插用户消息——
+            // 否则历史里会出现两条一模一样的提问。
+            var userMessageId = normalizedRequest.reuseUserMessage() ? null
+                    : messageService.save(new SessionMessage(normalizedRequest.conversationId(),
+                            normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query())
+                            .withAttachments(normalizedRequest.attachments()));
             // 累积最终回答文本（把 TEXT_DELTA 片段拼起来）
             var answer = new StringBuilder();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
@@ -192,7 +197,14 @@ public class PersistingAgentRuntime implements AgentRuntime {
             var answerSaved = new AtomicBoolean();
             // 本次运行的取消信号：订阅时创建，收到 RUN_STARTED 后按 runId 登记
             var cancelSignal = Sinks.<Void>empty();
+            // 本次运行的用量汇总：RUN_COMPLETED 上挂载、并供记账复用同一个对象
+            var usage = new RunUsage[1];
             return delegate.stream(normalizedRequest)
+                    // 本轮提问的消息 id 挂到 RUN_STARTED 上：前端不用刷新历史就能「重新生成」刚生成的这一轮
+                    .map(event -> attachUserMessageId(event, userMessageId))
+                    // 用量必须在副作用（落库 / 推送）之前算好并挂到 RUN_COMPLETED 上：
+                    // 这样「前端看到的数字」与「写进 v5ai_model_usage 的数字」是同一份，不会各估一套
+                    .map(event -> attachUsage(event, normalizedRequest, startedAt, answer, usage))
                     .doOnNext(event -> {
                         // 外键约束：v5ai_run_event.run_id 引用 v5ai_run.id，
                         // 必须先插入 run 记录再保存其事件
@@ -215,18 +227,21 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             answer.append(event.payload());
                         }
                         if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
-                            saveAnswerOnce(normalizedRequest, answer, answerSaved);
+                            // 这时还没有用量（它挂在 RUN_COMPLETED 上），落库的用量留空
+                            saveAnswerOnce(normalizedRequest, answer, null, answerSaved);
                         }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-                            saveAnswerOnce(normalizedRequest, answer, answerSaved);
+                            saveAnswerOnce(normalizedRequest, answer, usage[0], answerSaved);
                             runRecordService.complete(event.runId());
-                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0],
-                                    answer.toString(), RunStatus.COMPLETED);
+                            // attachUsage 已经算过：直接复用，保证载荷与账目一致
+                            recordUsage(normalizedRequest, runId[0], modelName[0], usage[0],
+                                    RunStatus.COMPLETED);
                         }
                         if (event.type() == RuntimeEventType.RUN_FAILED) {
                             runRecordService.fail(event.runId(), event.payload());
-                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0],
-                                    answer.toString(), RunStatus.FAILED);
+                            recordUsage(normalizedRequest, runId[0], modelName[0],
+                                    usageOf(normalizedRequest, startedAt[0], answer.toString()),
+                                    RunStatus.FAILED);
                         }
                     })
                     // 异常兜底：把异常转成 RUN_FAILED 事件，同样落库并标记 run 失败
@@ -242,17 +257,20 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         runId[0] = failedRunId;
                         runEventService.save(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
                         runRecordService.fail(failedRunId, exception.getMessage());
-                        recordUsage(normalizedRequest, failedRunId, modelName[0], startedAt[0],
-                                answer.toString(), RunStatus.FAILED);
+                        recordUsage(normalizedRequest, failedRunId, modelName[0],
+                                usageOf(normalizedRequest, startedAt[0], answer.toString()),
+                                RunStatus.FAILED);
                         return Flux.just(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
                     })
                     // 正常结束但从未收到 RUN_STARTED（delegate 没发启动事件）时，
                     // 也要把回答落库，保证消息完整
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
-                            saveAnswerOnce(normalizedRequest, answer, answerSaved);
-                            recordUsage(normalizedRequest, null, modelName[0], startedAt[0],
-                                    answer.toString(), RunStatus.COMPLETED);
+                            saveAnswerOnce(normalizedRequest, answer,
+                                    usageOf(normalizedRequest, startedAt[0], answer.toString()), answerSaved);
+                            recordUsage(normalizedRequest, null, modelName[0],
+                                    usageOf(normalizedRequest, startedAt[0], answer.toString()),
+                                    RunStatus.COMPLETED);
                         }
                     })
                     // 停止/断流：取消是正常收尾，不是异常——保留已生成的部分回答
@@ -274,8 +292,9 @@ public class PersistingAgentRuntime implements AgentRuntime {
             if (runId != null) {
                 runRecordService.cancel(runId);
             }
-            saveAnswerOnce(request, answer, answerSaved);
-            recordUsage(request, runId, modelName, startedAt, answer.toString(), RunStatus.CANCELED);
+            saveAnswerOnce(request, answer, usageOf(request, startedAt, answer.toString()), answerSaved);
+            recordUsage(request, runId, modelName,
+                    usageOf(request, startedAt, answer.toString()), RunStatus.CANCELED);
             log.info("run {} canceled by caller, {} chars of partial answer kept", runId, answer.length());
         } catch (Exception exception) {
             log.warn("failed to finish canceled run {}: {}", runId, exception.getMessage());
@@ -286,39 +305,76 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 助手回答只落库一次：取消与正常完成可能先后到达（例如先点停止、随后模型又答完），
      * 无保护地写入会产生两条助手消息。
      */
-    private void saveAnswerOnce(AgentRunBo request, StringBuilder answer, AtomicBoolean answerSaved) {
+    private void saveAnswerOnce(AgentRunBo request, StringBuilder answer, RunUsage usage,
+                                AtomicBoolean answerSaved) {
         if (!answerSaved.compareAndSet(false, true)) {
             return;
         }
+        // 用量跟着回答一起落库：刷新页面后读历史仍能看到「用量 / 用时」
         messageService.save(new SessionMessage(request.conversationId(), request.agentKey(),
-                MessageRole.ASSISTANT, answer.toString()));
+                MessageRole.ASSISTANT, answer.toString()).withUsage(usage));
         saveAgentState(request, answer.toString());
     }
 
     /**
-     * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账（Token 按字符数粗略估算）。
+     * 按字符数估算用量（与 v5ai_model_usage 记账同一口径）。
+     */
+    private static RunUsage usageOf(AgentRunBo request, Instant startedAt, String answer) {
+        long promptChars = (request.query() == null ? 0 : request.query().length())
+                + (request.ragContext() == null ? 0 : request.ragContext().length());
+        long completionChars = answer == null ? 0 : answer.length();
+        long durationMs = startedAt == null ? 0 : Duration.between(startedAt, Instant.now()).toMillis();
+        return RunUsage.of(Math.max(1, promptChars / 4), Math.max(1, completionChars / 4),
+                Math.max(durationMs, 0));
+    }
+
+    /**
+     * 给 RUN_STARTED 挂上本轮用户消息 id（其余事件原样透传），供前端把「重新生成」的锚点记在这一轮上。
+     *
+     * <p>复用既有提问的运行没有新消息（id 为 null），载荷留空——前端本来就持有那条提问的 id。</p>
+     */
+    private static RuntimeRunEventDTO attachUserMessageId(RuntimeRunEventDTO event, Long userMessageId) {
+        if (event.type() != RuntimeEventType.RUN_STARTED || userMessageId == null) {
+            return event;
+        }
+        return RuntimeRunEventDTO.started(event.runId(),
+                JSONUtil.createObj().set("userMessageId", userMessageId).toString());
+    }
+
+    /**
+     * 给 RUN_COMPLETED 挂上用量载荷（其余事件原样透传），供前端展示「用量 / 用时」。
+     *
+     * <p>此时 {@code answer} 已经收齐全部 TEXT_DELTA 片段（增量事件在前、完成事件在后），
+     * 所以算出来的完成 token 就是整段回答的。</p>
+     */
+    private static RuntimeRunEventDTO attachUsage(RuntimeRunEventDTO event, AgentRunBo request,
+                                                  Instant[] startedAt, StringBuilder answer, RunUsage[] usage) {
+        if (event.type() != RuntimeEventType.RUN_COMPLETED) {
+            return event;
+        }
+        var computed = usageOf(request, startedAt[0], answer.toString());
+        usage[0] = computed;
+        return RuntimeRunEventDTO.completed(event.runId(), computed.toJson());
+    }
+
+    /**
+     * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账。
      */
     private void recordUsage(AgentRunBo request, String runId, String modelName,
-                             Instant startedAt, String answer, RunStatus status) {
+                             RunUsage usage, RunStatus status) {
         if (usageRecorder == null && quotaService == null) {
             return;
         }
         try {
-            long promptChars = (request.query() == null ? 0 : request.query().length())
-                    + (request.ragContext() == null ? 0 : request.ragContext().length());
-            long completionChars = answer == null ? 0 : answer.length();
-            long promptTokens = Math.max(1, promptChars / 4);
-            long completionTokens = Math.max(1, completionChars / 4);
-            long durationMs = startedAt == null ? 0 : Duration.between(startedAt, Instant.now()).toMillis();
             if (usageRecorder != null) {
                 usageRecorder.record(new ModelUsageDTO(
                         null, runId, request.agentKey(),
                         modelName == null || modelName.isBlank() ? "unknown" : modelName,
-                        promptTokens, completionTokens, Math.max(durationMs, 0),
+                        usage.promptTokens(), usage.completionTokens(), usage.durationMs(),
                         status.name(), OffsetDateTime.now()));
             }
             if (quotaService != null) {
-                quotaService.recordUsage(request.agentKey(), promptTokens + completionTokens);
+                quotaService.recordUsage(request.agentKey(), usage.totalTokens());
             }
         } catch (Exception exception) {
             log.warn("failed to record usage for run {}: {}", runId, exception.getMessage());

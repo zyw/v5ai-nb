@@ -17,13 +17,15 @@ class AgentRunBoNarrowingTest {
 
     @Test
     void nullListsAreNormalizedToEmptySoConsumersNeedNoNullChecks() {
-        var bo = new AgentRunBo("a", "c", "q", null, null, null, null, null, null, null, null, null);
+        var bo = new AgentRunBo("a", "c", "q", null, null, null, null, null, null, null, null, null, false);
 
         assertThat(bo.history()).isEmpty();
         assertThat(bo.attachments()).isEmpty();
         assertThat(bo.disabledMcpServerIds()).isEmpty();
         assertThat(bo.disabledSkillIds()).isEmpty();
         assertThat(bo.hasAttachments()).isFalse();
+        // 默认是「新的一轮」：不复用提问（只有「重新生成」才把它置为 true）
+        assertThat(bo.reuseUserMessage()).isFalse();
     }
 
     @Test

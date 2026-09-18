@@ -62,7 +62,7 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 
 - **Provider/Model**：模型供应商与模型配置；凭据 AES-GCM 加密存储；支持连通性测试。Embedding 模型未配置时回退到确定性本地 Hash 嵌入（1536 维）。
 - **Agent**：平台核心实体（平台实体类为 `Agent`，运行时契约 record 为 `AgentDTO`；`AgentRunBo`/`AgentRunVo` 分别是运行入参与结果，`SessionMessage` 是会话消息载体）。有草稿/发布/禁用状态；发布时把配置（模型 / 系统提示词 / 能力开关等标量字段）快照到 `v5ai_agent_version.snapshot_json`，线上 `/api/v1` 运行按**发布快照**解析（`PublishedAgentResolver.resolve`），管理端 `/api/admin` 调试按**实时编辑行**解析（`resolveForDebug`），因此编辑未重新发布不影响线上；MCP/Skill/RAG 绑定列表不固化、仍按 `agentKey` 实时解析。5 个能力开关在运行时生效、对 `/api/v1` 与 `/api/admin` 一致：`mcpEnabled`/`skillEnabled` 门控绑定解析（关闭即不加载）、`ragEnabled` 门控知识检索（`ragCallMode` 选择调用方式：1=智能调用，注册 `rag_search` 工具、把可用知识库列表写进系统提示，由 LLM 自主决定是否检索与检索几次；2=强制调用，每次运行前必检索并注入，默认值、兼容存量行为）、`memoryEnabled` 控制按会话自动注入历史（显式 `resume` 历史不覆盖）、`webSearchEnabled` 注册 Tavily 联网搜索工具（配置 `v5ai.agentscope.tavily-api-key` / 环境变量 `V5AI_TAVILY_API_KEY`，缺 Key 时工具返回错误而非抛异常）。`agentKey` 为对外运行标识；通过 API Key（BCrypt 存储）鉴权。
-- **会话/消息/run/run_event/AgentState**：运行时持久化对象。对话历史与恢复基于这些表。会话的**归属主体是 API Key**（`v5ai_conversation.api_key_id`，见 `docs/adr/0006-api-key-scoped-conversations.md`）：门户侧的列表/改名/归档、消息与附件读取都以它判定，`user_id` 只是展示与审计冗余；调试入口产生的会话该列为 NULL，因而不出现在门户列表里。会话可命名、可归档（归档后禁止继续对话 → 409）。消息可携带**图片附件**（`v5ai_message_attachment`，指向 `plm_resource` 的 ATTACHMENT 资源），附件是否可用由所绑 CHAT 模型的 `config.capabilities` 是否含 `image` 决定。
+- **会话/消息/run/run_event/AgentState**：运行时持久化对象。对话历史与恢复基于这些表。会话的**归属主体是 API Key**（`v5ai_conversation.api_key_id`，见 `docs/adr/0006-api-key-scoped-conversations.md`）：门户侧的列表/改名/归档、消息与附件读取都以它判定，`user_id` 只是展示与审计冗余；调试入口产生的会话该列为 NULL，因而不出现在门户列表里。会话可命名、可归档（归档后禁止继续对话 → 409）。消息可携带**图片附件**（`v5ai_message_attachment`，指向 `plm_resource` 的 ATTACHMENT 资源），附件是否可用由所绑 CHAT 模型的 `config.capabilities` 是否含 `image` 决定。消息有「**作废**」软状态（`v5ai_message.superseded_at`）：被「重新生成」替换的消息保留数据但不参与展示与记忆回放；读取侧只在 `findByConversationId` 与列表预览两处过滤（附件读取的推导式鉴权**刻意不过滤**——那是归属判定，不是展示查询）。
 - **知识库（RAG）**：文档上传（TXT/MD/PDF/DOCX）与 URL 导入 → Worker 异步（解析→切片→Embedding→pgvector）→ 向量/关键词检索 → 运行时注入上下文并发出 `RETRIEVAL` 事件。
 - **MCP**：Server 注册（Streamable HTTP / SSE / Stdio，headers/env 加密），连接测试 → Tool 发现与缓存 → Agent 绑定 → 运行时动态注册为 AgentScope Toolkit。**必须先"发现工具"再绑定发布**。Tool 权限三态 ALLOW/APPROVE/DENY，调用审计（runId/工具名/参数摘要/状态/耗时）。Stdio 命令受白名单限制（生产必配 `V5AI_MCP_STDIO_COMMAND_WHITELIST`）。
 - **Skill**：zip 包上传（SKILL.md frontmatter 校验、路径穿越/大小/编码校验）→ DRAFT 版本 → 发布为当前版本（回滚改变当前版本）→ Agent 绑定 → 运行时注入 Workspace（`skills/<name>/` + 只读 Skill 仓库 `<available_skills>`）。
@@ -75,7 +75,7 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 ```
 RUN_STARTED → MODEL_CALL → (TEXT_DELTA | TOOL_CALL → TOOL_RESULT | RETRIEVAL)*
             → MESSAGE_COMPLETED → RUN_COMPLETED
-失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED；调用方停止：run 状态置 CANCELED（不额外发事件，已生成的部分回答照常落库）
+失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED；调用方停止：run 状态置 CANCELED（不额外发事件，已生成的部分回答照常落库）；RUN_STARTED 的载荷是本轮提问的消息 id、RUN_COMPLETED 的载荷是本次运行的用量汇总（token 估算 + 耗时），前端「重新生成的锚点」与「用量/用时」分别读它们
 ```
 
 `RETRIEVAL` 的位置取决于 RAG 调用方式：**强制调用**在模型调用前发出（pre-step 检索注入）；**智能调用**在 `rag_search` 的 `TOOL_RESULT` 之后追加。
@@ -180,7 +180,7 @@ flowchart LR
 - **认证**：`POST /api/auth/login`（默认管理员 `admin/admin`，启动时自动种子）。管理 API 强制登录，写操作需 admin 角色。
 - **管理 API**：`/api/admin/...`（providers、models、agents、knowledge-bases、mcp-servers、skills、workflows、users、roles、menus、clients、logs、quota、usage、stats）。
 - **运行 API**：`/api/v1/agents/{agentKey}/chat/stream`（SSE）与 `/api/v1/agents/{agentKey}/chat`（一次性），用 Agent API Key 鉴权（Header `Authorization: Bearer <api-key>`），按应用配额/每分钟限流（超限 429）。
-- **对话门户 API**（同样用 API Key）：会话列表/改名/归档 `GET|PATCH /api/v1/agents/{agentKey}/chat/conversations[/{id}]`、停止运行 `POST /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`、附件上传 `POST /api/v1/agents/resource/upload` 与读取 `GET /api/v1/agents/attachments/{id}`。契约见 `docs/api/phase6.md`。
+- **对话门户 API**（同样用 API Key）：会话列表/改名/归档 `GET|PATCH /api/v1/agents/{agentKey}/chat/conversations[/{id}]`、停止运行 `POST /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`、重新生成 `POST /api/v1/agents/{agentKey}/chat/conversations/{id}/regenerate`、附件上传 `POST /api/v1/agents/resource/upload` 与读取 `GET /api/v1/agents/attachments/{id}`。契约见 `docs/api/phase6.md`。
 - **健康检查**：`/api/health`。
 
 各阶段 API 细节见 `docs/api/phase1.md` ~ `phase6.md`（phase6 为对话门户：附件与多模态、会话管理、停止对话）。
@@ -188,7 +188,7 @@ flowchart LR
 ## 7. 数据库与迁移
 
 - 迁移脚本位于 `v5ai-platform/src/main/resources/db/migration/`，命名 `V<n>__<name>.sql`，Flyway 管理（表 `v5ai_flyway_schema_history`）。`spring.flyway.locations: classpath:db/migration` 扫描所有 classpath（v5ai-platform 为 starter 依赖）。
-- 当前迁移：V1 Phase1、V2 RAG、V3 provider_type、V4 runtime 列改 varchar、V5 MCP、V6 Skill、V7 平台增强、V8 Agent 重命名、V9 角色、V10 菜单、V11 回填 admin 角色、V12 工作流、V13 Agent 展示与能力开关字段、V14 用户资料字段、V15 用户启用改 status、V16 角色 role_name 与 data_scope、V17 操作日志与登录日志、V18 RBAC 重写 + plm_client、V19 日志表更名 plm_* + client_key、V20 配额/用量 created_at、V21 菜单权限标识 + 日志/客户端菜单、V22 工作流菜单、V23 存储实例 + 资源菜单、V24 知识库扩展、V25 存储实例 description、V26 模型供应商描述/图标、V27 种子模型供应商、V28 模型 config jsonb→text、V29 模型 endpoint→base_url、V30 RAG 向量存储解耦、V31 关键词路 jieba + BM25、V32 Agent RAG 调用方式（`rag_call_mode`）、V34 RBAC 主键自增、V35 API Key 用户与 Agent 绑定、V36 tracking_id 改 UUID、V37 API Key key_hash 与名称唯一、V38 门户会话归属（`api_key_id`/`name`/`archived_at`）+ 消息附件表 `v5ai_message_attachment`。
+- 当前迁移：V1 Phase1、V2 RAG、V3 provider_type、V4 runtime 列改 varchar、V5 MCP、V6 Skill、V7 平台增强、V8 Agent 重命名、V9 角色、V10 菜单、V11 回填 admin 角色、V12 工作流、V13 Agent 展示与能力开关字段、V14 用户资料字段、V15 用户启用改 status、V16 角色 role_name 与 data_scope、V17 操作日志与登录日志、V18 RBAC 重写 + plm_client、V19 日志表更名 plm_* + client_key、V20 配额/用量 created_at、V21 菜单权限标识 + 日志/客户端菜单、V22 工作流菜单、V23 存储实例 + 资源菜单、V24 知识库扩展、V25 存储实例 description、V26 模型供应商描述/图标、V27 种子模型供应商、V28 模型 config jsonb→text、V29 模型 endpoint→base_url、V30 RAG 向量存储解耦、V31 关键词路 jieba + BM25、V32 Agent RAG 调用方式（`rag_call_mode`）、V34 RBAC 主键自增、V35 API Key 用户与 Agent 绑定、V36 tracking_id 改 UUID、V37 API Key key_hash 与名称唯一、V38 门户会话归属（`api_key_id`/`name`/`archived_at`）+ 消息附件表 `v5ai_message_attachment`、V39（`V39__message_usage_and_supersede.sql`）助手回答的用量与用时落库（`prompt_tokens`/`completion_tokens`/`duration_ms`）+ 消息「作废」标记（`superseded_at`，含会话级部分索引）。
 - 所有表以 `v5ai_` 前缀。运行时表 UUID 列使用 VARCHAR（避免 `uuid = character varying` 报错）。
 - 需要 pgvector 扩展（`CREATE EXTENSION IF NOT EXISTS vector` 在迁移中幂等执行）。
 - 添加新表/改列时**必须新增一个递增的 V 版本迁移**，不要修改已应用的历史迁移。

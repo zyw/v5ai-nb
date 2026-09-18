@@ -30,6 +30,8 @@ public interface RuntimeMessageMapper extends BaseMapperPlus<RuntimeMessage, Run
                    content         AS "content"
             FROM v5ai_message
             WHERE role = 'USER'
+              -- 作废的提问不算「首条提问」：重新生成会把重发的那条作废掉
+              AND superseded_at IS NULL
               AND conversation_id IN
               <foreach collection="conversationIds" item="conversationId" open="(" separator="," close=")">
                 #{conversationId}

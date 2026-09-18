@@ -76,15 +76,30 @@ class PersistingAgentRuntimeTest {
     /** 只收集落库消息，不做任何断言之外的事。 */
     private static final class RecordingMessageService implements MessageService {
         private final List<SessionMessage> saved = new ArrayList<>();
+        /** 收到的「作废锚点之后的消息」调用参数（会话#锚点） */
+        final List<String> supersededAfter = new ArrayList<>();
 
         @Override
-        public boolean save(SessionMessage message) {
-            return saved.add(message);
+        public Long save(SessionMessage message) {
+            saved.add(message);
+            // 递增的确定性 id：断言 RUN_STARTED 载荷时要用
+            return (long) saved.size();
         }
 
         @Override
         public List<SessionMessage> findByConversationId(String conversationId) {
             return List.of();
+        }
+
+        @Override
+        public Optional<SessionMessage> findActiveMessage(Long messageId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public int supersedeAfter(String conversationId, Long messageId) {
+            supersededAfter.add(conversationId + "#" + messageId);
+            return 1;
         }
 
         @Override
@@ -253,8 +268,12 @@ class PersistingAgentRuntimeTest {
         assertThat(runs.canceled).containsExactly(runId);
         assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
                 .singleElement()
-                .extracting(SessionMessage::content)
-                .isEqualTo("半截回答");
+                .satisfies(answer -> {
+                    assertThat(answer.content()).isEqualTo("半截回答");
+                    // 被停止的回答同样带着用量落库：停止不是"这一次没消耗"
+                    assertThat(answer.usage()).isNotNull();
+                    assertThat(answer.usage().durationMs()).isGreaterThanOrEqualTo(0L);
+                });
         assertThat(usages).singleElement().extracting(ModelUsageDTO::status).isEqualTo("CANCELED");
         assertThat(usages.get(0).completionTokens()).isPositive();
     }
@@ -278,6 +297,103 @@ class PersistingAgentRuntimeTest {
         assertThat(registry.cancel(runId)).isFalse();
         assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT).hasSize(1);
         assertThat(runs.canceled).containsExactly(runId);
+    }
+
+    /**
+     * RUN_COMPLETED 的载荷带用量汇总：前端「用量 / 用时」直接读它，
+     * 且必须与写进 v5ai_model_usage 的记账是**同一份**数字（否则界面和账目会各说一套）。
+     */
+    @Test
+    void completedRunCarriesUsageInTheCompletionPayload() {
+        var runId = "run-usage";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.modelCall(runId, "gpt-4o"),
+                RuntimeRunEventDTO.textDelta(runId, "12345678"),
+                RuntimeRunEventDTO.completed(runId));
+        var usages = new ArrayList<ModelUsageDTO>();
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), messages,
+                new RecordingRunRecordService(), new NoopConversations(), event -> false, null, usage -> {
+            usages.add(usage);
+            return true;
+        }, null, new RunCancellationRegistry());
+
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-7", "问题")).collectList().block();
+
+        var completed = events.stream()
+                .filter(event -> event.type() == RuntimeEventType.RUN_COMPLETED)
+                .findFirst()
+                .orElseThrow();
+        var payload = cn.hutool.json.JSONUtil.parseObj(completed.payload());
+        // 8 个字符 → 估算 2 个完成 token；提问 2 个字符 → 至少 1 个 prompt token
+        assertThat(payload.getLong("completionTokens")).isEqualTo(2L);
+        assertThat(payload.getLong("promptTokens")).isEqualTo(1L);
+        assertThat(payload.getLong("totalTokens")).isEqualTo(3L);
+        assertThat(payload.getLong("durationMs")).isGreaterThanOrEqualTo(0L);
+        // 载荷与记账同源：同一份数字，不各估一套
+        assertThat(usages).singleElement().satisfies(usage -> {
+            assertThat(usage.completionTokens()).isEqualTo(2L);
+            assertThat(usage.durationMs()).isEqualTo(payload.getLong("durationMs"));
+        });
+        // 用量也要跟着回答落库，否则刷新页面后历史回答就没了这两个数字
+        assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
+                .singleElement()
+                .satisfies(answer -> {
+                    assertThat(answer.usage()).isNotNull();
+                    assertThat(answer.usage().completionTokens()).isEqualTo(2L);
+                    assertThat(answer.usage().totalTokens()).isEqualTo(3L);
+                    assertThat(answer.usage().durationMs()).isEqualTo(payload.getLong("durationMs"));
+                });
+    }
+
+    /**
+     * 「重新生成」复用既有提问：不再新插用户消息（否则历史里会出现两条相同提问），
+     * 回答照常落库，且 RUN_STARTED 不带 userMessageId（没有新消息，前端本来就持有那个 id）。
+     */
+    @Test
+    void regenerationReusesTheExistingQuestionInsteadOfInsertingANewOne() {
+        var runId = "run-regen";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.textDelta(runId, "新回答"),
+                RuntimeRunEventDTO.completed(runId));
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), messages,
+                new RecordingRunRecordService(), new NoopConversations(), event -> false);
+
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-8", "原来的提问")
+                .withReuseUserMessage(true)).collectList().block();
+
+        assertThat(messages.saved).noneMatch(message -> message.role() == MessageRole.USER);
+        assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
+                .singleElement()
+                .extracting(SessionMessage::content)
+                .isEqualTo("新回答");
+        assertThat(events).filteredOn(event -> event.type() == RuntimeEventType.RUN_STARTED)
+                .singleElement()
+                .extracting(RuntimeRunEventDTO::payload)
+                .isEqualTo("");
+    }
+
+    /** 普通运行：RUN_STARTED 携带本轮提问的消息 id，前端不用刷新历史就能重新生成这一轮。 */
+    @Test
+    void runStartedCarriesTheUserMessageId() {
+        var runId = "run-anchor";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.textDelta(runId, "回答"),
+                RuntimeRunEventDTO.completed(runId));
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), messages,
+                new RecordingRunRecordService(), new NoopConversations(), event -> false);
+
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-9", "提问")).collectList().block();
+
+        // RecordingMessageService 的 save 返回递增 id：用户提问是第 1 条
+        var started = events.stream().filter(event -> event.type() == RuntimeEventType.RUN_STARTED)
+                .findFirst().orElseThrow();
+        assertThat(cn.hutool.json.JSONUtil.parseObj(started.payload()).getLong("userMessageId")).isEqualTo(1L);
     }
 
     /** 正常完成时也记用量（回归：改造后在完成路径上仍要记账）。 */

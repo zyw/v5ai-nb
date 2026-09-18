@@ -6,6 +6,8 @@
  * - `GET    /api/v1/agents/auth/{agentKey}/avatar`：代读上传的头像（管理端资源地址门户拿不到令牌）；
  * - `POST   /api/v1/agents/{agentKey}/chat/stream`：SSE 流式对话；
  * - `POST   /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`：停止一次进行中的运行；
+ * - `POST   /api/v1/agents/{agentKey}/chat/conversations/{id}/regenerate`：重新生成某一轮的回答
+ *   （服务端作废旧回答并复用原提问重跑，返回同一套 SSE 事件）；
  * - `GET    /api/v1/agents/{agentKey}/chat/conversations`：会话列表（限本 Key 本 Agent）；
  * - `PATCH  /api/v1/agents/{agentKey}/chat/conversations/{id}`：改名 / 归档；
  * - `GET    /api/v1/agents/{agentKey}/chat/conversations/{id}`：会话历史；
@@ -61,6 +63,19 @@ export interface AttachmentRef {
   resourceId: number
 }
 
+/**
+ * 一次运行的用量汇总：SSE 的 RUN_COMPLETED 载荷与历史消息的 usage 字段**形状完全相同**，
+ * 前者用于边收边展示，后者保证刷新页面后历史回答仍显示「用量 / 用时」。
+ *
+ * token 是平台按字符数估算的值（与记账同一口径），durationMs 是服务端墙钟耗时。
+ */
+export interface RunUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  durationMs: number
+}
+
 /** 消息历史里返回的附件（带门户读取地址）。 */
 export interface MessageAttachment {
   type: string
@@ -72,6 +87,10 @@ export interface ConversationMessage {
   role: string
   content: string
   attachments?: MessageAttachment[]
+  /** 该回答的用量与用时；用户消息、或 V39 之前落库的历史消息为 null */
+  usage?: RunUsage | null
+  /** 消息主键：前端用它作为「重新生成」的锚点（取该轮提问的 id） */
+  messageId?: number | null
 }
 
 /** 会话列表行。 */
@@ -93,6 +112,14 @@ export interface ChatStreamBody {
   /** 仅用于显式关闭联网；Agent 未开启时后端无论如何不会联网 */
   webSearch?: boolean
   attachments?: AttachmentRef[]
+}
+
+/** 重新生成某一轮的请求体。 */
+export interface RegenerateBody {
+  /** 该轮提问的消息 id（历史消息里的 messageId，或本轮 RUN_STARTED 载荷给出的 userMessageId） */
+  fromMessageId: number
+  /** 仅用于显式关闭联网；Agent 未开启时后端无论如何不会联网 */
+  webSearch?: boolean
 }
 
 export class ApiError extends Error {
@@ -255,7 +282,29 @@ export async function streamChat(
   onEvent: (event: string, data: string, runId: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const response = await fetch(`${apiBase}/api/v1/agents/${encodeURIComponent(agentKey)}/chat/stream`, {
+  const url = `${apiBase}/api/v1/agents/${encodeURIComponent(agentKey)}/chat/stream`
+  await readSse(await postSse(url, apiKey, body, signal), onEvent)
+}
+
+/**
+ * 重新生成某一轮的回答：服务端**作废该轮提问之后的消息**并复用那条提问重跑，
+ * 因此历史里不会再多出「作废的回答 + 重发的提问」。返回与 streamChat 相同的事件流。
+ */
+export async function regenerateChat(
+  agentKey: string,
+  apiKey: string,
+  conversationId: string,
+  body: RegenerateBody,
+  onEvent: (event: string, data: string, runId: string) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const url = `${apiBase}/api/v1/agents/${encodeURIComponent(agentKey)}/chat/conversations/${encodeURIComponent(conversationId)}/regenerate`
+  await readSse(await postSse(url, apiKey, body, signal), onEvent)
+}
+
+/** 发一个 SSE 请求并做统一的非 2xx 处理（两个流式端点共用）。 */
+async function postSse(url: string, apiKey: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+  const response = await fetch(url, {
     method: 'POST',
     headers: jsonHeaders(apiKey),
     body: JSON.stringify(body),
@@ -264,8 +313,15 @@ export async function streamChat(
   if (!response.ok || !response.body) {
     throw new ApiError((await readError(response)) || '调用失败', response.status)
   }
+  return response
+}
 
-  const reader = response.body.getReader()
+/** SSE 读取循环：按空行切事件块，取其中的 event / data / id 三行。 */
+async function readSse(
+  response: Response,
+  onEvent: (event: string, data: string, runId: string) => void
+): Promise<void> {
+  const reader = response.body!.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let runId = ''

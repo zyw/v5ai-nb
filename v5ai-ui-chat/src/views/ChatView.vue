@@ -2,12 +2,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NAlert, NButton, NIcon, NSpin, useMessage, useThemeVars } from 'naive-ui'
-import { MessageSquarePlus, RefreshCw, Square } from 'lucide-vue-next'
+import { MessageSquarePlus, RefreshCw } from 'lucide-vue-next'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import AgentIntro from '../components/AgentIntro.vue'
 import AgentSwitcher from '../components/AgentSwitcher.vue'
 import ChatMessageBody from '../components/ChatMessageBody.vue'
 import Composer from '../components/Composer.vue'
+import MessageActions from '../components/MessageActions.vue'
 import SessionList from '../components/SessionList.vue'
 import UserMenu from '../components/UserMenu.vue'
 import {
@@ -16,6 +17,7 @@ import {
   fetchConversationMessages,
   parseDelta,
   parseRunFailed,
+  regenerateChat,
   resolveResourceUrl,
   stopRun,
   streamChat,
@@ -23,7 +25,13 @@ import {
   type AttachmentRef,
   type ConversationSummary
 } from '../api/client'
-import { parseHits, type ChatMsg } from '../utils/chatStream'
+import {
+  normalizeUsage,
+  parseHits,
+  parseUsage,
+  parseUserMessageId,
+  type ChatMsg
+} from '../utils/chatStream'
 import {
   activeAgent,
   agents,
@@ -61,12 +69,18 @@ const bootstrapping = ref(true)
 const loading = ref(false)
 const messages = ref<ChatMsg[]>([])
 const conversationId = ref('')
+/** 切换会话时正在拉历史：这期间只显示加载态，不露出「预设问题」的欢迎页（否则会先误导一下再跳变） */
+const historyLoading = ref(false)
+/** 在途历史请求的序号：切走 / 新建会话 / 直接提问后，迟到的响应一律丢弃，不覆盖当前视图 */
+let historyToken = 0
 /** 本次提问是否使用联网搜索：默认取 Agent 配置；Agent 未开启时开关禁用 */
 const webSearch = ref(false)
 /** 当前正在跑的运行 ID（取自 SSE 的 id: 字段），停止时按它通知服务端 */
 const currentRunId = ref('')
 const listRef = ref<HTMLElement | null>(null)
 let controller: AbortController | null = null
+/** 上传阶段（流还没开始）被点了停止：send() 拿到上传结果后直接放弃这次发送 */
+let sendCancelled = false
 
 const currentAgentKey = computed(() => activeAgent.value?.agentKey ?? '')
 const imageSupported = computed(() => activeAgent.value?.imageSupported ?? false)
@@ -108,9 +122,8 @@ onBeforeUnmount(() => {
 watch(
   () => activeAgent.value?.agentKey,
   async () => {
-    // 会话与 Agent 绑定：切换 Agent 即开一个新会话
-    messages.value = []
-    conversationId.value = ''
+    // 会话与 Agent 绑定：切换 Agent 即开一个新会话（同时作废在途的历史请求）
+    newSession()
     syncWebSearchDefault()
     await refreshSessions()
   }
@@ -160,21 +173,119 @@ async function send(question: string, files: File[] = []) {
     conversationId.value = newSessionId()
   }
 
+  // 立刻进入「进行中」：右侧按钮当场从发送变成停止，同时挡住上传期间重复发送
+  loading.value = true
+  sendCancelled = false
+  currentRunId.value = ''
   const attachments = await uploadAll(files)
-  if (attachments === null) return
+  if (attachments === null || sendCancelled) {
+    // 上传失败，或这段上传期间用户点了停止：整体放弃这次发送（不留半截状态）
+    sendCancelled = false
+    loading.value = false
+    return
+  }
 
-  messages.value.push({
+  // 用户消息也要是响应式代理：本轮提问的消息 id 由 RUN_STARTED 载荷回填（重新生成的锚点）
+  const userMessage = reactive<ChatMsg>({
     role: 'user',
     content: question,
-    attachments: files.map((file) => URL.createObjectURL(file))
+    attachments: files.map((file) => URL.createObjectURL(file)),
+    attachmentRefs: attachments
   })
+  messages.value.push(userMessage)
+
+  const agentKey = agent.agentKey
+  const search = webSearch.value
+  await deliver(
+    (onEvent, signal) =>
+      streamChat(
+        agentKey,
+        apiKey.value,
+        { conversationId: conversationId.value, query: question, webSearch: search, attachments },
+        onEvent,
+        signal
+      ),
+    (event, data) => {
+      if (event !== 'RUN_STARTED') return
+      const userMessageId = parseUserMessageId(data)
+      if (userMessageId) userMessage.messageId = userMessageId
+    }
+  )
+}
+
+/**
+ * 重新生成某条回答：丢弃它及其之后的全部消息，用**同一条提问**重跑，
+ * 新回答就地替换原回答、不保留多版本（见 CONTEXT.md「重新生成」）。
+ */
+async function regenerate(index: number) {
+  const agent = activeAgent.value
+  const answer = messages.value[index]
+  const prompt = messages.value[index - 1]
+  if (!agent || loading.value) return
+  if (!answer || answer.role !== 'assistant' || !prompt || prompt.role !== 'user') return
+  const anchorId = prompt.messageId
+  if (!anchorId) {
+    message.warning('这条提问缺少消息标识，无法重新生成（可重新提问一次）')
+    return
+  }
+
+  loading.value = true
+  sendCancelled = false
+  currentRunId.value = ''
+  // 先乐观地就地丢弃这条回答及其之后的消息；服务端在校验阶段拒绝时再还原
+  const dropped = messages.value.slice(index)
+  messages.value = messages.value.slice(0, index)
+
+  const agentKey = agent.agentKey
+  const conversation = conversationId.value
+  const search = webSearch.value
+  const outcome = await deliver((onEvent, signal) =>
+    regenerateChat(
+      agentKey,
+      apiKey.value,
+      conversation,
+      { fromMessageId: anchorId, webSearch: search },
+      onEvent,
+      signal
+    )
+  )
+
+  if (!outcome.started) {
+    // 服务端什么都没动（404/409/400 等校验类拒绝）：还原本地列表，并改用提示条说明失败原因
+    messages.value = [...messages.value.slice(0, index), ...dropped]
+    if (outcome.error instanceof Error) {
+      message.error(outcome.error.message)
+    }
+  }
+}
+
+/** 一轮对话怎么发（新对话 / 重新生成）；两者共用同一套 SSE 渲染管线。 */
+type TurnRunner = (
+  onEvent: (event: string, data: string, runId: string) => void,
+  signal: AbortSignal
+) => Promise<void>
+
+/**
+ * 跑一轮对话并渲染到界面：push 助手占位 → 订阅 SSE 增量 → 收尾。
+ * 调用方负责置 loading，并用 runner 决定这轮走「新对话」还是「重新生成」。
+ *
+ * @param onFirstEvent 首个事件到达时的回调（此时服务端已落库 / 已作废完毕）
+ * @return 流是否真的开始过、以及捕获到的错误；调用方据此判断服务端有没有动过数据
+ */
+async function deliver(
+  runner: TurnRunner,
+  onFirstEvent?: (event: string, data: string) => void
+): Promise<{ started: boolean; error: unknown }> {
   // 必须是响应式代理：SSE 回调里就地增量渲染
   const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true, reasoningOpen: true })
   messages.value.push(assistant)
-  loading.value = true
-  currentRunId.value = ''
   await scrollToBottom(true)
 
+  // 首个事件只处理一次：刷新会话列表（服务端此时已建好会话）+ 通知调用方；
+  // 新会话因此立刻出现在左栏，而不是等整轮回答流结束
+  let firstEventHandled = false
+  let started = false
+  let caught: unknown = null
   controller = new AbortController()
   let watchdog = setTimeout(() => controller?.abort(), STREAM_SILENCE_MS)
   const resetWatchdog = () => {
@@ -183,18 +294,16 @@ async function send(question: string, files: File[] = []) {
   }
 
   try {
-    await streamChat(
-      agent.agentKey,
-      apiKey.value,
-      {
-        conversationId: conversationId.value,
-        query: question,
-        webSearch: webSearch.value,
-        attachments
-      },
+    await runner(
       (event, data, runId) => {
+        started = true
         resetWatchdog()
         if (runId) currentRunId.value = runId
+        if (!firstEventHandled) {
+          firstEventHandled = true
+          void refreshSessions()
+          onFirstEvent?.(event, data)
+        }
         if (event === 'RETRIEVAL') {
           assistant.citations = parseHits(data)
         } else if (event === 'REASONING_DELTA' && data) {
@@ -202,6 +311,9 @@ async function send(question: string, files: File[] = []) {
         } else if (event === 'TEXT_DELTA') {
           if (!assistant.content) assistant.reasoningOpen = false
           assistant.content += parseDelta(data)
+        } else if (event === 'RUN_COMPLETED') {
+          // 用量 / 用时由服务端在完成事件里带出来（与 v5ai_model_usage 记账同一份数字）
+          assistant.usage = parseUsage(data)
         } else if (event === 'RUN_FAILED') {
           assistant.error = parseRunFailed(data)
         } else if (event === 'MESSAGE_COMPLETED' && !assistant.content) {
@@ -212,6 +324,7 @@ async function send(question: string, files: File[] = []) {
       controller.signal
     )
   } catch (e) {
+    caught = e
     // 主动停止不是错误：保留已生成的内容，只标记「已停止」
     if (assistant.stopped) {
       // 停止路径已在 stop() 里标记，这里不再覆盖
@@ -235,16 +348,29 @@ async function send(question: string, files: File[] = []) {
     await refreshSessions()
     void scrollToBottom(true)
   }
+  return { started, error: caught }
 }
 
-/** 停止：先通知服务端取消（幂等），再断开本地流——两条路径都要，缺一条都可能留下「永远运行中」。 */
+/**
+ * 停止生成。按钮要立刻从「停止」变回「发送」，所以先断本地流（流一断，
+ * send() 的 finally 就会把 loading 置回 false），再补一次服务端取消。
+ *
+ * 两条路径都要：断流让服务端走 doOnCancel 兜底，显式 stop 保证即使断流没被感知到
+ * 也能把 run 落定为 CANCELED（且幂等）。
+ */
 async function stop() {
+  // 只标记"本次正在生成的那条回答"：assistant.loading 为真才说明它还在跑
   const assistant = messages.value[messages.value.length - 1]
-  const agent = activeAgent.value
-  if (assistant && assistant.role === 'assistant') {
+  if (assistant && assistant.role === 'assistant' && assistant.loading) {
     assistant.stopped = true
   }
+  const agent = activeAgent.value
   const runId = currentRunId.value
+  if (!controller) {
+    // 流还没开始（附件还在上传）：让 send() 收尾时放弃这次发送
+    sendCancelled = true
+  }
+  controller?.abort()
   if (agent && runId) {
     try {
       await stopRun(apiKey.value, agent.agentKey, runId)
@@ -252,18 +378,21 @@ async function stop() {
       // 服务端已完成/已取消同样是正常结果，这里不打扰用户
     }
   }
-  controller?.abort()
 }
 
 function newSession() {
+  historyToken += 1
+  historyLoading.value = false
   conversationId.value = ''
   messages.value = []
 }
 
 async function openSession(session: ConversationSummary) {
   if (loading.value || session.conversationId === conversationId.value) return
+  const token = (historyToken += 1)
   conversationId.value = session.conversationId
   messages.value = []
+  historyLoading.value = true
   try {
     const history = await fetchConversationMessages(apiKey.value, session.agentKey, session.conversationId)
     const rendered: ChatMsg[] = []
@@ -277,9 +406,18 @@ async function openSession(session: ConversationSummary) {
       rendered.push({
         role: item.role?.toUpperCase() === 'USER' ? 'user' : 'assistant',
         content: item.content,
-        attachments: attachments.filter((url) => url.length > 0)
+        attachments: attachments.filter((url) => url.length > 0),
+        // 保留资源引用：历史消息也能「重新生成」，且不必重新上传图片
+        attachmentRefs: (item.attachments ?? []).map((attachment) => ({
+          type: attachment.type,
+          resourceId: attachment.resourceId
+        })),
+        // 历史消息自带用量（V39 起落库），刷新页面后「用量 / 用时」依然在
+        usage: normalizeUsage(item.usage)
       })
     }
+    // 期间用户已切到别的会话 / 新建会话 / 直接提问：丢弃这次迟到的结果
+    if (token !== historyToken || loading.value) return
     messages.value = rendered
     void scrollToBottom(true)
   } catch (e) {
@@ -288,6 +426,8 @@ async function openSession(session: ConversationSummary) {
       return
     }
     message.error(e instanceof Error ? e.message : '会话历史加载失败')
+  } finally {
+    if (token === historyToken) historyLoading.value = false
   }
 }
 
@@ -381,7 +521,12 @@ async function reloadAgents() {
 
           <template v-else-if="activeAgent">
             <div ref="listRef" class="scroll-area">
-              <AgentIntro v-if="messages.length === 0" :agent="activeAgent" @ask="(q: string) => send(q, [])" />
+              <div v-if="historyLoading" class="history-loading">
+                <n-spin size="small" />
+                <span>正在加载会话历史…</span>
+              </div>
+
+              <AgentIntro v-else-if="messages.length === 0" :agent="activeAgent" @ask="(q: string) => send(q, [])" />
 
               <div v-else class="message-list">
                 <div v-for="(msg, index) in messages" :key="index" class="message-row" :class="msg.role">
@@ -391,39 +536,42 @@ async function reloadAgents() {
                     :name="activeAgent.name"
                     :size="28"
                   />
-                  <div class="bubble" :class="msg.role">
-                    <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
-                    <template v-else>
-                      <div v-if="msg.attachments?.length" class="bubble-attachments">
-                        <img
-                          v-for="(url, imageIndex) in msg.attachments"
-                          :key="imageIndex"
-                          :src="url"
-                          alt="消息附件"
-                          class="bubble-attachment"
-                        />
-                      </div>
-                      <span v-if="msg.content" class="bubble-text">{{ msg.content }}</span>
-                    </template>
-                    <p v-if="msg.stopped" class="bubble-stopped">已停止</p>
+                  <div class="message-main">
+                    <div class="bubble" :class="msg.role">
+                      <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
+                      <template v-else>
+                        <div v-if="msg.attachments?.length" class="bubble-attachments">
+                          <img
+                            v-for="(url, imageIndex) in msg.attachments"
+                            :key="imageIndex"
+                            :src="url"
+                            alt="消息附件"
+                            class="bubble-attachment"
+                          />
+                        </div>
+                        <span v-if="msg.content" class="bubble-text">{{ msg.content }}</span>
+                      </template>
+                      <p v-if="msg.stopped" class="bubble-stopped">已停止</p>
+                    </div>
+                    <MessageActions
+                      v-if="!msg.loading"
+                      :msg="msg"
+                      :can-regenerate="!loading"
+                      @regenerate="regenerate(index)"
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="composer-wrap">
-              <div v-if="loading" class="composer-stop">
-                <n-button size="small" secondary :aria-label="'停止生成'" @click="stop">
-                  <template #icon><n-icon :component="Square" :size="14" /></template>
-                  停止生成
-                </n-button>
-              </div>
               <Composer
                 :loading="loading"
                 :web-search-enabled="activeAgent.webSearchEnabled"
                 :web-search="webSearch"
                 :image-supported="imageSupported"
                 @send="send"
+                @stop="stop"
                 @update:web-search="(value: boolean) => (webSearch = value)"
               />
               <p class="disclaimer">AI 生成内容可能有误，请核实重要信息</p>
@@ -558,6 +706,17 @@ async function reloadAgents() {
   flex-direction: column;
 }
 
+.history-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
 .message-list {
   display: flex;
   flex-direction: column;
@@ -578,8 +737,24 @@ async function reloadAgents() {
   justify-content: flex-end;
 }
 
-.bubble {
+/* 气泡 + 操作条的列容器：操作条跟着气泡对齐，宽度约束从气泡移到这一层 */
+.message-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
   max-width: 78%;
+}
+
+.message-row.assistant .message-main {
+  max-width: 100%;
+}
+
+.message-row.user .message-main {
+  align-items: flex-end;
+}
+
+.bubble {
   padding: 10px 14px;
   border-radius: 12px;
   font-size: 14px;
@@ -590,7 +765,12 @@ async function reloadAgents() {
 .bubble.assistant {
   background: transparent;
   padding: 2px 0;
-  max-width: 100%;
+}
+
+/* 操作条平时隐藏，鼠标悬停/键盘聚焦到这条消息时出现（触屏由组件内部常驻） */
+.message-row:hover :deep(.message-actions),
+.message-row:focus-within :deep(.message-actions) {
+  opacity: 1;
 }
 
 .bubble.user {
@@ -627,12 +807,6 @@ async function reloadAgents() {
   max-width: 820px;
   margin: 0 auto;
   padding: 8px 16px 10px;
-}
-
-.composer-stop {
-  display: flex;
-  justify-content: center;
-  padding-bottom: 6px;
 }
 
 .disclaimer {

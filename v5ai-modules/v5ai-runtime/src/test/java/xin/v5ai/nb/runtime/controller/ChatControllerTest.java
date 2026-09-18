@@ -3,10 +3,12 @@ package xin.v5ai.nb.runtime.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.AttachmentRef;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.ChatBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
@@ -35,6 +37,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -211,8 +214,8 @@ class ChatControllerTest {
         when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", "我的", null)));
         when(messageService.findByConversationId("c-1")).thenReturn(List.of(
                 new SessionMessage("c-1", AGENT_KEY, MessageRole.USER, "看图",
-                        List.of(AttachmentRef.image(42L))),
-                new SessionMessage("c-1", AGENT_KEY, MessageRole.ASSISTANT, "看到了")));
+                        List.of(AttachmentRef.image(42L))).withMessageId(1L),
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.ASSISTANT, "看到了").withMessageId(2L)));
 
         var messages = controller.conversationMessages(AGENT_KEY, "c-1", request).getData();
 
@@ -224,6 +227,93 @@ class ChatControllerTest {
                     assertThat(attachment.accessUrl()).isEqualTo("/api/v1/agents/attachments/42");
                 });
         assertThat(messages.get(1).attachments()).isEmpty();
+        // 主键要交给前端：它是「重新生成」的锚点
+        assertThat(messages.get(0).messageId()).isEqualTo(1L);
+        assertThat(messages.get(1).messageId()).isEqualTo(2L);
+    }
+
+    // ---------- 重新生成 ----------
+
+    @Test
+    void regenerateSupersedesTheOldAnswerThenReRunsTheSameQuestion() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+        when(messageService.findActiveMessage(55L)).thenReturn(Optional.of(
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.USER, "原来的提问",
+                        List.of(AttachmentRef.image(42L))).withMessageId(55L)));
+        when(publishedAgentResolver.resolve(AGENT_KEY)).thenReturn(agent(1L));
+        when(imageSupportResolver.supportsImageInput(1L)).thenReturn(true);
+        when(agentRuntime.stream(any())).thenReturn(Flux.empty());
+
+        controller.regenerate(AGENT_KEY, "c-1", new ChatController.RegenerateBo(55L, false), request);
+
+        // 先作废锚点之后的消息（旧回答），再复用这条提问重跑
+        verify(messageService).supersedeAfter("c-1", 55L);
+        var captor = ArgumentCaptor.forClass(AgentRunBo.class);
+        verify(agentRuntime).stream(captor.capture());
+        var bo = captor.getValue();
+        assertThat(bo.query()).isEqualTo("原来的提问");
+        assertThat(bo.attachments()).containsExactly(AttachmentRef.image(42L));
+        assertThat(bo.reuseUserMessage()).isTrue();
+        assertThat(bo.agentKey()).isEqualTo(AGENT_KEY);
+        assertThat(bo.apiKeyId()).isEqualTo(API_KEY_ID);
+    }
+
+    @Test
+    void regenerateRejectsMissingAnchorWithoutTouchingAnything() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+        when(messageService.findActiveMessage(55L)).thenReturn(Optional.empty());
+
+        assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
+                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+        verify(messageService, never()).supersedeAfter(anyString(), anyLong());
+        verify(agentRuntime, never()).stream(any());
+    }
+
+    /** 锚点必须是**本会话的**用户提问：别的会话的提问、或本会话的助手回答都不行。 */
+    @Test
+    void regenerateRejectsAnchorsFromAnotherConversationOrAssistantMessages() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+        when(messageService.findActiveMessage(55L)).thenReturn(Optional.of(new SessionMessage(
+                "other-conversation", AGENT_KEY, MessageRole.USER, "别人的提问").withMessageId(55L)));
+        when(messageService.findActiveMessage(56L)).thenReturn(Optional.of(new SessionMessage(
+                "c-1", AGENT_KEY, MessageRole.ASSISTANT, "回答").withMessageId(56L)));
+
+        assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
+                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+        assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
+                new ChatController.RegenerateBo(56L, null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+        verify(messageService, never()).supersedeAfter(anyString(), anyLong());
+    }
+
+    /** 归档会话不能重新生成；且必须在作废之前就挡住，否则会先毁掉消息再失败。 */
+    @Test
+    void regenerateRejectsArchivedConversationBeforeSuperseding() {
+        when(conversationService.findById("c-1"))
+                .thenReturn(Optional.of(conversation("c-1", null, OffsetDateTime.now())));
+
+        assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
+                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.CONFLICT);
+        verify(messageService, never()).supersedeAfter(anyString(), anyLong());
+    }
+
+    /** 锚点那轮带图但当前模型不支持 → 400，同样发生在作废之前。 */
+    @Test
+    void regenerateRejectsImagesWhenTheModelDoesNotSupportThem() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+        when(messageService.findActiveMessage(55L)).thenReturn(Optional.of(new SessionMessage(
+                "c-1", AGENT_KEY, MessageRole.USER, "看图",
+                List.of(AttachmentRef.image(42L))).withMessageId(55L)));
+        when(publishedAgentResolver.resolve(AGENT_KEY)).thenReturn(agent(1L));
+        when(imageSupportResolver.supportsImageInput(1L)).thenReturn(false);
+
+        assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
+                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        verify(messageService, never()).supersedeAfter(anyString(), anyLong());
     }
 
     // ---------- 停止对话 ----------

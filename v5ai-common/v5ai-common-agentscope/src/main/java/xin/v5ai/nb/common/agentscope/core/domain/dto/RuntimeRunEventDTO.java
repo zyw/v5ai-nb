@@ -16,9 +16,20 @@ import java.time.Instant;
  * @param createdAt 事件产生时间
  */
 public record RuntimeRunEventDTO(String runId, RuntimeEventType type, String payload, Instant createdAt) {
-    /** 运行开始 */
+    /**
+     * 运行开始，并携带本次运行的上下文。
+     *
+     * <p>载荷为 JSON：{@code {"userMessageId":n}} —— 本轮提问落库后的主键。前端据此在
+     * **不刷新历史**的情况下也能「重新生成」刚生成的那一轮（重新生成以该轮提问为锚点）。</p>
+     */
+    public static RuntimeRunEventDTO started(String runId, String payload) {
+        return new RuntimeRunEventDTO(runId, RuntimeEventType.RUN_STARTED,
+                payload == null ? "" : payload, Instant.now());
+    }
+
+    /** 运行开始（不带上下文载荷） */
     public static RuntimeRunEventDTO started(String runId) {
-        return new RuntimeRunEventDTO(runId, RuntimeEventType.RUN_STARTED, "", Instant.now());
+        return started(runId, "");
     }
 
     /** 模型调用开始（携带模型名） */
@@ -66,8 +77,20 @@ public record RuntimeRunEventDTO(String runId, RuntimeEventType type, String pay
         return new RuntimeRunEventDTO(runId, RuntimeEventType.RUN_FAILED, message, Instant.now());
     }
 
-    /** 运行成功完成 */
+    /**
+     * 运行成功完成，并携带本次运行的用量汇总。
+     *
+     * <p>载荷为 JSON：{@code {"promptTokens":n,"completionTokens":n,"totalTokens":n,"durationMs":n}}。
+     * token 是平台按字符数估算的值（与 {@code v5ai_model_usage} 记账、配额扣减同一套数字），
+     * 前端展示「用量/用时」直接读它，避免再自己估一份。</p>
+     */
+    public static RuntimeRunEventDTO completed(String runId, String payload) {
+        return new RuntimeRunEventDTO(runId, RuntimeEventType.RUN_COMPLETED,
+                payload == null ? "" : payload, Instant.now());
+    }
+
+    /** 运行成功完成（不带用量载荷，如知识库问答调试链路） */
     public static RuntimeRunEventDTO completed(String runId) {
-        return new RuntimeRunEventDTO(runId, RuntimeEventType.RUN_COMPLETED, "", Instant.now());
+        return completed(runId, "");
     }
 }

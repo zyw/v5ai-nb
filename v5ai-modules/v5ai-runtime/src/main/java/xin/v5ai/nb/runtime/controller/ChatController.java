@@ -10,6 +10,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.AttachmentRef;
+import xin.v5ai.nb.common.agentscope.core.domain.RunUsage;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.ChatBo;
@@ -90,7 +91,7 @@ public class ChatController {
     ) {
         var auth = requireAuth(request);
         assertConversationIdValid(bo);
-        assertAttachmentsSupported(agentKey, bo);
+        assertAttachmentsSupported(agentKey, bo.attachments());
         return toSse(agentRuntime.stream(toRunBo(agentKey, bo, auth)));
     }
 
@@ -102,7 +103,7 @@ public class ChatController {
     ) {
         var auth = requireAuth(request);
         assertConversationIdValid(bo);
-        assertAttachmentsSupported(agentKey, bo);
+        assertAttachmentsSupported(agentKey, bo.attachments());
         return agentRuntime.call(toRunBo(agentKey, bo, auth));
     }
 
@@ -130,12 +131,62 @@ public class ChatController {
             HttpServletRequest request
     ) {
         var auth = requireAuth(request);
-        assertAttachmentsSupported(agentKey, bo);
+        assertAttachmentsSupported(agentKey, bo.attachments());
         var history = messageService.findByConversationId(conversationId);
         var resumeRequest = toRunBo(agentKey, bo, auth)
                 .withConversationId(conversationId)
                 .withHistory(history);
         return toSse(agentRuntime.stream(resumeRequest));
+    }
+
+    /**
+     * 重新生成某一轮的回答。
+     *
+     * <p>「重新生成」在服务端是**作废 + 复用提问重跑**：把该轮提问之后的消息全部打上作废标记
+     * （软状态，数据保留、可审计），然后复用那条提问再跑一次。提问行保持有效、不重新插入，
+     * 因此历史里不会出现两条相同的提问；作废的回答也不再进入展示与记忆回放。</p>
+     *
+     * <p>顺序是刻意的：<b>所有校验都在作废之前</b>（任何拒绝都不产生破坏），
+     * 而作废在重跑之前（否则被替换的旧回答会被 {@code withMemory} 读进模型上下文）。</p>
+     *
+     * @param bo {@code {fromMessageId: 该轮提问的消息 id, webSearch?}}
+     * @return 与 {@code /chat/stream} 相同的事件流
+     */
+    @PostMapping("/{agentKey}/chat/conversations/{conversationId}/regenerate")
+    public Flux<ServerSentEvent<RuntimeRunEventDTO>> regenerate(
+            @PathVariable("agentKey") String agentKey,
+            @PathVariable("conversationId") String conversationId,
+            @RequestBody RegenerateBo bo,
+            HttpServletRequest request
+    ) {
+        var auth = requireAuth(request);
+        assertConversationNotArchived(requireOwnedConversation(agentKey, conversationId, auth));
+        // 锚点必须是「本会话里未作废的用户提问」：不满足一律 404，不泄露存在性
+        var anchor = messageService.findActiveMessage(bo.fromMessageId())
+                .filter(message -> conversationId.equals(message.conversationId()))
+                .filter(message -> message.role() == MessageRole.USER)
+                .orElseThrow(() -> new V5aiException(ErrorCode.NOT_FOUND, "提问不存在"));
+        assertAttachmentsSupported(agentKey, anchor.attachments());
+        // 校验全部通过：先作废被替换的回答（及其后更晚的整轮问答），再复用这条提问重跑
+        messageService.supersedeAfter(conversationId, anchor.messageId());
+        var regenerateRequest = new AgentRunBo(agentKey, conversationId, anchor.content())
+                .withWebSearch(bo.webSearch())
+                .withAttachments(anchor.attachments())
+                .withReuseUserMessage(true)
+                .withCaller(auth.apiKeyId(), auth.userId());
+        return toSse(agentRuntime.stream(regenerateRequest));
+    }
+
+    /**
+     * 继续对话的前置校验：归档是收尾态，不得再产生新的问答（见 CONTEXT.md「归档」）。
+     *
+     * <p>普通运行端点靠持久化装饰器里的 {@code ensureConversation} 统一拦截就够了；
+     * 但「重新生成」会先作废旧消息，所以必须在这里、在动手之前挡掉。</p>
+     */
+    private void assertConversationNotArchived(ConversationDTO conversation) {
+        if (conversation.archived()) {
+            throw new V5aiException(ErrorCode.CONFLICT, "会话已归档，请先取消归档再继续对话");
+        }
     }
 
     /**
@@ -266,8 +317,8 @@ public class ChatController {
      * 附件门控：模型未声明支持图片输入（{@code config.capabilities} 不含 {@code image}）时，
      * 携带附件的请求直接拒绝，而不是把图片悄悄丢掉（见 CONTEXT.md「支持图片输入」）。
      */
-    private void assertAttachmentsSupported(String agentKey, ChatBo bo) {
-        if (bo.attachments().isEmpty()) {
+    private void assertAttachmentsSupported(String agentKey, List<AttachmentRef> attachments) {
+        if (attachments.isEmpty()) {
             return;
         }
         var agent = publishedAgentResolver.resolve(agentKey);
@@ -289,15 +340,19 @@ public class ChatController {
      * @param role        消息角色（USER/ASSISTANT）
      * @param content     消息内容
      * @param attachments 消息携带的附件（图片）
+     * @param usage       该回答的用量与用时；用户消息、或没有记录的历史消息为 null
+     * @param messageId   消息主键：前端用它作为「重新生成」的锚点（该轮提问的消息 id）
      */
     public record ConversationMessageResult(MessageRole role, String content,
-                                            List<MessageAttachmentResult> attachments) {
+                                            List<MessageAttachmentResult> attachments,
+                                            RunUsage usage, Long messageId) {
         /**
          * 将领域消息 {@link SessionMessage} 转为 API 响应体（去掉会话等内部字段）。
          */
         public static ConversationMessageResult from(SessionMessage message) {
             return new ConversationMessageResult(message.role(), message.content(),
-                    message.attachments().stream().map(MessageAttachmentResult::from).toList());
+                    message.attachments().stream().map(MessageAttachmentResult::from).toList(),
+                    message.usage(), message.messageId());
         }
     }
 
@@ -336,6 +391,15 @@ public class ChatController {
                     conversation.createdAt(), conversation.updatedAt(),
                     StrUtil.maxLength(preview, PREVIEW_MAX_LENGTH));
         }
+    }
+
+    /**
+     * 重新生成的请求体（不可变 record）。
+     *
+     * @param fromMessageId 该轮提问的消息 id（历史消息里的 {@code messageId}）
+     * @param webSearch     本次是否联网：{@code null}=按 Agent 配置
+     */
+    public record RegenerateBo(Long fromMessageId, Boolean webSearch) {
     }
 
     /**

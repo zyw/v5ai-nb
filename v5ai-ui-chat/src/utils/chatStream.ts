@@ -1,4 +1,4 @@
-import type { KbHitResponse } from '../api/client'
+import type { AttachmentRef, KbHitResponse, RunUsage } from '../api/client'
 
 /**
  * 对话消息（流式）。知识库问答 tab 与智能体「预览与调试」共用同一套渲染状态：
@@ -17,15 +17,88 @@ export interface ChatMsg {
   loading?: boolean
   /** 用户消息携带的图片：已解析为可直接用于 <img> 的地址（本地 blob: 或后端资源 blob:） */
   attachments?: string[]
+  /** 随消息提交的附件资源引用：重新生成时原样重发，不必重新上传 */
+  attachmentRefs?: AttachmentRef[]
+  /** 本次运行的用量与用时（RUN_COMPLETED 载荷；被停止或失败的回答没有） */
+  usage?: RunUsage
   /** 这条回答是被调用方主动停止的（区别于运行失败） */
   stopped?: boolean
+  /**
+   * 持久化主键：用户消息来自历史接口的 messageId 或本轮 RUN_STARTED 载荷的 userMessageId。
+   * 「重新生成」以**该轮提问**的 id 为锚点，取不到时按钮不可用。
+   */
+  messageId?: number
+}
+
+/**
+ * 取出 RuntimeEvent 包体里的 payload。
+ *
+ * SSE 的 `data:` 是整个 RuntimeEvent（`{runId,type,payload,createdAt}`），payload 恒为字符串：
+ * 文本增量就是原文，而 RETRIEVAL / RUN_STARTED / RUN_COMPLETED 的 payload 本身又是一段 JSON 串，
+ * 所以这些载荷必须**先解包、再各自 JSON.parse 一次**。少了这一步就会解成一个只有
+ * runId/type/createdAt 的信封对象，于是静默解析失败：用量、引用、可重新生成的锚点当场都不出来，
+ * 只有重新拉历史（历史接口给的是已经解好的对象）才正常。非包体（异常路径）时原样返回。
+ */
+function unwrapPayload(data: string): string {
+  try {
+    const payload = (JSON.parse(data) as { payload?: unknown }).payload
+    return typeof payload === 'string' ? payload : data
+  } catch {
+    return data
+  }
 }
 
 /** 解析 RETRIEVAL 载荷：命中数组 JSON 串（两条链路同构，故解析器共用）。 */
 export function parseHits(data: string): KbHitResponse[] | undefined {
+  if (!data) return undefined
   try {
-    const parsed = JSON.parse(data)
+    const parsed = JSON.parse(unwrapPayload(data))
     return Array.isArray(parsed) ? (parsed as KbHitResponse[]) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 解析 RUN_COMPLETED 载荷里的用量；载荷为空或不是用量对象时返回 undefined
+ * （知识库问答链路等不携带用量，此时界面上就不显示这一行）。
+ */
+export function parseUsage(data: string): RunUsage | undefined {
+  if (!data) return undefined
+  try {
+    return normalizeUsage(JSON.parse(unwrapPayload(data)))
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 归一化用量对象：SSE 载荷与历史消息的 usage 都走这里，避免两处各写一套判空。
+ * 缺 totalTokens 时按两项之和补齐（旧数据/局部载荷都能显示）。
+ */
+export function normalizeUsage(value: unknown): RunUsage | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const raw = value as Partial<RunUsage>
+  const promptTokens = typeof raw.promptTokens === 'number' ? raw.promptTokens : 0
+  const completionTokens = typeof raw.completionTokens === 'number' ? raw.completionTokens : 0
+  if (typeof raw.promptTokens !== 'number' && typeof raw.completionTokens !== 'number') return undefined
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens: typeof raw.totalTokens === 'number' ? raw.totalTokens : promptTokens + completionTokens,
+    durationMs: typeof raw.durationMs === 'number' ? raw.durationMs : 0
+  }
+}
+
+/**
+ * 解析 RUN_STARTED 载荷里的本轮提问消息 id（{@code {"userMessageId":n}}）。
+ * 服务端在推送 RUN_STARTED 之前就已落库，因此刚生成的那一轮不用刷新历史也能重新生成。
+ */
+export function parseUserMessageId(data: string): number | undefined {
+  if (!data) return undefined
+  try {
+    const parsed = JSON.parse(unwrapPayload(data)) as { userMessageId?: unknown } | null
+    return typeof parsed?.userMessageId === 'number' ? parsed.userMessageId : undefined
   } catch {
     return undefined
   }

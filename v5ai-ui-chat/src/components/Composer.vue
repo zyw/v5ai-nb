@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { NButton, NIcon, NInput, NSwitch, NTooltip, useMessage, useThemeVars } from 'naive-ui'
-import { Paperclip, Send, X } from 'lucide-vue-next'
+import { Paperclip, Send, Square, X } from 'lucide-vue-next'
 import {
   ACCEPTED_ATTACHMENT_TYPES,
   MAX_ATTACHMENT_BYTES,
@@ -9,8 +9,10 @@ import {
 } from '../api/client'
 
 /**
- * 输入区：文本 + 图片附件 + 联网开关 + 发送。
+ * 输入区：文本 + 图片附件 + 联网开关 + 发送/停止。
  *
+ * - 发送与停止共用右侧那一个按钮：空闲时是发送（纸飞机），回答生成中变成停止（方块），
+ *   点停止或本轮输出结束都会变回发送。
  * - 附件：Agent 所绑模型未声明 image 能力时入口禁用（后端也会 400）；
  *   选中即做客户端预校验（类型 / 单张体积 / 数量）并给出缩略图，上传发生在发送时。
  * - 联网开关：Agent 关闭联网能力时置灰禁用；开启时按「本次是否联网」提交给后端。
@@ -26,6 +28,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'send', query: string, files: File[]): void
+  (e: 'stop'): void
   (e: 'update:webSearch', value: boolean): void
 }>()
 
@@ -157,7 +160,23 @@ onBeforeUnmount(clearPending)
         </n-tooltip>
       </div>
 
-      <n-button type="primary" size="small" :loading="loading" :disabled="!canSend" aria-label="发送" @click="send">
+      <n-button
+        v-if="loading"
+        type="primary"
+        size="small"
+        aria-label="停止生成"
+        @click="emit('stop')"
+      >
+        <template #icon><n-icon :component="Square" :size="14" class="stop-icon" /></template>
+      </n-button>
+      <n-button
+        v-else
+        type="primary"
+        size="small"
+        :disabled="!canSend"
+        aria-label="发送"
+        @click="send"
+      >
         <template #icon><n-icon :component="Send" :size="16" /></template>
       </n-button>
     </div>
@@ -250,5 +269,14 @@ onBeforeUnmount(clearPending)
 
 .composer-file {
   display: none;
+}
+
+/*
+ * 停止按钮用实心方块：lucide 的 Square 只有描边（fill="none"），
+ * 而 n-icon 的内部属性不向图标透传（naive-ui 把 $attrs 留在外层 <i> 上），
+ * 所以在这里直接把 svg 填充成图标自身的颜色。
+ */
+.stop-icon :deep(svg) {
+  fill: currentColor;
 }
 </style>
