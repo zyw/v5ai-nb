@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NAlert, NButton, NIcon, NSpin, useMessage, useThemeVars } from 'naive-ui'
-import { MessageSquarePlus, RefreshCw } from 'lucide-vue-next'
+import { ArrowDown, MessageSquarePlus, RefreshCw } from 'lucide-vue-next'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import AgentIntro from '../components/AgentIntro.vue'
 import AgentSwitcher from '../components/AgentSwitcher.vue'
@@ -64,6 +64,8 @@ const themeVars = useThemeVars()
 
 /** 流静默超时：超时主动中断，避免发送按钮永久 loading */
 const STREAM_SILENCE_MS = 60_000
+/** 「贴着底部」的容差：自动跟随滚动与「回到最新」按钮共用同一个阈值 */
+const NEAR_BOTTOM_PX = 60
 
 const bootstrapping = ref(true)
 const loading = ref(false)
@@ -78,6 +80,8 @@ const webSearch = ref(false)
 /** 当前正在跑的运行 ID（取自 SSE 的 id: 字段），停止时按它通知服务端 */
 const currentRunId = ref('')
 const listRef = ref<HTMLElement | null>(null)
+/** 滚动区是否贴着底部：不贴底时露出「回到最新」的圆形按钮 */
+const atBottom = ref(true)
 let controller: AbortController | null = null
 /** 上传阶段（流还没开始）被点了停止：send() 拿到上传结果后直接放弃这次发送 */
 let sendCancelled = false
@@ -145,10 +149,27 @@ async function scrollToBottom(force: boolean) {
   await nextTick()
   const el = listRef.value
   if (!el) return
-  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-  if (force || nearBottom) {
-    el.scrollTop = el.scrollHeight
-  }
+  if (!force && !isNearBottom(el)) return
+  el.scrollTop = el.scrollHeight
+  atBottom.value = true
+}
+
+function isNearBottom(el: HTMLElement): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+}
+
+/** 滚动只更新「是否贴底」这一个状态：跟不跟随由 scrollToBottom 决定，不抢用户的滚动 */
+function onScroll() {
+  const el = listRef.value
+  if (el) atBottom.value = isNearBottom(el)
+}
+
+/** 点「回到最新」：平滑滚到底，并立刻收起按钮（平滑滚动途中不必让它一直挂着） */
+function scrollToLatest() {
+  const el = listRef.value
+  if (!el) return
+  atBottom.value = true
+  el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
 }
 
 /** 上传本次选中的图片：全部成功才发消息，避免「消息发出去了图没带上」。 */
@@ -385,6 +406,7 @@ function newSession() {
   historyLoading.value = false
   conversationId.value = ''
   messages.value = []
+  atBottom.value = true
 }
 
 async function openSession(session: ConversationSummary) {
@@ -520,48 +542,65 @@ async function reloadAgents() {
           </div>
 
           <template v-else-if="activeAgent">
-            <div ref="listRef" class="scroll-area">
-              <div v-if="historyLoading" class="history-loading">
-                <n-spin size="small" />
-                <span>正在加载会话历史…</span>
-              </div>
+            <div class="scroll-wrap">
+              <div ref="listRef" class="scroll-area" @scroll.passive="onScroll">
+                <div v-if="historyLoading" class="history-loading">
+                  <n-spin size="small" />
+                  <span>正在加载会话历史…</span>
+                </div>
 
-              <AgentIntro v-else-if="messages.length === 0" :agent="activeAgent" @ask="(q: string) => send(q, [])" />
+                <AgentIntro v-else-if="messages.length === 0" :agent="activeAgent" @ask="(q: string) => send(q, [])" />
 
-              <div v-else class="message-list">
-                <div v-for="(msg, index) in messages" :key="index" class="message-row" :class="msg.role">
-                  <AgentAvatar
-                    v-if="msg.role === 'assistant'"
-                    :agent-key="activeAgent.agentKey"
-                    :name="activeAgent.name"
-                    :size="28"
-                  />
-                  <div class="message-main">
-                    <div class="bubble" :class="msg.role">
-                      <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
-                      <template v-else>
-                        <div v-if="msg.attachments?.length" class="bubble-attachments">
-                          <img
-                            v-for="(url, imageIndex) in msg.attachments"
-                            :key="imageIndex"
-                            :src="url"
-                            alt="消息附件"
-                            class="bubble-attachment"
-                          />
-                        </div>
-                        <span v-if="msg.content" class="bubble-text">{{ msg.content }}</span>
-                      </template>
-                      <p v-if="msg.stopped" class="bubble-stopped">已停止</p>
-                    </div>
-                    <MessageActions
-                      v-if="!msg.loading"
-                      :msg="msg"
-                      :can-regenerate="!loading"
-                      @regenerate="regenerate(index)"
+                <div v-else class="message-list">
+                  <div v-for="(msg, index) in messages" :key="index" class="message-row" :class="msg.role">
+                    <AgentAvatar
+                      v-if="msg.role === 'assistant'"
+                      :agent-key="activeAgent.agentKey"
+                      :name="activeAgent.name"
+                      :size="28"
                     />
+                    <div class="message-main">
+                      <div class="bubble" :class="msg.role">
+                        <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
+                        <template v-else>
+                          <div v-if="msg.attachments?.length" class="bubble-attachments">
+                            <img
+                              v-for="(url, imageIndex) in msg.attachments"
+                              :key="imageIndex"
+                              :src="url"
+                              alt="消息附件"
+                              class="bubble-attachment"
+                            />
+                          </div>
+                          <span v-if="msg.content" class="bubble-text">{{ msg.content }}</span>
+                        </template>
+                        <p v-if="msg.stopped" class="bubble-stopped">已停止</p>
+                      </div>
+                      <MessageActions
+                        v-if="!msg.loading"
+                        :msg="msg"
+                        :can-regenerate="!loading"
+                        @regenerate="regenerate(index)"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
+
+              <!-- 不在底部时露出「回到最新」；生成中圆环转起来，回答结束恢复常边框（同 chat.deepseek.com） -->
+              <transition name="scroll-bottom">
+                <button
+                  v-if="!atBottom"
+                  type="button"
+                  class="scroll-bottom"
+                  :class="{ 'is-generating': loading }"
+                  :style="{ background: themeVars.cardColor, borderColor: themeVars.borderColor, color: themeVars.textColor2 }"
+                  :aria-label="loading ? '正在生成，回到最新' : '回到最新'"
+                  @click="scrollToLatest"
+                >
+                  <n-icon :component="ArrowDown" :size="16" />
+                </button>
+              </transition>
             </div>
 
             <div class="composer-wrap">
@@ -698,12 +737,66 @@ async function reloadAgents() {
   align-items: flex-start;
 }
 
+/* 滚动区 + 悬浮的「回到最新」按钮：按钮相对这一层定位，不跟着内容滚走 */
+.scroll-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .scroll-area {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.scroll-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  transition: opacity 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+/* 生成中：常边框让位给一圈转动的弧；回答结束（loading=false）恢复常边框 */
+.scroll-bottom.is-generating {
+  border-color: transparent;
+}
+
+.scroll-bottom.is-generating::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 2px solid rgba(127, 127, 127, 0.25);
+  border-top-color: currentColor;
+  animation: scroll-bottom-spin 0.9s linear infinite;
+}
+
+@keyframes scroll-bottom-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.scroll-bottom-enter-from,
+.scroll-bottom-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
 }
 
 .history-loading {

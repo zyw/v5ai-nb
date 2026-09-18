@@ -160,25 +160,35 @@ onBeforeUnmount(clearPending)
         </n-tooltip>
       </div>
 
-      <n-button
-        v-if="loading"
-        type="primary"
-        size="small"
-        aria-label="停止生成"
-        @click="emit('stop')"
-      >
-        <template #icon><n-icon :component="Square" :size="14" class="stop-icon" /></template>
-      </n-button>
-      <n-button
-        v-else
-        type="primary"
-        size="small"
-        :disabled="!canSend"
-        aria-label="发送"
-        @click="send"
-      >
-        <template #icon><n-icon :component="Send" :size="16" /></template>
-      </n-button>
+      <n-tooltip trigger="hover">
+        <template #trigger>
+          <!-- 包一层 span：naive-ui 的禁用按钮是原生 disabled，收不到 hover，提示就出不来 -->
+          <span class="composer-send">
+            <n-button
+              v-if="loading"
+              circle
+              type="primary"
+              size="medium"
+              aria-label="停止生成"
+              @click="emit('stop')"
+            >
+              <template #icon><n-icon :component="Square" :size="16" class="stop-icon" /></template>
+            </n-button>
+            <n-button
+              v-else
+              circle
+              type="primary"
+              size="medium"
+              :disabled="!canSend"
+              :aria-label="canSend ? '发送' : '请输入你的问题'"
+              @click="send"
+            >
+              <template #icon><n-icon :component="Send" :size="18" /></template>
+            </n-button>
+          </span>
+        </template>
+        {{ loading ? '停止生成' : canSend ? '发送' : '请输入你的问题' }}
+      </n-tooltip>
     </div>
 
     <input
@@ -237,6 +247,10 @@ onBeforeUnmount(clearPending)
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
   border-bottom-left-radius: 6px;
+}
+
+.composer-send {
+  display: inline-flex;
 }
 
 .composer-actions {

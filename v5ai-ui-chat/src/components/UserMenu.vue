@@ -38,7 +38,7 @@ async function logout() {
 <template>
   <n-popover v-model:show="open" trigger="click" placement="bottom-end" :show-arrow="false" raw>
     <template #trigger>
-      <n-button quaternary size="small" :aria-label="'用户菜单'" :aria-expanded="open">
+      <n-button quaternary size="small" :aria-label="'用户菜单'" :aria-expanded="open" class="user-menu">
         <span class="user-avatar" :style="{ background: themeVars.primaryColor }" aria-hidden="true">{{ initial }}</span>
         <span class="user-name">{{ displayName }}</span>
         <template #icon><n-icon :component="ChevronDown" :size="14" /></template>
@@ -120,5 +120,8 @@ async function logout() {
 
 .user-panel-exit {
   margin-top: 8px;
+}
+.user-menu :deep(.n-button__content) {
+  gap: 4px;
 }
 </style>
