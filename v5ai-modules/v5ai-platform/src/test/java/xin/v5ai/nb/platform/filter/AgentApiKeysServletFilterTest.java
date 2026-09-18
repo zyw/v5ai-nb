@@ -189,6 +189,80 @@ class AgentApiKeysServletFilterTest {
         verify(quotaService).checkAllowed("auth");
     }
 
+    /**
+     * 门户附件上传（/api/v1/agents/resource/upload）不带 agentKey：只需 Key 有效，
+     * 既不校验绑定、也不占 Agent 配额。
+     */
+    @Test
+    void portalUploadOnlyRequiresValidKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/resource/upload");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("a1")));
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(quotaService);
+    }
+
+    /** 门户附件读取（/api/v1/agents/attachments/{id}）同样只验 Key。 */
+    @Test
+    void portalAttachmentReadOnlyRequiresValidKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/attachments/42");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("a1")));
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(quotaService);
+    }
+
+    /**
+     * 回归：名字恰好叫 resource 的 Agent，其运行路径不能被「门户附件上传」吃掉——
+     * 保留路径是精确的 /resource/upload，运行路径永远是 /{agentKey}/chat/...。
+     */
+    @Test
+    void agentNamedResourceStillRunsAsAgentKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/resource/chat/stream");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("resource")));
+        when(quotaService.checkAllowed("resource")).thenReturn(true);
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(quotaService).checkAllowed("resource");
+    }
+
+    /** 回归：名字恰好叫 attachments 的 Agent 同理（保留路径只匹配 /attachments/{纯数字}）。 */
+    @Test
+    void agentNamedAttachmentsStillRunsAsAgentKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/attachments/chat/stream");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("attachments")));
+        when(quotaService.checkAllowed("attachments")).thenReturn(true);
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(quotaService).checkAllowed("attachments");
+    }
+
+    /** /attachments/ 后面不是资源 id（纯数字）时不是门户端点，仍按 agentKey 解析并校验绑定。 */
+    @Test
+    void attachmentsPathWithNonNumericIdFallsBackToAgentKey() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/agents/attachments/x");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + KEY);
+        when(apiKeyService.authenticate(KEY)).thenReturn(auth(Set.of("a1")));
+
+        filter.doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verify(chain, never()).doFilter(any(), any());
+        verifyNoInteractions(quotaService);
+    }
+
     private ApiKeysAuthDTO auth(Set<String> agentKeys) {
         return new ApiKeysAuthDTO(1L, 7L, "生产环境", "abcdefghijkl", true, agentKeys);
     }

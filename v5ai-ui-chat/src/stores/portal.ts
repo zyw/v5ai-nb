@@ -1,32 +1,37 @@
 import { computed, reactive, ref } from 'vue'
-import { fetchBootstrap, resolveAvatarUrl, type PortalAgent, type PortalBootstrap } from '../api/client'
+import {
+  fetchBootstrap,
+  fetchConversations,
+  resolveAvatarUrl,
+  updateConversation,
+  type ConversationSummary,
+  type PortalAgent,
+  type PortalBootstrap
+} from '../api/client'
 
 /**
- * 门户会话状态（不上 Pinia：门户只有 Key、Agent、会话列表三块状态，模块级 ref 足够）。
+ * 门户状态（不上 Pinia：门户只有 Key、Agent、会话列表三块状态，模块级 ref 足够）。
  *
- * 本地存储约定：
+ * 本地存储只剩「凭据 + 上次使用的 Agent」：
  * - `v5ai_chat_api_key`：API Key（门户唯一的"登录态"）；
- * - `v5ai_chat_active_agent`：上次使用的 Agent；
- * - `v5ai_chat_sessions`：会话列表（会话 id 由前端生成并随每次提问提交，后端按它落库）。
+ * - `v5ai_chat_active_agent`：上次使用的 Agent。
+ *
+ * 会话列表改为**服务端**列表（会话归属 API Key，可改名、可归档）——
+ * 旧的 `v5ai_chat_sessions` 本地列表已废弃，登录时直接清掉，不再迁移。
  */
 
 const KEY_STORAGE = 'v5ai_chat_api_key'
-const SESSION_STORAGE = 'v5ai_chat_sessions'
 const ACTIVE_AGENT_STORAGE = 'v5ai_chat_active_agent'
-/** 本地会话列表上限：只保留最近若干条，避免 localStorage 无限增长 */
-const MAX_SESSIONS = 100
-
-export interface PortalSession {
-  id: string
-  agentKey: string
-  title: string
-  updatedAt: number
-}
+/** 已废弃的本地会话列表键：会话改由服务端承载，登录时清理 */
+const LEGACY_SESSION_STORAGE = 'v5ai_chat_sessions'
 
 export const apiKey = ref(localStorage.getItem(KEY_STORAGE) ?? '')
 export const bootstrapData = ref<PortalBootstrap | null>(null)
 export const activeAgentKey = ref(localStorage.getItem(ACTIVE_AGENT_STORAGE) ?? '')
-export const sessions = ref<PortalSession[]>(loadSessions())
+/** 当前 Agent 的会话列表（服务端返回，按最近活跃倒序） */
+export const sessionList = ref<ConversationSummary[]>([])
+/** 会话列表是否显示已归档会话 */
+export const showArchived = ref(false)
 
 /** agentKey → 可直接用于 <img> 的地址（blob: 或外部 URL）。 */
 export const agentAvatars = reactive<Record<string, string>>({})
@@ -37,18 +42,12 @@ export const activeAgent = computed<PortalAgent | null>(
   () => agents.value.find((a) => a.agentKey === activeAgentKey.value) ?? agents.value[0] ?? null
 )
 
-function loadSessions(): PortalSession[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(SESSION_STORAGE) ?? '[]') as PortalSession[]
-    return Array.isArray(raw) ? raw.filter((s) => s && typeof s.id === 'string' && typeof s.agentKey === 'string') : []
-  } catch {
-    return []
-  }
-}
-
-function persistSessions() {
-  sessions.value = [...sessions.value].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_SESSIONS)
-  localStorage.setItem(SESSION_STORAGE, JSON.stringify(sessions.value))
+/** 会话在列表里的标题：自定名 → 首条提问预览 → 占位。 */
+export function sessionTitle(session: ConversationSummary): string {
+  const name = session.name?.trim()
+  if (name) return name
+  const preview = session.preview?.trim()
+  return preview || '新会话'
 }
 
 export function setApiKey(key: string) {
@@ -56,10 +55,11 @@ export function setApiKey(key: string) {
   localStorage.setItem(KEY_STORAGE, apiKey.value)
 }
 
-/** 退出/Key 失效：清掉本地凭据与内存缓存（会话列表保留，重新登录后仍在）。 */
+/** 退出/Key 失效：清掉本地凭据与内存缓存（会话在服务端，重新登录后仍在）。 */
 export function clearApiKey() {
   apiKey.value = ''
   bootstrapData.value = null
+  sessionList.value = []
   localStorage.removeItem(KEY_STORAGE)
   for (const url of Object.values(agentAvatars)) {
     if (url.startsWith('blob:')) URL.revokeObjectURL(url)
@@ -69,6 +69,8 @@ export function clearApiKey() {
 
 /** 校验并加载门户数据（Key 无效会抛出 ApiError）。 */
 export async function loadBootstrap(): Promise<PortalBootstrap> {
+  // 本地会话列表已废弃：一次性清掉，避免用户看到两套会话
+  localStorage.removeItem(LEGACY_SESSION_STORAGE)
   const data = await fetchBootstrap(apiKey.value)
   bootstrapData.value = data
   if (!data.agents.some((a) => a.agentKey === activeAgentKey.value)) {
@@ -96,26 +98,35 @@ export async function ensureAgentAvatars() {
   )
 }
 
+/** 拉取当前 Agent 的会话列表（服务端已是「限本 Key 本 Agent」）。 */
+export async function loadSessions(agentKey: string): Promise<void> {
+  if (!agentKey || !apiKey.value) {
+    sessionList.value = []
+    return
+  }
+  sessionList.value = await fetchConversations(apiKey.value, agentKey, showArchived.value)
+}
+
+export async function renameSession(agentKey: string, conversationId: string, name: string): Promise<void> {
+  await updateConversation(apiKey.value, agentKey, conversationId, { name })
+  await loadSessions(agentKey)
+}
+
+export async function setSessionArchived(
+  agentKey: string,
+  conversationId: string,
+  archived: boolean
+): Promise<void> {
+  await updateConversation(apiKey.value, agentKey, conversationId, { archived })
+  await loadSessions(agentKey)
+}
+
+/** 切换「显示已归档」并重新拉取列表。 */
+export async function toggleArchivedView(agentKey: string, archived: boolean): Promise<void> {
+  showArchived.value = archived
+  await loadSessions(agentKey)
+}
+
 export function newSessionId(): string {
   return crypto.randomUUID()
-}
-
-export function upsertSession(session: PortalSession) {
-  const index = sessions.value.findIndex((s) => s.id === session.id)
-  if (index >= 0) {
-    sessions.value[index] = { ...sessions.value[index], ...session }
-  } else {
-    sessions.value.push(session)
-  }
-  persistSessions()
-}
-
-export function removeSession(id: string) {
-  sessions.value = sessions.value.filter((s) => s.id !== id)
-  persistSessions()
-}
-
-/** 某 Agent 下的会话（按最近更新倒序）。 */
-export function sessionsOf(agentKey: string): PortalSession[] {
-  return sessions.value.filter((s) => s.agentKey === agentKey)
 }

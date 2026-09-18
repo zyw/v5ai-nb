@@ -17,12 +17,15 @@ import xin.v5ai.nb.common.agentscope.core.executor.AgentScopeHarnessExecutor;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.executor.PublishedModelAgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.resolver.*;
+import xin.v5ai.nb.common.agentscope.core.service.AttachmentContentProvider;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.model.api.ModelUsageService;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.runtime.core.AgentScopeRuntime;
 import xin.v5ai.nb.runtime.core.PersistingAgentRuntime;
+import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
 import xin.v5ai.nb.runtime.core.config.properties.AgentScopeRuntimeProperties;
+import xin.v5ai.nb.runtime.core.config.properties.PortalAttachmentProperties;
 import xin.v5ai.nb.runtime.core.service.*;
 
 import java.nio.file.Path;
@@ -38,7 +41,9 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<McpToolResolver> mcpToolResolverProvider,
             ObjectProvider<McpToolCallAuditService> auditRepositoryProvider,
             ObjectProvider<SkillWorkspaceResolver> skillWorkspaceResolverProvider,
-            ObjectProvider<RagSearchProvider> ragSearchProviderProvider
+            ObjectProvider<RagSearchProvider> ragSearchProviderProvider,
+            ObjectProvider<AttachmentContentProvider> attachmentContentProviderProvider,
+            PortalAttachmentProperties attachmentProperties
     ) {
         McpToolResolver mcpToolResolver = mcpToolResolverProvider.getIfAvailable();
         McpToolCallAuditService auditRepository = auditRepositoryProvider.getIfAvailable();
@@ -53,7 +58,9 @@ public class AgentScopeRuntimeConfiguration {
                     skillWorkspaceResolver,
                     Path.of(properties.getWorkspace()),
                     properties.getTavilyApiKey(),
-                    ragSearchProvider);
+                    ragSearchProvider,
+                    attachmentContentProviderProvider.getIfAvailable(),
+                    attachmentProperties.getHistoryBudgetBytes());
         }
         Model model = modelProvider.getIfAvailable();
         if (model != null) {
@@ -74,6 +81,7 @@ public class AgentScopeRuntimeConfiguration {
             RunRecordService runRecordService,
             ConversationService conversationService,
             RunEventService runEventService,
+            RunCancellationRegistry cancellationRegistry,
             ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
             ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
@@ -84,7 +92,8 @@ public class AgentScopeRuntimeConfiguration {
                 messageService, modelToolSupportResolverProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
-                usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
+                usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
+                cancellationRegistry);
     }
 
     /**
@@ -99,6 +108,7 @@ public class AgentScopeRuntimeConfiguration {
             RunRecordService runRecordService,
             ConversationService conversationService,
             RunEventService runEventService,
+            RunCancellationRegistry cancellationRegistry,
             ObjectProvider<AgentStateService> agentStateRepositoryProvider,
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
             ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
@@ -109,6 +119,7 @@ public class AgentScopeRuntimeConfiguration {
                 messageService, modelToolSupportResolverProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
-                usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable());
+                usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
+                cancellationRegistry);
     }
 }

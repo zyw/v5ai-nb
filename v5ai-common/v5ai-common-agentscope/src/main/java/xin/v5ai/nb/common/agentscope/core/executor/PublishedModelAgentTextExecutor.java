@@ -9,6 +9,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.resolver.AgentModelResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
+import xin.v5ai.nb.common.agentscope.core.service.AttachmentContentProvider;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 
 import java.nio.file.Path;
@@ -78,9 +79,31 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
             String webSearchApiKey,
             RagSearchProvider ragSearchProvider
     ) {
+        this(modelResolver, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace,
+                webSearchApiKey, ragSearchProvider, null, ModelStreamTextExecutor.DEFAULT_HISTORY_IMAGE_BUDGET_BYTES);
+    }
+
+    /**
+     * 多模态感知构造：在上一构造的基础上装配附件内容读取端口与历史图片体积预算，
+     * 供消息携带图片附件时真正把图片送进模型输入。
+     *
+     * @param attachmentContentProvider 附件读取端口；{@code null} 时忽略附件（纯文本）
+     * @param historyImageBudgetBytes   历史回放中图片的累计体积预算（字节）
+     */
+    public PublishedModelAgentTextExecutor(
+            AgentModelResolver modelResolver,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditRepository,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey,
+            RagSearchProvider ragSearchProvider,
+            AttachmentContentProvider attachmentContentProvider,
+            long historyImageBudgetBytes
+    ) {
         this(modelResolver, model -> new ModelStreamTextExecutor(
                 model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace,
-                webSearchApiKey, ragSearchProvider));
+                webSearchApiKey, ragSearchProvider, attachmentContentProvider, historyImageBudgetBytes));
     }
 
     /**

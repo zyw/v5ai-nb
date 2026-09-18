@@ -19,6 +19,8 @@ import java.nio.charset.StandardCharsets;
  * <ul>
  *   <li>{@code /api/v1/agents/auth/bootstrap}：门户初始化，只校验 Key；</li>
  *   <li>{@code /api/v1/agents/auth/{agentKey}/avatar}：门户平级资源，校验 Key + 绑定，不计配额；</li>
+ *   <li>{@code /api/v1/agents/resource/upload} 与 {@code /api/v1/agents/attachments/{id}}：
+ *       门户附件上传/读取，只校验 Key（不带 agentKey，故无绑定可校验、也不计模型配额）；</li>
  *   <li>{@code /api/v1/agents/{agentKey}/...}：运行路径，校验 Key + 该 Key 绑定 + 配额/限流。</li>
  * </ul>
  *
@@ -27,12 +29,17 @@ import java.nio.charset.StandardCharsets;
  */
 public class AgentApiKeysServletFilter implements Filter {
 
-    private static final String RUNTIME_PREFIX = "/api/v1/agents/";
-    /** 门户初始化：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key（不校验绑定、不计配额） */
-    private static final String AUTH_BOOTSTRAP_PATH = "/api/v1/agents/auth/bootstrap";
+    private static final String RUNTIME_PREFIX = "/api/v1/agents";
     /** 门户凭据平级资源（如 Agent 头像）的前缀与后缀：这些路径要校验绑定，但不消耗模型配额 */
-    private static final String AUTH_PREFIX = "/api/v1/agents/auth/";
+    private static final String AUTH_PREFIX = RUNTIME_PREFIX + "/auth";
+    /** 门户初始化：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key（不校验绑定、不计配额） */
+    private static final String AUTH_BOOTSTRAP_PATH = AUTH_PREFIX + "/bootstrap";
+
     private static final String AUTH_RESOURCE_SUFFIX = "/avatar";
+    /** 门户附件上传：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key */
+    private static final String RESOURCE_UPLOAD_PATH = RUNTIME_PREFIX + "/resource/upload";
+    /** 门户附件读取前缀，其后应为纯数字资源 id */
+    private static final String ATTACHMENTS_PREFIX = RUNTIME_PREFIX + "/attachments/";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String FORBIDDEN_BODY = """
             {"code":403,"msg":"当前 API Key 无权访问该 Agent"}
@@ -59,9 +66,10 @@ public class AgentApiKeysServletFilter implements Filter {
         // 注意：/api/v1/agents/auth/{agentKey}/avatar 的第一段是 auth 而不是 agentKey，
         // 只按「auth 前缀 + /avatar 后缀」识别，这样叫 auth 的 Agent 的运行路径仍按 agentKey=auth 正常解析。
         boolean authResource = path.startsWith(AUTH_PREFIX) && path.endsWith(AUTH_RESOURCE_SUFFIX);
-        boolean runtime = !bootstrap && path.startsWith(RUNTIME_PREFIX);
+        boolean portalResource = isPortalResourcePath(path);
+        boolean runtime = !bootstrap && !portalResource && path.startsWith(RUNTIME_PREFIX);
         // 非运行期路径不拦截，直接放行
-        if (!runtime && !bootstrap) {
+        if (!runtime && !bootstrap && !portalResource) {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
@@ -80,8 +88,8 @@ public class AgentApiKeysServletFilter implements Filter {
         }
         request.setAttribute(ApiKeyAuthAttributes.REQUEST_ATTRIBUTE, auth);
 
-        // 门户初始化只要求 Key 有效：没有 agentKey，也就没有绑定与配额
-        if (bootstrap) {
+        // 门户初始化与门户附件端点只要求 Key 有效：没有 agentKey，也就没有绑定与配额
+        if (bootstrap || portalResource) {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
@@ -105,6 +113,24 @@ public class AgentApiKeysServletFilter implements Filter {
             return;
         }
         chain.doFilter(servletRequest, servletResponse);
+    }
+
+    /**
+     * 是否为门户附件端点（上传 / 读取）：这两个族不带 agentKey，因此只验 Key。
+     *
+     * <p>按**精确形状**识别而不是按前缀，避免把名字恰好叫 {@code resource} / {@code attachments}
+     * 的 Agent「吃掉」：运行路径永远是 {@code /{agentKey}/chat/...}，与
+     * {@code /resource/upload}、{@code /attachments/{纯数字id}} 的形状不可能重合。</p>
+     */
+    private boolean isPortalResourcePath(String path) {
+        if (RESOURCE_UPLOAD_PATH.equals(path)) {
+            return true;
+        }
+        if (!path.startsWith(ATTACHMENTS_PREFIX)) {
+            return false;
+        }
+        var resourceId = path.substring(ATTACHMENTS_PREFIX.length());
+        return !resourceId.isEmpty() && resourceId.chars().allMatch(Character::isDigit);
     }
 
     /**

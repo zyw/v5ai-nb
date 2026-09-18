@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
+import xin.v5ai.nb.common.agentscope.core.resolver.ModelImageSupportResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.core.domain.R;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
@@ -51,6 +52,7 @@ public class ChatAuthController {
     private final PublishedAgentResolver publishedAgentResolver;
     private final ResourceContentPort resourceContentPort;
     private final UserService userService;
+    private final ModelImageSupportResolver modelImageSupportResolver;
 
     /**
      * 门户 Agent 展示信息（只暴露终端用户需要看到的字段，不含系统提示词等运行配置）。
@@ -62,9 +64,11 @@ public class ChatAuthController {
      * @param greeting        开场白
      * @param presetQuestions 预设问题（已把快照里的 JSON 数组解析成列表）
      * @param webSearchEnabled Agent 是否允许联网搜索（门户开关据此启用/禁用）
+     * @param imageSupported   所绑 CHAT 模型是否支持图片输入（门户据此启用/禁用附件入口）
      */
     public record ChatAgent(String agentKey, String name, String description, String avatarUrl,
-                              String greeting, List<String> presetQuestions, boolean webSearchEnabled) {
+                              String greeting, List<String> presetQuestions, boolean webSearchEnabled,
+                              boolean imageSupported) {
     }
 
     /**
@@ -137,7 +141,7 @@ public class ChatAuthController {
     private ChatAgent toPortalAgent(AgentDTO agent) {
         return new ChatAgent(agent.agentKey(), agent.name(), agent.description(),
                 avatarUrlOf(agent), agent.greeting(), parsePresetQuestions(agent.presetQuestions()),
-                agent.webSearchEnabled());
+                agent.webSearchEnabled(), modelImageSupportResolver.supportsImageInput(agent.modelId()));
     }
 
     /**

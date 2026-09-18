@@ -14,7 +14,9 @@ import xin.v5ai.nb.mcp.core.service.McpServerService;
 import xin.v5ai.nb.mcp.core.service.McpToolService;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 运行时 MCP Tool 解析器实现：
@@ -32,19 +34,26 @@ public class AgentMcpToolResolver implements McpToolResolver {
     private final McpClientFactory clientFactory;
 
     @Override
-    public List<ResolvedMcpTool> resolveTools(AgentDTO application) {
+    public List<ResolvedMcpTool> resolveTools(AgentDTO application, Collection<Long> disabledServerIds) {
         var bindings = bindingService.selectList(application.agentKey());
         if (bindings.isEmpty()) {
             return List.of();
         }
+        var disabled = disabledServerIds == null ? Set.<Long>of() : Set.copyOf(disabledServerIds);
         var resolved = new ArrayList<ResolvedMcpTool>();
         for (var binding : bindings) {
-            resolveServer(application, binding.getMcpServerId(), resolved);
+            resolveServer(application, binding.getMcpServerId(), disabled, resolved);
         }
         return resolved;
     }
 
-    private void resolveServer(AgentDTO application, Long serverId, List<ResolvedMcpTool> resolved) {
+    private void resolveServer(AgentDTO application, Long serverId, Set<Long> disabledServerIds,
+                               List<ResolvedMcpTool> resolved) {
+        // 收窄项在建立连接之前生效：连上再关掉会白白产生一次外部副作用
+        if (disabledServerIds.contains(serverId)) {
+            log.debug("MCP server {} disabled for this run, skipped for app {}", serverId, application.agentKey());
+            return;
+        }
         var server = serverService.selectById(serverId);
         if (server == null || !"ACTIVE".equals(server.getStatus())) {
             log.debug("MCP server {} is missing or disabled, skipped for app {}", serverId, application.agentKey());

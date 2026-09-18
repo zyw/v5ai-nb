@@ -160,7 +160,10 @@ public class AgentScopeRuntime implements AgentRuntime {
         var history = new ArrayList<>(messageService.findByConversationId(request.conversationId()));
         if (!history.isEmpty()) {
             var last = history.get(history.size() - 1);
-            if (last.role() == MessageRole.USER && request.query().equals(last.content())) {
+            // 只按角色判定，不再比对文本：PersistingAgentRuntime 在委托本次运行之前刚把当前提问落库，
+            // 所以尾部那条用户消息就是我们自己。多模态下「相同文字、不同图片」的两条提问靠文本无法区分，
+            // 继续比对 content 会把本来该保留的历史误删（或在本条带图时判不出来而重复回放）。
+            if (last.role() == MessageRole.USER) {
                 history.remove(history.size() - 1);
             }
         }

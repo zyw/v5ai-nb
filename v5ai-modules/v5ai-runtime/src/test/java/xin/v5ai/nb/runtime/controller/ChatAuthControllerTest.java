@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
+import xin.v5ai.nb.common.agentscope.core.resolver.ModelImageSupportResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
@@ -28,6 +29,7 @@ class ChatAuthControllerTest {
 
     private PublishedAgentResolver resolver;
     private ResourceContentPort resourcePort;
+    private ModelImageSupportResolver imageSupportResolver;
     private ChatAuthController controller;
     private HttpServletRequest request;
 
@@ -35,9 +37,10 @@ class ChatAuthControllerTest {
     void setUp() {
         resolver = mock(PublishedAgentResolver.class);
         resourcePort = mock(ResourceContentPort.class);
+        imageSupportResolver = mock(ModelImageSupportResolver.class);
         var userService = mock(UserService.class);
         when(userService.selectNicknameById(7L)).thenReturn("张三");
-        controller = new ChatAuthController(resolver, resourcePort, userService);
+        controller = new ChatAuthController(resolver, resourcePort, userService, imageSupportResolver);
 
         request = mock(HttpServletRequest.class);
         when(request.getAttribute(ApiKeyAuthAttributes.REQUEST_ATTRIBUTE))
@@ -48,6 +51,8 @@ class ChatAuthControllerTest {
     void bootstrapSkipsUnavailableAgentAndMapsDisplayFields() {
         when(resolver.resolve("a1")).thenReturn(agent("a1", "/api/admin/resources/7/preview"));
         when(resolver.resolve("a2")).thenThrow(new AgentPublishException("agent is not published: a2"));
+
+        when(imageSupportResolver.supportsImageInput(1L)).thenReturn(true);
 
         var data = controller.bootstrap(request).getData();
 
@@ -63,6 +68,17 @@ class ChatAuthControllerTest {
         assertThat(agent.presetQuestions()).containsExactly("Q1", "Q2");
         assertThat(agent.avatarUrl()).isEqualTo("/api/v1/agents/auth/a1/avatar");
         assertThat(agent.webSearchEnabled()).isTrue();
+        // 附件入口的开关：所绑 CHAT 模型的 capabilities 含 image 才为真
+        assertThat(agent.imageSupported()).isTrue();
+    }
+
+    /** 模型未声明 image 能力（或解析不到模型）时，门户据此禁用附件入口。 */
+    @Test
+    void bootstrapReportsImageUnsupportedWhenModelLacksTheCapability() {
+        when(resolver.resolve("a1")).thenReturn(agent("a1", null));
+        when(imageSupportResolver.supportsImageInput(1L)).thenReturn(false);
+
+        assertThat(controller.bootstrap(request).getData().agents().get(0).imageSupported()).isFalse();
     }
 
     @Test

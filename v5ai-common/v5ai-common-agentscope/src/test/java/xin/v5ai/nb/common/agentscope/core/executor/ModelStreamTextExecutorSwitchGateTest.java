@@ -14,6 +14,8 @@ import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,23 +27,27 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ModelStreamTextExecutorSwitchGateTest {
 
-    /** 计数解析器：记录被调用次数，返回空结果。 */
+    /** 计数解析器：记录被调用次数与收到的收窄集合，返回空结果。 */
     private static final class CountingMcpResolver implements McpToolResolver {
         final AtomicInteger calls = new AtomicInteger();
+        final List<Collection<Long>> disabledSeen = new ArrayList<>();
 
         @Override
-        public List<ResolvedMcpTool> resolveTools(AgentDTO application) {
+        public List<ResolvedMcpTool> resolveTools(AgentDTO application, Collection<Long> disabledServerIds) {
             calls.incrementAndGet();
+            disabledSeen.add(disabledServerIds);
             return List.of();
         }
     }
 
     private static final class CountingSkillResolver implements SkillWorkspaceResolver {
         final AtomicInteger calls = new AtomicInteger();
+        final List<Collection<Long>> disabledSeen = new ArrayList<>();
 
         @Override
-        public List<ResolvedSkill> resolveSkills(AgentDTO agent) {
+        public List<ResolvedSkill> resolveSkills(AgentDTO agent, Collection<Long> disabledSkillIds) {
             calls.incrementAndGet();
+            disabledSeen.add(disabledSkillIds);
             return List.of();
         }
     }
@@ -91,5 +97,23 @@ class ModelStreamTextExecutorSwitchGateTest {
 
         assertThat(mcp.calls).hasValue(0);
         assertThat(skill.calls).hasValue(1);
+    }
+
+    /**
+     * 收窄项只能减少、不能增加：请求里显式禁用的 Server/Skill 会被原样交给解析器，
+     * 由解析器在建立连接/读取版本文件之前排除掉。
+     */
+    @Test
+    void disabledIdsAreHandedToTheResolvers(@TempDir Path workspace) {
+        var mcp = new CountingMcpResolver();
+        var skill = new CountingSkillResolver();
+
+        executor(workspace, mcp, skill).streamText(agent(true, true),
+                new AgentRunBo("agent-x", "c", "q")
+                        .withDisabledMcpServerIds(List.of(7L))
+                        .withDisabledSkillIds(List.of(9L)));
+
+        assertThat(mcp.disabledSeen).containsExactly(List.of(7L));
+        assertThat(skill.disabledSeen).containsExactly(List.of(9L));
     }
 }

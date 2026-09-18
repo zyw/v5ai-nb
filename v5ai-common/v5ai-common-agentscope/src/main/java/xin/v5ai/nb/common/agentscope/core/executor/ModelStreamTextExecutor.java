@@ -2,8 +2,12 @@ package xin.v5ai.nb.common.agentscope.core.executor;
 
 import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.event.*;
+import io.agentscope.core.message.Base64Source;
+import io.agentscope.core.message.ContentBlock;
+import io.agentscope.core.message.ImageBlock;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
+import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.ToolResultState;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
@@ -15,6 +19,7 @@ import reactor.core.publisher.Flux;
 import xin.v5ai.nb.common.agentscope.core.AgentTextEvent;
 import xin.v5ai.nb.common.agentscope.core.McpConnection;
 import xin.v5ai.nb.common.agentscope.core.RagSearchProvider;
+import xin.v5ai.nb.common.agentscope.core.domain.AttachmentRef;
 import xin.v5ai.nb.common.agentscope.core.domain.KnowledgeBaseRef;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedMcpTool;
 import xin.v5ai.nb.common.agentscope.core.domain.ResolvedSkill;
@@ -25,6 +30,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.repository.ResolvedSkillAgentSkillRepository;
 import xin.v5ai.nb.common.agentscope.core.resolver.McpToolResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.SkillWorkspaceResolver;
+import xin.v5ai.nb.common.agentscope.core.service.AttachmentContentProvider;
 import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.common.agentscope.core.tools.PlatformMcpTool;
 import xin.v5ai.nb.common.agentscope.core.tools.RagSearchTool;
@@ -54,10 +60,17 @@ import java.util.stream.Collectors;
  *   HarnessAgent Toolkit，并通过 AgentScope 事件流映射出 ToolCall/ToolResult 事件；
  * - 可选 Skill 集成：Agent 绑定 Skill 时，把已发布版本文件注入 workspace
  *   （{@code skills/<name>/}）并注册只读 Skill 仓库，让 SkillRuntime 把
- *   {@code <available_skills>} 注入系统提示。
+ *   {@code <available_skills>} 注入系统提示；
+ * - 可选多模态：消息携带图片附件时，把历史与当前提问组装成「文本块 + 图片块」。
  */
 @Slf4j
 public class ModelStreamTextExecutor implements AgentTextExecutor {
+
+    /** 历史回放中图片的默认累计体积预算：16MB（见 v5ai-nb#6 Q21）。 */
+    public static final long DEFAULT_HISTORY_IMAGE_BUDGET_BYTES = 16L * 1024 * 1024;
+
+    /** 图片未能进入上下文时的文字占位。 */
+    static final String IMAGE_PLACEHOLDER = "[图片]";
 
     private final Model model;
     private final McpToolResolver mcpToolResolver;
@@ -66,6 +79,10 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     private final Path workspace;
     private final String webSearchApiKey;
     private final RagSearchProvider ragSearchProvider;
+    /** 附件内容读取端口（可空）：为空时消息上的附件被忽略，退化为纯文本。 */
+    private final AttachmentContentProvider attachmentContentProvider;
+    /** 历史回放的图片体积预算（字节），按最近优先消费。 */
+    private final long historyImageBudgetBytes;
 
     public ModelStreamTextExecutor(Model model) {
         this(model, null, null, null, null, null);
@@ -110,6 +127,28 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             String webSearchApiKey,
             RagSearchProvider ragSearchProvider
     ) {
+        this(model, mcpToolResolver, auditService, skillWorkspaceResolver, workspace, webSearchApiKey,
+                ragSearchProvider, null, DEFAULT_HISTORY_IMAGE_BUDGET_BYTES);
+    }
+
+    /**
+     * 全参构造：在上一构造的基础上装配附件内容读取端口与图片回放预算，
+     * 使消息上的图片附件真正进入模型输入。
+     *
+     * @param attachmentContentProvider 附件读取端口；为 {@code null} 时附件被忽略（纯文本行为）
+     * @param historyImageBudgetBytes   历史回放中图片的累计体积预算（字节），按最近优先消费
+     */
+    public ModelStreamTextExecutor(
+            Model model,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditService,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey,
+            RagSearchProvider ragSearchProvider,
+            AttachmentContentProvider attachmentContentProvider,
+            long historyImageBudgetBytes
+    ) {
         this.model = model;
         this.mcpToolResolver = mcpToolResolver;
         this.auditService = auditService;
@@ -117,15 +156,20 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         this.workspace = workspace;
         this.webSearchApiKey = webSearchApiKey;
         this.ragSearchProvider = ragSearchProvider;
+        this.attachmentContentProvider = attachmentContentProvider;
+        this.historyImageBudgetBytes = historyImageBudgetBytes;
     }
 
     @Override
     public Flux<AgentTextEvent> streamText(AgentDTO agentDTO, AgentRunBo request) {
         // 能力开关门控：关闭时不加载绑定（MCP/Skill），联网搜索按开关注册独立工具
+        // 收窄项按请求生效：把本次运行显式禁用的 Server/Skill 在解析阶段就排除掉
         var tools = (agentDTO.mcpEnabled() && mcpToolResolver != null)
-                ? mcpToolResolver.resolveTools(agentDTO) : List.<ResolvedMcpTool>of();
+                ? mcpToolResolver.resolveTools(agentDTO, request.disabledMcpServerIds())
+                : List.<ResolvedMcpTool>of();
         var skills = (agentDTO.skillEnabled() && skillWorkspaceResolver != null)
-                ? skillWorkspaceResolver.resolveSkills(agentDTO) : List.<ResolvedSkill>of();
+                ? skillWorkspaceResolver.resolveSkills(agentDTO, request.disabledSkillIds())
+                : List.<ResolvedSkill>of();
         // 联网：Agent 开关为准，请求只能显式关闭（门户开关关闭时不注册 WebSearchTool）
         boolean webSearch = request.resolveWebSearch(agentDTO.webSearchEnabled());
         // 智能调用：注册 rag_search 工具 + 注入可用知识库列表；强制调用由 AgentScopeRuntime
@@ -339,7 +383,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      * 2) 历史消息：按角色映射为 USER/ASSISTANT；
      * 3) 当前用户提问。
      */
-    private static List<Msg> buildMessages(AgentDTO application, AgentRunBo request) {
+    private List<Msg> buildMessages(AgentDTO application, AgentRunBo request) {
         List<Msg> messages = new ArrayList<>();
         messages.add(Msg.builder().role(MsgRole.SYSTEM).textContent(buildSystemPrompt(application, request)).build());
         messages.addAll(conversationMessages(request));
@@ -350,15 +394,81 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      * 组装对话消息（不含系统提示）：历史 USER/ASSISTANT 轮次 + 当前提问。
      * 直连路径经 {@link #buildMessages} 复用，MCP/Skill/联网搜索路径经
      * {@code streamEvents(List, ...)} 复用，两路历史回放口径一致（记忆由运行时注入历史）。
+     *
+     * <p>带附件的消息按多模态构造：文本块 + 若干图片块。图片按**最近优先**消费体积预算，
+     * 预算用尽（或图片缺失/读取失败）时退化为 {@code [图片]} 文字占位，保证请求体不会无限膨胀
+     * （见 v5ai-nb#6 Q21：更早的图片会从上下文里消失，模型答不出"最开始那张图"）。</p>
      */
-    private static List<Msg> conversationMessages(AgentRunBo request) {
-        List<Msg> messages = new ArrayList<>();
-        for (SessionMessage history : request.history()) {
+    private List<Msg> conversationMessages(AgentRunBo request) {
+        // 由新到旧决定每一张图的去留，最后再反转回时间顺序
+        var remainingBytes = new long[]{historyImageBudgetBytes};
+        var newestFirst = new ArrayList<Msg>(request.history().size() + 1);
+        newestFirst.add(toMessage(MsgRole.USER, request.query(), request.attachments(), remainingBytes));
+        for (int i = request.history().size() - 1; i >= 0; i--) {
+            SessionMessage history = request.history().get(i);
             var role = history.role() == MessageRole.USER ? MsgRole.USER : MsgRole.ASSISTANT;
-            messages.add(Msg.builder().role(role).textContent(history.content()).build());
+            newestFirst.add(toMessage(role, history.content(), history.attachments(), remainingBytes));
         }
-        messages.add(Msg.builder().role(MsgRole.USER).textContent(request.query()).build());
-        return messages;
+        Collections.reverse(newestFirst);
+        return newestFirst;
+    }
+
+    /**
+     * 构造单条消息：无可用图片时退化为纯文本（与历史行为完全一致）。
+     */
+    private Msg toMessage(MsgRole role, String text, List<AttachmentRef> attachments, long[] remainingBytes) {
+        var plain = text == null ? "" : text;
+        if (attachments.isEmpty() || attachmentContentProvider == null) {
+            return Msg.builder().role(role).textContent(plain).build();
+        }
+        var blocks = new ArrayList<ContentBlock>();
+        if (!plain.isEmpty()) {
+            blocks.add(TextBlock.builder().text(plain).build());
+        }
+        for (AttachmentRef attachment : attachments) {
+            if (attachment == null || !attachment.isImage()) {
+                continue;
+            }
+            var image = readImage(attachment, remainingBytes);
+            blocks.add(image != null ? image : TextBlock.builder().text(IMAGE_PLACEHOLDER).build());
+        }
+        if (blocks.isEmpty()) {
+            return Msg.builder().role(role).textContent(plain).build();
+        }
+        return Msg.builder().role(role).content(blocks).build();
+    }
+
+    /**
+     * 读取一张图片作为图片块。
+     *
+     * <p>预算是硬边界：预算已用尽时**根本不去读字节**——既省 IO，也让「更早的图」确定性地降级；
+     * 单张就超过剩余预算、或读取失败时同样降级为占位。</p>
+     *
+     * @return 图片块；该图不进入上下文时返回 {@code null}（调用方补占位）
+     */
+    private ContentBlock readImage(AttachmentRef attachment, long[] remainingBytes) {
+        if (remainingBytes[0] <= 0 || attachment.resourceId() == null) {
+            return null;
+        }
+        try {
+            var content = attachmentContentProvider.read(attachment.resourceId());
+            if (content == null || content.bytes() == null || content.bytes().length == 0
+                    || content.bytes().length > remainingBytes[0]) {
+                return null;
+            }
+            remainingBytes[0] -= content.bytes().length;
+            return ImageBlock.builder()
+                    .source(Base64Source.builder()
+                            .mediaType(content.mimeType() == null || content.mimeType().isBlank()
+                                    ? "image/png" : content.mimeType())
+                            .data(Base64.getEncoder().encodeToString(content.bytes()))
+                            .build())
+                    .build();
+        } catch (Exception exception) {
+            log.warn("failed to load attachment {} into model context: {}",
+                    attachment.resourceId(), exception.getMessage());
+            return null;
+        }
     }
 
     /**

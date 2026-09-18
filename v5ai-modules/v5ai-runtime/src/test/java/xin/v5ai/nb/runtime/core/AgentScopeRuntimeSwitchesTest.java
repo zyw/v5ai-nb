@@ -16,6 +16,8 @@ import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 import xin.v5ai.nb.runtime.core.service.MessageService;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -60,6 +62,11 @@ class AgentScopeRuntimeSwitchesTest {
                 }
             }
             return result;
+        }
+
+        @Override
+        public Map<String, String> findFirstUserMessageByConversationIds(Collection<String> conversationIds) {
+            return Map.of();
         }
     }
 

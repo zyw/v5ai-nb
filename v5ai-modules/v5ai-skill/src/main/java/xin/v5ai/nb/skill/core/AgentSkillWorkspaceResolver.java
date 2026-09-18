@@ -12,8 +12,10 @@ import xin.v5ai.nb.skill.service.ISkillFileService;
 import xin.v5ai.nb.skill.service.ISkillService;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 运行时 Skill 解析器实现：读取 AgentDTO 绑定的 ACTIVE Skill 的当前发布版本文件。
@@ -29,13 +31,18 @@ public class AgentSkillWorkspaceResolver implements SkillWorkspaceResolver {
     private final ISkillFileService fileService;
 
     @Override
-    public List<ResolvedSkill> resolveSkills(AgentDTO agent) {
+    public List<ResolvedSkill> resolveSkills(AgentDTO agent, Collection<Long> disabledSkillIds) {
         var bindings = bindingService.selectList(agent.agentKey());
         if (bindings.isEmpty()) {
             return List.of();
         }
+        var disabled = disabledSkillIds == null ? Set.<Long>of() : Set.copyOf(disabledSkillIds);
         var resolved = new ArrayList<ResolvedSkill>();
         for (var binding : bindings) {
+            if (disabled.contains(binding.getSkillId())) {
+                log.debug("skill {} disabled for this run, skipped for app {}", binding.getSkillId(), agent.agentKey());
+                continue;
+            }
             resolveOne(agent, binding.getSkillId(), resolved);
         }
         return resolved;
@@ -57,7 +64,8 @@ public class AgentSkillWorkspaceResolver implements SkillWorkspaceResolver {
                 log.warn("skill '{}' has no files in current version, skipped", skill.getName());
                 return;
             }
-            resolved.add(new ResolvedSkill(skill.getName(), skill.getDescription(), files, skill.getCurrentVersionId()));
+            resolved.add(new ResolvedSkill(skill.getId(), skill.getName(), skill.getDescription(), files,
+                    skill.getCurrentVersionId()));
         } catch (Exception exception) {
             log.warn("failed to resolve skill '{}': {}", skill.getName(), exception.getMessage());
         }

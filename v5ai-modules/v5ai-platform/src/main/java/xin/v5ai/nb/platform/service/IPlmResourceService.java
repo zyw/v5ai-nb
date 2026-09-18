@@ -46,6 +46,24 @@ public interface IPlmResourceService {
                          String bizType, Long bizId);
 
     /**
+     * 上传文件并登记资源记录，显式指定创建者。
+     *
+     * <p>与上一个重载的唯一差别是 {@code createdBy} 由调用方传入而不是取当前登录用户：
+     * API Key 鉴权路径（门户上传附件）没有 Sa-Token 会话，取不到登录用户，
+     * 归属只能来自调用方已经校验过的 Key（见 ADR 0006）。</p>
+     *
+     * @param originalFilename 原始文件名
+     * @param content          文件内容
+     * @param contentType      文件 MIME 类型
+     * @param bizType          业务类型（AVATAR/ATTACHMENT/DOCUMENT/GENERAL）
+     * @param bizId            关联业务ID，可为空
+     * @param createdBy        创建者ID，可为空（表示无归属）
+     * @return 上传后的资源信息
+     */
+    PlmResourceVo upload(String originalFilename, byte[] content, String contentType,
+                         String bizType, Long bizId, Long createdBy);
+
+    /**
      * 修改资源元数据（业务类型 / 关联业务ID）。
      *
      * @param bo 编辑参数

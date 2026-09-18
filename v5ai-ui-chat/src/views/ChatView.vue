@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NAlert, NButton, NIcon, NSpin, useMessage, useThemeVars } from 'naive-ui'
-import { MessageSquarePlus, RefreshCw } from 'lucide-vue-next'
+import { MessageSquarePlus, RefreshCw, Square } from 'lucide-vue-next'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import AgentIntro from '../components/AgentIntro.vue'
 import AgentSwitcher from '../components/AgentSwitcher.vue'
@@ -10,7 +10,19 @@ import ChatMessageBody from '../components/ChatMessageBody.vue'
 import Composer from '../components/Composer.vue'
 import SessionList from '../components/SessionList.vue'
 import UserMenu from '../components/UserMenu.vue'
-import { ApiError, appTitle, fetchConversationMessages, parseDelta, parseRunFailed, streamChat } from '../api/client'
+import {
+  ApiError,
+  appTitle,
+  fetchConversationMessages,
+  parseDelta,
+  parseRunFailed,
+  resolveResourceUrl,
+  stopRun,
+  streamChat,
+  uploadAttachment,
+  type AttachmentRef,
+  type ConversationSummary
+} from '../api/client'
 import { parseHits, type ChatMsg } from '../utils/chatStream'
 import {
   activeAgent,
@@ -20,17 +32,23 @@ import {
   clearApiKey,
   ensureAgentAvatars,
   loadBootstrap,
+  loadSessions,
   newSessionId,
-  removeSession,
-  sessionsOf,
-  upsertSession
+  renameSession,
+  sessionList,
+  sessionTitle,
+  setActiveAgent,
+  setSessionArchived,
+  showArchived,
+  toggleArchivedView
 } from '../stores/portal'
 
 /**
- * 对话页：顶栏（品牌 + Agent 切换 + 用户菜单）/ 左栏会话列表 / 主区对话。
+ * 对话页：顶栏（品牌 + Agent 切换 + 用户菜单）/ 左栏服务端会话列表 / 主区对话。
  *
- * 会话 id 由前端生成（crypto.randomUUID）并随每次提问提交，后端按它落库；
- * 打开历史会话时再按 id 拉取消息，因此本机列表 + 后端消息共同构成"会话"。
+ * 会话 id 由前端生成（crypto.randomUUID）并随每次提问提交，但**列表、改名、归档都在服务端**
+ * （会话语义归属 API Key，见 docs/adr/0006-api-key-scoped-conversations.md）。
+ * 图片附件先上传拿资源 id，再随消息提交；停止按钮同时断流并通知服务端取消本次运行。
  */
 const router = useRouter()
 const message = useMessage()
@@ -45,16 +63,27 @@ const messages = ref<ChatMsg[]>([])
 const conversationId = ref('')
 /** 本次提问是否使用联网搜索：默认取 Agent 配置；Agent 未开启时开关禁用 */
 const webSearch = ref(false)
+/** 当前正在跑的运行 ID（取自 SSE 的 id: 字段），停止时按它通知服务端 */
+const currentRunId = ref('')
 const listRef = ref<HTMLElement | null>(null)
 let controller: AbortController | null = null
 
-const currentSessions = computed(() => {
-  const agentKey = activeAgent.value?.agentKey
-  return agentKey ? sessionsOf(agentKey) : []
-})
+const currentAgentKey = computed(() => activeAgent.value?.agentKey ?? '')
+const imageSupported = computed(() => activeAgent.value?.imageSupported ?? false)
 
 function syncWebSearchDefault() {
   webSearch.value = activeAgent.value?.webSearchEnabled ?? false
+}
+
+async function refreshSessions() {
+  if (!currentAgentKey.value) return
+  try {
+    await loadSessions(currentAgentKey.value)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) {
+      await handleAuthFailure(e)
+    }
+  }
 }
 
 onMounted(async () => {
@@ -64,6 +93,7 @@ onMounted(async () => {
     }
     await ensureAgentAvatars()
     syncWebSearchDefault()
+    await refreshSessions()
   } catch (e) {
     await handleAuthFailure(e)
   } finally {
@@ -77,11 +107,12 @@ onBeforeUnmount(() => {
 
 watch(
   () => activeAgent.value?.agentKey,
-  () => {
+  async () => {
     // 会话与 Agent 绑定：切换 Agent 即开一个新会话
     messages.value = []
     conversationId.value = ''
     syncWebSearchDefault()
+    await refreshSessions()
   }
 )
 
@@ -107,24 +138,41 @@ async function scrollToBottom(force: boolean) {
   }
 }
 
-function sessionTitle(): string {
-  const first = messages.value.find((m) => m.role === 'user' && m.content.trim())
-  const text = first?.content.trim() ?? '新会话'
-  return text.length > 24 ? `${text.slice(0, 24)}…` : text
+/** 上传本次选中的图片：全部成功才发消息，避免「消息发出去了图没带上」。 */
+async function uploadAll(files: File[]): Promise<AttachmentRef[] | null> {
+  if (files.length === 0) return []
+  try {
+    return await Promise.all(files.map((file) => uploadAttachment(apiKey.value, file)))
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+      await handleAuthFailure(e)
+    } else {
+      message.error(e instanceof Error ? e.message : '附件上传失败')
+    }
+    return null
+  }
 }
 
-async function send(question: string) {
+async function send(question: string, files: File[] = []) {
   const agent = activeAgent.value
-  if (!agent || loading.value || !question.trim()) return
+  if (!agent || loading.value || (!question.trim() && files.length === 0)) return
   if (!conversationId.value) {
     conversationId.value = newSessionId()
   }
 
-  messages.value.push({ role: 'user', content: question })
+  const attachments = await uploadAll(files)
+  if (attachments === null) return
+
+  messages.value.push({
+    role: 'user',
+    content: question,
+    attachments: files.map((file) => URL.createObjectURL(file))
+  })
   // 必须是响应式代理：SSE 回调里就地增量渲染
   const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true, reasoningOpen: true })
   messages.value.push(assistant)
   loading.value = true
+  currentRunId.value = ''
   await scrollToBottom(true)
 
   controller = new AbortController()
@@ -138,9 +186,15 @@ async function send(question: string) {
     await streamChat(
       agent.agentKey,
       apiKey.value,
-      { conversationId: conversationId.value, query: question, webSearch: webSearch.value },
-      (event, data) => {
+      {
+        conversationId: conversationId.value,
+        query: question,
+        webSearch: webSearch.value,
+        attachments
+      },
+      (event, data, runId) => {
         resetWatchdog()
+        if (runId) currentRunId.value = runId
         if (event === 'RETRIEVAL') {
           assistant.citations = parseHits(data)
         } else if (event === 'REASONING_DELTA' && data) {
@@ -158,7 +212,10 @@ async function send(question: string) {
       controller.signal
     )
   } catch (e) {
-    if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+    // 主动停止不是错误：保留已生成的内容，只标记「已停止」
+    if (assistant.stopped) {
+      // 停止路径已在 stop() 里标记，这里不再覆盖
+    } else if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
       assistant.error = e.message
       await handleAuthFailure(e)
     } else {
@@ -172,18 +229,30 @@ async function send(question: string) {
   } finally {
     clearTimeout(watchdog)
     controller = null
+    currentRunId.value = ''
     assistant.loading = false
     loading.value = false
-    if (conversationId.value && messages.value.some((m) => m.role === 'user')) {
-      upsertSession({
-        id: conversationId.value,
-        agentKey: agent.agentKey,
-        title: sessionTitle(),
-        updatedAt: Date.now()
-      })
-    }
+    await refreshSessions()
     void scrollToBottom(true)
   }
+}
+
+/** 停止：先通知服务端取消（幂等），再断开本地流——两条路径都要，缺一条都可能留下「永远运行中」。 */
+async function stop() {
+  const assistant = messages.value[messages.value.length - 1]
+  const agent = activeAgent.value
+  if (assistant && assistant.role === 'assistant') {
+    assistant.stopped = true
+  }
+  const runId = currentRunId.value
+  if (agent && runId) {
+    try {
+      await stopRun(apiKey.value, agent.agentKey, runId)
+    } catch {
+      // 服务端已完成/已取消同样是正常结果，这里不打扰用户
+    }
+  }
+  controller?.abort()
 }
 
 function newSession() {
@@ -191,18 +260,27 @@ function newSession() {
   messages.value = []
 }
 
-async function openSession(session: { id: string; agentKey: string }) {
-  if (loading.value || session.id === conversationId.value) return
-  conversationId.value = session.id
+async function openSession(session: ConversationSummary) {
+  if (loading.value || session.conversationId === conversationId.value) return
+  conversationId.value = session.conversationId
   messages.value = []
   try {
-    const history = await fetchConversationMessages(apiKey.value, session.agentKey, session.id)
-    messages.value = history
-      .filter((m) => (m.content ?? '').trim().length > 0)
-      .map<ChatMsg>((m) => ({
-        role: m.role?.toUpperCase() === 'USER' ? 'user' : 'assistant',
-        content: m.content
-      }))
+    const history = await fetchConversationMessages(apiKey.value, session.agentKey, session.conversationId)
+    const rendered: ChatMsg[] = []
+    for (const item of history) {
+      if (!(item.content ?? '').trim() && !(item.attachments?.length ?? 0)) continue
+      const attachments = await Promise.all(
+        (item.attachments ?? []).map((attachment) =>
+          resolveResourceUrl(apiKey.value, attachment.accessUrl).catch(() => '')
+        )
+      )
+      rendered.push({
+        role: item.role?.toUpperCase() === 'USER' ? 'user' : 'assistant',
+        content: item.content,
+        attachments: attachments.filter((url) => url.length > 0)
+      })
+    }
+    messages.value = rendered
     void scrollToBottom(true)
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) {
@@ -213,11 +291,32 @@ async function openSession(session: { id: string; agentKey: string }) {
   }
 }
 
-function dropSession(session: { id: string }) {
-  removeSession(session.id)
-  if (session.id === conversationId.value) {
-    newSession()
+async function renameSessionRow(session: ConversationSummary, name: string) {
+  try {
+    await renameSession(session.agentKey, session.conversationId, name)
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '改名失败')
   }
+}
+
+async function archiveSessionRow(session: ConversationSummary, archived: boolean) {
+  try {
+    await setSessionArchived(session.agentKey, session.conversationId, archived)
+    // 归档后当前会话不能再继续对话：直接退回新会话
+    if (archived && session.conversationId === conversationId.value) {
+      newSession()
+    }
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '归档失败')
+  }
+}
+
+async function switchArchivedView(value: boolean) {
+  if (!currentAgentKey.value) {
+    showArchived.value = value
+    return
+  }
+  await toggleArchivedView(currentAgentKey.value, value)
 }
 
 async function reloadAgents() {
@@ -226,6 +325,7 @@ async function reloadAgents() {
     await loadBootstrap()
     await ensureAgentAvatars()
     syncWebSearchDefault()
+    await refreshSessions()
   } catch (e) {
     await handleAuthFailure(e)
   } finally {
@@ -255,7 +355,16 @@ async function reloadAgents() {
             新建会话
           </n-button>
         </div>
-        <SessionList :items="currentSessions" :current-id="conversationId" @open="openSession" @remove="dropSession" />
+        <SessionList
+          :items="sessionList"
+          :current-id="conversationId"
+          :show-archived="showArchived"
+          :title-of="sessionTitle"
+          @open="openSession"
+          @rename="renameSessionRow"
+          @archive="archiveSessionRow"
+          @update:show-archived="switchArchivedView"
+        />
       </aside>
 
       <main class="main">
@@ -272,7 +381,7 @@ async function reloadAgents() {
 
           <template v-else-if="activeAgent">
             <div ref="listRef" class="scroll-area">
-              <AgentIntro v-if="messages.length === 0" :agent="activeAgent" @ask="send" />
+              <AgentIntro v-if="messages.length === 0" :agent="activeAgent" @ask="(q: string) => send(q, [])" />
 
               <div v-else class="message-list">
                 <div v-for="(msg, index) in messages" :key="index" class="message-row" :class="msg.role">
@@ -284,17 +393,36 @@ async function reloadAgents() {
                   />
                   <div class="bubble" :class="msg.role">
                     <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
-                    <span v-else class="bubble-text">{{ msg.content }}</span>
+                    <template v-else>
+                      <div v-if="msg.attachments?.length" class="bubble-attachments">
+                        <img
+                          v-for="(url, imageIndex) in msg.attachments"
+                          :key="imageIndex"
+                          :src="url"
+                          alt="消息附件"
+                          class="bubble-attachment"
+                        />
+                      </div>
+                      <span v-if="msg.content" class="bubble-text">{{ msg.content }}</span>
+                    </template>
+                    <p v-if="msg.stopped" class="bubble-stopped">已停止</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="composer-wrap">
+              <div v-if="loading" class="composer-stop">
+                <n-button size="small" secondary :aria-label="'停止生成'" @click="stop">
+                  <template #icon><n-icon :component="Square" :size="14" /></template>
+                  停止生成
+                </n-button>
+              </div>
               <Composer
                 :loading="loading"
                 :web-search-enabled="activeAgent.webSearchEnabled"
                 :web-search="webSearch"
+                :image-supported="imageSupported"
                 @send="send"
                 @update:web-search="(value: boolean) => (webSearch = value)"
               />
@@ -473,12 +601,38 @@ async function reloadAgents() {
   white-space: pre-wrap;
 }
 
+.bubble-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.bubble-attachment {
+  max-width: 160px;
+  max-height: 160px;
+  border-radius: 8px;
+  display: block;
+}
+
+.bubble-stopped {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
 .composer-wrap {
   flex: none;
   width: 100%;
   max-width: 820px;
   margin: 0 auto;
   padding: 8px 16px 10px;
+}
+
+.composer-stop {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 6px;
 }
 
 .disclaimer {

@@ -28,6 +28,12 @@ public class PlmResourceContentPortImpl implements ResourceContentPort {
     }
 
     @Override
+    public Long save(String originalName, byte[] bytes, String contentType, String bizType, Long bizId,
+                     Long createdBy) {
+        return resourceService.upload(originalName, bytes, contentType, bizType, bizId, createdBy).getId();
+    }
+
+    @Override
     public Content read(Long resourceId) {
         var content = resourceService.loadContent(resourceId);
         return new Content(content.bytes(), content.mimeType(), content.originalName());

@@ -15,6 +15,10 @@ export interface ChatMsg {
   citations?: KbHitResponse[]
   error?: string
   loading?: boolean
+  /** 用户消息携带的图片：已解析为可直接用于 <img> 的地址（本地 blob: 或后端资源 blob:） */
+  attachments?: string[]
+  /** 这条回答是被调用方主动停止的（区别于运行失败） */
+  stopped?: boolean
 }
 
 /** 解析 RETRIEVAL 载荷：命中数组 JSON 串（两条链路同构，故解析器共用）。 */

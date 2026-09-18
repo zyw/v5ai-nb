@@ -146,7 +146,7 @@ flowchart LR
 RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调用在 rag_search 的 TOOL_RESULT 之后) → MODEL_CALL
   → (TEXT_DELTA | REASONING_DELTA)* | (TOOL_CALL → TOOL_RESULT)*
   → MESSAGE_COMPLETED → RUN_COMPLETED
-失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED
+失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED；调用方停止：run 状态置 CANCELED（不额外发事件，已生成的部分回答照常落库）
 ```
 
 ### 5. 关键实现位置
@@ -164,6 +164,10 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 | MCP 解析 | `AgentMcpToolResolver`（读 ACTIVE 绑定、滤 DENY、建连接） |
 | Skill 解析 | `AgentSkillWorkspaceResolver`（读当前发布版本文件） |
 | 联网搜索 | `WebSearchTool`（Tavily，`v5ai.agentscope.tavily-api-key`，缺 Key 返回错误） |
+| 门户会话管理 | `ChatController`（列表/改名/归档/停止）+ `RuntimeConversationServiceImpl`（归属断言、归档拦截） |
+| 附件上传/读取 | `ChatAttachmentController`（base64 + 文件头校验 + 按 Key 限流）；读取按「本 Key 引用过」推导式鉴权 |
+| 多模态装配 | `ModelStreamTextExecutor.conversationMessages`（TextBlock + ImageBlock，最近优先 16MB 预算，超出退化为 `[图片]`） |
+| 停止对话 | `RunCancellationRegistry`（按 runId 的取消信号）+ `PersistingAgentRuntime` 的 `doOnCancel` 兜底 |
 
 ## 本地验证
 
@@ -200,11 +204,16 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
 7. 上传 Skill 包（`POST /api/admin/skills`，multipart zip）→ 发布版本（`POST /api/admin/skills/{id}/versions/{versionId}/publish`）→ 绑定到 Agent（`POST /api/admin/agents/{agentKey}/skill-bindings`）；
 8. 通过 `POST /api/v1/agents/{agentKey}/chat/stream`（Agent API Key）发起流式对话：带 RAG 上下文，MCP 工具被动态注册（调用记录可查 `GET /api/admin/mcp-tool-calls?runId=<run-id>`），绑定 Skill 自动注入 Workspace；
 9. 可在 Platform 页配置应用配额/限流（`PUT /api/admin/agents/{agentKey}/quota`），在 Observability 页查看用量明细、审计日志与总览（`GET /api/admin/usage`、`GET /api/admin/audit-logs`、`GET /api/admin/stats/overview`）。
+10. 对话门户（`v5ai-ui-chat`）用 API Key 登录后可管理服务端会话并带图片提问：
+    - `GET /api/v1/agents/auth/bootstrap` 拿到可用 Agent 与 `imageSupported`（所绑模型 `config.capabilities` 含 `image` 才为真）；
+    - 会话列表 `GET /api/v1/agents/{agentKey}/chat/conversations`（`?archived=true` 查归档）、改名/归档 `PATCH …/conversations/{id}`；
+    - 图片先 `POST /api/v1/agents/resource/upload`（JSON + base64，≤5MB，文件头必须是 PNG/JPEG/WebP）拿 `id`，再随 `chat/stream` 的 `attachments` 提交；历史回放里的图片按 `GET /api/v1/agents/attachments/{id}` 取；
+    - 停止生成：点停止即调 `POST /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`（runId 取自 SSE 的 `id:` 字段）并断开本地流，run 落定为 `CANCELED` 且保留已生成的部分回答。
 
 说明：
 
 - 未配置 EMBEDDING 模型时，向量化回退到确定性本地 Hash 嵌入（维度 1536），便于本地端到端验证；
-- 数据库迁移：`v5ai-infrastructure/src/main/resources/db/migration/`（V1 Phase 1、V2 RAG、V5 MCP、V6 Skill、V7 平台增强，需 pgvector）；
+- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V38 门户会话/附件，需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；
 - MCP 运行时使用已发现的 Tool 元数据：先"发现工具"再"绑定 + 发布"，运行时才会注册工具；
 - Skill 上传生成 DRAFT 版本，发布后成为"当前版本"，运行时注入当前版本文件（回滚改变当前版本）；
 - Stdio MCP 命令受白名单限制（`V5AI_MCP_STDIO_COMMAND_WHITELIST`，生产环境必须配置）；
@@ -220,6 +229,8 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
 - `docs/api/phase3.md`
 - `docs/api/phase4.md`
 - `docs/api/phase5.md`
+- `docs/api/phase6.md`（对话门户：附件与多模态、会话管理、停止对话）
+- `docs/adr/0006-api-key-scoped-conversations.md`（会话与附件以 API Key 为归属主体）
 - `docs/phase1-verification-update.md`
 - `docs/phase2-verification.md`
 - `docs/phase3-verification.md`

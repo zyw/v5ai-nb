@@ -3,6 +3,7 @@ package xin.v5ai.nb.runtime.core;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
@@ -15,12 +16,16 @@ import xin.v5ai.nb.model.api.ModelUsageService;
 import xin.v5ai.nb.model.api.domain.ModelUsageDTO;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.runtime.core.domain.ConversationDTO;
+import xin.v5ai.nb.runtime.core.enums.RunStatus;
 import xin.v5ai.nb.runtime.core.service.*;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 带持久化能力的运行时装饰器：包裹（delegate）另一个 AgentRuntime，
@@ -28,10 +33,16 @@ import java.util.UUID;
  * 一并落库，从而支持多轮对话历史与运行审计。
  *
  * 职责边界：delegate 负责真正执行 AgentDTO；本类只做副作用（持久化）。
- * 提供 3 个构造器，持久化能力逐步增强：
+ * 提供多个构造器，持久化能力逐步增强：
  * 1) 最简：会话/事件仓储使用空实现（lambda 空操作），不保存；
  * 2) 中间：显式传入会话与事件仓储；
- * 3) 完整：额外传入 AgentDTO 状态仓储。
+ * 3) 完整：额外传入 AgentDTO 状态仓储、用量记录与取消登记处。
+ *
+ * <p><b>停止对话</b>：订阅时创建本次运行的取消信号并登记到
+ * {@link RunCancellationRegistry}，流上叠加 {@code takeUntilOther}。停止端点触发信号
+ * 会取消上游，客户端断流（关页面/断网）则由 Reactor 自己取消——两条路径都走
+ * {@link #stream} 里的 {@code doOnCancel}：标记取消、写完成时间、落库已生成的部分回答，
+ * 并按已生成内容记用量（否则"点停止"就成了免费额度漏洞）。</p>
  */
 @Slf4j
 public class PersistingAgentRuntime implements AgentRuntime {
@@ -39,18 +50,49 @@ public class PersistingAgentRuntime implements AgentRuntime {
     private final AgentRuntime delegate;
     /** 消息仓储：保存用户提问与助手回答 */
     private final MessageService messageService;
-    /** 运行记录仓储：记录一次运行的 开始/完成/失败 生命周期 */
+    /** 运行记录仓储：记录一次运行的 开始/完成/失败/取消 生命周期 */
     private final RunRecordService runRecordService;
-    /** 会话仓储：确保会话记录存在 */
+    /** 会话仓储：确保会话存在（含归属断言与归档拦截） */
     private final ConversationService conversationService;
     /** 运行事件仓储：保存每一条运行事件 */
     private final RunEventService runEventService;
     /** AgentDTO 状态仓储（可空）：保存会话级 AgentDTO 状态 */
     private final AgentStateService agentStateService;
-    /** 用量记录器（可空）：运行完成/失败时记录模型调用用量 */
+    /** 用量记录器（可空）：运行完成/失败/取消时记录模型调用用量 */
     private final ModelUsageService usageRecorder;
     /** 应用配额服务（可空）：运行完成后记账（调用次数 + Token） */
     private final AppQuotaService quotaService;
+    /** 进行中运行的取消登记处 */
+    private final RunCancellationRegistry cancellationRegistry;
+
+    /**
+     * 不落库的会话仓储空实现：供「只要消息与运行记录」的最简构造器使用。
+     */
+    private static final ConversationService NO_OP_CONVERSATIONS = new ConversationService() {
+        @Override
+        public void ensureConversation(ConversationDTO conversation) {
+        }
+
+        @Override
+        public Optional<ConversationDTO> findById(String conversationId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<ConversationDTO> list(String agentKey, Long apiKeyId, boolean archived) {
+            return List.of();
+        }
+
+        @Override
+        public boolean rename(String conversationId, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean setArchived(String conversationId, boolean archived) {
+            return false;
+        }
+    };
 
     public PersistingAgentRuntime(
             AgentRuntime delegate,
@@ -58,7 +100,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
             RunRecordService runRecordService
     ) {
         // 最简构造：会话/事件仓储用空实现，不持久化这两类数据
-        this(delegate, messageService, runRecordService, conversation -> {}, event -> {
+        this(delegate, messageService, runRecordService, NO_OP_CONVERSATIONS, event -> {
             return false;
         }, null);
     }
@@ -86,7 +128,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
     }
 
     /**
-     * 完整构造：附带用量记录与配额记账（Phase 5 可观测性/用量）。
+     * 完整构造：附带用量记录与配额记账（Phase 5 可观测性/用量）、取消登记处（停止对话）。
      */
     public PersistingAgentRuntime(
             AgentRuntime delegate,
@@ -96,7 +138,22 @@ public class PersistingAgentRuntime implements AgentRuntime {
             RunEventService runEventService,
             AgentStateService agentStateService,
             ModelUsageService usageRecorder,
-           AppQuotaService quotaService
+            AppQuotaService quotaService
+    ) {
+        this(delegate, messageService, runRecordService, conversationService, runEventService,
+                agentStateService, usageRecorder, quotaService, new RunCancellationRegistry());
+    }
+
+    public PersistingAgentRuntime(
+            AgentRuntime delegate,
+            MessageService messageService,
+            RunRecordService runRecordService,
+            ConversationService conversationService,
+            RunEventService runEventService,
+            AgentStateService agentStateService,
+            ModelUsageService usageRecorder,
+            AppQuotaService quotaService,
+            RunCancellationRegistry cancellationRegistry
     ) {
         this.delegate = delegate;
         this.messageService = messageService;
@@ -106,6 +163,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
         this.agentStateService = agentStateService;
         this.usageRecorder = usageRecorder;
         this.quotaService = quotaService;
+        this.cancellationRegistry = cancellationRegistry == null
+                ? new RunCancellationRegistry() : cancellationRegistry;
     }
 
     @Override
@@ -114,11 +173,14 @@ public class PersistingAgentRuntime implements AgentRuntime {
         return Flux.defer(() -> {
             // 若未传 conversationId，则先自动生成一个（normalize 负责）
             var normalizedRequest = normalize(request);
-            // 1) 登记会话 + 保存用户提问
-            // TODO userId为空，先用空字符串代替
-            conversationService.ensureConversation(
-                    new ConversationDTO(normalizedRequest.conversationId(), normalizedRequest.agentKey(), ""));
-            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.USER, normalizedRequest.query()));
+            // 1) 登记会话（归属断言 + 归档拦截）+ 保存用户提问（含附件）
+            conversationService.ensureConversation(new ConversationDTO(
+                    normalizedRequest.conversationId(), normalizedRequest.agentKey(),
+                    normalizedRequest.apiKeyId(), normalizedRequest.userId(),
+                    null, null, null, null));
+            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(),
+                    MessageRole.USER, normalizedRequest.query())
+                    .withAttachments(normalizedRequest.attachments()));
             // 累积最终回答文本（把 TEXT_DELTA 片段拼起来）
             var answer = new StringBuilder();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
@@ -126,6 +188,10 @@ public class PersistingAgentRuntime implements AgentRuntime {
             // 用量埋点状态：模型名、开始时间
             var modelName = new String[1];
             var startedAt = new java.time.Instant[1];
+            // 回答只落库一次：取消与正常完成可能先后到达，重复写入会产生两条助手消息
+            var answerSaved = new AtomicBoolean();
+            // 本次运行的取消信号：订阅时创建，收到 RUN_STARTED 后按 runId 登记
+            var cancelSignal = Sinks.<Void>empty();
             return delegate.stream(normalizedRequest)
                     .doOnNext(event -> {
                         // 外键约束：v5ai_run_event.run_id 引用 v5ai_run.id，
@@ -134,6 +200,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             runId[0] = event.runId();
                             startedAt[0] = event.createdAt();
                             runRecordService.start(event.runId(), normalizedRequest);
+                            cancellationRegistry.register(event.runId(), cancelSignal);
                         }
                         if (event.type() == RuntimeEventType.MODEL_CALL) {
                             modelName[0] = event.payload();
@@ -148,18 +215,18 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             answer.append(event.payload());
                         }
                         if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
-                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
-                            saveAgentState(normalizedRequest, answer.toString());
+                            saveAnswerOnce(normalizedRequest, answer, answerSaved);
                         }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
-                            saveAgentState(normalizedRequest, answer.toString());
+                            saveAnswerOnce(normalizedRequest, answer, answerSaved);
                             runRecordService.complete(event.runId());
-                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0], answer.toString(), true);
+                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0],
+                                    answer.toString(), RunStatus.COMPLETED);
                         }
                         if (event.type() == RuntimeEventType.RUN_FAILED) {
                             runRecordService.fail(event.runId(), event.payload());
-                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0], answer.toString(), false);
+                            recordUsage(normalizedRequest, runId[0], modelName[0], startedAt[0],
+                                    answer.toString(), RunStatus.FAILED);
                         }
                     })
                     // 异常兜底：把异常转成 RUN_FAILED 事件，同样落库并标记 run 失败
@@ -175,26 +242,64 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         runId[0] = failedRunId;
                         runEventService.save(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
                         runRecordService.fail(failedRunId, exception.getMessage());
-                        recordUsage(normalizedRequest, failedRunId, modelName[0], startedAt[0], answer.toString(), false);
+                        recordUsage(normalizedRequest, failedRunId, modelName[0], startedAt[0],
+                                answer.toString(), RunStatus.FAILED);
                         return Flux.just(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
                     })
                     // 正常结束但从未收到 RUN_STARTED（delegate 没发启动事件）时，
                     // 也要把回答落库，保证消息完整
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
-                            messageService.save(new SessionMessage(normalizedRequest.conversationId(), normalizedRequest.agentKey(), MessageRole.ASSISTANT, answer.toString()));
-                            saveAgentState(normalizedRequest, answer.toString());
-                            recordUsage(normalizedRequest, null, modelName[0], startedAt[0], answer.toString(), true);
+                            saveAnswerOnce(normalizedRequest, answer, answerSaved);
+                            recordUsage(normalizedRequest, null, modelName[0], startedAt[0],
+                                    answer.toString(), RunStatus.COMPLETED);
                         }
-                    });
+                    })
+                    // 停止/断流：取消是正常收尾，不是异常——保留已生成的部分回答
+                    .doOnCancel(() -> finishCanceled(normalizedRequest, runId[0], modelName[0], startedAt[0],
+                            answer, answerSaved))
+                    // 取消信号触发时取消上游（信号只在本实例登记过才会有值）
+                    .takeUntilOther(cancelSignal.asMono())
+                    .doFinally(signal -> cancellationRegistry.unregister(runId[0]));
         });
+    }
+
+    /**
+     * 取消收尾：标记 CANCELED（带 {@code WHERE status='RUNNING'} 条件，不会覆盖已落定的状态）、
+     * 落库已生成的部分回答，并按已生成内容记用量。
+     */
+    private void finishCanceled(AgentRunBo request, String runId, String modelName, Instant startedAt,
+                                StringBuilder answer, AtomicBoolean answerSaved) {
+        try {
+            if (runId != null) {
+                runRecordService.cancel(runId);
+            }
+            saveAnswerOnce(request, answer, answerSaved);
+            recordUsage(request, runId, modelName, startedAt, answer.toString(), RunStatus.CANCELED);
+            log.info("run {} canceled by caller, {} chars of partial answer kept", runId, answer.length());
+        } catch (Exception exception) {
+            log.warn("failed to finish canceled run {}: {}", runId, exception.getMessage());
+        }
+    }
+
+    /**
+     * 助手回答只落库一次：取消与正常完成可能先后到达（例如先点停止、随后模型又答完），
+     * 无保护地写入会产生两条助手消息。
+     */
+    private void saveAnswerOnce(AgentRunBo request, StringBuilder answer, AtomicBoolean answerSaved) {
+        if (!answerSaved.compareAndSet(false, true)) {
+            return;
+        }
+        messageService.save(new SessionMessage(request.conversationId(), request.agentKey(),
+                MessageRole.ASSISTANT, answer.toString()));
+        saveAgentState(request, answer.toString());
     }
 
     /**
      * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账（Token 按字符数粗略估算）。
      */
     private void recordUsage(AgentRunBo request, String runId, String modelName,
-                             Instant startedAt, String answer, boolean success) {
+                             Instant startedAt, String answer, RunStatus status) {
         if (usageRecorder == null && quotaService == null) {
             return;
         }
@@ -210,7 +315,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         null, runId, request.agentKey(),
                         modelName == null || modelName.isBlank() ? "unknown" : modelName,
                         promptTokens, completionTokens, Math.max(durationMs, 0),
-                        success ? "SUCCESS" : "FAILED", OffsetDateTime.now()));
+                        status.name(), OffsetDateTime.now()));
             }
             if (quotaService != null) {
                 quotaService.recordUsage(request.agentKey(), promptTokens + completionTokens);
@@ -253,7 +358,6 @@ public class PersistingAgentRuntime implements AgentRuntime {
         if (request.conversationId() != null && !request.conversationId().isBlank()) {
             return request;
         }
-        return new AgentRunBo(request.agentKey(), UUID.randomUUID().toString(), request.query(),
-                request.ragContext(), request.history(), request.runId(), request.webSearch());
+        return request.withConversationId(UUID.randomUUID().toString());
     }
 }

@@ -129,6 +129,13 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
     @Transactional(rollbackFor = Exception.class)
     public PlmResourceVo upload(String originalFilename, byte[] content, String contentType,
                                 String bizType, Long bizId) {
+        return upload(originalFilename, content, contentType, bizType, bizId, LoginHelper.getUserId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public PlmResourceVo upload(String originalFilename, byte[] content, String contentType,
+                                String bizType, Long bizId, Long createdBy) {
         if (content == null || content.length == 0) {
             throw new ServiceException("上传文件内容不能为空");
         }
@@ -158,7 +165,7 @@ public class PlmResourceServiceImpl implements IPlmResourceService {
         add.setStorageType(type);
         add.setBizType(biz);
         add.setBizId(bizId);
-        add.setCreatedBy(LoginHelper.getUserId());
+        add.setCreatedBy(createdBy);
         add.setCreateDt(now);
         add.setUpdateDt(now);
         try {

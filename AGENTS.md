@@ -47,7 +47,7 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 | `v5ai-common` | 公共能力：统一响应（`R`）、异常（`V5aiException`/`ErrorCode`）、分页（`PageQuery`/`PageResult`）、MyBatis-Plus 扩展（`BaseMapperPlus`/`QueryBuilder`）、加解密（`CredentialCipher`）、API Key 校验端口（`AgentApiKeysVerifier`）、平台领域（用户/角色/菜单/配额/用量/审计/限流端口与模型）；`v5ai-common-agentscope` 承载运行时契约：端口在 `core/service/*`（`AgentService`/`McpToolCallAuditService`），载体在 `core/domain/dto|bo|vo`（`AgentDTO`/`AgentVersionDTO`/`AgentRunBo`/`AgentRunVo`/`SessionMessage`），执行器在 `core/executor/*`（`ModelStreamTextExecutor`/`AgentScopeHarnessExecutor`/`PublishedModelAgentTextExecutor`），内置工具在 `core/tools/*`（`PlatformMcpTool`/`WebSearchTool`/`RagSearchTool`）|
 | `v5ai-model` | **自包含模块（新风格的样板）**：`domain` 实体（`V5aiModel`/`V5aiModelProvider`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus` + `ModelConfigRetrieve` 端口）、`service`/`service.impl`、`controller`（`/api/admin/models`、`/api/admin/providers`），以及运行时模型链（`runtime/AgentScopeModelFactory`、`runtime/AgentScopeModelConnectionTester`、`runtime/config/*`）。凭据 AES-GCM 加密，支持连通性测试 |
 | `v5ai-agent` | **自包含模块**：`domain` 实体（`Agent`/`AgentVersion`）、`domain/bo`（`AgentBo`）、`domain/vo`（`AgentVo`/`AgentVersionVo`）、`mapper`（`BaseMapperPlus` + `AgentCleanupMapper`）、`service`（`IAgentService` 管理服务：创建/更新/草稿/发布/禁用/版本/分页）、`service/impl`（`AgentServiceImpl` 管理实现；`DBAgentServiceImpl`（`@Primary`，MyBatis-Plus）实现 common 的运行时端口 `AgentService`，同类型不再有其他实现以免多候选）、`core`（`AgentConfigGenerator`/`AgentScopeAgentConfigGenerator`：按描述调模型生成配置）、`controller`（`/api/admin/agents`）；级联删除走 `IAgentDeletionPortService`；旧的 `AgentRepository`/`DatabaseAgentRepository`/`InMemoryAgentRepository` 已删除（见 git 历史） |
-| `v5ai-runtime` | Agent 运行时装配与持久化边界：`ChatController`/`AgentDebugController`（运行 / 调试入口，含 `controller/vo`）、`PersistingAgentRuntime`（持久化装饰器）、`PublishedModelAgentTextExecutor`、`AgentScopeRuntimeConfiguration`（装配执行器与运行时 Bean）、`DBAgentModelResolver`，以及运行期会话/消息/run/run_event/AgentState 的实体 + Mapper + `MyBatis*Repository` + `core/gateway`（实现 common `core/service` 的持久化端口）；运行时端口与事件模型（`AgentService`/`RagContextProvider`/`RagSearchProvider`/`McpToolResolver`/`RuntimeRunEventDTO`/`AgentRunBo`/`AgentRunVo`）定义在 `v5ai-common-agentscope` |
+| `v5ai-runtime` | Agent 运行时装配与持久化边界：`ChatController`（门户运行 / 会话管理 / 停止对话）、`ChatAuthController`（门户初始化与头像代读）、`ChatAttachmentController`（附件上传与读取）、`AgentDebugController`（管理端调试入口，含 `controller/vo`）、`PersistingAgentRuntime`（持久化装饰器，含取消收尾）、`RunCancellationRegistry`（进行中运行的取消信号）、`DBModelImageSupportResolver`（模型 image 能力判定）、`ResourceAttachmentContentProvider`（附件字节读取）、`PublishedModelAgentTextExecutor`、`AgentScopeRuntimeConfiguration`（装配执行器与运行时 Bean）、`DBAgentModelResolver`，以及运行期会话/消息/run/run_event/AgentState 的实体 + Mapper + `MyBatis*Repository` + `core/gateway`（实现 common `core/service` 的持久化端口）；运行时端口与事件模型（`AgentService`/`RagContextProvider`/`RagSearchProvider`/`McpToolResolver`/`RuntimeRunEventDTO`/`AgentRunBo`/`AgentRunVo`）定义在 `v5ai-common-agentscope` |
 | `v5ai-rag` | **自包含模块**：`domain` 实体（`KnowledgeBase`/`KnowledgeDocument`/`KnowledgeTask`/`AgentKnowledgeBinding`）、`bo`/`vo`、`mapper`（`BaseMapperPlus` + 端口实现 `MyBatis*Repository`）、`service`（`IKnowledgeBaseService`：知识库/文档/任务/绑定/URL 导入）、`controller`（`/api/admin/knowledge-bases`、`knowledge-bindings`）；保留运行时端口（`EmbeddingClient`/`VectorStore`/解析/切片/`RetrievalContextBuilder` 等），实现仍在 infra（PgVectorStore、OpenAiCompatibleEmbeddingClient、解析器） |
 | `v5ai-mcp` | **自包含模块**：`domain` 实体（`McpServer`/`McpTool`/`McpToolCallAuditDTO`/`AgentMcpBinding`，headers/env 密文列）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus`）、`service`（`IMcpServerService`：连接测试、Tool 发现、权限三态、绑定、审计）、`controller`（`/api/admin/mcp-servers`、`/api/admin/mcp-tool-calls`、`agents/{agentKey}/mcp-bindings`）；保留运行时端口（`McpClientFactory`/`McpConnection`/`McpToolInfo`/`StdioCommandPolicy`/`McpToolPermissionPolicy`/`McpToolCallAuditRepository`），实现仍在 `v5ai-infrastructure`（AgentScope 适配） |
 | `v5ai-skill` | **自包含模块**：`domain` 实体（`SkillDTO`/`SkillVersion`/`SkillFileDTO`/`AgentSkillBinding`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus`）、`service`（`ISkillService`：上传解析、版本发布/回滚、绑定）、`controller`（`/api/admin/skills`、`agents/{agentKey}/skill-bindings`）；保留纯逻辑与运行时端口（`SkillPackageParser`/`SkillFrontmatterParser`/`SkillWorkspaceResolver`/`ResolvedSkill`），`SkillWorkspaceResolver` 实现在 `v5ai-infrastructure` |
@@ -62,7 +62,7 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 
 - **Provider/Model**：模型供应商与模型配置；凭据 AES-GCM 加密存储；支持连通性测试。Embedding 模型未配置时回退到确定性本地 Hash 嵌入（1536 维）。
 - **Agent**：平台核心实体（平台实体类为 `Agent`，运行时契约 record 为 `AgentDTO`；`AgentRunBo`/`AgentRunVo` 分别是运行入参与结果，`SessionMessage` 是会话消息载体）。有草稿/发布/禁用状态；发布时把配置（模型 / 系统提示词 / 能力开关等标量字段）快照到 `v5ai_agent_version.snapshot_json`，线上 `/api/v1` 运行按**发布快照**解析（`PublishedAgentResolver.resolve`），管理端 `/api/admin` 调试按**实时编辑行**解析（`resolveForDebug`），因此编辑未重新发布不影响线上；MCP/Skill/RAG 绑定列表不固化、仍按 `agentKey` 实时解析。5 个能力开关在运行时生效、对 `/api/v1` 与 `/api/admin` 一致：`mcpEnabled`/`skillEnabled` 门控绑定解析（关闭即不加载）、`ragEnabled` 门控知识检索（`ragCallMode` 选择调用方式：1=智能调用，注册 `rag_search` 工具、把可用知识库列表写进系统提示，由 LLM 自主决定是否检索与检索几次；2=强制调用，每次运行前必检索并注入，默认值、兼容存量行为）、`memoryEnabled` 控制按会话自动注入历史（显式 `resume` 历史不覆盖）、`webSearchEnabled` 注册 Tavily 联网搜索工具（配置 `v5ai.agentscope.tavily-api-key` / 环境变量 `V5AI_TAVILY_API_KEY`，缺 Key 时工具返回错误而非抛异常）。`agentKey` 为对外运行标识；通过 API Key（BCrypt 存储）鉴权。
-- **会话/消息/run/run_event/AgentState**：运行时持久化对象。对话历史与恢复基于这些表。
+- **会话/消息/run/run_event/AgentState**：运行时持久化对象。对话历史与恢复基于这些表。会话的**归属主体是 API Key**（`v5ai_conversation.api_key_id`，见 `docs/adr/0006-api-key-scoped-conversations.md`）：门户侧的列表/改名/归档、消息与附件读取都以它判定，`user_id` 只是展示与审计冗余；调试入口产生的会话该列为 NULL，因而不出现在门户列表里。会话可命名、可归档（归档后禁止继续对话 → 409）。消息可携带**图片附件**（`v5ai_message_attachment`，指向 `plm_resource` 的 ATTACHMENT 资源），附件是否可用由所绑 CHAT 模型的 `config.capabilities` 是否含 `image` 决定。
 - **知识库（RAG）**：文档上传（TXT/MD/PDF/DOCX）与 URL 导入 → Worker 异步（解析→切片→Embedding→pgvector）→ 向量/关键词检索 → 运行时注入上下文并发出 `RETRIEVAL` 事件。
 - **MCP**：Server 注册（Streamable HTTP / SSE / Stdio，headers/env 加密），连接测试 → Tool 发现与缓存 → Agent 绑定 → 运行时动态注册为 AgentScope Toolkit。**必须先"发现工具"再绑定发布**。Tool 权限三态 ALLOW/APPROVE/DENY，调用审计（runId/工具名/参数摘要/状态/耗时）。Stdio 命令受白名单限制（生产必配 `V5AI_MCP_STDIO_COMMAND_WHITELIST`）。
 - **Skill**：zip 包上传（SKILL.md frontmatter 校验、路径穿越/大小/编码校验）→ DRAFT 版本 → 发布为当前版本（回滚改变当前版本）→ Agent 绑定 → 运行时注入 Workspace（`skills/<name>/` + 只读 Skill 仓库 `<available_skills>`）。
@@ -75,7 +75,7 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 ```
 RUN_STARTED → MODEL_CALL → (TEXT_DELTA | TOOL_CALL → TOOL_RESULT | RETRIEVAL)*
             → MESSAGE_COMPLETED → RUN_COMPLETED
-失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED
+失败路径：RUN_FAILED；需授权：PERMISSION_REQUIRED；调用方停止：run 状态置 CANCELED（不额外发事件，已生成的部分回答照常落库）
 ```
 
 `RETRIEVAL` 的位置取决于 RAG 调用方式：**强制调用**在模型调用前发出（pre-step 检索注入）；**智能调用**在 `rag_search` 的 `TOOL_RESULT` 之后追加。
@@ -180,14 +180,15 @@ flowchart LR
 - **认证**：`POST /api/auth/login`（默认管理员 `admin/admin`，启动时自动种子）。管理 API 强制登录，写操作需 admin 角色。
 - **管理 API**：`/api/admin/...`（providers、models、agents、knowledge-bases、mcp-servers、skills、workflows、users、roles、menus、clients、logs、quota、usage、stats）。
 - **运行 API**：`/api/v1/agents/{agentKey}/chat/stream`（SSE）与 `/api/v1/agents/{agentKey}/chat`（一次性），用 Agent API Key 鉴权（Header `Authorization: Bearer <api-key>`），按应用配额/每分钟限流（超限 429）。
+- **对话门户 API**（同样用 API Key）：会话列表/改名/归档 `GET|PATCH /api/v1/agents/{agentKey}/chat/conversations[/{id}]`、停止运行 `POST /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`、附件上传 `POST /api/v1/agents/resource/upload` 与读取 `GET /api/v1/agents/attachments/{id}`。契约见 `docs/api/phase6.md`。
 - **健康检查**：`/api/health`。
 
-各阶段 API 细节见 `docs/api/phase1.md` ~ `phase5.md`。
+各阶段 API 细节见 `docs/api/phase1.md` ~ `phase6.md`（phase6 为对话门户：附件与多模态、会话管理、停止对话）。
 
 ## 7. 数据库与迁移
 
 - 迁移脚本位于 `v5ai-platform/src/main/resources/db/migration/`，命名 `V<n>__<name>.sql`，Flyway 管理（表 `v5ai_flyway_schema_history`）。`spring.flyway.locations: classpath:db/migration` 扫描所有 classpath（v5ai-platform 为 starter 依赖）。
-- 当前迁移：V1 Phase1、V2 RAG、V3 provider_type、V4 runtime 列改 varchar、V5 MCP、V6 Skill、V7 平台增强、V8 Agent 重命名、V9 角色、V10 菜单、V11 回填 admin 角色、V12 工作流、V13 Agent 展示与能力开关字段、V14 用户资料字段、V15 用户启用改 status、V16 角色 role_name 与 data_scope、V17 操作日志与登录日志、V18 RBAC 重写 + plm_client、V19 日志表更名 plm_* + client_key、V20 配额/用量 created_at、V21 菜单权限标识 + 日志/客户端菜单、V22 工作流菜单、V23 存储实例 + 资源菜单、V24 知识库扩展、V25 存储实例 description、V26 模型供应商描述/图标、V27 种子模型供应商、V28 模型 config jsonb→text、V29 模型 endpoint→base_url、V30 RAG 向量存储解耦、V31 关键词路 jieba + BM25、V32 Agent RAG 调用方式（`rag_call_mode`）。
+- 当前迁移：V1 Phase1、V2 RAG、V3 provider_type、V4 runtime 列改 varchar、V5 MCP、V6 Skill、V7 平台增强、V8 Agent 重命名、V9 角色、V10 菜单、V11 回填 admin 角色、V12 工作流、V13 Agent 展示与能力开关字段、V14 用户资料字段、V15 用户启用改 status、V16 角色 role_name 与 data_scope、V17 操作日志与登录日志、V18 RBAC 重写 + plm_client、V19 日志表更名 plm_* + client_key、V20 配额/用量 created_at、V21 菜单权限标识 + 日志/客户端菜单、V22 工作流菜单、V23 存储实例 + 资源菜单、V24 知识库扩展、V25 存储实例 description、V26 模型供应商描述/图标、V27 种子模型供应商、V28 模型 config jsonb→text、V29 模型 endpoint→base_url、V30 RAG 向量存储解耦、V31 关键词路 jieba + BM25、V32 Agent RAG 调用方式（`rag_call_mode`）、V34 RBAC 主键自增、V35 API Key 用户与 Agent 绑定、V36 tracking_id 改 UUID、V37 API Key key_hash 与名称唯一、V38 门户会话归属（`api_key_id`/`name`/`archived_at`）+ 消息附件表 `v5ai_message_attachment`。
 - 所有表以 `v5ai_` 前缀。运行时表 UUID 列使用 VARCHAR（避免 `uuid = character varying` 报错）。
 - 需要 pgvector 扩展（`CREATE EXTENSION IF NOT EXISTS vector` 在迁移中幂等执行）。
 - 添加新表/改列时**必须新增一个递增的 V 版本迁移**，不要修改已应用的历史迁移。
@@ -197,7 +198,10 @@ flowchart LR
 - Vue 3 + Vite 7 + TypeScript + Naive UI + Pinia + Vue Router。
 - 结构：`src/api/client.ts`（API 类型与客户端）、`src/views/`（每页一个视图：Login、Dashboard、Agents、Models、KnowledgeBases、McpServers、Skills、Workflows、WorkflowEditor、UserManagement、RoleManagement、MenuManagement、ClientManagement、LogManagement、Observability、ChatDebug、Settings）、`src/router/index.ts`、`src/stores/`（session、theme）。
 - 构建：`cd v5ai-ui && npm install && npm run build`（产物在 `dist/`）。
-- **独立对话门户**：`v5ai-ui-chat/`（Vue 3 + Vite 独立项目，终端用户用 API Key 登录：初始化 `GET /api/v1/agents/auth/bootstrap`、Agent 头像 `GET /api/v1/agents/auth/{agentKey}/avatar`、对话复用 `/api/v1/agents/{agentKey}/chat/stream`）；构建 `cd v5ai-ui-chat && npm install && npm run build`；管理端「系统信息」页在 `VITE_CHAT_UI_URL` 配置时显示入口。
+- **独立对话门户**：`v5ai-ui-chat/`（Vue 3 + Vite 独立项目，终端用户用 API Key 登录：初始化 `GET /api/v1/agents/auth/bootstrap`（含 `imageSupported`）、Agent 头像 `GET /api/v1/agents/auth/{agentKey}/avatar`、对话复用 `/api/v1/agents/{agentKey}/chat/stream`）；构建 `cd v5ai-ui-chat && npm install && npm run build`；管理端「系统信息」页在 `VITE_CHAT_UI_URL` 配置时显示入口。
+  - 会话列表 / 改名 / 归档**都在服务端**（`GET|PATCH /api/v1/agents/{agentKey}/chat/conversations…`），本地只保留 API Key、当前 Agent 与头像缓存；旧的 localStorage 会话列表（`v5ai_chat_sessions`）已废弃并在登录时清理。
+  - 图片附件先上传（`POST /api/v1/agents/resource/upload`，JSON + base64）拿资源 id，再随消息提交；消息里的图片走「带 Authorization 取 blob → objectURL」渲染（`<img src>` 带不了鉴权头，与头像同一手法）。附件入口由 bootstrap 的 `imageSupported` 控制。
+  - 停止生成同时做两件事：调 `POST …/chat/runs/{runId}/stop`（幂等）+ `AbortController.abort()`。
 - **Naive UI 表格横向滚动约定**：`n-data-table` 是否出现横向滚动条取决于「列是否带 `ellipsis`」。任一列配置 `ellipsis` 时，Naive UI 会把表格切为 `table-layout: fixed`（源码 `DataTable.mjs` 的 `mergedTableLayoutRef`：`virtualScroll || flexHeight || maxHeight !== undefined || hasEllipsis` → `fixed`）；fixed 布局下**只有显式绑定 `:scroll-x="列宽总和"` 才会出现横向滚动条**，否则列宽被压缩而不滚动。反之，无 `ellipsis` 的表格保持 `table-layout: auto`，内容超宽时会自动横向滚动、无需 `scroll-x`（例：`StoreInstancesView.vue`）。因此约定：**列一旦用 `ellipsis`，就必须同时给 `:scroll-x`**，列宽总和用 `columns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)` 计算，参考 `WorkflowsView.vue` / `SkillsView.vue` / `ModelsView.vue`。
 
 ## 9. 构建与本地运行
@@ -239,7 +243,7 @@ cd v5ai-ui && npm install && npm run build
 |---|---|
 | `docs/superpowers/specs/2026-08-12-v5ai-nb-design.md` | 总体设计（架构、模块、命名约束） |
 | `docs/superpowers/plans/*.md` | 各阶段实施计划 |
-| `docs/api/phase1.md` ~ `phase5.md` | 各阶段 API 契约 |
+| `docs/api/phase1.md` ~ `phase6.md` | 各阶段 API 契约（phase6 = 对话门户） |
 | `docs/phase*-verification*.md` | 各阶段验证报告 |
 | `docs/deploy/dev.md` | 开发环境部署（PostgreSQL/pgvector/Redis/MinIO 安装与配置） |
 

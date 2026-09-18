@@ -1,0 +1,302 @@
+package xin.v5ai.nb.runtime.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
+import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
+import xin.v5ai.nb.common.agentscope.core.domain.AttachmentRef;
+import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
+import xin.v5ai.nb.common.agentscope.core.domain.bo.ChatBo;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
+import xin.v5ai.nb.common.agentscope.core.resolver.ModelImageSupportResolver;
+import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
+import xin.v5ai.nb.common.core.exception.ErrorCode;
+import xin.v5ai.nb.common.core.exception.V5aiException;
+import xin.v5ai.nb.common.agentscope.enums.AgentStatus;
+import xin.v5ai.nb.common.agentscope.enums.MessageRole;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
+import xin.v5ai.nb.platform.api.ApiKeyAuthAttributes;
+import xin.v5ai.nb.platform.api.domain.ApiKeysAuthDTO;
+import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
+import xin.v5ai.nb.runtime.core.domain.ConversationDTO;
+import xin.v5ai.nb.runtime.core.service.ConversationService;
+import xin.v5ai.nb.runtime.core.service.MessageService;
+import xin.v5ai.nb.runtime.core.service.RunRecordService;
+
+import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * 门户运行端点的入参校验、会话归属与停止对话语义。
+ *
+ * <p>本实例的归属判定一律以 API Key 为准（ADR 0006）：别人的会话统一 404，
+ * 不泄露「存在但不属于你」。</p>
+ */
+class ChatControllerTest {
+
+    private static final long API_KEY_ID = 1L;
+    private static final long OWNER_USER_ID = 7L;
+    private static final String AGENT_KEY = "a1";
+
+    private AgentRuntime agentRuntime;
+    private MessageService messageService;
+    private ConversationService conversationService;
+    private RunRecordService runRecordService;
+    private RunCancellationRegistry cancellationRegistry;
+    private PublishedAgentResolver publishedAgentResolver;
+    private ModelImageSupportResolver imageSupportResolver;
+    private ChatController controller;
+    private HttpServletRequest request;
+
+    @BeforeEach
+    void setUp() {
+        agentRuntime = mock(AgentRuntime.class);
+        messageService = mock(MessageService.class);
+        conversationService = mock(ConversationService.class);
+        runRecordService = mock(RunRecordService.class);
+        cancellationRegistry = new RunCancellationRegistry();
+        publishedAgentResolver = mock(PublishedAgentResolver.class);
+        imageSupportResolver = mock(ModelImageSupportResolver.class);
+        controller = new ChatController(agentRuntime, messageService, conversationService, runRecordService,
+                cancellationRegistry, publishedAgentResolver, imageSupportResolver);
+
+        request = mock(HttpServletRequest.class);
+        when(request.getAttribute(ApiKeyAuthAttributes.REQUEST_ATTRIBUTE))
+                .thenReturn(new ApiKeysAuthDTO(API_KEY_ID, OWNER_USER_ID, "门户Key", "track-1", true, Set.of(AGENT_KEY)));
+    }
+
+    // ---------- 入参与门控 ----------
+
+    @Test
+    void attachmentsAreRejectedWhenTheModelDoesNotSupportImages() {
+        when(publishedAgentResolver.resolve(AGENT_KEY)).thenReturn(agent(1L));
+        when(imageSupportResolver.supportsImageInput(1L)).thenReturn(false);
+        var bo = chat("看图", List.of(AttachmentRef.image(5L)));
+
+        assertThat(failure(bo).code()).isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        verify(agentRuntime, never()).stream(any());
+    }
+
+    @Test
+    void attachmentsAreAcceptedWhenTheModelDeclaresImageCapability() {
+        when(publishedAgentResolver.resolve(AGENT_KEY)).thenReturn(agent(1L));
+        when(imageSupportResolver.supportsImageInput(1L)).thenReturn(true);
+        when(agentRuntime.stream(any())).thenReturn(Flux.<RuntimeRunEventDTO>empty());
+
+        controller.stream(AGENT_KEY, chat("看图", List.of(AttachmentRef.image(5L))), request);
+
+        verify(agentRuntime).stream(any());
+    }
+
+    @Test
+    void overlongOrIllegalConversationIdIsRejectedBeforeItReachesTheDatabase() {
+        assertThat(failure(chatWithId("x".repeat(37))).code())
+                .isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        assertThat(failure(chatWithId("has space")).code())
+                .isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        // 空值沿用「后端自动生成会话」的既有行为，不算错误
+        when(agentRuntime.stream(any())).thenReturn(Flux.empty());
+        controller.stream(AGENT_KEY, chatWithId(null), request);
+        verify(agentRuntime).stream(any());
+    }
+
+    @Test
+    void missingApiKeyContextIsUnauthorized() {
+        var anonymous = mock(HttpServletRequest.class);
+
+        assertThat(catchThrowableOfType(() -> controller.stream(AGENT_KEY, chat("q"), anonymous),
+                V5aiException.class).code()).isEqualTo(ErrorCode.UNAUTHORIZED);
+    }
+
+    // ---------- 会话列表 / 改名 / 归档 ----------
+
+    @Test
+    void conversationListIsScopedToThisKeyAndCarriesAPreviewForUnnamedSessions() {
+        var named = conversation("c-1", "我的会话", null);
+        var unnamed = conversation("c-2", null, null);
+        when(conversationService.list(AGENT_KEY, API_KEY_ID, false)).thenReturn(List.of(named, unnamed));
+        when(messageService.findFirstUserMessageByConversationIds(List.of("c-1", "c-2")))
+                .thenReturn(Map.of("c-2", "这个会话在问什么"));
+
+        var rows = controller.conversations(AGENT_KEY, false, request).getData();
+
+        assertThat(rows).hasSize(2);
+        assertThat(rows.get(0).conversationId()).isEqualTo("c-1");
+        assertThat(rows.get(0).name()).isEqualTo("我的会话");
+        assertThat(rows.get(0).archived()).isFalse();
+        assertThat(rows.get(1).name()).isNull();
+        assertThat(rows.get(1).preview()).isEqualTo("这个会话在问什么");
+    }
+
+    @Test
+    void archivedFilterIsPassedThroughToTheQuery() {
+        when(conversationService.list(AGENT_KEY, API_KEY_ID, true)).thenReturn(List.of());
+
+        controller.conversations(AGENT_KEY, true, request);
+
+        verify(conversationService).list(AGENT_KEY, API_KEY_ID, true);
+    }
+
+    @Test
+    void renameTrimsTheNameAndArchiveTogglesTheFlag() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+
+        controller.updateConversation(AGENT_KEY, "c-1",
+                new ChatController.ConversationUpdateBo("  新名字  ", true), request);
+        verify(conversationService).rename("c-1", "新名字");
+        verify(conversationService).setArchived("c-1", true);
+
+        controller.updateConversation(AGENT_KEY, "c-1",
+                new ChatController.ConversationUpdateBo(null, false), request);
+        verify(conversationService).setArchived("c-1", false);
+    }
+
+    @Test
+    void blankOrTooLongConversationNameIsRejected() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+
+        assertThat(catchThrowableOfType(() -> controller.updateConversation(AGENT_KEY, "c-1",
+                new ChatController.ConversationUpdateBo("   ", null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        assertThat(catchThrowableOfType(() -> controller.updateConversation(AGENT_KEY, "c-1",
+                new ChatController.ConversationUpdateBo("x".repeat(101), null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        verify(conversationService, never()).rename(anyString(), anyString());
+    }
+
+    // ---------- 归属断言 ----------
+
+    @Test
+    void anotherKeysConversationIsNotFoundForReadRenameAndMessages() {
+        when(conversationService.findById("c-9"))
+                .thenReturn(Optional.of(new ConversationDTO("c-9", AGENT_KEY, 99L, OWNER_USER_ID,
+                        null, null, null, null)));
+
+        assertThat(catchThrowableOfType(() -> controller.conversationMessages(AGENT_KEY, "c-9", request),
+                V5aiException.class).code()).isEqualTo(ErrorCode.NOT_FOUND);
+        assertThat(catchThrowableOfType(() -> controller.updateConversation(AGENT_KEY, "c-9",
+                new ChatController.ConversationUpdateBo("x", null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+        verify(conversationService, never()).rename(anyString(), anyString());
+    }
+
+    @Test
+    void conversationOfAnotherAgentIsNotFound() {
+        when(conversationService.findById("c-1"))
+                .thenReturn(Optional.of(new ConversationDTO("c-1", "other-agent", API_KEY_ID, OWNER_USER_ID,
+                        null, null, null, null)));
+
+        assertThat(catchThrowableOfType(() -> controller.conversationMessages(AGENT_KEY, "c-1", request),
+                V5aiException.class).code()).isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    void messagesOfOwnConversationCarryAttachmentAccessUrls() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", "我的", null)));
+        when(messageService.findByConversationId("c-1")).thenReturn(List.of(
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.USER, "看图",
+                        List.of(AttachmentRef.image(42L))),
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.ASSISTANT, "看到了")));
+
+        var messages = controller.conversationMessages(AGENT_KEY, "c-1", request).getData();
+
+        assertThat(messages).hasSize(2);
+        assertThat(messages.get(0).attachments()).singleElement()
+                .satisfies(attachment -> {
+                    assertThat(attachment.type()).isEqualTo("IMAGE");
+                    assertThat(attachment.resourceId()).isEqualTo(42L);
+                    assertThat(attachment.accessUrl()).isEqualTo("/api/v1/agents/attachments/42");
+                });
+        assertThat(messages.get(1).attachments()).isEmpty();
+    }
+
+    // ---------- 停止对话 ----------
+
+    @Test
+    void stopRunTriggersTheRegisteredSignalForOwnRun() {
+        var signal = reactor.core.publisher.Sinks.<Void>empty();
+        cancellationRegistry.register("run-1", signal);
+        when(runRecordService.findConversationId("run-1")).thenReturn(Optional.of("c-1"));
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+
+        controller.stopRun(AGENT_KEY, "run-1", request);
+
+        assertThat(signal.asMono().block()).isNull();
+        verify(runRecordService, never()).cancel(anyString());
+    }
+
+    /**
+     * 本实例找不到取消信号（已结束、或流已断开）时不再报错，而是把库里仍是 RUNNING 的记录
+     * 落定为 CANCELED —— 重复点停止、停一次已完成的运行都得到 200。
+     */
+    @Test
+    void stopRunFallsBackToMarkingTheStoredRunCanceled() {
+        when(runRecordService.findConversationId("run-1")).thenReturn(Optional.of("c-1"));
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+
+        controller.stopRun(AGENT_KEY, "run-1", request);
+
+        verify(runRecordService).cancel("run-1");
+    }
+
+    @Test
+    void stopRunOfAnUnknownRunOrAnotherKeysRunIsNotFound() {
+        when(runRecordService.findConversationId("run-x")).thenReturn(Optional.empty());
+        assertThat(catchThrowableOfType(() -> controller.stopRun(AGENT_KEY, "run-x", request),
+                V5aiException.class).code()).isEqualTo(ErrorCode.NOT_FOUND);
+
+        when(runRecordService.findConversationId("run-2")).thenReturn(Optional.of("c-9"));
+        when(conversationService.findById("c-9")).thenReturn(Optional.of(new ConversationDTO("c-9", AGENT_KEY,
+                99L, OWNER_USER_ID, null, null, null, null)));
+        assertThat(catchThrowableOfType(() -> controller.stopRun(AGENT_KEY, "run-2", request),
+                V5aiException.class).code()).isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    // ---------- helpers ----------
+
+    private ChatBo chat(String query) {
+        return chatWithId("c-1", query, List.of());
+    }
+
+    private ChatBo chat(String query, List<AttachmentRef> attachments) {
+        return chatWithId("c-1", query, attachments);
+    }
+
+    private ChatBo chatWithId(String conversationId) {
+        return chatWithId(conversationId, "q", List.of());
+    }
+
+    private ChatBo chatWithId(String conversationId, String query, List<AttachmentRef> attachments) {
+        return new ChatBo(conversationId, query, null, attachments, List.of(), List.of());
+    }
+
+    private V5aiException failure(ChatBo bo) {
+        return catchThrowableOfType(() -> controller.stream(AGENT_KEY, bo, request), V5aiException.class);
+    }
+
+    private ConversationDTO conversation(String id, String name, OffsetDateTime archivedAt) {
+        return new ConversationDTO(id, AGENT_KEY, API_KEY_ID, OWNER_USER_ID, name, archivedAt,
+                OffsetDateTime.now(), OffsetDateTime.now());
+    }
+
+    private static AgentDTO agent(Long modelId) {
+        return new AgentDTO(AGENT_KEY, "Demo", "desc", AgentStatus.PUBLISHED, modelId, 1L,
+                "sys", null, null, null, false, false, false, false, false, RagCallMode.FORCED.value());
+    }
+}
