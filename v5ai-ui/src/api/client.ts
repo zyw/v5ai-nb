@@ -428,14 +428,35 @@ export interface KbQaRequest {
   messages: KbQaMessage[]
 }
 
+/** 新建 API Key 的返回：apiKey 为明文，仅此一次返回。 */
 export interface CreateApiKeyResult {
-  agentKey: string
+  id: number
+  name: string
+  trackingId: string
   apiKey: string
+  agentKeys: string[]
 }
 
+/** API Key 列表项（不含明文，仅 trackingId 掩码前缀）。 */
 export interface ApiKeyRecord {
-  agentKey: string
+  id: number
+  userId: number
+  name: string
+  trackingId: string
   enabled: boolean
+  lastUsedAt?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+  agentKeys: string[]
+}
+
+export interface ApiKeyCreateForm {
+  name: string
+  agentKeys: string[]
+}
+
+export interface ApiKeyUpdateForm extends ApiKeyCreateForm {
+  enabled?: boolean
 }
 
 const apiBase = import.meta.env.VITE_APP_BASE_API ?? import.meta.env.VITE_API_BASE ?? ''
@@ -1401,18 +1422,36 @@ export function downloadResource(adminToken: string, id: number): Promise<Blob> 
 
 // ---- API keys ----
 
-export function createApiKey(adminToken: string, agentKey: string): Promise<CreateApiKeyResult> {
-  return requestJson<CreateApiKeyResult>(`/api/admin/agents/${encodeURIComponent(agentKey)}/api-keys`, {
-    method: 'POST'
+export function listApiKeys(
+  adminToken: string,
+  query?: PageQuery & { name?: string; agentKey?: string; enabled?: boolean }
+): Promise<PageResult<ApiKeyRecord>> {
+  return requestJson<PageResult<ApiKeyRecord>>(`/api/admin/api-keys${paramString(query)}`, {}, adminToken)
+}
+
+export function createApiKey(adminToken: string, form: ApiKeyCreateForm): Promise<CreateApiKeyResult> {
+  return requestJson<CreateApiKeyResult>('/api/admin/api-keys', {
+    method: 'POST',
+    body: JSON.stringify(form)
   }, adminToken)
 }
 
-export function listApiKeys(adminToken: string): Promise<PageResult<ApiKeyRecord>> {
-  return requestJson<PageResult<ApiKeyRecord>>('/api/admin/api-keys', {}, adminToken)
+export function updateApiKey(adminToken: string, id: number, form: ApiKeyUpdateForm): Promise<void> {
+  return requestJson<void>(`/api/admin/api-keys/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(form)
+  }, adminToken)
 }
 
-export function deleteApiKey(adminToken: string, agentKey: string): Promise<void> {
-  return requestJson<void>(`/api/admin/agents/${encodeURIComponent(agentKey)}/api-keys`, {
+export function changeApiKeyEnabled(adminToken: string, id: number, enabled: boolean): Promise<void> {
+  return requestJson<void>(`/api/admin/api-keys/${id}/enabled`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled })
+  }, adminToken)
+}
+
+export function deleteApiKey(adminToken: string, id: number): Promise<void> {
+  return requestJson<void>(`/api/admin/api-keys/${id}`, {
     method: 'DELETE'
   }, adminToken)
 }

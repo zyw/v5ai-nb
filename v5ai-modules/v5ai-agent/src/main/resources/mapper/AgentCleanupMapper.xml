@@ -28,8 +28,12 @@
     <delete id="deleteAgentSkillBindings">
         DELETE FROM v5ai_agent_skill WHERE agent_key = #{agentKey}
     </delete>
-    <delete id="deleteApiKeys">
-        DELETE FROM v5ai_api_key WHERE agent_key = #{agentKey}
+    <delete id="deleteApiKeyBindings">
+        DELETE FROM v5ai_api_keys_agent WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteOrphanApiKeys">
+        DELETE FROM v5ai_api_keys
+        WHERE NOT EXISTS (SELECT 1 FROM v5ai_api_keys_agent b WHERE b.api_key_id = v5ai_api_keys.id)
     </delete>
     <delete id="deleteAppQuotas">
         DELETE FROM v5ai_app_quota WHERE agent_key = #{agentKey}

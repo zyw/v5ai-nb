@@ -1166,7 +1166,7 @@ PlmRoleMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 
 PlmRoleMenuMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.PlmRoleMenuMapper，无任何 SQL 语句
 PlmUserMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.PlmUserMapper，无任何 SQL 语句
 PlmUserRoleMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.PlmUserRoleMapper，无任何 SQL 语句
-V5aiApiKeyMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.V5aiApiKeyMapper，无任何 SQL 语句
+V5aiApiKeyMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.V5aiApiKeysMapper，无任何 SQL 语句
 V5aiAppQuotaMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.V5aiAppQuotaMapper，无任何 SQL 语句
 V5aiAppUsageMapper.xml[PC8T]: F:按应用日用量原子累加 | R:code:v5ai-modules/v5ai-platform/src/main/resources/db/migration/V7__platform_enhancements.sql | A:upsertUsage(agentKey, usageDate, tokens) | S:INSERT ... ON CONFLICT (agent_key, usage_date) DO UPDATE，model_calls 固定 +1、tokens 累加 EXCLUDED.tokens、updated_at 取 now()
 V5aiModelUsageMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.V5aiModelUsageMapper，无任何 SQL 语句

@@ -48,11 +48,14 @@ const baseline = [
         <ol>
           <li>
             前置准备：先在管理面创建并<strong>发布</strong> Agent（获得 <code>agentKey</code>），
-            再生成运行 Key：<code>POST /api/admin/agents/{'{agentKey}'}/api-keys</code>
-            （Key 仅返回一次，请妥善保存）。
+            再到<strong>「API Key 管理」</strong>页面新建 Key 并勾选该 Key 可访问的已发布 Agent：
+            <code>POST /api/admin/api-keys</code>，请求体
+            <code>{"name": "生产环境", "agentKeys": ["你的agentKey"]}</code>
+            （明文 Key 仅创建时返回一次，请妥善保存）。
           </li>
           <li>
-            调用时携带 <code>Authorization: Bearer &lt;api-key&gt;</code>。
+            调用时携带 <code>Authorization: Bearer &lt;api-key&gt;</code>；Key 未绑定请求路径中的 Agent
+            会返回 <strong>403</strong>，Key 无效/已停用返回 <strong>401</strong>。
           </li>
           <li>
             一次性对话：<code>POST /api/v1/agents/{'{agentKey}'}/chat</code>，请求体

@@ -152,7 +152,7 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 
 | 环节 | 类 |
 |---|---|
-| 鉴权/限流/配额 | `AgentApiKeyServletFilter`（线上）；`/api/admin/**` 由 Sa-Token 拦截（调试） |
+| 鉴权/限流/配额 | `AgentApiKeysServletFilter`（线上）；`/api/admin/**` 由 Sa-Token 拦截（调试） |
 | 调试控制器 | `AgentDebugController`（`@Qualifier("agentDebugRuntime")`） |
 | Agent 解析 | `PublishedAgentResolver.resolve` / `resolveForDebug` |
 | 持久化装饰器 | `PersistingAgentRuntime`（先 save 用户提问，再 delegate；`doOnNext` 边推边落库） |

@@ -121,6 +121,7 @@ export const MENU_ICON_MAP: Record<string, Component> = {
   roles: ShieldCheck,
   menus: ListTree,
   clients: KeyRound,
+  'api-keys': KeyRound,
   logs: ScrollText,
   observability: Activity,
   chat: MessageSquare,

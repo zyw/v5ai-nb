@@ -4,7 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import xin.v5ai.nb.common.core.domain.model.Tuple2;
 import xin.v5ai.nb.common.core.utils.SpringUtils;
-import xin.v5ai.nb.common.encrypt.apikey.AgentApiKeyVerifier;
+import xin.v5ai.nb.common.encrypt.apikeys.AgentApiKeysVerifier;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 
 /**
@@ -20,7 +20,7 @@ public class CipherUtils {
     /**
      * ApiKey验证工具类
      */
-    private static final AgentApiKeyVerifier VERIFIER = SpringUtils.getBean(AgentApiKeyVerifier.class);
+    private static final AgentApiKeysVerifier VERIFIER = SpringUtils.getBean(AgentApiKeysVerifier.class);
     /**
      * 加密明文密码
      * @param plaintext 明文密码
@@ -55,5 +55,15 @@ public class CipherUtils {
      */
     public static Tuple2<String, String> generateApiKey() {
         return VERIFIER.generateApiKey();
+    }
+
+    /**
+     * 取明文 ApiKey 内嵌的 tracking id（跟踪 ID），用于在唯一索引上定位密钥行。
+     *
+     * @param apiKey 明文 ApiKey
+     * @return tracking id；格式不符时返回 null
+     */
+    public static String trackingId(String apiKey) {
+        return VERIFIER.trackingIdOf(apiKey);
     }
 }

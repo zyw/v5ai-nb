@@ -44,7 +44,7 @@ api + infrastructure + worker ← starter（Spring Boot 启动入口）
 
 | 模块 | 职责 |
 |---|---|
-| `v5ai-common` | 公共能力：统一响应（`R`）、异常（`V5aiException`/`ErrorCode`）、分页（`PageQuery`/`PageResult`）、MyBatis-Plus 扩展（`BaseMapperPlus`/`QueryBuilder`）、加解密（`CredentialCipher`）、API Key 校验端口（`AgentApiKeyVerifier`）、平台领域（用户/角色/菜单/配额/用量/审计/限流端口与模型）；`v5ai-common-agentscope` 承载运行时契约：端口在 `core/service/*`（`AgentService`/`McpToolCallAuditService`），载体在 `core/domain/dto|bo|vo`（`AgentDTO`/`AgentVersionDTO`/`AgentRunBo`/`AgentRunVo`/`SessionMessage`），执行器在 `core/executor/*`（`ModelStreamTextExecutor`/`AgentScopeHarnessExecutor`/`PublishedModelAgentTextExecutor`），内置工具在 `core/tools/*`（`PlatformMcpTool`/`WebSearchTool`/`RagSearchTool`）|
+| `v5ai-common` | 公共能力：统一响应（`R`）、异常（`V5aiException`/`ErrorCode`）、分页（`PageQuery`/`PageResult`）、MyBatis-Plus 扩展（`BaseMapperPlus`/`QueryBuilder`）、加解密（`CredentialCipher`）、API Key 校验端口（`AgentApiKeysVerifier`）、平台领域（用户/角色/菜单/配额/用量/审计/限流端口与模型）；`v5ai-common-agentscope` 承载运行时契约：端口在 `core/service/*`（`AgentService`/`McpToolCallAuditService`），载体在 `core/domain/dto|bo|vo`（`AgentDTO`/`AgentVersionDTO`/`AgentRunBo`/`AgentRunVo`/`SessionMessage`），执行器在 `core/executor/*`（`ModelStreamTextExecutor`/`AgentScopeHarnessExecutor`/`PublishedModelAgentTextExecutor`），内置工具在 `core/tools/*`（`PlatformMcpTool`/`WebSearchTool`/`RagSearchTool`）|
 | `v5ai-model` | **自包含模块（新风格的样板）**：`domain` 实体（`V5aiModel`/`V5aiModelProvider`）、`domain/bo`、`domain/vo`、`mapper`（`BaseMapperPlus` + `ModelConfigRetrieve` 端口）、`service`/`service.impl`、`controller`（`/api/admin/models`、`/api/admin/providers`），以及运行时模型链（`runtime/AgentScopeModelFactory`、`runtime/AgentScopeModelConnectionTester`、`runtime/config/*`）。凭据 AES-GCM 加密，支持连通性测试 |
 | `v5ai-agent` | **自包含模块**：`domain` 实体（`Agent`/`AgentVersion`）、`domain/bo`（`AgentBo`）、`domain/vo`（`AgentVo`/`AgentVersionVo`）、`mapper`（`BaseMapperPlus` + `AgentCleanupMapper`）、`service`（`IAgentService` 管理服务：创建/更新/草稿/发布/禁用/版本/分页）、`service/impl`（`AgentServiceImpl` 管理实现；`DBAgentServiceImpl`（`@Primary`，MyBatis-Plus）实现 common 的运行时端口 `AgentService`，同类型不再有其他实现以免多候选）、`core`（`AgentConfigGenerator`/`AgentScopeAgentConfigGenerator`：按描述调模型生成配置）、`controller`（`/api/admin/agents`）；级联删除走 `IAgentDeletionPortService`；旧的 `AgentRepository`/`DatabaseAgentRepository`/`InMemoryAgentRepository` 已删除（见 git 历史） |
 | `v5ai-runtime` | Agent 运行时装配与持久化边界：`ChatController`/`AgentDebugController`（运行 / 调试入口，含 `controller/vo`）、`PersistingAgentRuntime`（持久化装饰器）、`PublishedModelAgentTextExecutor`、`AgentScopeRuntimeConfiguration`（装配执行器与运行时 Bean）、`DBAgentModelResolver`，以及运行期会话/消息/run/run_event/AgentState 的实体 + Mapper + `MyBatis*Repository` + `core/gateway`（实现 common `core/service` 的持久化端口）；运行时端口与事件模型（`AgentService`/`RagContextProvider`/`RagSearchProvider`/`McpToolResolver`/`RuntimeRunEventDTO`/`AgentRunBo`/`AgentRunVo`）定义在 `v5ai-common-agentscope` |
@@ -173,7 +173,7 @@ flowchart LR
     E --> F["SSE 事件流"]
 ```
 
-与线上差异：鉴权用 Sa-Token（不用 API Key、不经 `AgentApiKeyServletFilter` 的限流/配额），Agent 解析用 `resolveForDebug`（实时编辑行，DRAFT/PUBLISHED 可跑、DISABLED 拒绝）；下游装配链（RAG/记忆/MCP/Skill/Tool → 模型 → SSE）与线上 `/api/v1` 完全相同。
+与线上差异：鉴权用 Sa-Token（不用 API Key、不经 `AgentApiKeysServletFilter` 的限流/配额），Agent 解析用 `resolveForDebug`（实时编辑行，DRAFT/PUBLISHED 可跑、DISABLED 拒绝）；下游装配链（RAG/记忆/MCP/Skill/Tool → 模型 → SSE）与线上 `/api/v1` 完全相同。
 
 ## 6. API 概览
 

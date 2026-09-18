@@ -219,11 +219,23 @@ GET /api/admin/agents/{agentKey}/knowledge-bindings
 
 ## API Key 管理
 
+Key 归属创建用户，可绑定**多个已发布（PUBLISHED）Agent**（见迁移 `V35__api_key_user_agent_binding.sql`）。
+明文 Key 仅创建时返回一次（库内只存 BCrypt 密文）；`tracking_id` 取明文第 6-17 位，
+运行时据此在唯一索引上定位密钥行。
+
 ```http
-POST   /api/admin/agents/{agentKey}/api-keys   # 生成新 Key（仅返回一次，BCrypt 存哈希）
-GET    /api/admin/api-keys
-DELETE /api/admin/agents/{agentKey}/api-keys
+GET    /api/admin/api-keys               # 分页：当前用户自己的 Key（含 agentKeys / lastUsedAt）
+POST   /api/admin/api-keys               # {"name":"生产环境","agentKeys":["agentKey1","agentKey2"]}
+                                         # → {"id","name","trackingId","apiKey","agentKeys"}，明文仅此一次
+PUT    /api/admin/api-keys/{id}          # {"name","agentKeys","enabled"}，agentKeys 为覆盖式重绑
+PUT    /api/admin/api-keys/{id}/enabled  # {"enabled":false} 停用
+DELETE /api/admin/api-keys/{id}          # 删除 Key 及其绑定，调用立即失效
 ```
+
+绑定校验在服务端执行：非 PUBLISHED 的 agentKey 一律拒绝（`400`）。
+运行期 `/api/v1/agents/{agentKey}/...` 鉴权结果：`401` = Key 无效/已停用；
+`403` = Key 有效但未绑定该 agentKey；`429` = 按 agentKey 的限流/配额超限。
+鉴权成功会刷新 `last_used_at`。
 
 ## 运行时（RAG 注入）
 

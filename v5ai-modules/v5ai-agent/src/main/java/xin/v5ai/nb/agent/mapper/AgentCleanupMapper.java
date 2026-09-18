@@ -39,8 +39,11 @@ public interface AgentCleanupMapper {
     /** 直连 agent_key 表：Skill 绑定。 */
     int deleteAgentSkillBindings(@Param("agentKey") String agentKey);
 
-    /** 直连 agent_key 表：AgentDTO API Key。 */
-    int deleteApiKeys(@Param("agentKey") String agentKey);
+    /** 直连 agent_key 表：API Key ↔ Agent 绑定行（Key 本体归用户所有，不随 Agent 删除）。 */
+    int deleteApiKeyBindings(@Param("agentKey") String agentKey);
+
+    /** 清理因上面解绑而不再绑定任何 Agent 的 API Key（无绑定的 Key 已不可调用）。 */
+    int deleteOrphanApiKeys();
 
     /** 直连 agent_key 表：应用配额。 */
     int deleteAppQuotas(@Param("agentKey") String agentKey);

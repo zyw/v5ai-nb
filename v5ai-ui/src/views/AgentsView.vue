@@ -31,7 +31,6 @@ import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createAgent,
-  createApiKey,
   deleteAgent,
   disableAgent,
   generateAgentConfig,
@@ -66,7 +65,6 @@ const skillOptions = ref<OptionResponse[]>([])
 
 const showModal = ref(false)
 const showPublishModal = ref(false)
-const showKeyModal = ref(false)
 const saving = ref(false)
 
 // ---- 新建智能体向导：准备 → 生成 → 确认（创建成功后跳转独立编辑页） ----
@@ -89,7 +87,6 @@ const draft = reactive({
 })
 
 const publishForm = reactive({ agentKey: '', description: '' })
-const generatedKey = ref('')
 
 /** Agent 图标预览映射（id -> 可直接用于 <img> 的地址）。 */
 const agentIcons = reactive<Record<number, string>>({})
@@ -155,7 +152,6 @@ const columns: DataTableColumns<AgentResponse> = [
       h(RowActions, {
         actions: [
           { key: 'publish', label: '发布', type: 'primary', onClick: () => openPublish(row) },
-          { key: 'key', label: 'Key', secondary: true, onClick: () => handleCreateKey(row.agentKey) },
           { key: 'disable', label: '禁用', secondary: true, type: 'error', onClick: () => handleDisable(row) },
           { key: 'delete', label: '删除', secondary: true, type: 'error', onClick: () => handleDelete(row) }
         ]
@@ -376,16 +372,6 @@ async function handlePublish() {
   }
 }
 
-async function handleCreateKey(agentKey: string) {
-  try {
-    const result = await createApiKey(adminToken.value, agentKey)
-    generatedKey.value = result.apiKey
-    showKeyModal.value = true
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '生成 Key 失败')
-  }
-}
-
 async function handleDisable(row: AgentResponse) {
   dialog.warning({
     title: '禁用确认',
@@ -407,7 +393,7 @@ async function handleDisable(row: AgentResponse) {
 async function handleDelete(row: AgentResponse) {
   dialog.error({
     title: '删除确认',
-    content: `确认删除 Agent「${row.agentKey}」？将级联删除其版本、绑定、API Key、会话、运行记录与用量数据，且不可恢复。`,
+    content: `确认删除 Agent「${row.agentKey}」？将级联删除其版本、绑定、仅绑定该 Agent 的 API Key、会话、运行记录与用量数据，且不可恢复。`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
@@ -581,21 +567,6 @@ onMounted(reload)
           <n-button type="primary" :loading="saving" @click="handlePublish">发布</n-button>
         </n-space>
       </template>
-    </n-modal>
-
-    <!-- 生成 Key -->
-    <n-modal
-      :show="showKeyModal"
-      preset="card"
-      title="API Key"
-      style="width: 520px"
-      :bordered="false"
-      @update:show="(v: boolean) => (showKeyModal = v)"
-    >
-      <n-alert type="warning" :bordered="false" style="margin-bottom: 12px">
-        Key 仅此一次可见，请妥善保存。
-      </n-alert>
-      <n-input :value="generatedKey" readonly />
     </n-modal>
   </div>
 </template>

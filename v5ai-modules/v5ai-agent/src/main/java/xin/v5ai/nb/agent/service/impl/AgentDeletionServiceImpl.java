@@ -34,7 +34,8 @@ public class AgentDeletionServiceImpl implements IAgentDeletionPortService {
         cleanupMapper.deleteAgentKnowledgeBindings(agentKey);
         cleanupMapper.deleteAgentMcpBindings(agentKey);
         cleanupMapper.deleteAgentSkillBindings(agentKey);
-        cleanupMapper.deleteApiKeys(agentKey);
+        cleanupMapper.deleteApiKeyBindings(agentKey);
+        cleanupMapper.deleteOrphanApiKeys();
         cleanupMapper.deleteAppQuotas(agentKey);
         cleanupMapper.deleteAppUsages(agentKey);
         cleanupMapper.deleteModelUsages(agentKey);

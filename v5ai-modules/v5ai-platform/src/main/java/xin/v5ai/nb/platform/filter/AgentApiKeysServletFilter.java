@@ -3,32 +3,42 @@ package xin.v5ai.nb.platform.filter;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import xin.v5ai.nb.platform.api.ApiKeyService;
+import xin.v5ai.nb.platform.api.ApiKeysService;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 运行时API密钥保护的Servlet版本。该应用运行在Servlet MVC（通过Sa-Token间接引入的Tomcat）环境中，其中未应用WebFlux的{@code WebFilter} Bean——如果没有此过滤器，运行时端点将接受任何请求。
+ * 运行期 API Key 鉴权过滤器（Servlet 版本）。
  *
- * 额外承担运行面限流与配额检查：验证通过后按 agentKey 检查每分钟限流与每日配额，
- * 超限返回 429。
+ * <p>守卫 {@code /api/v1/agents/{agentKey}/...}：从 {@code Authorization: Bearer <api-key>}
+ * 取明文 Key 交给 {@link ApiKeysService#authenticate(String)}——它按 Key 内嵌的 tracking id
+ * 定位密钥行并做 BCrypt 校验，同时返回该 Key 可访问的 Agent 集合。</p>
  *
- * 处理结果：鉴权缺失/失败返回 401；限流或配额超限返回 429（JSON 错误体）；
- * 通过则继续过滤器链。
+ * <p>处理结果：</p>
+ * <ul>
+ *   <li>401：缺少/格式错误的 Bearer、Key 不存在、已停用或密码不匹配；</li>
+ *   <li>403：Key 有效但未绑定路径中的 agentKey（换 Key 无用，需在「API Key 管理」补绑定）；</li>
+ *   <li>429：按 agentKey 的每分钟限流或每日配额超限；</li>
+ *   <li>通过则继续过滤器链（Agent 是否已发布由运行时 PublishedAgentResolver 兜底判定）。</li>
+ * </ul>
  */
-public class AgentApiKeyServletFilter implements Filter {
+public class AgentApiKeysServletFilter implements Filter {
+
     private static final String RUNTIME_PREFIX = "/api/v1/agents/";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String FORBIDDEN_BODY = """
+            {"code":403,"msg":"当前 API Key 无权访问该 Agent"}
+            """.strip();
     private static final String RATE_LIMITED_BODY = """
             {"success":false,"code":"CONFLICT","message":"此Agent的速率限制已超或每日配额已满"}
             """.strip();
 
     private final AppQuotaService quotaService;
-    private final ApiKeyService apiKeyService;
+    private final ApiKeysService apiKeyService;
 
-    public AgentApiKeyServletFilter(AppQuotaService quotaService, ApiKeyService apiKeyService) {
+    public AgentApiKeysServletFilter(AppQuotaService quotaService, ApiKeysService apiKeyService) {
         this.quotaService = quotaService;
         this.apiKeyService = apiKeyService;
     }
@@ -53,19 +63,23 @@ public class AgentApiKeyServletFilter implements Filter {
             return;
         }
 
-        // 校验 API Key：与 agentKey 对应的密钥哈希比对，失败返回 401
+        // 校验 API Key：按 tracking id 定位密钥行 + BCrypt 校验，失败返回 401
         var apiKey = authorization.substring(BEARER_PREFIX.length()).trim();
-        if (apiKey.isEmpty() || !apiKeyService.checkApiKey(agentKey, apiKey)) {
+        var auth = apiKey.isEmpty() ? null : apiKeyService.authenticate(apiKey);
+        if (auth == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        // 密钥有效但未绑定路径中的 Agent：403（区别于 401，属于授权范围问题）
+        if (!auth.allows(agentKey)) {
+            writeJson(response, HttpServletResponse.SC_FORBIDDEN, FORBIDDEN_BODY);
             return;
         }
 
         // 限流 + 配额：配额/限流为 0 表示不限，超限返回 429
         if (!quotaService.checkAllowed(agentKey)) {
-            response.setStatus(429); // HTTP 429 Too Many Requests
-            response.setContentType("application/json");
-            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            response.getWriter().write(RATE_LIMITED_BODY);
+            writeJson(response, 429, RATE_LIMITED_BODY);
             return;
         }
         chain.doFilter(servletRequest, servletResponse);
@@ -82,5 +96,15 @@ public class AgentApiKeyServletFilter implements Filter {
             return null;
         }
         return rest.substring(0, slash);
+    }
+
+    /**
+     * 输出 JSON 错误体（过滤器在 Spring MVC 之前执行，无法复用统一响应封装）。
+     */
+    private void writeJson(HttpServletResponse response, int status, String body) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write(body);
     }
 }

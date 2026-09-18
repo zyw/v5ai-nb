@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import xin.v5ai.nb.common.core.utils.StringUtils;
-import xin.v5ai.nb.common.encrypt.apikey.AgentApiKeyVerifier;
-import xin.v5ai.nb.common.encrypt.apikey.BcryptAgentApiKeyVerifier;
+import xin.v5ai.nb.common.encrypt.apikeys.AgentApiKeysVerifier;
+import xin.v5ai.nb.common.encrypt.apikeys.BcryptAgentApiKeysVerifier;
 import xin.v5ai.nb.common.encrypt.cipher.AesCredentialCipher;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.common.encrypt.cipher.Sm4CredentialCipher;
@@ -69,7 +69,7 @@ public class CipherAutoConfiguration {
      * @return API 密钥验证器
      */
     @Bean
-    public AgentApiKeyVerifier agentApiKeyVerifier() {
-        return new BcryptAgentApiKeyVerifier();
+    public AgentApiKeysVerifier agentApiKeyVerifier() {
+        return new BcryptAgentApiKeysVerifier();
     }
 }
