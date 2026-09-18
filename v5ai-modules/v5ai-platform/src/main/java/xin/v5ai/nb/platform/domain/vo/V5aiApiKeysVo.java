@@ -26,7 +26,7 @@ public class V5aiApiKeysVo implements Serializable {
     private String name;
 
     /**
-     * 跟踪 ID：明文 Key 内嵌的 UUID（36 位），列表直接展示并可复制
+     * 跟踪 ID：独立 UUID，与明文 Key 无关，列表直接展示并可复制（日志/审计对账用）
      */
     private String trackingId;
 

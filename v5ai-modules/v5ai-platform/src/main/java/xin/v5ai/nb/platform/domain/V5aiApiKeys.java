@@ -13,8 +13,9 @@ import java.time.OffsetDateTime;
 /**
  * API Key（v5ai_api_keys）：归属创建用户，可访问的 Agent 由 {@link V5aiApiKeysAgent} 绑定。
  *
- * <p>明文 Key 形如 {@code v5ai_<32 位随机串>}，仅创建时返回一次；库内只存 BCrypt 密文。
- * 因 BCrypt 无法反查行，明文内嵌的 UUID（第 6–41 位）固化写入 {@code tracking_id} 作为运行时定位手柄。</p>
+ * <p>明文 Key 形如 {@code v5ai-<32 位大小写字母与数字>}，仅创建时返回一次；库内只存摘要与密文：
+ * {@code key_hash}（sha256，运行时唯一定位行）与 {@code secret_hash}（BCrypt，二次校验）。
+ * {@code tracking_id} 是与明文无关的独立 UUID，只用于展示与日志/审计对账。</p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -35,9 +36,15 @@ public class V5aiApiKeys extends BaseEntity {
     private String name;
 
     /**
-     * 跟踪 ID：明文 Key 内嵌的 UUID（36 位），运行时在唯一索引上定位密钥行
+     * 跟踪 ID：独立生成的 UUID，与明文 Key 无字符关系，仅供展示与日志/审计对账
      */
     private String trackingId;
+
+    /**
+     * 明文 Key 的 SHA-256 摘要（小写十六进制），运行时唯一定位密钥行
+     */
+    @TableField("key_hash")
+    private String keyHash;
 
     /**
      * API Key 密文（BCrypt）

@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
  */
 class AgentApiKeysServletFilterTest {
 
-    private static final String KEY = "v5ai_abcdefghijklmnopqrstuvwxyz012345";
+    private static final String KEY = "v5ai-abcdefghijklmnopqrstuvwxyz012345";
     private static final String PATH = "/api/v1/agents/a1/chat/stream";
 
     private AppQuotaService quotaService;

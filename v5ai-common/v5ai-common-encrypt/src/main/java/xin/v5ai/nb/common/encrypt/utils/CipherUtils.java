@@ -58,12 +58,12 @@ public class CipherUtils {
     }
 
     /**
-     * 取明文 ApiKey 内嵌的 tracking id（跟踪 ID），用于在唯一索引上定位密钥行。
+     * 取明文 ApiKey 的 SHA-256 摘要，用于在唯一索引上定位密钥行（明文与 tracking_id 无关）。
      *
      * @param apiKey 明文 ApiKey
-     * @return tracking id；格式不符时返回 null
+     * @return 小写十六进制摘要；格式不符时返回 null
      */
-    public static String trackingId(String apiKey) {
-        return VERIFIER.trackingIdOf(apiKey);
+    public static String keyHash(String apiKey) {
+        return VERIFIER.keyHash(apiKey);
     }
 }

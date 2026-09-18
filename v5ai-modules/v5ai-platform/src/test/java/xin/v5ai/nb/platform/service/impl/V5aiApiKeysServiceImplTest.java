@@ -44,9 +44,12 @@ import static org.mockito.Mockito.when;
  */
 class V5aiApiKeysServiceImplTest {
 
-    /** 明文 Key：v5ai_ + UUID（tracking id）+ 32 位随机主体。 */
+    /** 明文 Key：v5ai- + 32 位大小写字母与数字（不含跟踪信息）。 */
+    private static final String PLAINTEXT_KEY = "v5ai-abcdefghijklmnopqrstuvwxyz012345";
+    /** tracking id 是与明文无关的独立 UUID，仅展示/审计用。 */
     private static final String TRACKING_ID = "2462f9cb-a292-44da-b33d-dcc9a9737ad6";
-    private static final String PLAINTEXT_KEY = "v5ai_" + TRACKING_ID + "abcdefghijklmnopqrstuvwxyz012345";
+    /** 替身校验器对约定明文返回的 SHA-256 摘要（真实实现是 DigestUtil.sha256Hex）。 */
+    private static final String KEY_HASH = "stub-key-hash";
 
     private V5aiApiKeysMapper baseMapper;
     private V5aiApiKeysAgentMapper bindingMapper;
@@ -100,7 +103,8 @@ class V5aiApiKeysServiceImplTest {
         var created = service.insertApiKey(7L, "  生产环境  ", List.of("a2", "a1", "a1"));
 
         assertThat(created.getApiKey()).isEqualTo(PLAINTEXT_KEY);
-        assertThat(created.getTrackingId()).isEqualTo(TRACKING_ID);
+        assertThat(created.getTrackingId())
+                .matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
         // 名称去空格、agentKey 去重排序后落库
         assertThat(created.getAgentKeys()).containsExactly("a1", "a2");
 
@@ -108,7 +112,8 @@ class V5aiApiKeysServiceImplTest {
         verify(baseMapper).insert(captured.capture());
         assertThat(captured.getValue().getUserId()).isEqualTo(7L);
         assertThat(captured.getValue().getName()).isEqualTo("生产环境");
-        assertThat(captured.getValue().getTrackingId()).isEqualTo(TRACKING_ID);
+        assertThat(captured.getValue().getTrackingId()).isEqualTo(created.getTrackingId());
+        assertThat(captured.getValue().getKeyHash()).isEqualTo(KEY_HASH);
         assertThat(captured.getValue().getEnabled()).isTrue();
         verify(bindingMapper).deleteByApiKeyId(11L);
         verify(bindingMapper, times(2)).insert(any(V5aiApiKeysAgent.class));
@@ -151,7 +156,7 @@ class V5aiApiKeysServiceImplTest {
 
     @Test
     void authenticateRejectsDisabledKey() {
-        when(baseMapper.selectByTrackingId(TRACKING_ID)).thenReturn(apiKey(1L, 7L, false));
+        when(baseMapper.selectByKeyHash(KEY_HASH)).thenReturn(apiKey(1L, 7L, false));
 
         assertThat(service.authenticate(PLAINTEXT_KEY)).isNull();
         verify(baseMapper, never()).touchLastUsed(any());
@@ -159,7 +164,7 @@ class V5aiApiKeysServiceImplTest {
 
     @Test
     void authenticateReturnsBoundAgentsAndRefreshesLastUsedAt() {
-        when(baseMapper.selectByTrackingId(TRACKING_ID)).thenReturn(apiKey(1L, 7L, true));
+        when(baseMapper.selectByKeyHash(KEY_HASH)).thenReturn(apiKey(1L, 7L, true));
         when(bindingMapper.selectAgentKeysByApiKeyId(1L)).thenReturn(List.of("a1", "a2"));
 
         var auth = service.authenticate(PLAINTEXT_KEY);
@@ -175,7 +180,7 @@ class V5aiApiKeysServiceImplTest {
     @Test
     void authenticateRejectsWrongSecret() {
         // 密文与替身校验器约定的不一致 → 校验失败
-        when(baseMapper.selectByTrackingId(TRACKING_ID)).thenReturn(wrongSecretApiKey());
+        when(baseMapper.selectByKeyHash(KEY_HASH)).thenReturn(wrongSecretApiKey());
 
         assertThat(service.authenticate(PLAINTEXT_KEY)).isNull();
         verify(baseMapper, never()).touchLastUsed(any());
@@ -208,6 +213,44 @@ class V5aiApiKeysServiceImplTest {
         verify(baseMapper).deleteByIds(List.of(1L, 2L));
     }
 
+    /** 同一用户下重名必须拒绝（不同用户可以同名，列表本就按用户隔离）。 */
+    @Test
+    void insertApiKeyRejectsDuplicateName() {
+        when(baseMapper.existsByUserIdAndName(7L, "生产环境", null)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.insertApiKey(7L, "生产环境", List.of("a1")))
+                .isInstanceOf(V5aiException.class)
+                .hasMessageContaining("名称已存在");
+
+        verify(baseMapper, never()).insert(any(V5aiApiKeys.class));
+    }
+
+    /** 编辑时排除自己：名称没改（仍是自己的名字）应当放行。 */
+    @Test
+    void updateApiKeyAllowsKeepingOwnName() {
+        when(baseMapper.selectById(1L)).thenReturn(apiKey(1L, 7L, true));
+        when(baseMapper.existsByUserIdAndName(7L, "生产环境", 1L)).thenReturn(false);
+        when(agentCatalogService.filterPublished(List.of("a2"))).thenReturn(Set.of("a2"));
+
+        service.updateApiKey(1L, 7L, "生产环境", List.of("a2"), true);
+
+        verify(baseMapper).updateById(any(V5aiApiKeys.class));
+    }
+
+    /** 改成别的 Key 已占用的名称必须拒绝。 */
+    @Test
+    void updateApiKeyRejectsNameTakenByAnotherKey() {
+        when(baseMapper.selectById(1L)).thenReturn(apiKey(1L, 7L, true));
+        when(baseMapper.existsByUserIdAndName(7L, "生产环境-B", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateApiKey(1L, 7L, "生产环境-B", List.of("a1"), null))
+                .isInstanceOf(V5aiException.class)
+                .hasMessageContaining("名称已存在");
+
+        verify(baseMapper, never()).updateById(any(V5aiApiKeys.class));
+        verifyNoInteractions(bindingMapper);
+    }
+
     private V5aiApiKeys apiKey(Long id, Long userId, boolean enabled) {
         var entity = new V5aiApiKeys();
         entity.setId(id);
@@ -226,7 +269,7 @@ class V5aiApiKeysServiceImplTest {
     }
 
     /**
-     * 可控的 AgentApiKeysVerifier 替身：避开 BCrypt 计算，同时保持「明文内嵌 UUID = tracking id」的格式约定。
+     * 可控的 AgentApiKeysVerifier 替身：避开 BCrypt 计算，用固定摘要代替 sha256 做定位。
      */
     private static final class StubApiKeyVerifier implements AgentApiKeysVerifier {
 
@@ -243,12 +286,9 @@ class V5aiApiKeysServiceImplTest {
         }
 
         @Override
-        public String trackingIdOf(String apiKey) {
-            // v5ai_ + UUID(36) + 随机主体(32)
-            if (apiKey == null || !apiKey.startsWith("v5ai_") || apiKey.length() != 5 + 36 + 32) {
-                return null;
-            }
-            return apiKey.substring(5, 41);
+        public String keyHash(String apiKey) {
+            // 真实实现按「v5ai- + 32 位字母数字」做 sha256；替身只认约定明文
+            return PLAINTEXT_KEY.equals(apiKey) ? KEY_HASH : null;
         }
     }
 }

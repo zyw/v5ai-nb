@@ -10,7 +10,7 @@ import java.util.Set;
  * @param apiKeyId  密钥主键
  * @param userId    归属用户（plm_user.id）
  * @param name      Key 名称
- * @param trackingId 跟踪 ID（明文 Key 内嵌的 UUID，36 位）
+ * @param trackingId 跟踪 ID（独立 UUID，与明文 Key 无关联，仅供展示/审计）
  * @param enabled   是否启用
  * @param agentKeys 该 Key 绑定（可访问）的 agentKey 集合
  */

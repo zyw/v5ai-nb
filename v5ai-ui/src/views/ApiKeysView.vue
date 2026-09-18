@@ -134,7 +134,7 @@ const columns: DataTableColumns<ApiKeyRecord> = [
   {
     title: '名称',
     key: 'name',
-    width: 200,
+    width: 120,
     // 不用列级 ellipsis.tooltip：内容里是按钮，Naive 的省略 tooltip 会把按钮复制进浮层；
     // 截断与悬浮全名交给单元格内的 span（tooltip 由时间列承担，表格仍是 fixed 布局 + scroll-x）。
     render: (r) =>
@@ -158,7 +158,7 @@ const columns: DataTableColumns<ApiKeyRecord> = [
   {
     title: '跟踪 ID',
     key: 'trackingId',
-    width: 320,
+    width: 'auto',
     render: (r) =>
       h(NSpace, { size: 4, align: 'center', wrap: false }, {
         default: () => [
@@ -290,6 +290,9 @@ const isEdit = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive({ name: '', agentKeys: [] as string[], enabled: true })
 
+/** 名称重复这类字段级错误（服务端返回后挂到输入框，改动输入即清除）。 */
+const nameError = ref('')
+
 /** 多选列表的关键字过滤（名称 / agentKey / 描述）。 */
 const agentFilter = ref('')
 
@@ -317,6 +320,7 @@ function resetForm() {
   form.agentKeys = []
   form.enabled = true
   agentFilter.value = ''
+  nameError.value = ''
 }
 
 function openCreate() {
@@ -333,11 +337,13 @@ function openEdit(row: ApiKeyRecord) {
   form.agentKeys = [...(row.agentKeys ?? [])]
   form.enabled = row.enabled
   agentFilter.value = ''
+  nameError.value = ''
   showFormModal.value = true
   void ensureAgentIcons()
 }
 
 async function handleSave() {
+  nameError.value = ''
   const name = form.name.trim()
   if (!name) {
     message.warning('请填写 Key 名称')
@@ -365,7 +371,13 @@ async function handleSave() {
     }
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '保存失败')
+    const msg = e instanceof Error ? e.message : '保存失败'
+    // 重名属于字段级问题：就近挂在名称输入框上，不再重复弹全局提示
+    if (msg.includes('名称已存在')) {
+      nameError.value = msg
+    } else {
+      message.error(msg)
+    }
   } finally {
     saving.value = false
   }
@@ -587,8 +599,19 @@ onMounted(async () => {
       :bordered="false"
     >
       <n-form label-placement="top">
-        <n-form-item label="Key 名称" required>
-          <n-input v-model:value="form.name" :maxlength="100" show-count placeholder="如 生产环境-客服台" />
+        <n-form-item
+          label="Key 名称"
+          required
+          :validation-status="nameError ? 'error' : undefined"
+          :feedback="nameError"
+        >
+          <n-input
+            v-model:value="form.name"
+            :maxlength="100"
+            show-count
+            placeholder="如 生产环境-客服台"
+            @update:value="nameError = ''"
+          />
         </n-form-item>
         <n-form-item label="可访问的 Agent" required>
           <div class="agent-picker" :style="pickerVars">

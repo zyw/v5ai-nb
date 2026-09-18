@@ -18,14 +18,14 @@ public interface AgentApiKeysVerifier {
     Tuple2<String, String> generateApiKey();
 
     /**
-     * 取明文 ApiKey 内嵌的 tracking id（跟踪 ID）。
+     * 取明文 ApiKey 的 SHA-256 十六进制摘要（库内定位手柄）。
      *
-     * <p>密文（BCrypt）无法反查密钥行，明文 Key 因此内嵌一个 UUID 作为定位手柄
-     * （明文形如 {@code v5ai_<UUID 36 位><32 位随机主体>}）：
-     * 运行时先用它命中 v5ai_api_keys.tracking_id 唯一索引，再做全串 BCrypt 校验。</p>
+     * <p>明文 Key 形如 {@code v5ai-<32 位大小写字母与数字>}，与 tracking_id（独立 UUID，
+     * 仅用于展示与审计）没有任何字符关系；运行时先按摘要命中 v5ai_api_keys.key_hash
+     * 唯一索引定位密钥行，再做全串 BCrypt 校验。</p>
      *
      * @param apiKey 明文 ApiKey
-     * @return tracking id；key 为空或不符合生成格式时返回 null
+     * @return 小写十六进制摘要；key 为空或前缀/长度不符合生成格式时返回 null
      */
-    String trackingIdOf(String apiKey);
+    String keyHash(String apiKey);
 }

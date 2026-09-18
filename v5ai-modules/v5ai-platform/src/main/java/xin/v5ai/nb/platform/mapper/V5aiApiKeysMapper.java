@@ -16,14 +16,29 @@ import java.time.OffsetDateTime;
 public interface V5aiApiKeysMapper extends BaseMapperPlus<V5aiApiKeys, V5aiApiKeysVo> {
 
     /**
-     * 按 tracking id 定位密钥行（唯一索引）。
+     * 按明文 Key 的 SHA-256 摘要定位密钥行（唯一索引）。
      *
-     * @param trackingId 明文 Key 内嵌的 UUID（36 位）
+     * @param keyHash 明文 Key 的 SHA-256 十六进制摘要
      * @return 匹配的密钥行，不存在时返回 null
      */
-    default V5aiApiKeys selectByTrackingId(String trackingId) {
+    default V5aiApiKeys selectByKeyHash(String keyHash) {
         return selectOne(new LambdaQueryWrapper<V5aiApiKeys>()
-                .eq(V5aiApiKeys::getTrackingId, trackingId));
+                .eq(V5aiApiKeys::getKeyHash, keyHash));
+    }
+
+    /**
+     * 同一用户下是否已存在同名 Key（名称在用户维度唯一）。
+     *
+     * @param userId    归属用户
+     * @param name      Key 名称
+     * @param excludeId 排除的主键（编辑时排除自己，可为 null）
+     * @return 已存在同名时返回 true
+     */
+    default boolean existsByUserIdAndName(Long userId, String name, Long excludeId) {
+        return selectCount(new LambdaQueryWrapper<V5aiApiKeys>()
+                .eq(V5aiApiKeys::getUserId, userId)
+                .eq(V5aiApiKeys::getName, name)
+                .ne(excludeId != null, V5aiApiKeys::getId, excludeId)) > 0;
     }
 
     /**

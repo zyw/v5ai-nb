@@ -219,13 +219,15 @@ GET /api/admin/agents/{agentKey}/knowledge-bindings
 
 ## API Key 管理
 
-Key 归属创建用户，可绑定**多个已发布（PUBLISHED）Agent**（见迁移 `V35__api_key_user_agent_binding.sql`；
-`tracking_id` 的 UUID 列宽由 `V36__api_keys_tracking_id_uuid.sql` 追加）。
-明文 Key 仅创建时返回一次（库内只存 BCrypt 密文）；明文形如 `v5ai_<UUID 36 位><32 位随机主体>`，
-`tracking_id` 即内嵌的 UUID，运行时据此在唯一索引上定位密钥行。
+Key 归属创建用户，可绑定**多个已发布（PUBLISHED）Agent**（见迁移 `V35__api_key_user_agent_binding.sql`、
+`V36__api_keys_tracking_id_uuid.sql`、`V37__api_keys_key_hash.sql`）。
+明文 Key 仅创建时返回一次，形如 `v5ai-<32 位大小写字母与数字>`，不含任何跟踪信息；
+库内只存 `key_hash`（明文 SHA-256，运行时唯一索引定位密钥行）与 `secret_hash`（BCrypt，二次校验）。
+`tracking_id` 是与明文无关的独立 UUID，只用于展示与日志/审计对账。
 
 ```http
 GET    /api/admin/api-keys               # 分页：当前用户自己的 Key（含 agentKeys / lastUsedAt）
+                                         # name 在同一用户内唯一：重名返回 409「Key 名称已存在，请换一个名称」
 POST   /api/admin/api-keys               # {"name":"生产环境","agentKeys":["agentKey1","agentKey2"]}
                                          # → {"id","name","trackingId","apiKey","agentKeys"}，明文仅此一次
 PUT    /api/admin/api-keys/{id}          # {"name","agentKeys","enabled"}，agentKeys 为覆盖式重绑

@@ -29,6 +29,7 @@ import xin.v5ai.nb.platform.service.IV5aiApiKeysService;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * API Key 管理与运行期鉴权实现。
@@ -68,15 +69,19 @@ public class V5aiApiKeysServiceImpl implements IV5aiApiKeysService, ApiKeysServi
     @Transactional(rollbackFor = Exception.class)
     public ApiKeysRespVo insertApiKey(Long userId, String name, List<String> agentKeys) {
         String keyName = normalizeName(name);
+        requireNameAvailable(userId, keyName, null);
         List<String> bound = requirePublished(agentKeys);
 
         var generated = CipherUtils.generateApiKey();
         String plaintext = generated.getFirst();
-        String trackingId = CipherUtils.trackingId(plaintext);
+        // tracking id 与明文 Key 无关：独立的 UUID，仅用于页面展示与日志/审计对账；
+        // 运行时定位密钥行靠明文 Key 的 SHA-256 摘要（key_hash 唯一索引）。
+        String trackingId = UUID.randomUUID().toString();
         var entity = new V5aiApiKeys();
         entity.setUserId(userId);
         entity.setName(keyName);
         entity.setTrackingId(trackingId);
+        entity.setKeyHash(CipherUtils.keyHash(plaintext));
         entity.setSecretHash(generated.getSecond());
         entity.setEnabled(true);
         baseMapper.insert(entity);
@@ -96,6 +101,8 @@ public class V5aiApiKeysServiceImpl implements IV5aiApiKeysService, ApiKeysServi
     public void updateApiKey(Long id, Long userId, String name, List<String> agentKeys, Boolean enabled) {
         var entity = requireOwned(id, userId);
         String keyName = normalizeName(name);
+        // 编辑时排除自己，允许「不改名直接保存」
+        requireNameAvailable(userId, keyName, entity.getId());
         List<String> bound = requirePublished(agentKeys);
 
         entity.setName(keyName);
@@ -140,16 +147,17 @@ public class V5aiApiKeysServiceImpl implements IV5aiApiKeysService, ApiKeysServi
     }
 
     /**
-     * 运行期鉴权：按明文 Key 内嵌的 tracking id 定位密钥行 → 校验启用状态与 BCrypt 密文 →
-     * 取可访问 Agent 并刷新最新使用时间。
+     * 运行期鉴权：按明文 Key 的 SHA-256 摘要（key_hash 唯一索引）定位密钥行 →
+     * 校验启用状态与 BCrypt 密文 → 取可访问 Agent 并刷新最新使用时间。
+     * tracking_id 只是展示/审计用的独立 UUID，不参与定位。
      */
     @Override
     public ApiKeysAuthDTO authenticate(String apiKey) {
-        String trackingId = CipherUtils.trackingId(apiKey);
-        if (trackingId == null) {
+        String keyHash = CipherUtils.keyHash(apiKey);
+        if (keyHash == null) {
             return null;
         }
-        var entity = baseMapper.selectByTrackingId(trackingId);
+        var entity = baseMapper.selectByKeyHash(keyHash);
         if (entity == null || !Boolean.TRUE.equals(entity.getEnabled())) {
             return null;
         }
@@ -227,6 +235,20 @@ public class V5aiApiKeysServiceImpl implements IV5aiApiKeysService, ApiKeysServi
             throw new V5aiException(ErrorCode.INVALID_ARGUMENT, "Key 名称不能超过 " + MAX_NAME_LENGTH + " 个字符");
         }
         return trimmed;
+    }
+
+    /**
+     * 校验名称唯一：同一用户下不允许重名（不同用户可以同名，列表本就是按用户隔离的）。
+     * 数据库侧还有 (user_id, name) 唯一索引兜底，这里负责给出可读的错误信息。
+     *
+     * @param userId    归属用户
+     * @param name      归一化后的名称
+     * @param excludeId 编辑时排除自己，新增传 null
+     */
+    private void requireNameAvailable(Long userId, String name, Long excludeId) {
+        if (baseMapper.existsByUserIdAndName(userId, name, excludeId)) {
+            throw new V5aiException(ErrorCode.CONFLICT, "Key 名称已存在，请换一个名称");
+        }
     }
 
     /**

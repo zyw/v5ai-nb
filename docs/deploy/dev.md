@@ -256,8 +256,11 @@ npx vite preview  # 本地预览（生产部署建议由 Nginx 托管 dist 并�
 5. **生成运行 API Key**（仅返回一次）
 
    ```bash
-   curl -s -X POST http://localhost:8080/api/admin/agents/demo/api-keys -H "Authorization: Bearer $TOKEN"
-   # 返回 {"agentKey":"demo","apiKey":"v5ai_..."}，记下 $APP_KEY
+   curl -s -X POST http://localhost:8080/api/admin/api-keys \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"name":"本地验证","agentKeys":["demo"]}'
+   # 返回 {"name":"本地验证","trackingId":"<uuid>","apiKey":"v5ai-...","agentKeys":["demo"]}，记下 $APP_KEY
+   # 注意 agentKeys 只能是已发布（PUBLISHED）的 Agent；明文 Key 仅此一次返回
    ```
 
 6. **配置知识库并上传文档**（Worker 异步索引）
