@@ -21,13 +21,13 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/agents/{agentKey}/chat")
+@RequestMapping("/api/v1/agents")
 public class ChatController {
 
     private final AgentRuntime agentRuntime;
     private final MessageService messageService;
 
-    @PostMapping("/stream")
+    @PostMapping("/{agentKey}/chat/stream")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> stream(
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatBo bo
@@ -36,7 +36,7 @@ public class ChatController {
                 .withWebSearch(bo.webSearch())));
     }
 
-    @PostMapping
+    @PostMapping("/{agentKey}/chat")
     public Mono<AgentRunVo> call(
             @PathVariable("agentKey") String agentKey,
             @RequestBody ChatBo bo
@@ -45,7 +45,7 @@ public class ChatController {
                 .withWebSearch(bo.webSearch()));
     }
 
-    @GetMapping("/conversations/{conversationId}")
+    @GetMapping("/{agentKey}/chat/conversations/{conversationId}")
     public R<List<ConversationMessageResult>> conversationMessages(
             @PathVariable("agentKey") String agentKey,
             @PathVariable("conversationId") String conversationId
@@ -57,7 +57,7 @@ public class ChatController {
         return R.ok(list);
     }
 
-    @PostMapping("/conversations/{conversationId}/resume")
+    @PostMapping("/{agentKey}/chat/conversations/{conversationId}/resume")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> resume(
             @PathVariable("agentKey") String agentKey,
             @PathVariable("conversationId") String conversationId,
