@@ -1,8 +1,11 @@
 package xin.v5ai.nb.platform.domain;
 
+import lombok.Getter;
+
 /**
  * 校验结果。
  */
+@Getter
 public enum VerifyEnum {
     /** 校验通过 */
     OK(1, "校验通过"),
@@ -29,11 +32,4 @@ public enum VerifyEnum {
         return values()[value];
     }
 
-    public int getValue() {
-        return value;
-    }
-
-    public String getMessage() {
-        return message;
-    }
 }
