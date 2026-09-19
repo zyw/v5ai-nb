@@ -189,7 +189,8 @@ flowchart LR
 ## 7. 数据库与迁移
 
 - 迁移脚本位于 `v5ai-platform/src/main/resources/db/migration/`，命名 `V<n>__<name>.sql`，Flyway 管理（表 `v5ai_flyway_schema_history`）。`spring.flyway.locations: classpath:db/migration` 扫描所有 classpath（v5ai-platform 为 starter 依赖）。
-- 当前迁移：V1 Phase1、V2 RAG、V3 provider_type、V4 runtime 列改 varchar、V5 MCP、V6 Skill、V7 平台增强、V8 Agent 重命名、V9 角色、V10 菜单、V11 回填 admin 角色、V12 工作流、V13 Agent 展示与能力开关字段、V14 用户资料字段、V15 用户启用改 status、V16 角色 role_name 与 data_scope、V17 操作日志与登录日志、V18 RBAC 重写 + plm_client、V19 日志表更名 plm_* + client_key、V20 配额/用量 created_at、V21 菜单权限标识 + 日志/客户端菜单、V22 工作流菜单、V23 存储实例 + 资源菜单、V24 知识库扩展、V25 存储实例 description、V26 模型供应商描述/图标、V27 种子模型供应商、V28 模型 config jsonb→text、V29 模型 endpoint→base_url、V30 RAG 向量存储解耦、V31 关键词路 jieba + BM25、V32 Agent RAG 调用方式（`rag_call_mode`）、V34 RBAC 主键自增、V35 API Key 用户与 Agent 绑定、V36 tracking_id 改 UUID、V37 API Key key_hash 与名称唯一、V38 门户会话归属（`api_key_id`/`name`/`archived_at`）+ 消息附件表 `v5ai_message_attachment`、V39（`V39__message_usage_and_supersede.sql`）助手回答的用量与用时落库（`prompt_tokens`/`completion_tokens`/`duration_ms`）+ 消息「作废」标记（`superseded_at`，含会话级部分索引）、V40（`V40__conversation_auto_naming.sql`）会话名称来源列 `name_source` + 存量会话名回填（用首条提问），列表从此不必再查消息表、V41（`V41__conversation_summary.sql`）会话历史摘要表 `v5ai_conversation_summary`（窗口外内容的滚动压缩）+ 修正 `v5ai_message` 用量列注释（真实用量优先）、V42（`V42__message_reasoning_and_metadata.sql`）助手消息的思考过程列 `reasoning`（只供回看、不回放，窗口/摘要取数剔除）+ 保留列 `metadata`（仅建列、语义待定）。
+- **迁移历史已冻结于 V41**（2026-09-19）：V1–V41 只增不改，逐版本做了什么见 `v5ai-platform/src/main/resources/db/migration/README.md`；V42 起继续递增（V43 补齐列/表注释、V44 删除遗留死表 `v5ai_agent_model`）。
+- **想读懂当前 schema，不要 replay 历史文件**：直接看 `docs/db/schema.md`（迁移头的全貌 + 每列注释）。它是快照，新增迁移后按 `docs/db/dump-schema.sql` 重新生成；决策取舍见 `docs/adr/0008-migration-history-frozen.md`。
 - 所有表以 `v5ai_` 前缀。运行时表 UUID 列使用 VARCHAR（避免 `uuid = character varying` 报错）。
 - 需要 pgvector 扩展（`CREATE EXTENSION IF NOT EXISTS vector` 在迁移中幂等执行）。
 - 添加新表/改列时**必须新增一个递增的 V 版本迁移**，不要修改已应用的历史迁移。
@@ -238,7 +239,7 @@ cd v5ai-ui && npm install && npm run build
 - 响应统一包装 `R`（`common.core.domain.R`）；错误统一走 `V5aiException` + `ErrorCode`。
 - 运行时相关代码保持响应式（`Flux`/`Mono`）；Web 层为 Servlet MVC（上传用 `MultipartFile`，SSE 用 `ServerSentEvent`）。
 - 提交信息使用 conventional commits（feat/fix/refactor/chore 等，中文描述）。
-- 数据库迁移只增不改；新增能力要配套：业务模块（entity/BO/VO/mapper/service/controller）或基础设施实现 + UI + 迁移脚本 + 测试 + docs/api 文档。
+- 数据库迁移只增不改（历史冻结于 V41，见 §7 与 `docs/adr/0008-migration-history-frozen.md`）；新增能力要配套：业务模块（entity/BO/VO/mapper/service/controller）或基础设施实现 + UI + 迁移脚本 + 测试 + docs/api 文档。
 
 ## 12. 文档索引
 
