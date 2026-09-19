@@ -67,7 +67,8 @@ export interface AttachmentRef {
  * 一次运行的用量汇总：SSE 的 RUN_COMPLETED 载荷与历史消息的 usage 字段**形状完全相同**，
  * 前者用于边收边展示，后者保证刷新页面后历史回答仍显示「用量 / 用时」。
  *
- * token 是平台按字符数估算的值（与记账同一口径），durationMs 是服务端墙钟耗时。
+ * token 以模型回报的真实用量为准，服务端没回报时才回退为平台估算（与记账同一口径）；
+ * durationMs 是服务端墙钟耗时。
  */
 export interface RunUsage {
   promptTokens: number
@@ -86,6 +87,11 @@ export interface MessageAttachment {
 export interface ConversationMessage {
   role: string
   content: string
+  /**
+   * 模型的思考过程（仅助手消息，且当时开启了持久化时有值）。
+   * 「只思考就被停止」的那一轮在历史里只有它——因此它也算「这条消息有内容」。
+   */
+  reasoning?: string | null
   attachments?: MessageAttachment[]
   /** 该回答的用量与用时；用户消息、或 V39 之前落库的历史消息为 null */
   usage?: RunUsage | null

@@ -144,7 +144,7 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 ### `GET /api/v1/agents/{agentKey}/chat/conversations/{conversationId}`
 
 会话历史，按 `created_at, id` 稳定排序（同一次运行的提问与回答可能同刻写入，故用自增主键兜底），**不含已作废的消息**。
-每条消息带 `messageId`（「重新生成」的锚点）与 `attachments`，助手消息还带 `usage`（用量与用时；用户消息与 V39 之前落库的历史消息为 `null`）：
+每条消息带 `messageId`（「重新生成」的锚点）与 `attachments`，助手消息还带 `usage`（用量与用时；用户消息与 V39 之前落库的历史消息为 `null`）与 `reasoning`（模型的思考过程；用户消息、没有思考的回答、以及关闭了 `v5ai.agentscope.reasoning-persist-enabled` 时为 `null`）：
 
 ```json
 {
@@ -213,7 +213,7 @@ RUN_COMPLETED
   它与写进 `v5ai_model_usage`、扣减配额的**是同一份数字**：运行时在事件推送与落库之前只算一次，两边不会各估一套；
 - `durationMs` 是服务端从 `RUN_STARTED` 到收尾的墙钟耗时（含 RAG 检索与工具调用）；
 - 同一个形状也随助手消息落库（`v5ai_message` 的 `prompt_tokens`/`completion_tokens`/`duration_ms`），历史接口读它还原 `usage` —— 否则刷新页面后历史回答就没有这两个数字了；
-- 被停止（`CANCELED`）的运行**没有** `RUN_COMPLETED` 事件、因而流里不带载荷，但它的半截回答照样带着用量落库（停止不等于没消耗）；失败（`RUN_FAILED`）的运行两者都没有；
+- 被停止（`CANCELED`）的运行**没有** `RUN_COMPLETED` 事件、因而流里不带载荷，但它的半截回答照样带着用量与思考落库（停止不等于没消耗）；失败（`RUN_FAILED`）的运行两者都没有；
 - 知识库问答调试链路（`/api/admin/knowledge-bases/{id}/qa/stream`）不带用量，载荷仍是空串。
 
 ### 历史窗口与会话摘要
@@ -276,7 +276,8 @@ RUN_STARTED
   `RUNNING` 的记录落定为 `CANCELED`。
 - 归属校验：运行的会话必须属于本 Key，否则 404。
 - 收尾口径：run 状态 → `CANCELED`、写入 `completed_at`、**落库已生成的部分回答**、
-  按已生成内容记用量（否则「点停止」会成为免费额度漏洞）。`v5ai_run.error_message` 保持为空——
+  按已生成内容记用量（否则「点停止」会成为免费额度漏洞）；已生成的**半截思考**同样随回答落库（V42 起），
+刷新页面后仍能回看。`v5ai_run.error_message` 保持为空——
   停止是正常收尾，不是失败。
 - 客户端断流（关页面/断网）走同一条取消路径（Reactor 取消 → `doOnCancel`），
   因此不会再出现「run 永远停在 RUNNING、回答不落库」的老问题。

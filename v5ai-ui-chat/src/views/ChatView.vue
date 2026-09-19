@@ -481,7 +481,8 @@ async function openSession(session: ConversationSummary) {
     const history = await fetchConversationMessages(apiKey.value, session.agentKey, session.conversationId)
     const rendered: ChatMsg[] = []
     for (const item of history) {
-      if (!(item.content ?? '').trim() && !(item.attachments?.length ?? 0)) continue
+      // 只思考就被停止的那一轮没有正文也没有附件，但思考本身就是要回看的内容，不能整条跳过
+      if (!(item.content ?? '').trim() && !(item.attachments?.length ?? 0) && !(item.reasoning ?? '').trim()) continue
       const attachments = await Promise.all(
         (item.attachments ?? []).map((attachment) =>
           resolveResourceUrl(apiKey.value, attachment.accessUrl).catch(() => '')
@@ -490,6 +491,8 @@ async function openSession(session: ConversationSummary) {
       rendered.push({
         role: item.role?.toUpperCase() === 'USER' ? 'user' : 'assistant',
         content: item.content,
+        // 思考随助手消息落库（V42 起）：历史回放复用同一套折叠展示，用户消息没有思考
+        reasoning: item.reasoning ?? undefined,
         attachments: attachments.filter((url) => url.length > 0),
         // 保留资源引用：历史消息也能「重新生成」，且不必重新上传图片
         attachmentRefs: (item.attachments ?? []).map((attachment) => ({

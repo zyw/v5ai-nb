@@ -71,6 +71,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
     private final ConversationTitleGenerator titleGenerator;
     /** 回答落库后的会话摘要（可空）：把历史窗口之外的旧内容滚动压缩成一段文本 */
     private final ConversationSummaryGenerator summaryGenerator;
+    /**
+     * 是否把思考过程随回答落库（{@code v5ai.agentscope.reasoning-persist-enabled}）。
+     *
+     * <p>关闭时思考照常流式推给客户端，只是不再持久化——给需要规避敏感内容留的开关。</p>
+     */
+    private final boolean persistReasoning;
 
     /**
      * 不落库的会话仓储空实现：供「只要消息与运行记录」的最简构造器使用。
@@ -212,6 +218,30 @@ public class PersistingAgentRuntime implements AgentRuntime {
             ConversationTitleGenerator titleGenerator,
             ConversationSummaryGenerator summaryGenerator
     ) {
+        this(delegate, messageService, runRecordService, conversationService, runEventService,
+                agentStateService, usageRecorder, quotaService, cancellationRegistry, titleGenerator,
+                summaryGenerator, true);
+    }
+
+    /**
+     * 全参构造：额外给定「思考是否随回答落库」。
+     *
+     * @param persistReasoning {@code false} 时思考照常流式推送，只是不落库
+     */
+    public PersistingAgentRuntime(
+            AgentRuntime delegate,
+            MessageService messageService,
+            RunRecordService runRecordService,
+            ConversationService conversationService,
+            RunEventService runEventService,
+            AgentStateService agentStateService,
+            ModelUsageService usageRecorder,
+            AppQuotaService quotaService,
+            RunCancellationRegistry cancellationRegistry,
+            ConversationTitleGenerator titleGenerator,
+            ConversationSummaryGenerator summaryGenerator,
+            boolean persistReasoning
+    ) {
         this.delegate = delegate;
         this.messageService = messageService;
         this.runRecordService = runRecordService;
@@ -224,6 +254,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                 ? new RunCancellationRegistry() : cancellationRegistry;
         this.titleGenerator = titleGenerator;
         this.summaryGenerator = summaryGenerator;
+        this.persistReasoning = persistReasoning;
     }
 
     @Override
@@ -247,6 +278,9 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             .withAttachments(normalizedRequest.attachments()));
             // 累积最终回答文本（把 TEXT_DELTA 片段拼起来）
             var answer = new StringBuilder();
+            // 累积思考过程（REASONING_DELTA 片段）：随回答一起落库，刷新后仍能回看；
+            // 注意它**不回放给模型**——记忆窗口与摘要的取数都不带这一列（见 docs/adr/0007）
+            var reasoning = new StringBuilder();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
             var runId = new String[1];
             // 用量埋点状态：模型名、开始时间
@@ -282,11 +316,10 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (event.type() == RuntimeEventType.MODEL_USAGE) {
                             reportedUsage.accept(event);
                         }
-                        // 事件落库；唯一例外是思考增量——它是模型的中间产物、不是回答的一部分，
-                        // 落库只会让 v5ai_run_event 随思考长度膨胀，且没有第二个消费方。
+                        // 事件落库：思考增量与用量都不落 v5ai_run_event——
+                        // 前者会让事件表随思考长度膨胀（它改落在所属助手消息上，见 messages.reasoning），
+                        // 后者统一走助手消息 + v5ai_model_usage，事件表里没有第二个消费方。
                         // 与「知识库问答整体不持久化」同一口径（见 CONTEXT.md「AgentDTO 调试」）。
-                        // 思考增量与用量都是平台内部产物、没有第二个消费方：落库只会让
-                        // v5ai_run_event 白涨，用量则统一走助手消息 + v5ai_model_usage
                         if (event.type() != RuntimeEventType.REASONING_DELTA
                                 && event.type() != RuntimeEventType.MODEL_USAGE) {
                             runEventService.save(event);
@@ -294,12 +327,16 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (event.type() == RuntimeEventType.TEXT_DELTA) {
                             answer.append(event.payload());
                         }
+                        if (event.type() == RuntimeEventType.REASONING_DELTA) {
+                            reasoning.append(event.payload());
+                        }
                         if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
                             // 这时还没有用量（它挂在 RUN_COMPLETED 上），落库的用量留空
-                            saveAnswerOnce(normalizedRequest, answer, null, answerSaved, firstTurn);
+                            saveAnswerOnce(normalizedRequest, answer, reasoning, null, answerSaved, firstTurn);
                         }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-                            saveAnswerOnce(normalizedRequest, answer, usage[0], answerSaved, firstTurn);
+                            saveAnswerOnce(normalizedRequest, answer, reasoning, usage[0], answerSaved,
+                                    firstTurn);
                             runRecordService.complete(event.runId());
                             // attachUsage 已经算过：直接复用，保证载荷与账目一致
                             recordUsage(normalizedRequest, runId[0], modelName[0], usage[0],
@@ -337,7 +374,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     // 也要把回答落库，保证消息完整
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
-                            saveAnswerOnce(normalizedRequest, answer,
+                            saveAnswerOnce(normalizedRequest, answer, reasoning,
                                     usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                     answerSaved, firstTurn);
                             recordUsage(normalizedRequest, null, modelName[0],
@@ -347,7 +384,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     })
                     // 停止/断流：取消是正常收尾，不是异常——保留已生成的部分回答
                     .doOnCancel(() -> finishCanceled(normalizedRequest, runId[0], modelName[0], startedAt[0],
-                            answer, answerSaved, firstTurn, reportedUsage))
+                            answer, reasoning, answerSaved, firstTurn, reportedUsage))
                     // 取消信号触发时取消上游（信号只在本实例登记过才会有值）
                     .takeUntilOther(cancelSignal.asMono())
                     .doFinally(signal -> cancellationRegistry.unregister(runId[0]));
@@ -359,14 +396,15 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 落库已生成的部分回答，并按已生成内容记用量。
      */
     private void finishCanceled(AgentRunBo request, String runId, String modelName, Instant startedAt,
-                                StringBuilder answer, AtomicBoolean answerSaved, boolean firstTurn,
-                                ReportedUsage reportedUsage) {
+                                StringBuilder answer, StringBuilder reasoning, AtomicBoolean answerSaved,
+                                boolean firstTurn, ReportedUsage reportedUsage) {
         try {
             if (runId != null) {
                 runRecordService.cancel(runId);
             }
-            saveAnswerOnce(request, answer, usageOf(request, startedAt, answer.toString(), reportedUsage),
-                    answerSaved, firstTurn);
+            // 被停止时连思考也保留半截：与「半截回答照常落库」同一口径
+            saveAnswerOnce(request, answer, reasoning,
+                    usageOf(request, startedAt, answer.toString(), reportedUsage), answerSaved, firstTurn);
             recordUsage(request, runId, modelName,
                     usageOf(request, startedAt, answer.toString(), reportedUsage), RunStatus.CANCELED);
             log.info("run {} canceled by caller, {} chars of partial answer kept", runId, answer.length());
@@ -381,14 +419,17 @@ public class PersistingAgentRuntime implements AgentRuntime {
      *
      * @param firstTurn 本次运行是否创建了会话：只有首轮才改写标题（后续追问不该改会话名）
      */
-    private void saveAnswerOnce(AgentRunBo request, StringBuilder answer, RunUsage usage,
-                                AtomicBoolean answerSaved, boolean firstTurn) {
+    private void saveAnswerOnce(AgentRunBo request, StringBuilder answer, StringBuilder reasoning,
+                                RunUsage usage, AtomicBoolean answerSaved, boolean firstTurn) {
         if (!answerSaved.compareAndSet(false, true)) {
             return;
         }
-        // 用量跟着回答一起落库：刷新页面后读历史仍能看到「用量 / 用时」
+        // 用量与思考跟着回答一起落库：刷新页面后读历史仍能看到「用量 / 用时」与思考过程
+        // （思考受 reasoning-persist-enabled 门控；空白思考会被 SessionMessage 归一化为 null）
         messageService.save(new SessionMessage(request.conversationId(), request.agentKey(),
-                MessageRole.ASSISTANT, answer.toString()).withUsage(usage));
+                        MessageRole.ASSISTANT, answer.toString())
+                .withReasoning(persistReasoning ? reasoning.toString() : null)
+                .withUsage(usage));
         saveAgentState(request, answer.toString());
         generateTitleOnce(request, firstTurn);
         summarizeOnce(request);

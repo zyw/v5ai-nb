@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 持久化装饰器的副作用口径：
  * <ul>
- *   <li>思考增量不落库（它不是回答的一部分，落库只会让 v5ai_run_event 膨胀）；</li>
+ *   <li>思考增量不写 v5ai_run_event（它会让事件表膨胀），但**随所属助手消息落库**供回看；</li>
  *   <li>助手回答只落库一次（取消与正常完成可能先后到达）；</li>
  *   <li>取消是正常收尾：标记 CANCELED、保留半截回答、照样记用量。</li>
  * </ul>
@@ -448,6 +448,73 @@ class PersistingAgentRuntimeTest {
         assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
                 .singleElement()
                 .satisfies(answer -> assertThat(answer.usage().promptTokens()).isEqualTo(420L));
+    }
+
+    /** 思考随回答一起落库：刷新页面后门户仍能折叠回看。 */
+    @Test
+    void reasoningIsPersistedWithTheAnswer() {
+        var runId = "run-reasoning";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.reasoningDelta(runId, "先看 A，"),
+                RuntimeRunEventDTO.reasoningDelta(runId, "再看 B"),
+                RuntimeRunEventDTO.textDelta(runId, "结论"),
+                RuntimeRunEventDTO.completed(runId));
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), messages,
+                new RecordingRunRecordService(), new NoopConversations(), event -> false);
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-12", "问题")).collectList().block();
+
+        assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
+                .singleElement()
+                .satisfies(answer -> {
+                    assertThat(answer.content()).isEqualTo("结论");
+                    assertThat(answer.reasoning()).isEqualTo("先看 A，再看 B");
+                });
+    }
+
+    /** 被停止时连思考也保留半截（与「半截回答照常落库」同一口径）。 */
+    @Test
+    void canceledRunKeepsThePartialReasoning() {
+        var runId = "run-reasoning-cancel";
+        Sinks.Many<RuntimeRunEventDTO> sink = Sinks.many().multicast().onBackpressureBuffer();
+        var messages = new RecordingMessageService();
+        var registry = new RunCancellationRegistry();
+        var runtime = new PersistingAgentRuntime(new PipedRuntime(sink.asFlux()), messages,
+                new RecordingRunRecordService(), new NoopConversations(), event -> false, null, null, null,
+                registry);
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-13", "问题")).subscribe();
+        sink.tryEmitNext(RuntimeRunEventDTO.started(runId));
+        sink.tryEmitNext(RuntimeRunEventDTO.reasoningDelta(runId, "想到一半"));
+        sink.tryEmitNext(RuntimeRunEventDTO.textDelta(runId, "半截"));
+        registry.cancel(runId);
+
+        assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
+                .singleElement()
+                .satisfies(answer -> assertThat(answer.reasoning()).isEqualTo("想到一半"));
+    }
+
+    /** 开关关闭：思考照常走事件流，但不落库（给敏感内容/存储增长的部署留的口子）。 */
+    @Test
+    void reasoningPersistenceCanBeSwitchedOff() {
+        var runId = "run-reasoning-off";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.reasoningDelta(runId, "不该落库的思考"),
+                RuntimeRunEventDTO.textDelta(runId, "结论"),
+                RuntimeRunEventDTO.completed(runId));
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), messages,
+                new RecordingRunRecordService(), new NoopConversations(), event -> false, null, null, null,
+                new RunCancellationRegistry(), null, null, false);
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-14", "问题")).collectList().block();
+
+        assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
+                .singleElement()
+                .satisfies(answer -> assertThat(answer.reasoning()).isNull());
     }
 
     /** 回答落库后请求一次会话摘要（异步端口，这里只验证「按什么参数、只调一次」）。 */

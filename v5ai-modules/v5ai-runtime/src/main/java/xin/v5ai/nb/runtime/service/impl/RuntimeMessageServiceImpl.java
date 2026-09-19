@@ -1,6 +1,7 @@
 package xin.v5ai.nb.runtime.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import xin.v5ai.nb.runtime.service.IRuntimeMessageService;
 
 import java.time.OffsetDateTime;
 import java.util.Collections;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +30,15 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class RuntimeMessageServiceImpl implements IRuntimeMessageService, MessageService {
+
+    /**
+     * 不进热路径取数的列：思考可能很长，而记忆窗口/摘要取数**每一轮都要跑**，
+     * 读了也只会被丢掉（思考不回放给模型，见 docs/adr/0007）。
+     *
+     * <p>用「排除表 + 谓词」而不是手写列清单：新加列默认仍会被投影，只有真正的大列
+     * 才需要显式列在这里。</p>
+     */
+    private static final Set<String> HOT_PATH_EXCLUDED_COLUMNS = Set.of("reasoning");
 
     private final RuntimeMessageMapper baseMapper;
     private final MessageAttachmentService messageAttachmentService;
@@ -40,6 +51,8 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
         entity.setAgentKey(message.agentKey());
         entity.setRole(message.role().name());
         entity.setContent(message.content());
+        // 思考跟着回答一起落库（仅助手消息有值）：刷新或重进会话后门户仍能回看
+        entity.setReasoning(message.reasoning());
         // 用量跟着回答一起落库：事件流里的数字只活在那一次 SSE 里，历史接口要能重新给出它
         var usage = message.usage();
         if (usage != null) {
@@ -86,13 +99,15 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
         if (limit <= 0) {
             return findByConversationId(conversationId);
         }
-        var result = baseMapper.selectVoList(
-                QueryBuilder.lambda(RuntimeMessage.class)
-                        .eq(RuntimeMessage::getConversationId, conversationId)
-                        .isNull(RuntimeMessage::getSupersededAt)
-                        .orderByDesc(RuntimeMessage::getCreatedAt, RuntimeMessage::getId)
-                        .last("LIMIT " + limit)
-                        .build());
+        var wrapper = QueryBuilder.lambda(RuntimeMessage.class)
+                .eq(RuntimeMessage::getConversationId, conversationId)
+                .isNull(RuntimeMessage::getSupersededAt)
+                .orderByDesc(RuntimeMessage::getCreatedAt, RuntimeMessage::getId)
+                .last("LIMIT " + limit)
+                .build();
+        // 记忆窗口是每轮的热路径：剔除大列（思考），历史接口才按需读全文
+        excludeHotPathColumns(wrapper);
+        var result = baseMapper.selectVoList(wrapper);
         if (CollUtil.isEmpty(result)) {
             return CollUtil.newArrayList();
         }
@@ -121,7 +136,10 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
         if (limit > 0) {
             query.last("LIMIT " + limit);
         }
-        var result = baseMapper.selectVoList(query.build());
+        // 摘要是按水位批量取数的后台路径，同样用不上思考：剔除大列
+        var wrapper = query.build();
+        excludeHotPathColumns(wrapper);
+        var result = baseMapper.selectVoList(wrapper);
         if (CollUtil.isEmpty(result)) {
             return CollUtil.newArrayList();
         }
@@ -148,7 +166,8 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
                 MessageRole.valueOf(row.getRole()), row.getContent(), attachments)
                 .withUsage(RunUsage.fromNullable(row.getPromptTokens(), row.getCompletionTokens(),
                         row.getDurationMs()))
-                .withMessageId(row.getId()));
+                .withMessageId(row.getId())
+                .withReasoning(row.getReasoning()));
     }
 
     @Override
@@ -179,6 +198,16 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
                 .withUsage(RunUsage.fromNullable(row.getPromptTokens(), row.getCompletionTokens(),
                         row.getDurationMs()))
                 // 主键要交给前端：重新生成以该轮提问的消息 id 为锚点
-                .withMessageId(row.getId())).toList();
+                .withMessageId(row.getId())
+                // 思考只有历史接口读得到（窗口/摘要查询不投影该列，读回即 null）
+                .withReasoning(row.getReasoning())).toList();
+    }
+
+    /**
+     * 把热路径用不上的大列从投影里去掉（见 {@link #HOT_PATH_EXCLUDED_COLUMNS}）。
+     */
+    private static void excludeHotPathColumns(LambdaQueryWrapper<RuntimeMessage> wrapper) {
+        wrapper.select(RuntimeMessage.class,
+                info -> !HOT_PATH_EXCLUDED_COLUMNS.contains(info.getColumn()));
     }
 }

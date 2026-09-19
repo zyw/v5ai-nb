@@ -33,11 +33,15 @@ public class RuntimeMessageVo implements Serializable {
      */
     private String content;
     /**
-     * 该回答的输入 token 估算（仅助手消息有值）
+     * 模型的思考过程（仅助手消息有值）；记忆窗口/摘要查询不投影这一列
+     */
+    private String reasoning;
+    /**
+     * 该回答的输入 token：模型真实回报优先，未回报时为平台估算（仅助手消息有值）
      */
     private Integer promptTokens;
     /**
-     * 该回答的输出 token 估算（仅助手消息有值）
+     * 该回答的输出 token：口径同上（仅助手消息有值）
      */
     private Integer completionTokens;
     /**

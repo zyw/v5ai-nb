@@ -362,19 +362,21 @@ public class ChatController {
      * 会话消息的 API 响应体（不可变 record）。
      *
      * @param role        消息角色（USER/ASSISTANT）
-     * @param content     消息内容
+     * @param content     消息内容（正文）
+     * @param reasoning   模型的思考过程（仅助手消息、且当时开启了持久化时有值）；严格属于回看素材，
+     *                    不会被回放给模型
      * @param attachments 消息携带的附件（图片）
      * @param usage       该回答的用量与用时；用户消息、或没有记录的历史消息为 null
      * @param messageId   消息主键：前端用它作为「重新生成」的锚点（该轮提问的消息 id）
      */
-    public record ConversationMessageResult(MessageRole role, String content,
+    public record ConversationMessageResult(MessageRole role, String content, String reasoning,
                                             List<MessageAttachmentResult> attachments,
                                             RunUsage usage, Long messageId) {
         /**
          * 将领域消息 {@link SessionMessage} 转为 API 响应体（去掉会话等内部字段）。
          */
         public static ConversationMessageResult from(SessionMessage message) {
-            return new ConversationMessageResult(message.role(), message.content(),
+            return new ConversationMessageResult(message.role(), message.content(), message.reasoning(),
                     message.attachments().stream().map(MessageAttachmentResult::from).toList(),
                     message.usage(), message.messageId());
         }

@@ -221,11 +221,15 @@ class ChatControllerTest {
         when(messageService.findByConversationId("c-1")).thenReturn(List.of(
                 new SessionMessage("c-1", AGENT_KEY, MessageRole.USER, "看图",
                         List.of(AttachmentRef.image(42L))).withMessageId(1L),
-                new SessionMessage("c-1", AGENT_KEY, MessageRole.ASSISTANT, "看到了").withMessageId(2L)));
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.ASSISTANT, "看到了")
+                        .withReasoning("先看图再回答").withMessageId(2L)));
 
         var messages = controller.conversationMessages(AGENT_KEY, "c-1", request).getData();
 
         assertThat(messages).hasSize(2);
+        // 思考随历史一起交给门户（折叠展示），用户消息没有思考
+        assertThat(messages.get(0).reasoning()).isNull();
+        assertThat(messages.get(1).reasoning()).isEqualTo("先看图再回答");
         assertThat(messages.get(0).attachments()).singleElement()
                 .satisfies(attachment -> {
                     assertThat(attachment.type()).isEqualTo("IMAGE");

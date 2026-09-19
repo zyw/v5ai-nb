@@ -94,7 +94,8 @@ public class AgentScopeRuntimeConfiguration {
             ConversationTitleGenerator conversationTitleGenerator,
             ConversationSummaryGenerator conversationSummaryGenerator,
             ConversationSummaryService conversationSummaryService,
-            HistoryWindowProperties historyWindowProperties
+            HistoryWindowProperties historyWindowProperties,
+            AgentScopeRuntimeProperties properties
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolve, executor, ragContextProviderProvider.getIfAvailable(),
                 messageService, modelToolSupportResolverProvider.getIfAvailable(),
@@ -102,7 +103,8 @@ public class AgentScopeRuntimeConfiguration {
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
-                cancellationRegistry, conversationTitleGenerator, conversationSummaryGenerator);
+                cancellationRegistry, conversationTitleGenerator, conversationSummaryGenerator,
+                properties.isReasoningPersistEnabled());
     }
 
     /**
@@ -126,7 +128,8 @@ public class AgentScopeRuntimeConfiguration {
             ConversationTitleGenerator conversationTitleGenerator,
             ConversationSummaryGenerator conversationSummaryGenerator,
             ConversationSummaryService conversationSummaryService,
-            HistoryWindowProperties historyWindowProperties
+            HistoryWindowProperties historyWindowProperties,
+            AgentScopeRuntimeProperties properties
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable(),
                 messageService, modelToolSupportResolverProvider.getIfAvailable(),
@@ -134,6 +137,7 @@ public class AgentScopeRuntimeConfiguration {
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
-                cancellationRegistry, conversationTitleGenerator, conversationSummaryGenerator);
+                cancellationRegistry, conversationTitleGenerator, conversationSummaryGenerator,
+                properties.isReasoningPersistEnabled());
     }
 }

@@ -91,6 +91,57 @@ class RuntimeMessageServiceImplTest {
         assertThat(messages.get(1).usage()).isNull();
     }
 
+    /** 思考跟着回答一起落库（仅助手消息有值；用户消息留空）。 */
+    @Test
+    void reasoningIsWrittenWithTheAnswerOnly() {
+        when(baseMapper.insert(any(RuntimeMessage.class))).thenReturn(1);
+
+        service.save(new SessionMessage("c-1", "a1", MessageRole.ASSISTANT, "正文")
+                .withReasoning("先看 A，再看 B"));
+        service.save(new SessionMessage("c-1", "a1", MessageRole.USER, "提问"));
+
+        var captor = ArgumentCaptor.forClass(RuntimeMessage.class);
+        verify(baseMapper, org.mockito.Mockito.times(2)).insert(captor.capture());
+        assertThat(captor.getAllValues().get(0).getReasoning()).isEqualTo("先看 A，再看 B");
+        assertThat(captor.getAllValues().get(1).getReasoning()).isNull();
+    }
+
+    /** 历史接口要把思考读回来（门户靠它渲染折叠的「思考过程」）。 */
+    @Test
+    void historyCarriesTheReasoningBack() {
+        var row = message(1L, MessageRole.ASSISTANT, "正文", 1, 2, 3);
+        row.setReasoning("思考正文");
+        when(baseMapper.selectVoList(any())).thenReturn(List.of(row));
+        when(attachmentService.findByMessageIds(any())).thenReturn(Map.of());
+
+        var messages = service.findByConversationId("c-1");
+
+        assertThat(messages).singleElement()
+                .satisfies(message -> assertThat(message.reasoning()).isEqualTo("思考正文"));
+    }
+
+    /**
+     * 记忆窗口与摘要的取数**不投影思考**：它可能很长，而这两条路径每轮都要跑，
+     * 读了也只会被丢掉（思考不回放给模型）。有人把投影改回全列时这条会红。
+     */
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void hotPathQueriesExcludeTheReasoningColumn() {
+        when(baseMapper.selectVoList(any())).thenReturn(List.of());
+        when(attachmentService.findByMessageIds(any())).thenReturn(Map.of());
+
+        service.findRecentByConversationId("c-1", 20);
+        service.findActiveBetween("c-1", null, 99L, 20);
+
+        var captor = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class);
+        verify(baseMapper, org.mockito.Mockito.times(2)).selectVoList(captor.capture());
+        for (var wrapper : captor.getAllValues()) {
+            assertThat(wrapper.getSqlSelect()).doesNotContain("reasoning");
+            // 该有的列一个都不能少：剔除只针对大列，不是把投影写空
+            assertThat(wrapper.getSqlSelect()).contains("content").contains("prompt_tokens");
+        }
+    }
+
     /** 读取侧恒排除作废消息（历史接口 / resume / 记忆回放共用这条查询）。 */
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})

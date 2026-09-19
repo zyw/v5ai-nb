@@ -16,4 +16,11 @@ public class AgentScopeRuntimeProperties {
      * 只影响「模型没有回报真实用量」时的兜底口径，不影响真实记账。
      */
     private long imageTokensPerImage = PromptTokenEstimator.DEFAULT_IMAGE_TOKENS;
+    /**
+     * 是否把模型的思考过程随助手消息落库（{@code v5ai.agentscope.reasoning-persist-enabled}）。
+     *
+     * <p>关闭后思考照常流式推送给客户端，只是刷新/重进会话就看不到了；给需要规避敏感内容
+     * 或控制存储增长的部署留的开关。思考**从不回放给模型**，与这个开关无关。</p>
+     */
+    private boolean reasoningPersistEnabled = true;
 }

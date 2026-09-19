@@ -34,11 +34,18 @@ public class RuntimeMessage implements Serializable {
      */
     private String content;
     /**
-     * 该回答的输入 token 估算（仅助手消息有值）
+     * 模型的思考过程（仅助手消息有值；NULL=没有思考或 V42 之前的历史数据）。
+     *
+     * <p>供门户历史回看，**不回放给模型**：记忆窗口与摘要的取数会显式剔除这一列
+     * （见 {@code RuntimeMessageServiceImpl}），因为它可能很长而每轮都要读。</p>
+     */
+    private String reasoning;
+    /**
+     * 该回答的输入 token：模型回报的真实值优先，未回报时为平台估算（仅助手消息有值）
      */
     private Integer promptTokens;
     /**
-     * 该回答的输出 token 估算（仅助手消息有值）
+     * 该回答的输出 token：口径同上（仅助手消息有值）
      */
     private Integer completionTokens;
     /**

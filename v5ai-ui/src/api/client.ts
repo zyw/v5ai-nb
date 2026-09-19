@@ -202,11 +202,6 @@ export interface AgentRunResult {
   answer: string
 }
 
-export interface ConversationMessageResponse {
-  role: string
-  content: string
-}
-
 export interface KnowledgeBaseResponse {
   id: number
   name: string
@@ -989,13 +984,6 @@ async function streamSse(
       onEvent(event, data)
     }
   }
-}
-
-export function getConversationMessages(agentKey: string, apiKey: string, conversationId: string): Promise<ConversationMessageResponse[]> {
-  return requestJson<ConversationMessageResponse[]>(
-    `/api/v1/agents/${encodeURIComponent(agentKey)}/chat/conversations/${encodeURIComponent(conversationId)}`,
-    { headers: { Authorization: normalizeBearer(apiKey) } }
-  )
 }
 
 export async function resumeConversation(
