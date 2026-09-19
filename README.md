@@ -206,6 +206,7 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
 9. 可在 Platform 页配置应用配额/限流（`PUT /api/admin/agents/{agentKey}/quota`），在 Observability 页查看用量明细、审计日志与总览（`GET /api/admin/usage`、`GET /api/admin/audit-logs`、`GET /api/admin/stats/overview`）。
 10. 对话门户（`v5ai-ui-chat`）用 API Key 登录后可管理服务端会话并带图片提问：
     - `GET /api/v1/agents/auth/bootstrap` 拿到可用 Agent 与 `imageSupported`（所绑模型 `config.capabilities` 含 `image` 才为真）；
+    - **附件入口的两个坑**：①判定用的是**发布快照**里的 `modelId`（`PublishedAgentResolver.resolve`），而能力本身按模型 ID 实时读——所以在「模型管理」里给模型开启「支持图片输入」无需重新发布即可生效，但**给 Agent 换了绑定模型必须重新发布**，否则门户仍按旧快照的模型判定；②`imageSupported` 只在进入页面时取一次，改完模型/能力后需**刷新页面（或重登）**才会重新取到；
     - 会话列表 `GET /api/v1/agents/{agentKey}/chat/conversations`（`?archived=true` 查归档）、改名/归档 `PATCH …/conversations/{id}`；
     - 图片先 `POST /api/v1/agents/resource/upload`（JSON + base64，≤5MB，文件头必须是 PNG/JPEG/WebP）拿 `id`，再随 `chat/stream` 的 `attachments` 提交；历史回放里的图片按 `GET /api/v1/agents/attachments/{id}` 取；
     - 停止生成：点停止即调 `POST /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`（runId 取自 SSE 的 `id:` 字段）并断开本地流，run 落定为 `CANCELED` 且保留已生成的部分回答。

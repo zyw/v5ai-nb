@@ -98,7 +98,8 @@ _Avoid_: 删除、隐藏（「隐藏」不含"禁止继续对话"这一后果，
 _Avoid_: 文件、上传物（泛指，未表达"随消息提交给模型输入"这一用途）；与知识库「源文件」混同（后者 `biz_type=DOCUMENT`，供检索，不随消息）
 
 **支持图片输入（capabilities 含 image）**:
-CHAT 模型配置（`v5ai_model.config` 里的 `capabilities` 数组）中的一项声明，表示该模型可接受图片输入；含 `image` 即视为支持。它同时是附件能力的唯一开关：Agent 所绑 CHAT 模型未声明该项时，门户禁用上传入口、接口拒绝携带附件的请求。
+CHAT 模型配置（`v5ai_model.config` 里的 `capabilities` 数组）中的一项声明，表示该模型可接受图片输入；含 `image` 即视为支持。它同时是附件能力的唯一开关：Agent 所绑 CHAT 模型未声明该项时，门户禁用上传入口、接口拒绝携带附件的请求（400）。
+**判定时机（两个容易踩的点）**：判定的对象是「该 Agent 当前解析出的 `modelId`」——线上门户取**发布快照**里的 `modelId`（`PublishedAgentResolver.resolve`），管理端调试取实时编辑行（`resolveForDebug`）；而 `capabilities` 本身按模型 ID **实时读**。因此：给模型开启/关闭本项，对已发布的 Agent **立即生效、无需重新发布**；但**给 Agent 换了绑定模型后必须重新发布**，否则门户仍按旧快照的模型判定。另外门户的 `imageSupported` 只在进入页面时随 bootstrap 取一次，改完配置需**刷新页面（或重登）**才会重新取到。
 _Avoid_: 视觉模型、多模态模型（前者与 `defaultVisionModel`「默认视觉模型」撞词，后者泛指模型能力而非本平台的这一声明项）；用 `vision` 表示本项（既有代码与管理端统一写 `image`）
 
 **停止（停止对话）**:
