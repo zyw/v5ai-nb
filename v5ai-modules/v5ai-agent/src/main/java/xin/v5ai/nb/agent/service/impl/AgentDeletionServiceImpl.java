@@ -25,7 +25,6 @@ public class AgentDeletionServiceImpl implements IAgentDeletionPortService {
     @Transactional
     public void delete(String agentKey) {
         // 1) FK 子表（子查询定位）
-        cleanupMapper.deleteAgentModels(agentKey);
         cleanupMapper.deleteRunEvents(agentKey);
         cleanupMapper.deleteMcpToolCalls(agentKey);
         cleanupMapper.deleteAgentStates(agentKey);

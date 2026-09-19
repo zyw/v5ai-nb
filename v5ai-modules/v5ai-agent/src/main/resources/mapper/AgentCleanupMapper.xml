@@ -2,9 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="xin.v5ai.nb.agent.mapper.AgentCleanupMapper">
     <!-- 1) FK 子表：无 agent_key 直连列，通过子查询定位 -->
-    <delete id="deleteAgentModels">
-        DELETE FROM v5ai_agent_model WHERE agent_id IN (SELECT id FROM v5ai_agent WHERE agent_key = #{agentKey})
-    </delete>
     <delete id="deleteRunEvents">
         DELETE FROM v5ai_run_event WHERE run_id IN (SELECT id FROM v5ai_run WHERE agent_key = #{agentKey})
     </delete>
