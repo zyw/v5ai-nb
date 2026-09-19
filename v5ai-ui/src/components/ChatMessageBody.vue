@@ -34,7 +34,7 @@ const props = defineProps<{ msg: ChatMsg }>()
   <MarkdownContent v-if="props.msg.content" :content="props.msg.content" />
   <div v-if="props.msg.error" class="answer-error">{{ props.msg.error }}</div>
   <n-collapse v-if="props.msg.citations && props.msg.citations.length > 0" class="citations">
-    <n-collapse-item title="本次引用的切片" name="refs">
+    <n-collapse-item :title="`引用（${props.msg.citations?.length ?? 0} 条）`" name="refs">
       <div v-for="(c, ci) in props.msg.citations" :key="ci" class="citation">
         <span class="cite-doc">
           <n-icon :component="FileText" size="12" />{{ c.documentTitle || `文档 #${c.documentId}` }}

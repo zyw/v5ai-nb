@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.ChatBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.resolver.ModelImageSupportResolver;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
@@ -240,6 +241,29 @@ class ChatControllerTest {
         // 主键要交给前端：它是「重新生成」的锚点
         assertThat(messages.get(0).messageId()).isEqualTo(1L);
         assertThat(messages.get(1).messageId()).isEqualTo(2L);
+    }
+
+    /** 引用随历史一起交给门户：与实时流 RETRIEVAL 载荷同构的六个字段，少一个前端渲染器就失配。 */
+    @Test
+    void messagesOfOwnConversationCarryCitations() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", "我的", null)));
+        when(messageService.findByConversationId("c-1")).thenReturn(List.of(
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.USER, "问题").withMessageId(1L),
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.ASSISTANT, "回答")
+                        .withCitations(List.of(new RagHit(5L, 13L, "文档.pdf", 20, "切片内容", 0.21)))
+                        .withMessageId(2L)));
+
+        var messages = controller.conversationMessages(AGENT_KEY, "c-1", request).getData();
+
+        assertThat(messages.get(0).citations()).isEmpty();
+        assertThat(messages.get(1).citations()).singleElement().satisfies(citation -> {
+            assertThat(citation.knowledgeBaseId()).isEqualTo(5L);
+            assertThat(citation.documentId()).isEqualTo(13L);
+            assertThat(citation.documentTitle()).isEqualTo("文档.pdf");
+            assertThat(citation.chunkIndex()).isEqualTo(20);
+            assertThat(citation.content()).isEqualTo("切片内容");
+            assertThat(citation.score()).isEqualTo(0.21);
+        });
     }
 
     // ---------- 重新生成 ----------

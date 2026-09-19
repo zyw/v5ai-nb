@@ -8,6 +8,8 @@ import xin.v5ai.nb.common.agentscope.core.AgentRuntime;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.CitationPayload;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 /**
  * 持久化装饰器的副作用口径：
@@ -268,6 +271,87 @@ class PersistingAgentRuntimeTest {
         // save 顺序：用户提问 → 助手回答（且只落一条，不因 MESSAGE_COMPLETED 与 RUN_COMPLETED 重复）
         assertThat(messages.saved).hasSize(2);
         assertThat(messages.saved.get(1).content()).isEqualTo("正文");
+    }
+
+    /**
+     * 引用随回答落库：一次运行可能发多条 RETRIEVAL（智能调用下每次 rag_search 之后一条），
+     * 按 (knowledgeBaseId, documentId, chunkIndex) 保序去重、保留首次命中——历史回看要
+     * 与当时实时所见一致（见 docs/adr/0009）。
+     */
+    @Test
+    void citationsAreAccumulatedDeduplicatedAndPersistedWithTheAnswer() {
+        var runId = "run-citations";
+        var first = new RagHit(5L, 13L, "文档A.pdf", 0, "切片一", 0.21);
+        var second = new RagHit(5L, 13L, "文档A.pdf", 20, "切片二", 0.30);
+        // 第三次检索又命中「切片一」（分数不同）：应当只保留首次那条及其分数
+        var repeated = new RagHit(5L, 13L, "文档A.pdf", 0, "切片一", 0.99);
+        var third = new RagHit(4L, 12L, "文档B.pdf", 3, "切片三", 0.44);
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.retrieval(runId, CitationPayload.toJson(List.of(first, second))),
+                RuntimeRunEventDTO.retrieval(runId, CitationPayload.toJson(List.of(repeated, third))),
+                RuntimeRunEventDTO.textDelta(runId, "正文"),
+                RuntimeRunEventDTO.completed(runId));
+
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(
+                new ScriptedRuntime(scripted),
+                messages,
+                new RecordingRunRecordService(),
+                new NoopConversations(),
+                event -> false);
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-citations", "问题")).collectList().block();
+
+        assertThat(messages.saved).hasSize(2);
+        assertThat(messages.saved.get(1).citations())
+                .extracting(RagHit::chunkIndex, RagHit::score)
+                .containsExactly(tuple(0, 0.21), tuple(20, 0.30), tuple(3, 0.44));
+    }
+
+    /** 没有检索的一轮：引用为空列表，落库侧写 null（= 这一轮没有引用，不是「空引用」）。 */
+    @Test
+    void turnsWithoutRetrievalCarryNoCitations() {
+        var runId = "run-no-citations";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.textDelta(runId, "正文"),
+                RuntimeRunEventDTO.completed(runId));
+
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(
+                new ScriptedRuntime(scripted),
+                messages,
+                new RecordingRunRecordService(),
+                new NoopConversations(),
+                event -> false);
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-plain", "问题")).collectList().block();
+
+        assertThat(messages.saved.get(1).citations()).isEmpty();
+    }
+
+    /** 载荷损坏（不是 JSON 数组）时引用为空：引用解析失败绝不能把对话主链路带崩。 */
+    @Test
+    void malformedRetrievalPayloadDegradesToNoCitations() {
+        var runId = "run-broken-citations";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.retrieval(runId, "not-a-json-array"),
+                RuntimeRunEventDTO.textDelta(runId, "正文"),
+                RuntimeRunEventDTO.completed(runId));
+
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(
+                new ScriptedRuntime(scripted),
+                messages,
+                new RecordingRunRecordService(),
+                new NoopConversations(),
+                event -> false);
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-broken", "问题")).collectList().block();
+
+        assertThat(messages.saved.get(1).citations()).isEmpty();
     }
 
     @Test

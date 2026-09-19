@@ -37,6 +37,11 @@ public class RuntimeMessageVo implements Serializable {
      */
     private String reasoning;
     /**
+     * 消息扩展元数据（JSON 文本，当前语义为引用快照 {@code {"citations":[…]}}）；
+     * 记忆窗口/摘要查询不投影这一列，只有历史接口读得到
+     */
+    private String metadata;
+    /**
      * 该回答的输入 token：模型真实回报优先，未回报时为平台估算（仅助手消息有值）
      */
     private Integer promptTokens;

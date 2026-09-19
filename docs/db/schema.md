@@ -5,6 +5,8 @@
 >
 > **怎么生成的**：把 V1–V44 完整重放到临时库 `v5ai_nb_verify`（Flyway `migrate`，43 个迁移全部成功），
 > 再用 [`dump-schema.sql`](./dump-schema.sql) 导出。生成时间：**2026-09-19**。
+> V45 只更新 `v5ai_message.metadata` 的**列注释**（无 DDL 变化），该行已按 V45 迁移文本同步；
+> 下次出现真实 DDL 变更时，按上面的流程整体重新生成。
 >
 > **权威性**：权威永远是 `db/migration/` 里的迁移文件本身。本文件是**快照**，新增迁移后不重新生成就会滞后；
 > 它的价值是「不用 replay 四十多个历史文件就能读懂现在长什么样」，不是取代迁移。
@@ -560,7 +562,7 @@
 | `duration_ms` | integer | NULL | — | 该次运行的服务端耗时（毫秒，RUN_STARTED 到收尾）；仅助手消息有值 |
 | `superseded_at` | timestamp with time zone | NULL | — | 作废时间；非空表示该消息已被「重新生成」替换：不参与展示与记忆回放，但数据保留 |
 | `reasoning` | text | NULL | — | 模型的思考过程（仅助手消息有值；NULL=没有思考或 V42 之前的历史数据）；供门户回看，不回放给模型 |
-| `metadata` | text | NULL | — | 消息扩展元数据（JSON 文本）：V42 仅建列、语义待定，当前无写入方与读取方 |
+| `metadata` | text | NULL | — | 消息扩展元数据（JSON 文本）：当前语义为引用快照 {"citations":[...]}，仅助手消息有值；NULL=这一轮没有引用；供门户回看，不回放给模型 |
 
 ## v5ai_message_attachment
 

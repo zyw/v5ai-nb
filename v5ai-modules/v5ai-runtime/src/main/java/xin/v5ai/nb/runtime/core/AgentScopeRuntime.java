@@ -1,6 +1,5 @@
 package xin.v5ai.nb.runtime.core;
 
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -11,10 +10,10 @@ import xin.v5ai.nb.common.agentscope.core.RagContextProvider;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.CitationPayload;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.runtime.core.domain.ConversationSummaryDTO;
-import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.history.HistoryWindow;
 import xin.v5ai.nb.common.agentscope.core.history.HistoryWindowResult;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
@@ -40,9 +39,6 @@ import java.util.function.Function;
  */
 @Slf4j
 public class AgentScopeRuntime implements AgentRuntime {
-
-    /** 单条引用内容截断长度：与知识库问答一致，避免单条 SSE 载荷过大。 */
-    private static final int HIT_CONTENT_CAP = 2_000;
 
     /** AgentDTO 解析器：根据 agentKey 得到 AgentDTO 配置（正式路径要求已发布，调试路径允许草稿） */
     private final Function<String, AgentDTO> agentResolver;
@@ -162,7 +158,7 @@ public class AgentScopeRuntime implements AgentRuntime {
                                 .flatMap(event -> toRuntimeEvents(runId, event));
                         // 有检索上下文时，在 AgentDTO 输出之前先发一个 RETRIEVAL 事件（载荷为引用列表）
                         if (!rag.isEmpty()) {
-                            return Flux.concat(Flux.just(RuntimeRunEventDTO.retrieval(runId, citationsPayload(rag.hits()))), events);
+                            return Flux.concat(Flux.just(RuntimeRunEventDTO.retrieval(runId, CitationPayload.toJson(rag.hits()))), events);
                         }
                         return events;
                     }),
@@ -281,24 +277,6 @@ public class AgentScopeRuntime implements AgentRuntime {
     }
 
     /**
-     * 引用载荷：与知识库问答（{@code KnowledgeQaServiceImpl.hitsPayload}）逐字同构——
-     * 同一组字段名与截断长度，前端才能复用同一个解析器与渲染组件。
-     */
-    private static String citationsPayload(List<RagHit> hits) {
-        var payload = hits.stream().map(hit -> {
-            Map<String, Object> item = new HashMap<>();
-            item.put("knowledgeBaseId", hit.knowledgeBaseId());
-            item.put("documentId", hit.documentId());
-            item.put("documentTitle", hit.documentTitle());
-            item.put("chunkIndex", hit.chunkIndex());
-            item.put("content", StrUtil.maxLength(hit.content(), HIT_CONTENT_CAP));
-            item.put("score", hit.score());
-            return item;
-        }).toList();
-        return JSONUtil.toJsonStr(payload);
-    }
-
-    /**
      * 把执行器内部事件映射为平台事件流。
      */
     private static Flux<RuntimeRunEventDTO> toRuntimeEvents(String runId, AgentTextEvent event) {
@@ -319,7 +297,7 @@ public class AgentScopeRuntime implements AgentRuntime {
             case AgentTextEvent.ToolResult result -> Flux.just(RuntimeRunEventDTO.toolResult(runId,
                     result.success() ? result.toolName() : result.toolName() + " failed: " + result.message()));
             case AgentTextEvent.Retrieval retrieval ->
-                    Flux.just(RuntimeRunEventDTO.retrieval(runId, citationsPayload(retrieval.hits())));
+                    Flux.just(RuntimeRunEventDTO.retrieval(runId, CitationPayload.toJson(retrieval.hits())));
             // 用量是平台内部事件：交给持久化侧记账，既不落库也不推给客户端
             case AgentTextEvent.Usage usage ->
                     Flux.just(RuntimeRunEventDTO.modelUsage(runId, usage.inputTokens(), usage.outputTokens(),

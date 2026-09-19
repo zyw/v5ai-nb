@@ -11,7 +11,7 @@ import { NButton, NIcon, NInput, NTooltip, useMessage } from 'naive-ui'
 import { Image, Send, X } from 'lucide-vue-next'
 import ChatMessageBody from '../../components/ChatMessageBody.vue'
 import MessageActions from '../../components/MessageActions.vue'
-import { parseHits, type ChatMsg } from '../../utils/chatStream'
+import { mergeHits, parseHits, type ChatMsg } from '../../utils/chatStream'
 import {
   adminDebugStream,
   loadImagePreview,
@@ -287,7 +287,7 @@ async function runTurn(
         resetWatchdog()
         const target = messages.value[assistantIndex]
         if (event === 'RETRIEVAL') {
-          target.citations = parseHits(data)
+          target.citations = mergeHits(target.citations, parseHits(data))
         } else if (event === 'REASONING_DELTA' && data) {
           // 必须与回答同样解析：SSE 的 data 是整段 RuntimeEvent JSON，直接拼接会把 JSON 显示出来
           target.reasoning = (target.reasoning ?? '') + parseDelta(data)

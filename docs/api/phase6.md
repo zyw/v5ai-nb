@@ -144,7 +144,7 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 ### `GET /api/v1/agents/{agentKey}/chat/conversations/{conversationId}`
 
 会话历史，按 `created_at, id` 稳定排序（同一次运行的提问与回答可能同刻写入，故用主键兜底），**不含已作废的消息**。
-每条消息带 `messageId`（「重新生成」的锚点）与 `attachments`，助手消息还带 `usage`（用量与用时；用户消息与 V39 之前落库的历史消息为 `null`）与 `reasoning`（模型的思考过程；用户消息、没有思考的回答、以及关闭了 `v5ai.agentscope.reasoning-persist-enabled` 时为 `null`）：
+每条消息带 `messageId`（「重新生成」的锚点）与 `attachments`，助手消息还带 `usage`（用量与用时；用户消息与 V39 之前落库的历史消息为 `null`）、`reasoning`（模型的思考过程；用户消息、没有思考的回答、以及关闭了 `v5ai.agentscope.reasoning-persist-enabled` 时为 `null`）与 `citations`（本条回答当时引用的切片；用户消息、没有检索的一轮、以及 V45 之前的回答为 `[]`）：
 
 ```json
 {
@@ -163,6 +163,17 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
       "messageId": "2101304707712417795",
       "role": "ASSISTANT",
       "content": "图里是…",
+      "reasoning": null,
+      "citations": [
+        {
+          "knowledgeBaseId": 5,
+          "documentId": 13,
+          "documentTitle": "DeepSeek从入门到精通(20250204).pdf",
+          "chunkIndex": 20,
+          "content": "……切片内容（落库时已按 2000 字符截断）……",
+          "score": 0.2029792070388794
+        }
+      ],
       "attachments": [],
       "usage": { "promptTokens": 128, "completionTokens": 512, "totalTokens": 640, "durationMs": 3210 }
     }
@@ -176,6 +187,14 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 （其余小 id，如 `resourceId`、历史遗留的小主键，仍是数字。）
 
 `accessUrl` 是给门户用的：`<img src>` 带不了 `Authorization` 头，门户需按该地址取 blob。
+
+**关于 `citations`（V45 起）**：六个字段与实时流 `RETRIEVAL` 事件的载荷**逐字同构**（同一个
+`CitationPayload` 编解码），门户因此复用实时那套解析器与渲染组件（见 CONTEXT.md「引用」）。
+它是**快照**——存的是模型当时看到的那份内容（单条截断 2000 字符），不随切片被编辑、文档被删除或
+索引重建而变化；一轮里检索到多次时按 `(knowledgeBaseId, documentId, chunkIndex)` 保序去重、
+保留首次命中。它**只供回看，不回放给模型**（与 `reasoning` 同口径），也**不占用记忆窗口预算**
+（该列已被 `HOT_PATH_EXCLUDED_COLUMNS` 显式剔除）。语义取舍见
+`docs/adr/0009-citations-persisted-on-assistant-message.md`。
 
 ## 对话
 

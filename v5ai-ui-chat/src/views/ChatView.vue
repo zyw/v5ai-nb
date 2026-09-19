@@ -26,6 +26,7 @@ import {
   type ConversationSummary
 } from '../api/client'
 import {
+  mergeHits,
   normalizeUsage,
   parseHits,
   parseUsage,
@@ -389,7 +390,8 @@ async function deliver(
           onFirstEvent?.(event, data)
         }
         if (event === 'RETRIEVAL') {
-          assistant.citations = parseHits(data)
+          // 一次运行可能检索多次：累积去重，与服务端落库口径一致（见 docs/adr/0009）
+          assistant.citations = mergeHits(assistant.citations, parseHits(data))
         } else if (event === 'REASONING_DELTA' && data) {
           assistant.reasoning = (assistant.reasoning ?? '') + parseDelta(data)
         } else if (event === 'TEXT_DELTA') {
@@ -494,6 +496,8 @@ async function openSession(session: ConversationSummary) {
         content: item.content,
         // 思考随助手消息落库（V42 起）：历史回放复用同一套折叠展示，用户消息没有思考
         reasoning: item.reasoning ?? undefined,
+        // 引用随助手消息落库（V45 起）：刷新或重进会话后仍能回看当时引用的切片（见 docs/adr/0009）
+        citations: item.citations && item.citations.length > 0 ? item.citations : undefined,
         attachments: attachments.filter((url) => url.length > 0),
         // 保留资源引用：历史消息也能「重新生成」，且不必重新上传图片
         attachmentRefs: (item.attachments ?? []).map((attachment) => ({

@@ -11,7 +11,7 @@ import { kbQaStream, type KbQaMessage } from '../../api/client'
 import { adminToken } from '../../stores/session'
 import ChatMessageBody from '../../components/ChatMessageBody.vue'
 import MessageActions from '../../components/MessageActions.vue'
-import { awaitingFirstToken, parseHits, type ChatMsg } from '../../utils/chatStream'
+import { awaitingFirstToken, mergeHits, parseHits, type ChatMsg } from '../../utils/chatStream'
 import KnowledgeDebugParams, { type KbModelParamsState, type KbSearchParamsState } from './KnowledgeDebugParams.vue'
 
 const props = defineProps<{
@@ -116,7 +116,7 @@ async function runTurn(question: string, history: KbQaMessage[]) {
       },
       (event, data) => {
         if (event === 'RETRIEVAL') {
-          assistant.citations = parseHits(data)
+          assistant.citations = mergeHits(assistant.citations, parseHits(data))
         } else if (event === 'REASONING_DELTA' && data) {
           assistant.reasoning = (assistant.reasoning ?? '') + data
         } else if (event === 'TEXT_DELTA' && data) {

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.agentscope.core.domain.AttachmentRef;
 import xin.v5ai.nb.common.agentscope.core.domain.RunUsage;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.CitationPayload;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.runtime.core.service.MessageAttachmentService;
@@ -32,13 +33,13 @@ import java.util.Optional;
 public class RuntimeMessageServiceImpl implements IRuntimeMessageService, MessageService {
 
     /**
-     * 不进热路径取数的列：思考可能很长，而记忆窗口/摘要取数**每一轮都要跑**，
-     * 读了也只会被丢掉（思考不回放给模型，见 docs/adr/0007）。
+     * 不进热路径取数的列：思考与引用都可能很长（引用实测约 8.5KB/条消息），而记忆窗口/摘要
+     * 取数**每一轮都要跑**，读了也只会被丢掉（两者都不回放给模型，见 docs/adr/0007 与 ADR-0009）。
      *
      * <p>用「排除表 + 谓词」而不是手写列清单：新加列默认仍会被投影，只有真正的大列
      * 才需要显式列在这里。</p>
      */
-    private static final Set<String> HOT_PATH_EXCLUDED_COLUMNS = Set.of("reasoning");
+    private static final Set<String> HOT_PATH_EXCLUDED_COLUMNS = Set.of("reasoning", "metadata");
 
     private final RuntimeMessageMapper baseMapper;
     private final MessageAttachmentService messageAttachmentService;
@@ -53,6 +54,9 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
         entity.setContent(message.content());
         // 思考跟着回答一起落库（仅助手消息有值）：刷新或重进会话后门户仍能回看
         entity.setReasoning(message.reasoning());
+        // 引用同样跟着回答落库（仅助手消息有值）：存的是当时 SSE 载荷的快照，无引用时不写这一列
+        // （NULL = 这一轮没有引用）。见 docs/adr/0009-citations-persisted-on-assistant-message.md
+        entity.setMetadata(CitationPayload.toMetadata(message.citations()));
         // 用量跟着回答一起落库：事件流里的数字只活在那一次 SSE 里，历史接口要能重新给出它
         var usage = message.usage();
         if (usage != null) {
@@ -168,7 +172,8 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
                 .withUsage(RunUsage.fromNullable(row.getPromptTokens(), row.getCompletionTokens(),
                         row.getDurationMs()))
                 .withMessageId(row.getId())
-                .withReasoning(row.getReasoning()));
+                .withReasoning(row.getReasoning())
+                .withCitations(CitationPayload.parseMetadata(row.getMetadata())));
     }
 
     @Override
@@ -200,8 +205,9 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
                         row.getDurationMs()))
                 // 主键要交给前端：重新生成以该轮提问的消息 id 为锚点
                 .withMessageId(row.getId())
-                // 思考只有历史接口读得到（窗口/摘要查询不投影该列，读回即 null）
-                .withReasoning(row.getReasoning())).toList();
+                // 思考与引用都只有历史接口读得到（窗口/摘要查询不投影这两列，读回即 null）
+                .withReasoning(row.getReasoning())
+                .withCitations(CitationPayload.parseMetadata(row.getMetadata()))).toList();
     }
 
     /**

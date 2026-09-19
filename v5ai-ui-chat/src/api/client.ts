@@ -92,6 +92,11 @@ export interface ConversationMessage {
    * 「只思考就被停止」的那一轮在历史里只有它——因此它也算「这条消息有内容」。
    */
   reasoning?: string | null
+  /**
+   * 本条回答当时引用的切片（仅助手消息、V45 之后有值；无引用即空数组）。
+   * 与实时流 RETRIEVAL 载荷同构，因此复用同一套渲染组件（见 docs/adr/0009）。
+   */
+  citations?: KbHitResponse[] | null
   attachments?: MessageAttachment[]
   /** 该回答的用量与用时；用户消息、或 V39 之前落库的历史消息为 null */
   usage?: RunUsage | null

@@ -31,6 +31,36 @@ export function parseHits(data: string): KbHitResponse[] | undefined {
   }
 }
 
+/**
+ * 合并两批引用：一次运行里智能调用可能检索多次（每次 rag_search 之后追加一条 RETRIEVAL），
+ * 服务端按 (knowledgeBaseId, documentId, chunkIndex) **保序去重**后落库（见 docs/adr/0009）。
+ * 实时侧必须用同一口径累积，否则「实时看到的」与「刷新后回看的」对不上。
+ *
+ * <p>保留**首次命中**：顺序即模型实际看到的顺序，相似度也取首次那一次。</p>
+ */
+export function mergeHits(
+  prev: KbHitResponse[] | undefined,
+  next: KbHitResponse[] | undefined
+): KbHitResponse[] | undefined {
+  if (!next || next.length === 0) return prev
+  if (!prev || prev.length === 0) return next
+  const seen = new Set(prev.map(hitKey))
+  const merged = [...prev]
+  for (const hit of next) {
+    const key = hitKey(hit)
+    if (!seen.has(key)) {
+      seen.add(key)
+      merged.push(hit)
+    }
+  }
+  return merged
+}
+
+/** 同一切片的判定键：与后端 accumulateCitations 一致（载荷里没有切片的向量标识）。 */
+function hitKey(hit: KbHitResponse): string {
+  return `${hit.knowledgeBaseId}:${hit.documentId}:${hit.chunkIndex}`
+}
+
 /** 首个 token 之前：还没有任何思考内容可展示。 */
 export function awaitingFirstToken(m: ChatMsg): boolean {
   return !!m.loading && !m.reasoning && !m.content && !m.error

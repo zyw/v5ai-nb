@@ -12,6 +12,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.AttachmentRef;
 import xin.v5ai.nb.common.agentscope.core.domain.RunUsage;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.ChatBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
@@ -384,11 +385,14 @@ public class ChatController {
      * @param content     消息内容（正文）
      * @param reasoning   模型的思考过程（仅助手消息、且当时开启了持久化时有值）；严格属于回看素材，
      *                    不会被回放给模型
+     * @param citations   本条回答当时引用的切片（仅助手消息有值，无引用即空列表）；同样只供回看，
+     *                    与实时流 {@code RETRIEVAL} 载荷的内容一致（见 docs/adr/0009）
      * @param attachments 消息携带的附件（图片）
      * @param usage       该回答的用量与用时；用户消息、或没有记录的历史消息为 null
      * @param messageId   消息主键：前端用它作为「重新生成」的锚点（该轮提问的消息 id）
      */
     public record ConversationMessageResult(MessageRole role, String content, String reasoning,
+                                            List<CitationResult> citations,
                                             List<MessageAttachmentResult> attachments,
                                             RunUsage usage, Long messageId) {
         /**
@@ -396,8 +400,28 @@ public class ChatController {
          */
         public static ConversationMessageResult from(SessionMessage message) {
             return new ConversationMessageResult(message.role(), message.content(), message.reasoning(),
+                    message.citations().stream().map(CitationResult::from).toList(),
                     message.attachments().stream().map(MessageAttachmentResult::from).toList(),
                     message.usage(), message.messageId());
+        }
+    }
+
+    /**
+     * 引用的 API 响应体：与实时流 {@code RETRIEVAL} 载荷**同构**的六个字段，门户因此能复用
+     * 实时那套解析器与渲染组件（见 CONTEXT.md「引用」）。
+     *
+     * @param knowledgeBaseId 来源知识库 ID（载荷不带知识库名）
+     * @param documentId      来源文档 ID
+     * @param documentTitle   来源文档标题（未落库的文档回退为 doc-{id}）
+     * @param chunkIndex      切片在文档内的序号
+     * @param content         切片内容（落库时已按 2000 字符截断）
+     * @param score           相似度得分
+     */
+    public record CitationResult(Long knowledgeBaseId, Long documentId, String documentTitle,
+                                 Integer chunkIndex, String content, Double score) {
+        static CitationResult from(RagHit hit) {
+            return new CitationResult(hit.knowledgeBaseId(), hit.documentId(), hit.documentTitle(),
+                    hit.chunkIndex(), hit.content(), hit.score());
         }
     }
 

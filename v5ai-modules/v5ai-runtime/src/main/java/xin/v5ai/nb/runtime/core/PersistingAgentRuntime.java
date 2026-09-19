@@ -10,6 +10,8 @@ import xin.v5ai.nb.common.agentscope.core.domain.RunUsage;
 import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.CitationPayload;
+import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
 import xin.v5ai.nb.common.agentscope.core.token.PromptTokenEstimator;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
@@ -25,7 +27,9 @@ import xin.v5ai.nb.runtime.core.utils.ConversationNaming;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -281,6 +285,9 @@ public class PersistingAgentRuntime implements AgentRuntime {
             // 累积思考过程（REASONING_DELTA 片段）：随回答一起落库，刷新后仍能回看；
             // 注意它**不回放给模型**——记忆窗口与摘要的取数都不带这一列（见 docs/adr/0007）
             var reasoning = new StringBuilder();
+            // 累积本轮引用（RETRIEVAL 事件载荷）：一轮里智能调用可能检索多次，随回答一起落库，
+            // 刷新或重进会话后门户仍能回看当时引用的切片（见 docs/adr/0009）
+            var citations = new ArrayList<RagHit>();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
             var runId = new String[1];
             // 用量埋点状态：模型名、开始时间
@@ -312,6 +319,11 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (event.type() == RuntimeEventType.MODEL_CALL) {
                             modelName[0] = event.payload();
                         }
+                        // 引用累积：一次运行可能发多条 RETRIEVAL（智能调用下每次 rag_search 之后一条），
+                        // 累加去重后随回答落库——历史回看与当时实时所见一致
+                        if (event.type() == RuntimeEventType.RETRIEVAL) {
+                            accumulateCitations(citations, event.payload());
+                        }
                         // 用量是内部事件：只累加，不落库、不外发（下面统一过滤掉）
                         if (event.type() == RuntimeEventType.MODEL_USAGE) {
                             reportedUsage.accept(event);
@@ -332,11 +344,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         }
                         if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
                             // 这时还没有用量（它挂在 RUN_COMPLETED 上），落库的用量留空
-                            saveAnswerOnce(normalizedRequest, answer, reasoning, null, answerSaved, firstTurn);
+                            saveAnswerOnce(normalizedRequest, answer, reasoning, citations, null, answerSaved,
+                                    firstTurn);
                         }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-                            saveAnswerOnce(normalizedRequest, answer, reasoning, usage[0], answerSaved,
-                                    firstTurn);
+                            saveAnswerOnce(normalizedRequest, answer, reasoning, citations, usage[0],
+                                    answerSaved, firstTurn);
                             runRecordService.complete(event.runId());
                             // attachUsage 已经算过：直接复用，保证载荷与账目一致
                             recordUsage(normalizedRequest, runId[0], modelName[0], usage[0],
@@ -374,7 +387,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     // 也要把回答落库，保证消息完整
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
-                            saveAnswerOnce(normalizedRequest, answer, reasoning,
+                            saveAnswerOnce(normalizedRequest, answer, reasoning, citations,
                                     usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                     answerSaved, firstTurn);
                             recordUsage(normalizedRequest, null, modelName[0],
@@ -384,7 +397,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     })
                     // 停止/断流：取消是正常收尾，不是异常——保留已生成的部分回答
                     .doOnCancel(() -> finishCanceled(normalizedRequest, runId[0], modelName[0], startedAt[0],
-                            answer, reasoning, answerSaved, firstTurn, reportedUsage))
+                            answer, reasoning, citations, answerSaved, firstTurn, reportedUsage))
                     // 取消信号触发时取消上游（信号只在本实例登记过才会有值）
                     .takeUntilOther(cancelSignal.asMono())
                     .doFinally(signal -> cancellationRegistry.unregister(runId[0]));
@@ -396,14 +409,14 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 落库已生成的部分回答，并按已生成内容记用量。
      */
     private void finishCanceled(AgentRunBo request, String runId, String modelName, Instant startedAt,
-                                StringBuilder answer, StringBuilder reasoning, AtomicBoolean answerSaved,
-                                boolean firstTurn, ReportedUsage reportedUsage) {
+                                StringBuilder answer, StringBuilder reasoning, List<RagHit> citations,
+                                AtomicBoolean answerSaved, boolean firstTurn, ReportedUsage reportedUsage) {
         try {
             if (runId != null) {
                 runRecordService.cancel(runId);
             }
-            // 被停止时连思考也保留半截：与「半截回答照常落库」同一口径
-            saveAnswerOnce(request, answer, reasoning,
+            // 被停止时连思考与已发生的引用也一并保留：与「半截回答照常落库」同一口径
+            saveAnswerOnce(request, answer, reasoning, citations,
                     usageOf(request, startedAt, answer.toString(), reportedUsage), answerSaved, firstTurn);
             recordUsage(request, runId, modelName,
                     usageOf(request, startedAt, answer.toString(), reportedUsage), RunStatus.CANCELED);
@@ -414,21 +427,47 @@ public class PersistingAgentRuntime implements AgentRuntime {
     }
 
     /**
+     * 累积本轮引用：一次运行可能发多条 {@code RETRIEVAL}（智能调用下每次 {@code rag_search}
+     * 之后追加一条），同一切片按 {@code (knowledgeBaseId, documentId, chunkIndex)} 只保留
+     * **首次命中**——顺序即模型实际看到的顺序，相似度也取首次那一次（见 docs/adr/0009）。
+     *
+     * <p>载荷在事件流里是 JSON 文本，这里解析回结构化命中；损坏的载荷解析为空列表，
+     * 绝不影响对话主链路。</p>
+     */
+    private static void accumulateCitations(List<RagHit> accumulator, String payload) {
+        for (RagHit hit : CitationPayload.parse(payload)) {
+            if (accumulator.stream().noneMatch(existing -> sameSlice(existing, hit))) {
+                accumulator.add(hit);
+            }
+        }
+    }
+
+    /** 同一切片的判定：知识库 + 文档 + 文档内序号（引用载荷里没有切片的向量标识，见 docs/adr/0009）。 */
+    private static boolean sameSlice(RagHit left, RagHit right) {
+        return Objects.equals(left.knowledgeBaseId(), right.knowledgeBaseId())
+                && Objects.equals(left.documentId(), right.documentId())
+                && Objects.equals(left.chunkIndex(), right.chunkIndex());
+    }
+
+    /**
      * 助手回答只落库一次：取消与正常完成可能先后到达（例如先点停止、随后模型又答完），
      * 无保护地写入会产生两条助手消息。
      *
      * @param firstTurn 本次运行是否创建了会话：只有首轮才改写标题（后续追问不该改会话名）
      */
     private void saveAnswerOnce(AgentRunBo request, StringBuilder answer, StringBuilder reasoning,
-                                RunUsage usage, AtomicBoolean answerSaved, boolean firstTurn) {
+                                List<RagHit> citations, RunUsage usage, AtomicBoolean answerSaved,
+                                boolean firstTurn) {
         if (!answerSaved.compareAndSet(false, true)) {
             return;
         }
-        // 用量与思考跟着回答一起落库：刷新页面后读历史仍能看到「用量 / 用时」与思考过程
-        // （思考受 reasoning-persist-enabled 门控；空白思考会被 SessionMessage 归一化为 null）
+        // 用量、思考与引用跟着回答一起落库：刷新页面后读历史仍能看到「用量 / 用时」、思考过程
+        // 与当时引用的切片（思考受 reasoning-persist-enabled 门控；空白思考会被 SessionMessage
+        // 归一化为 null；无引用时 metadata 列写 null = 这一轮没有引用）
         messageService.save(new SessionMessage(request.conversationId(), request.agentKey(),
                         MessageRole.ASSISTANT, answer.toString())
                 .withReasoning(persistReasoning ? reasoning.toString() : null)
+                .withCitations(citations)
                 .withUsage(usage));
         saveAgentState(request, answer.toString());
         generateTitleOnce(request, firstTurn);
