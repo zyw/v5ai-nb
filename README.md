@@ -30,7 +30,7 @@
 - `v5ai-common`: 公共响应、异常、分页、API Key 校验端口和平台领域（租户/用户/角色/配额/用量/审计/限流）
 - `v5ai-model`: 模型配置与凭证加密、连通性测试端口
 - `v5ai-agent`: Agent 草稿/更新/禁用/发布/版本解析核心
-- `v5ai-runtime`: Agent 运行时边界、事件模型、会话/消息/run/AgentState 持久化装饰器、用量埋点、RAG 上下文端口
+- `v5ai-runtime`: Agent 运行时边界、事件模型、会话/消息/run/AgentState 持久化装饰器、历史窗口裁剪（`v5ai.agentscope.history`）、会话摘要（`ConversationSummaryWriter`）、用量埋点（真实用量优先）、RAG 上下文端口
 - `v5ai-rag`: 知识库/文档/任务领域模型、解析/切片/Embedding/向量存储端口、检索上下文构建
 - `v5ai-mcp`: MCP Server/工具/审计领域模型、管理服务（连接测试、Tool 发现、Agent 绑定、权限）、连接与 Stdio 策略端口
 - `v5ai-skill`: Skill 包解析校验、版本发布/回滚、Agent 绑定、运行时 Workspace 注入端口
@@ -213,12 +213,12 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
 说明：
 
 - 未配置 EMBEDDING 模型时，向量化回退到确定性本地 Hash 嵌入（维度 1536），便于本地端到端验证；
-- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V39 门户会话/附件/用量落库，需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；
+- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V41 门户会话/附件/用量落库 + 历史摘要，需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；
 - MCP 运行时使用已发现的 Tool 元数据：先"发现工具"再"绑定 + 发布"，运行时才会注册工具；
 - Skill 上传生成 DRAFT 版本，发布后成为"当前版本"，运行时注入当前版本文件（回滚改变当前版本）；
 - Stdio MCP 命令受白名单限制（`V5AI_MCP_STDIO_COMMAND_WHITELIST`，生产环境必须配置）；
 - 管理 API 现在强制登录（写操作需 admin 角色）；运行时 API 按应用配额/限流（超限 429）；
-- 限流器为进程内实现（单实例），多实例部署需替换 Redis；Token 用量按字符数估算；
+- 限流器为进程内实现（单实例），多实例部署需替换 Redis；Token 用量以模型回报的真实值为准（直连路径读 `ChatResponse.getUsage()`、工具路径累加 `ModelCallEndEvent.getUsage()`），服务端未回报时回退为平台估算（CJK 1 字 1 token、其余 4 字符 1 token）；同会话历史上限默认 40 条 / 8000 字符，超出部分由 `ConversationSummaryWriter` 压缩成摘要继续参与上下文；
 - Workflow 仍属后续阶段。
 
 更多说明见：

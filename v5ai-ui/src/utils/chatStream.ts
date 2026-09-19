@@ -1,4 +1,4 @@
-import type { KbHitResponse } from '../api/client'
+import type { AttachmentRequest, KbHitResponse } from '../api/client'
 
 /**
  * 对话消息（流式）。知识库问答 tab 与智能体「预览与调试」共用同一套渲染状态：
@@ -7,6 +7,10 @@ import type { KbHitResponse } from '../api/client'
 export interface ChatMsg {
   role: 'user' | 'assistant'
   content: string
+  /** 用户消息携带的图片（本地 objectURL，仅用于展示） */
+  images?: string[]
+  /** 用户消息的附件引用：重新生成时原样重发，避免「重跑一次图就没了」 */
+  attachmentRefs?: AttachmentRequest[]
   /** 模型思考内容（REASONING_DELTA 累积），与 content 分开展示 */
   reasoning?: string
   /** 思考折叠是否展开：初始展开，回答开始后自动收起一次；之后用户手动开合不再干预 */

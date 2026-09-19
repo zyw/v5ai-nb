@@ -46,7 +46,12 @@ public record AgentRunBo(
          * 本次运行是否复用已存在的提问行（「重新生成」）：为 true 时不再新插用户消息——
          * 那一轮的提问保持有效、只是回答被替换，因此历史里不会出现两条相同的提问
          */
-        boolean reuseUserMessage
+        boolean reuseUserMessage,
+        /**
+         * 会话摘要：历史窗口之外的旧内容被压缩成的一段文本；由服务端按会话装配，
+         * 与 RAG 上下文并列拼进系统提示（可为 null）。**同样绝不接受请求体传入**
+         */
+        String summaryContext
 ) {
     /**
      * 归一化：列表字段永不为 null，避免每个消费方各写一次判空。
@@ -64,7 +69,7 @@ public record AgentRunBo(
      */
     public AgentRunBo(String agentKey, String conversationId, String query) {
         this(agentKey, conversationId, query, null, List.of(), null, null, List.of(), List.of(), List.of(),
-                null, null, false);
+                null, null, false, null);
     }
 
     /**
@@ -73,7 +78,7 @@ public record AgentRunBo(
     public AgentRunBo(String agentKey, String conversationId, String query, String ragContext,
                       List<SessionMessage> history, String runId) {
         this(agentKey, conversationId, query, ragContext, history, runId, null, List.of(), List.of(), List.of(),
-                null, null, false);
+                null, null, false, null);
     }
 
     /**
@@ -82,7 +87,7 @@ public record AgentRunBo(
     public AgentRunBo(String agentKey, String conversationId, String query, String ragContext,
                       List<SessionMessage> history, String runId, Boolean webSearch) {
         this(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                List.of(), List.of(), List.of(), null, null, false);
+                List.of(), List.of(), List.of(), null, null, false, null);
     }
 
     /**
@@ -90,7 +95,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withConversationId(String conversationId) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -98,7 +104,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withRagContext(String context) {
         return new AgentRunBo(agentKey, conversationId, query, context, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -106,7 +113,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withHistory(List<SessionMessage> history) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -114,7 +122,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withRunId(String runId) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -122,7 +131,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withWebSearch(Boolean webSearch) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -130,7 +140,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withAttachments(List<AttachmentRef> attachments) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -138,7 +149,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withDisabledMcpServerIds(List<Long> disabledMcpServerIds) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -146,7 +158,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withDisabledSkillIds(List<Long> disabledSkillIds) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -156,7 +169,8 @@ public record AgentRunBo(
      */
     public AgentRunBo withCaller(Long apiKeyId, Long userId) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**
@@ -166,7 +180,19 @@ public record AgentRunBo(
      */
     public AgentRunBo withReuseUserMessage(boolean reuseUserMessage) {
         return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
-                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage);
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
+    }
+
+    /**
+     * 返回一个带会话摘要的新请求（不可变，不影响原对象）。
+     *
+     * <p>只在服务端装配上下文时使用：摘要派生自本会话的历史，不来自调用方提交的内容。</p>
+     */
+    public AgentRunBo withSummaryContext(String summaryContext) {
+        return new AgentRunBo(agentKey, conversationId, query, ragContext, history, runId, webSearch,
+                attachments, disabledMcpServerIds, disabledSkillIds, apiKeyId, userId, reuseUserMessage,
+                summaryContext);
     }
 
     /**

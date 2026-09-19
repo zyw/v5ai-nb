@@ -19,6 +19,7 @@ import xin.v5ai.nb.runtime.mapper.RuntimeMessageMapper;
 import xin.v5ai.nb.runtime.service.IRuntimeMessageService;
 
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -73,6 +74,58 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
             return CollUtil.newArrayList();
         }
         log.info("Found {} messages for conversationId: {}", result.size(), conversationId);
+        return withAttachments(result);
+    }
+
+    /**
+     * 最近 N 条：SQL 侧按 (created_at, id) 倒序取，再反转回时间正序——顺序口径与
+     * {@link #findByConversationId(String)} 完全一致，只是多了一个 LIMIT。
+     */
+    @Override
+    public List<SessionMessage> findRecentByConversationId(String conversationId, int limit) {
+        if (limit <= 0) {
+            return findByConversationId(conversationId);
+        }
+        var result = baseMapper.selectVoList(
+                QueryBuilder.lambda(RuntimeMessage.class)
+                        .eq(RuntimeMessage::getConversationId, conversationId)
+                        .isNull(RuntimeMessage::getSupersededAt)
+                        .orderByDesc(RuntimeMessage::getCreatedAt, RuntimeMessage::getId)
+                        .last("LIMIT " + limit)
+                        .build());
+        if (CollUtil.isEmpty(result)) {
+            return CollUtil.newArrayList();
+        }
+        // 倒序取、正序回：窗口裁剪与执行器都按时间正序消费
+        Collections.reverse(result);
+        return withAttachments(result);
+    }
+
+    /**
+     * 区间取数：SQL 侧按 (created_at, id) 倒序取最近的 limit 条，再反转回时间正序——
+     * 与 {@link #findRecentByConversationId(String, int)} 同一手法，只是多了上下界。
+     */
+    @Override
+    public List<SessionMessage> findActiveBetween(String conversationId, Long afterMessageId,
+                                                  Long beforeMessageId, int limit) {
+        // 上界是一条消息 id（历史窗口内最早那条）：没有它就没有「区间」可言
+        if (conversationId == null || conversationId.isBlank() || beforeMessageId == null) {
+            return List.of();
+        }
+        var query = QueryBuilder.lambda(RuntimeMessage.class)
+                .eq(RuntimeMessage::getConversationId, conversationId)
+                .isNull(RuntimeMessage::getSupersededAt)
+                .gt(afterMessageId != null, RuntimeMessage::getId, afterMessageId)
+                .lt(RuntimeMessage::getId, beforeMessageId)
+                .orderByDesc(RuntimeMessage::getCreatedAt, RuntimeMessage::getId);
+        if (limit > 0) {
+            query.last("LIMIT " + limit);
+        }
+        var result = baseMapper.selectVoList(query.build());
+        if (CollUtil.isEmpty(result)) {
+            return CollUtil.newArrayList();
+        }
+        Collections.reverse(result);
         return withAttachments(result);
     }
 

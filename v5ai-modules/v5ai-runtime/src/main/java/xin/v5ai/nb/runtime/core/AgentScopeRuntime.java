@@ -12,7 +12,11 @@ import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagContext;
+import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
+import xin.v5ai.nb.runtime.core.domain.ConversationSummaryDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.rag.RagHit;
+import xin.v5ai.nb.common.agentscope.core.history.HistoryWindow;
+import xin.v5ai.nb.common.agentscope.core.history.HistoryWindowResult;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
 import xin.v5ai.nb.common.agentscope.core.executor.AgentTextExecutor;
 import xin.v5ai.nb.common.agentscope.core.resolver.ModelToolSupportResolver;
@@ -21,6 +25,7 @@ import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
+import xin.v5ai.nb.runtime.core.service.ConversationSummaryService;
 import xin.v5ai.nb.runtime.core.service.MessageService;
 
 import java.util.*;
@@ -49,6 +54,10 @@ public class AgentScopeRuntime implements AgentRuntime {
     private final MessageService messageService;
     /** 模型工具调用能力判定（可空）：智能调用模式依赖模型支持 function calling，不支持时回退强制调用 */
     private final ModelToolSupportResolver modelToolSupportResolver;
+    /** 同会话历史的窗口预算：决定本次最多把多少历史发给模型（未配置时为不裁剪） */
+    private final HistoryWindow historyWindow;
+    /** 会话摘要（可空）：历史窗口之外的旧内容压缩成的一段文本，随系统提示一起注入 */
+    private final ConversationSummaryService summaryService;
 
     /**
      * 无 RAG 的构造器：不配置知识检索能力；仅解析已发布 AgentDTO。
@@ -88,11 +97,38 @@ public class AgentScopeRuntime implements AgentRuntime {
     public AgentScopeRuntime(Function<String, AgentDTO> agentResolver, AgentTextExecutor agentTextExecutor,
                              RagContextProvider ragContextProvider, MessageService messageService,
                              ModelToolSupportResolver modelToolSupportResolver) {
+        this(agentResolver, agentTextExecutor, ragContextProvider, messageService, modelToolSupportResolver,
+                HistoryWindow.unlimited());
+    }
+
+    /**
+     * 全参构造：额外给定历史窗口预算（{@code v5ai.agentscope.history}）。
+     *
+     * @param historyWindow 历史窗口；{@link HistoryWindow#unlimited()} 表示不裁剪
+     */
+    public AgentScopeRuntime(Function<String, AgentDTO> agentResolver, AgentTextExecutor agentTextExecutor,
+                             RagContextProvider ragContextProvider, MessageService messageService,
+                             ModelToolSupportResolver modelToolSupportResolver, HistoryWindow historyWindow) {
+        this(agentResolver, agentTextExecutor, ragContextProvider, messageService, modelToolSupportResolver,
+                historyWindow, null);
+    }
+
+    /**
+     * 全参构造：再附带会话摘要仓储（可空，空则不注入摘要）。
+     *
+     * @param summaryService 会话摘要端口；{@code null} 表示本次运行不注入历史摘要
+     */
+    public AgentScopeRuntime(Function<String, AgentDTO> agentResolver, AgentTextExecutor agentTextExecutor,
+                             RagContextProvider ragContextProvider, MessageService messageService,
+                             ModelToolSupportResolver modelToolSupportResolver, HistoryWindow historyWindow,
+                             ConversationSummaryService summaryService) {
         this.agentResolver = agentResolver;
         this.agentTextExecutor = agentTextExecutor;
         this.ragContextProvider = ragContextProvider;
         this.messageService = messageService;
         this.modelToolSupportResolver = modelToolSupportResolver;
+        this.historyWindow = historyWindow == null ? HistoryWindow.unlimited() : historyWindow;
+        this.summaryService = summaryService;
     }
 
     @Override
@@ -100,8 +136,12 @@ public class AgentScopeRuntime implements AgentRuntime {
         // defer：延迟到订阅时才解析应用、生成 runId，避免每次构建都执行副作用
         return Flux.defer(() -> {
             var agent = agentResolver.apply(request.agentKey());
-            // 记忆开关：仅当 memoryEnabled 时按会话加载历史并注入（显式 resume 历史不覆盖）
-            var req = withMemory(agent, request);
+            // 记忆开关：仅当 memoryEnabled 时按会话加载历史；加载到的历史（含 resume 传入的）
+            // 一律过历史窗口，再决定发给模型多少
+            var prepared = withMemory(agent, request);
+            var req = prepared.request();
+            // 窗口统计随 RUN_STARTED 一起发出：前端/审计能看到本轮实际带了多少历史、裁掉了多少
+            var startedPayload = contextPayload(prepared.window());
             var runId = UUID.randomUUID().toString();
             // 强制调用（FORCED，或智能调用因模型不支持工具而回退）→ pre-step 检索并注入；
             // 智能调用（SMART）→ 跳过 pre-step，交由执行器注册 rag_search 工具按需检索
@@ -109,8 +149,8 @@ public class AgentScopeRuntime implements AgentRuntime {
                     ? Mono.just(RagContext.empty())
                     : ragContextProvider.buildContext(agent, req);
             return Flux.concat(
-                    // 1) 运行开始事件
-                    Flux.just(RuntimeRunEventDTO.started(runId)),
+                    // 1) 运行开始事件（载荷含本轮上下文统计）
+                    Flux.just(RuntimeRunEventDTO.started(runId, startedPayload)),
                     // 2) 拿到检索结果后执行 AgentDTO
                     contextMono.flatMapMany(rag -> {
                         // 有有效上下文则拼进请求，否则用原请求
@@ -143,31 +183,76 @@ public class AgentScopeRuntime implements AgentRuntime {
     }
 
     /**
-     * 记忆注入：AgentDTO 开启 memoryEnabled 且请求未显式携带历史（如 resume）时，
-     * 读取该会话的已有消息作为上下文。调用发生在 {@link PersistingAgentRuntime} 已落库当前
-     * 用户消息之后，故剔除尾部恰好等于当前 query 的那条用户消息，避免被重复回放。
+     * 记忆准备：按会话加载历史 → 过历史窗口 → 得到本次真正发给模型的那一段。
+     *
+     * <p>加载只发生在请求本身没带历史时；{@code resume} 的历史由 {@code ChatController} 传入，
+     * 但**窗口裁剪对两条路一视同仁**——否则 resume 就成了绕过预算的后门。</p>
+     *
+     * <p>加载发生在 {@link PersistingAgentRuntime} 已落库当前用户消息之后，故要剔除尾部那条
+     * 用户消息（就是我们自己），避免被重复回放。</p>
      */
-    private AgentRunBo withMemory(AgentDTO agent, AgentRunBo request) {
-        if (!agent.memoryEnabled() || messageService == null) {
-            return request;
-        }
+    private MemoryPreparation withMemory(AgentDTO agent, AgentRunBo request) {
         if (request.conversationId() == null || request.conversationId().isBlank()) {
-            return request;
+            return new MemoryPreparation(request, null);
         }
-        if (!request.history().isEmpty()) {
-            return request;
-        }
-        var history = new ArrayList<>(messageService.findByConversationId(request.conversationId()));
-        if (!history.isEmpty()) {
-            var last = history.get(history.size() - 1);
-            // 只按角色判定，不再比对文本：PersistingAgentRuntime 在委托本次运行之前刚把当前提问落库，
-            // 所以尾部那条用户消息就是我们自己。多模态下「相同文字、不同图片」的两条提问靠文本无法区分，
-            // 继续比对 content 会把本来该保留的历史误删（或在本条带图时判不出来而重复回放）。
-            if (last.role() == MessageRole.USER) {
+        var history = new ArrayList<>(request.history());
+        if (history.isEmpty()) {
+            if (!agent.memoryEnabled() || messageService == null) {
+                return new MemoryPreparation(request, null);
+            }
+            // SQL 侧按窗口取最近若干条：长会话不必每次把整张消息表读出来再在内存里裁
+            history = new ArrayList<>(messageService.findRecentByConversationId(
+                    request.conversationId(), historyWindow.fetchLimit()));
+            if (!history.isEmpty() && history.get(history.size() - 1).role() == MessageRole.USER) {
+                // 只按角色判定，不再比对文本：多模态下「相同文字、不同图片」的两条提问靠文本无法区分，
+                // 继续比对 content 会把本来该保留的历史误删（或在本条带图时判不出来而重复回放）。
                 history.remove(history.size() - 1);
             }
         }
-        return request.withHistory(history);
+        if (history.isEmpty()) {
+            return new MemoryPreparation(request, null);
+        }
+        var window = historyWindow.select(history);
+        return new MemoryPreparation(
+                request.withHistory(window.messages()).withSummaryContext(loadSummary(agent, request)), window);
+    }
+
+    /**
+     * 会话摘要：只在开启记忆时携带——它就是「本会话更早的历史」，关掉记忆就不该有它的影子。
+     *
+     * @return 摘要正文；没有摘要或摘要服务不可用时返回 {@code null}
+     */
+    private String loadSummary(AgentDTO agent, AgentRunBo request) {
+        if (!agent.memoryEnabled() || summaryService == null) {
+            return null;
+        }
+        return summaryService.find(request.conversationId())
+                .map(ConversationSummaryDTO::summary)
+                .orElse(null);
+    }
+
+    /**
+     * RUN_STARTED 载荷里的上下文段；未参与记忆（开关关闭、没有历史）时返回空串，
+     * 载荷形态与改造前完全一致。
+     */
+    private static String contextPayload(HistoryWindowResult window) {
+        if (window == null) {
+            return "";
+        }
+        return JSONUtil.createObj()
+                .set("context", JSONUtil.createObj()
+                        .set("keptMessages", window.keptMessages())
+                        .set("droppedMessages", window.droppedMessages())
+                        .set("droppedChars", window.droppedChars())
+                        .set("keptChars", window.keptChars())
+                        .set("trimmed", window.trimmed()))
+                .toString();
+    }
+
+    /**
+     * 记忆准备结果：换好历史的请求 + 可观测的窗口统计（未参与记忆时为 {@code null}）。
+     */
+    private record MemoryPreparation(AgentRunBo request, HistoryWindowResult window) {
     }
 
     /**
@@ -235,6 +320,10 @@ public class AgentScopeRuntime implements AgentRuntime {
                     result.success() ? result.toolName() : result.toolName() + " failed: " + result.message()));
             case AgentTextEvent.Retrieval retrieval ->
                     Flux.just(RuntimeRunEventDTO.retrieval(runId, citationsPayload(retrieval.hits())));
+            // 用量是平台内部事件：交给持久化侧记账，既不落库也不推给客户端
+            case AgentTextEvent.Usage usage ->
+                    Flux.just(RuntimeRunEventDTO.modelUsage(runId, usage.inputTokens(), usage.outputTokens(),
+                            usage.estimated()));
         };
     }
 

@@ -60,6 +60,9 @@ public interface AgentCleanupMapper {
     /** 直连 agent_key 表：消息。 */
     int deleteMessages(@Param("agentKey") String agentKey);
 
+    /** 会话摘要无 agent_key 列，按 conversation_id 子查询；先于会话删除。 */
+    int deleteConversationSummaries(@Param("agentKey") String agentKey);
+
     /** 直连 agent_key 表：会话。 */
     int deleteConversations(@Param("agentKey") String agentKey);
 

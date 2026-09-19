@@ -24,6 +24,7 @@ import xin.v5ai.nb.platform.api.domain.ApiKeysAuthDTO;
 import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
 import xin.v5ai.nb.runtime.core.domain.ConversationDTO;
 import xin.v5ai.nb.runtime.core.service.ConversationService;
+import xin.v5ai.nb.runtime.core.service.ConversationSummaryService;
 import xin.v5ai.nb.runtime.core.service.MessageService;
 import xin.v5ai.nb.runtime.core.service.RunRecordService;
 
@@ -64,6 +65,7 @@ class ChatControllerTest {
     private RunCancellationRegistry cancellationRegistry;
     private PublishedAgentResolver publishedAgentResolver;
     private ModelImageSupportResolver imageSupportResolver;
+    private ConversationSummaryService conversationSummaryService;
     private ChatController controller;
     private HttpServletRequest request;
 
@@ -76,8 +78,9 @@ class ChatControllerTest {
         cancellationRegistry = new RunCancellationRegistry();
         publishedAgentResolver = mock(PublishedAgentResolver.class);
         imageSupportResolver = mock(ModelImageSupportResolver.class);
+        conversationSummaryService = mock(ConversationSummaryService.class);
         controller = new ChatController(agentRuntime, messageService, conversationService, runRecordService,
-                cancellationRegistry, publishedAgentResolver, imageSupportResolver);
+                cancellationRegistry, publishedAgentResolver, imageSupportResolver, conversationSummaryService);
 
         request = mock(HttpServletRequest.class);
         when(request.getAttribute(ApiKeyAuthAttributes.REQUEST_ATTRIBUTE))
@@ -249,8 +252,10 @@ class ChatControllerTest {
 
         controller.regenerate(AGENT_KEY, "c-1", new ChatController.RegenerateBo(55L, false), request);
 
-        // 先作废锚点之后的消息（旧回答），再复用这条提问重跑
+        // 先作废锚点之后的消息（旧回答），再复用这条提问重跑；
+        // 覆盖了被作废内容的摘要必须同时失效，否则模型会继续「记得」旧回答
         verify(messageService).supersedeAfter("c-1", 55L);
+        verify(conversationSummaryService).invalidateIfCoveringAfter("c-1", 55L);
         var captor = ArgumentCaptor.forClass(AgentRunBo.class);
         verify(agentRuntime).stream(captor.capture());
         var bo = captor.getValue();

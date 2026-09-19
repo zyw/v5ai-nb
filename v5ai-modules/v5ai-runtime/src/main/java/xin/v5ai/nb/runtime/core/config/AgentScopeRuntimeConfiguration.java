@@ -22,17 +22,19 @@ import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.model.api.ModelUsageService;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.runtime.core.AgentScopeRuntime;
+import xin.v5ai.nb.runtime.core.ConversationSummaryGenerator;
 import xin.v5ai.nb.runtime.core.ConversationTitleGenerator;
 import xin.v5ai.nb.runtime.core.PersistingAgentRuntime;
 import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
 import xin.v5ai.nb.runtime.core.config.properties.AgentScopeRuntimeProperties;
+import xin.v5ai.nb.runtime.core.config.properties.HistoryWindowProperties;
 import xin.v5ai.nb.runtime.core.config.properties.PortalAttachmentProperties;
 import xin.v5ai.nb.runtime.core.service.*;
 
 import java.nio.file.Path;
 
 @Configuration
-@EnableConfigurationProperties(AgentScopeRuntimeProperties.class)
+@EnableConfigurationProperties({AgentScopeRuntimeProperties.class, HistoryWindowProperties.class})
 public class AgentScopeRuntimeConfiguration {
     @Bean
     AgentTextExecutor agentTextExecutor(
@@ -61,7 +63,8 @@ public class AgentScopeRuntimeConfiguration {
                     properties.getTavilyApiKey(),
                     ragSearchProvider,
                     attachmentContentProviderProvider.getIfAvailable(),
-                    attachmentProperties.getHistoryBudgetBytes());
+                    attachmentProperties.getHistoryBudgetBytes(),
+                    properties.getImageTokensPerImage());
         }
         Model model = modelProvider.getIfAvailable();
         if (model != null) {
@@ -88,14 +91,18 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
             ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider,
-            ConversationTitleGenerator conversationTitleGenerator
+            ConversationTitleGenerator conversationTitleGenerator,
+            ConversationSummaryGenerator conversationSummaryGenerator,
+            ConversationSummaryService conversationSummaryService,
+            HistoryWindowProperties historyWindowProperties
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolve, executor, ragContextProviderProvider.getIfAvailable(),
-                messageService, modelToolSupportResolverProvider.getIfAvailable());
+                messageService, modelToolSupportResolverProvider.getIfAvailable(),
+                historyWindowProperties.toWindow(), conversationSummaryService);
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
-                cancellationRegistry, conversationTitleGenerator);
+                cancellationRegistry, conversationTitleGenerator, conversationSummaryGenerator);
     }
 
     /**
@@ -116,13 +123,17 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
             ObjectProvider<ModelUsageService> usageRecorderProvider,
             ObjectProvider<AppQuotaService> quotaServiceProvider,
-            ConversationTitleGenerator conversationTitleGenerator
+            ConversationTitleGenerator conversationTitleGenerator,
+            ConversationSummaryGenerator conversationSummaryGenerator,
+            ConversationSummaryService conversationSummaryService,
+            HistoryWindowProperties historyWindowProperties
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable(),
-                messageService, modelToolSupportResolverProvider.getIfAvailable());
+                messageService, modelToolSupportResolverProvider.getIfAvailable(),
+                historyWindowProperties.toWindow(), conversationSummaryService);
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
-                cancellationRegistry, conversationTitleGenerator);
+                cancellationRegistry, conversationTitleGenerator, conversationSummaryGenerator);
     }
 }

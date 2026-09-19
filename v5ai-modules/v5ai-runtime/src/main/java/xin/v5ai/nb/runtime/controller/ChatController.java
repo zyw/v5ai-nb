@@ -27,6 +27,7 @@ import xin.v5ai.nb.runtime.core.utils.ConversationNaming;
 import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
 import xin.v5ai.nb.runtime.core.domain.ConversationDTO;
 import xin.v5ai.nb.runtime.core.service.ConversationService;
+import xin.v5ai.nb.runtime.core.service.ConversationSummaryService;
 import xin.v5ai.nb.runtime.core.service.MessageService;
 import xin.v5ai.nb.runtime.core.service.RunRecordService;
 
@@ -78,6 +79,7 @@ public class ChatController {
     private final RunCancellationRegistry cancellationRegistry;
     private final PublishedAgentResolver publishedAgentResolver;
     private final ModelImageSupportResolver modelImageSupportResolver;
+    private final ConversationSummaryService conversationSummaryService;
 
     @PostMapping("/{agentKey}/chat/stream")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> stream(
@@ -187,6 +189,9 @@ public class ChatController {
         assertAttachmentsSupported(agentKey, anchor.attachments());
         // 校验全部通过：先作废被替换的回答（及其后更晚的整轮问答），再复用这条提问重跑
         messageService.supersedeAfter(conversationId, anchor.messageId());
+        // 会话摘要可能覆盖了刚被作废的问答：整条失效，避免模型继续「记得」已被替换的内容
+        // （下次运行会按当前有效历史重新生成摘要）
+        conversationSummaryService.invalidateIfCoveringAfter(conversationId, anchor.messageId());
         var regenerateRequest = new AgentRunBo(agentKey, conversationId, anchor.content())
                 .withWebSearch(bo.webSearch())
                 .withAttachments(anchor.attachments())

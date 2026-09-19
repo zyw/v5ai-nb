@@ -73,7 +73,8 @@ const usage = computed(() => props.msg.usage)
 const usageDetail = computed(() => {
   const value = usage.value
   if (!value) return ''
-  return `输入 ≈${value.promptTokens} · 输出 ≈${value.completionTokens}（平台按字符数估算）`
+  // token 以模型回报的真实用量为准；服务端没有拿到回报时才回退为平台估算
+  return `输入 ${value.promptTokens} · 输出 ${value.completionTokens}（模型回报；未回报时为平台估算）`
 })
 </script>
 

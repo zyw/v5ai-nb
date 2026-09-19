@@ -182,6 +182,19 @@ export interface GenerateAgentConfigResponse {
 export interface ChatRequest {
   conversationId?: string
   query: string
+  /** 本次提问携带的图片附件：先上传为资源，这里只提交引用 */
+  attachments?: AttachmentRequest[]
+}
+
+/**
+ * 附件引用（与后端 AttachmentRef 同形）。
+ *
+ * 图片先经 `POST /api/admin/resources/upload`（bizType=ATTACHMENT）拿资源 id 再随消息提交；
+ * 服务端按资源 id 读取字节、作为多模态输入发给模型（见 CONTEXT.md「附件」）。
+ */
+export interface AttachmentRequest {
+  type: 'IMAGE'
+  resourceId: number
 }
 
 export interface AgentRunResult {

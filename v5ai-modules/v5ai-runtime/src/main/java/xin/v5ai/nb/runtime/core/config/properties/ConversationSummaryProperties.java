@@ -1,0 +1,57 @@
+package xin.v5ai.nb.runtime.core.config.properties;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+/**
+ * 会话摘要（{@code v5ai.portal.conversation-summary}）：把历史窗口之外的旧内容压缩成一段文本。
+ *
+ * <p>与标题改写（{@code v5ai.portal.conversation-title}）同一性质：异步、失败静默、不记用量——
+ * 摘要只是为了「不丢信息」，生成失败不该影响对话主链路（旧摘要仍在，窗口内的内容照常回放）。</p>
+ */
+@Data
+@ConfigurationProperties(prefix = "v5ai.portal.conversation-summary")
+public class ConversationSummaryProperties {
+
+    /**
+     * 是否启用摘要。关闭后历史窗口之外的内容直接丢弃（超窗不再顶爆，但模型会忘记更早的内容）。
+     */
+    private boolean enabled = true;
+
+    /**
+     * 生成摘要用的模型 id；留空时用该 Agent 绑定的 CHAT 模型。
+     *
+     * <p>摘要是一次平台内部的额外模型调用，给一个便宜的小模型更划算。</p>
+     */
+    private Long modelId;
+
+    /**
+     * 单次摘要生成的超时（毫秒）：超时即放弃，保留旧摘要。
+     */
+    private long timeoutMillis = 20_000;
+
+    /**
+     * 触发阈值：水位之后至少新增多少条「窗口外」消息才值得再压一次（防抖、防空跑）。
+     */
+    private int minNewMessages = 10;
+
+    /**
+     * 一次最多把多少条窗口外消息喂给摘要模型（取最靠近窗口起点的那些）。
+     */
+    private int maxInputMessages = 100;
+
+    /**
+     * 单条输入消息的截断长度（字符）：长回答不必整段进摘要提示词。
+     */
+    private int maxInputCharsPerMessage = 500;
+
+    /**
+     * 摘要长度上限（字符）：超出直接硬截断，保证注入系统提示的总长度可控。
+     */
+    private int maxSummaryChars = 1_000;
+
+    /**
+     * 距上一次摘要至少间隔多少秒才允许再生成（同一会话连续追问时的防抖）。
+     */
+    private int minIntervalSeconds = 30;
+}

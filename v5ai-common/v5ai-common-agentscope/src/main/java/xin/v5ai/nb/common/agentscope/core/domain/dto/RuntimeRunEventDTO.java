@@ -1,5 +1,6 @@
 package xin.v5ai.nb.common.agentscope.core.domain.dto;
 
+import cn.hutool.json.JSONUtil;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 
 import java.time.Instant;
@@ -35,6 +36,24 @@ public record RuntimeRunEventDTO(String runId, RuntimeEventType type, String pay
     /** 模型调用开始（携带模型名） */
     public static RuntimeRunEventDTO modelCall(String runId, String modelName) {
         return new RuntimeRunEventDTO(runId, RuntimeEventType.MODEL_CALL, modelName, Instant.now());
+    }
+
+    /**
+     * 模型用量（**内部事件**：不落库、不推送给客户端）。
+     *
+     * <p>载荷为 JSON：{@code {"inputTokens":n,"outputTokens":n,"estimated":bool}}。一次运行最多
+     * 两类：开头的估算（{@code estimated=true}）与每次模型调用结束后的真实值（{@code estimated=false}，
+     * 多轮工具调用会有多条）。持久化侧按「真实优先、估算兜底」取用。</p>
+     */
+    public static RuntimeRunEventDTO modelUsage(String runId, long inputTokens, long outputTokens,
+                                                boolean estimated) {
+        return new RuntimeRunEventDTO(runId, RuntimeEventType.MODEL_USAGE,
+                JSONUtil.createObj()
+                        .set("inputTokens", inputTokens)
+                        .set("outputTokens", outputTokens)
+                        .set("estimated", estimated)
+                        .toString(),
+                Instant.now());
     }
 
     /** 思考增量片段（模型推理内容，与回答分流，供前端单独展示） */

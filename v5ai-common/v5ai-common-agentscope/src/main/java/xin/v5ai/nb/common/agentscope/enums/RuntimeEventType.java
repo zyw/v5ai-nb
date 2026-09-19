@@ -8,6 +8,14 @@ public enum RuntimeEventType {
     RUN_STARTED,
     /** 模型调用开始 */
     MODEL_CALL,
+    /**
+     * 模型用量（输入 / 输出 token，真实值或平台估算）。
+     *
+     * <p><b>仅用于平台内部传递</b>：由执行器发出、{@code PersistingAgentRuntime} 消费后过滤掉，
+     * 既不落 {@code v5ai_run_event}，也不会出现在 SSE 流里。对外可见的用量仍是
+     * {@code RUN_COMPLETED} 的载荷（与助手消息、用量明细同源）。</p>
+     */
+    MODEL_USAGE,
     /** 思考增量（模型推理内容，与回答分流推送） */
     REASONING_DELTA,
     /** 文本增量（回答片段） */

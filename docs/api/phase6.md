@@ -209,12 +209,37 @@ RUN_COMPLETED
 
 对话流最后一个事件 `RUN_COMPLETED` 的载荷是本次运行的用量汇总（JSON），门户的「用量 / 用时」直接读它：
 
-- token 是平台**按字符数估算**的值（输入 = 提问 + RAG 上下文，输出 = 回答，每 4 字符约 1 token）。
+- token 以**模型回报的真实用量**为准：直连路径读 `ChatResponse.getUsage()`，带工具路径累加每次模型调用的 `ModelCallEndEvent.getUsage()`（工具循环会调用多轮，输入 token 是各轮提示词之和）。服务端没有回报、或本次运行在回报前就失败/被取消时，才回退为平台估算：CJK 按 1 字 1 token、其余 4 字符 1 token、图片按张计（`v5ai.agentscope.image-tokens-per-image`，默认 1024）；
   它与写进 `v5ai_model_usage`、扣减配额的**是同一份数字**：运行时在事件推送与落库之前只算一次，两边不会各估一套；
 - `durationMs` 是服务端从 `RUN_STARTED` 到收尾的墙钟耗时（含 RAG 检索与工具调用）；
 - 同一个形状也随助手消息落库（`v5ai_message` 的 `prompt_tokens`/`completion_tokens`/`duration_ms`），历史接口读它还原 `usage` —— 否则刷新页面后历史回答就没有这两个数字了；
 - 被停止（`CANCELED`）的运行**没有** `RUN_COMPLETED` 事件、因而流里不带载荷，但它的半截回答照样带着用量落库（停止不等于没消耗）；失败（`RUN_FAILED`）的运行两者都没有；
 - 知识库问答调试链路（`/api/admin/knowledge-bases/{id}/qa/stream`）不带用量，载荷仍是空串。
+
+### 历史窗口与会话摘要
+
+发给模型的历史不是「这个会话的全部消息」，而是**窗口内逐条回放 + 窗口外摘要**：
+
+- **窗口**（`v5ai.agentscope.history`，默认 `max-messages=40` / `max-chars=8000` / `min-messages=2` / `align-to-user-turn=true`）：
+  按「最近优先」保留最近若干条，裁剪后首条一定对齐到用户提问。`enabled=false` 时退回「全量历史」的老行为，
+  长会话会顶爆模型窗口，只建议排查问题时临时关闭。显式 `resume` 传入的历史**同样过这道窗口**。
+- **摘要**（`v5ai.portal.conversation-summary`）：窗口之外的旧内容由后台异步压缩成一段文本
+  （`v5ai_conversation_summary`，水位 `covered_until_message_id` 只增不减），下次运行随**系统提示**注入。
+  触发是懒的：水位之后新增的窗口外消息达到 `min-new-messages`（默认 10）才再压一次，
+  且有 `min-interval-seconds`（默认 30 秒）防抖。可以指定更便宜的 `model-id`，留空则跟随该 Agent 绑定的 CHAT 模型。
+
+`RUN_STARTED` 的载荷因此是「本轮提问的消息 id + 本轮窗口统计」：
+
+```json
+RUN_STARTED
+{ "userMessageId": 123,
+  "context": { "keptMessages": 12, "droppedMessages": 28, "droppedChars": 15230,
+               "keptChars": 4210, "trimmed": true } }
+```
+
+未开启记忆（`memoryEnabled=false`）时载荷仍是空串；开启但未发生裁剪时 `trimmed=false`。
+平台内部还有一个不对外的事件 `MODEL_USAGE`（用量的真实值/估算值）：它在 SSE 里**不会出现**，
+也不会写进 `v5ai_run_event`，只用于把用量从执行器传给持久化侧。
 
 ### `POST /api/v1/agents/{agentKey}/chat/conversations/{conversationId}/regenerate`
 
@@ -229,7 +254,8 @@ RUN_COMPLETED
 - `fromMessageId`：该轮**提问**的消息 id（历史消息里的 `messageId`，或本轮 `RUN_STARTED` 载荷的 `userMessageId`）。
 - 校验顺序是刻意的，**任何拒绝都发生在作废之前**：会话不属于本 Key → 404；会话已归档 → 409；
   锚点不存在 / 不属于该会话 / 不是用户消息 → 404；锚点那轮有图片但当前模型不支持图片 → 400。
-- 通过后：作废锚点之后的全部消息（含被替换的回答与更晚的整轮问答），再以锚点的提问内容与附件重跑。
+- 通过后：作废锚点之后的全部消息（含被替换的回答与更晚的整轮问答），**并让覆盖到作废范围的会话摘要整条失效**
+  （避免模型继续「记得」已被替换的内容），再以锚点的提问内容与附件重跑。
 - 返回与 `/chat/stream` **完全相同的事件流**（含 `RUN_STARTED`/`RUN_COMPLETED` 的载荷）。
 - **不幂等但可重复**：连点两次会再作废第一次的产物并重跑，最终仍只有一条可见回答。
 

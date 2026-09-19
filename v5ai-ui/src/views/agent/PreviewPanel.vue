@@ -8,11 +8,16 @@
  */
 import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue'
 import { NButton, NIcon, NInput, NTooltip, useMessage } from 'naive-ui'
-import { Image, Send } from 'lucide-vue-next'
+import { Image, Send, X } from 'lucide-vue-next'
 import ChatMessageBody from '../../components/ChatMessageBody.vue'
 import MessageActions from '../../components/MessageActions.vue'
 import { parseHits, type ChatMsg } from '../../utils/chatStream'
-import { adminDebugStream, loadImagePreview } from '../../api/client'
+import {
+  adminDebugStream,
+  loadImagePreview,
+  uploadResource,
+  type AttachmentRequest
+} from '../../api/client'
 import { adminToken } from '../../stores/session'
 
 const props = defineProps<{
@@ -61,6 +66,7 @@ watch(
 )
 onUnmounted(() => {
   if (avatarSrc.value.startsWith('blob:')) URL.revokeObjectURL(avatarSrc.value)
+  clearPendingImages()
 })
 /** 未填写欢迎语时回退到描述，避免首屏空面板。 */
 const greetText = computed(() => props.greeting.trim() || props.description.trim())
@@ -69,6 +75,66 @@ const imageTip = computed(() =>
     ? '添加图片'
     : '当前模型不支持图片输入，可在「模型管理」中为模型开启「支持图片输入」'
 )
+
+// ---- 图片附件：与门户（v5ai-ui-chat）同一套约束与流程 ----
+// PNG/JPEG/WebP、单张 5MB、每条最多 3 张；选中即本地预览，**上传发生在发送时**（先传完再发，
+// 避免「消息发出去了图没带上」）。资源存进通用资源库（bizType=ATTACHMENT），消息只带引用。
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const MAX_IMAGES_PER_MESSAGE = 3
+
+/** 待发送的图片：本地预览 URL + 原始文件。 */
+const pendingImages = ref<{ file: File; url: string }[]>([])
+const imageInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
+
+const canSend = computed(
+  () => !loading.value && !uploading.value && (query.value.trim().length > 0 || pendingImages.value.length > 0)
+)
+
+function pickImages() {
+  if (!props.imageSupported || loading.value || uploading.value) return
+  imageInput.value?.click()
+}
+
+function onImagesChosen(event: Event) {
+  const input = event.target as HTMLInputElement
+  const chosen = Array.from(input.files ?? [])
+  // 清空 input：否则连选同一张图不会再触发 change
+  input.value = ''
+  for (const file of chosen) {
+    if (pendingImages.value.length >= MAX_IMAGES_PER_MESSAGE) {
+      message.warning(`每条消息最多 ${MAX_IMAGES_PER_MESSAGE} 张图片`)
+      break
+    }
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      message.warning('只支持 PNG / JPEG / WebP 图片')
+      continue
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      message.warning(`单张图片不能超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB`)
+      continue
+    }
+    pendingImages.value.push({ file, url: URL.createObjectURL(file) })
+  }
+}
+
+function removePendingImage(index: number) {
+  const [removed] = pendingImages.value.splice(index, 1)
+  if (removed) URL.revokeObjectURL(removed.url)
+}
+
+/**
+ * 清空待发送列表。
+ *
+ * @param revoke 是否回收 objectURL：图片交给消息气泡继续展示时传 false（所有权转移）
+ */
+function clearPendingImages(revoke = true) {
+  if (revoke) {
+    for (const item of pendingImages.value) URL.revokeObjectURL(item.url)
+  }
+  pendingImages.value = []
+}
 
 /**
  * 取出增量文本。SSE 的 data 是整个 RuntimeEvent 的 JSON（{runId,type,payload,createdAt}），
@@ -111,6 +177,7 @@ function reset() {
   messages.value = []
   runId.value = ''
   query.value = ''
+  clearPendingImages()
 }
 
 /** 点击推荐问题：填入输入框并直接发送（发送后首屏信息即隐藏）。 */
@@ -124,13 +191,36 @@ const STREAM_SILENCE_TIMEOUT_MS = 60_000
 
 async function send() {
   const question = query.value.trim()
-  if (!question || loading.value) return
+  if (!canSend.value) return
   if (!props.agentKey) {
     message.warning('智能体尚未创建，无法调试')
     return
   }
   query.value = ''
-  await runTurn(question)
+
+  // 附件上传：先全部传完再发消息。上传失败就整条不发——否则用户以为图发出去了
+  const files = pendingImages.value.map((item) => item.file)
+  const urls = pendingImages.value.map((item) => item.url)
+  // 所有权转移给消息气泡：这里不 revoke
+  clearPendingImages(false)
+
+  let attachmentRefs: AttachmentRequest[] = []
+  if (files.length) {
+    uploading.value = true
+    try {
+      const resources = await Promise.all(
+        files.map((file) => uploadResource(adminToken.value, file, { bizType: 'ATTACHMENT' }))
+      )
+      attachmentRefs = resources.map((resource) => ({ type: 'IMAGE' as const, resourceId: resource.id }))
+    } catch (e) {
+      for (const url of urls) URL.revokeObjectURL(url)
+      message.error(e instanceof Error ? e.message : '图片上传失败')
+      return
+    } finally {
+      uploading.value = false
+    }
+  }
+  await runTurn(question, { images: urls, attachmentRefs })
 }
 
 /**
@@ -144,16 +234,30 @@ async function regenerate(index: number) {
     return
   }
   const question = messages.value[index - 1]
-  if (!question || question.role !== 'user' || !question.content) return
+  if (!question || question.role !== 'user' || (!question.content && !question.images?.length)) return
   messages.value.splice(index)
   await nextTick()
   scrollToBottom()
-  await runTurn(question.content)
+  // 图片资源还在资源库里，引用原样复用即可（重跑一次不该把图丢掉）
+  await runTurn(question.content, { images: question.images, attachmentRefs: question.attachmentRefs })
 }
 
-/** 跑一轮对话：追加用户提问 + 助手占位并就地流式填充（发送与重新生成同一条路径）。 */
-async function runTurn(question: string) {
-  messages.value.push({ role: 'user', content: question })
+/**
+ * 跑一轮对话：追加用户提问 + 助手占位并就地流式填充（发送与重新生成同一条路径）。
+ *
+ * @param extras 该轮提问的图片：{@code images} 仅用于展示（本地 objectURL），
+ *               {@code attachmentRefs} 随请求提交给服务端
+ */
+async function runTurn(
+  question: string,
+  extras: { images?: string[]; attachmentRefs?: AttachmentRequest[] } = {}
+) {
+  messages.value.push({
+    role: 'user',
+    content: question,
+    images: extras.images,
+    attachmentRefs: extras.attachmentRefs
+  })
   // 必须是 reactive 代理：SSE 回调里直接改内容，靠代理触发增量渲染；
   // 裸对象写属性不走 setter，会等 finally 里 loading 变更才整段刷出（表现为"不流式"）。
   const assistant = reactive<ChatMsg>({ role: 'assistant', content: '', loading: true, reasoningOpen: true })
@@ -175,26 +279,32 @@ async function runTurn(question: string) {
   resetWatchdog()
 
   try {
-    await adminDebugStream(props.agentKey, adminToken.value, { query: question }, (event, data) => {
-      resetWatchdog()
-      const target = messages.value[assistantIndex]
-      if (event === 'RETRIEVAL') {
-        target.citations = parseHits(data)
-      } else if (event === 'REASONING_DELTA' && data) {
-        // 必须与回答同样解析：SSE 的 data 是整段 RuntimeEvent JSON，直接拼接会把 JSON 显示出来
-        target.reasoning = (target.reasoning ?? '') + parseDelta(data)
-      } else if (event === 'TEXT_DELTA') {
-        // 回答开始的第一个片段：思考自动收起（只此一次，之后用户手动开合不再干预）
-        if (!target.content) target.reasoningOpen = false
-        target.content += parseDelta(data)
-      } else if (event === 'RUN_FAILED') {
-        target.error = parseRunFailed(data)
-      } else if (event === 'MESSAGE_COMPLETED' && !target.content) {
-        target.content = parseDelta(data)
-      } else if (event === 'RUN_STARTED') {
-        runId.value = parseRunId(data)
-      }
-    }, controller.signal)
+    await adminDebugStream(
+      props.agentKey,
+      adminToken.value,
+      { query: question, attachments: extras.attachmentRefs },
+      (event, data) => {
+        resetWatchdog()
+        const target = messages.value[assistantIndex]
+        if (event === 'RETRIEVAL') {
+          target.citations = parseHits(data)
+        } else if (event === 'REASONING_DELTA' && data) {
+          // 必须与回答同样解析：SSE 的 data 是整段 RuntimeEvent JSON，直接拼接会把 JSON 显示出来
+          target.reasoning = (target.reasoning ?? '') + parseDelta(data)
+        } else if (event === 'TEXT_DELTA') {
+          // 回答开始的第一个片段：思考自动收起（只此一次，之后用户手动开合不再干预）
+          if (!target.content) target.reasoningOpen = false
+          target.content += parseDelta(data)
+        } else if (event === 'RUN_FAILED') {
+          target.error = parseRunFailed(data)
+        } else if (event === 'MESSAGE_COMPLETED' && !target.content) {
+          target.content = parseDelta(data)
+        } else if (event === 'RUN_STARTED') {
+          runId.value = parseRunId(data)
+        }
+      },
+      controller.signal
+    )
   } catch (e) {
     const target = messages.value[assistantIndex]
     // 看门狗主动中断：给出可读原因，避免表现为「莫名其妙失败」
@@ -292,7 +402,17 @@ defineExpose({ reset })
         <div class="chat-bubble">
           <!-- 助手消息：思考折叠 + 回答 + 引用，与知识库问答 tab 共用同一组件 -->
           <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
-          <template v-else>{{ msg.content }}</template>
+          <template v-else>
+            <div v-if="msg.images?.length" class="bubble-images">
+              <img
+                v-for="(url, imageIndex) in msg.images"
+                :key="imageIndex"
+                :src="url"
+                alt="提问携带的图片"
+              />
+            </div>
+            <span v-if="msg.content">{{ msg.content }}</span>
+          </template>
         </div>
         <!-- 操作栏在气泡外、气泡下方（DeepSeek 的摆法）；生成中复制禁用、「重新生成」隐藏 -->
         <MessageActions
@@ -306,12 +426,36 @@ defineExpose({ reset })
     </div>
 
     <div class="chat-input">
+      <div v-if="pendingImages.length" class="pending-images">
+        <div v-for="(item, index) in pendingImages" :key="item.url" class="pending-image">
+          <img :src="item.url" :alt="item.file.name" />
+          <n-button
+            text
+            size="tiny"
+            class="pending-image-remove"
+            :aria-label="`移除图片 ${item.file.name}`"
+            @click="removePendingImage(index)"
+          >
+            <template #icon><n-icon :component="X" :size="12" /></template>
+          </n-button>
+        </div>
+      </div>
       <n-input
         v-model:value="query"
         type="textarea"
         :autosize="{ minRows: 3, maxRows: 6 }"
-        placeholder="问我任何问题"
+        placeholder="问我任何问题（可附图片）"
         @keydown.enter.exact.prevent="send"
+      />
+      <input
+        ref="imageInput"
+        class="chat-image-input"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        multiple
+        tabindex="-1"
+        aria-hidden="true"
+        @change="onImagesChosen"
       />
       <div class="chat-actions">
         <n-tooltip v-if="!imageSupported" trigger="hover">
@@ -322,10 +466,25 @@ defineExpose({ reset })
           </template>
           {{ imageTip }}
         </n-tooltip>
-        <n-button v-else quaternary circle :title="imageTip" aria-label="添加图片">
+        <n-button
+          v-else
+          quaternary
+          circle
+          :title="imageTip"
+          aria-label="添加图片"
+          :disabled="loading || uploading"
+          @click="pickImages"
+        >
           <template #icon><n-icon :component="Image" /></template>
         </n-button>
-        <n-button circle type="primary" :loading="loading" :disabled="!query.trim()" aria-label="发送" @click="send">
+        <n-button
+          circle
+          type="primary"
+          :loading="loading || uploading"
+          :disabled="!canSend"
+          aria-label="发送"
+          @click="send"
+        >
           <template #icon><n-icon :component="Send" /></template>
         </n-button>
       </div>
@@ -542,16 +701,72 @@ defineExpose({ reset })
   border-bottom-left-radius: 2px;
 }
 
+/* 用户提问携带的图片：竖排在文字上方，宽度受气泡限制 */
+.bubble-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.bubble-images img {
+  max-width: 160px;
+  max-height: 160px;
+  border-radius: 8px;
+  display: block;
+}
+
 .chat-input {
   flex: none;
   display: flex;
   align-items: flex-end;
+  /* 待发送图片自成一行（flex-basis: 100%），输入框与操作区仍在下一行 */
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
 }
 
 .chat-input .n-input {
   flex: 1;
+}
+
+/* 隐藏的原生文件选择器：由「添加图片」按钮代为触发 */
+.chat-image-input {
+  display: none;
+}
+
+/* 待发送图片缩略图：发送前的本地预览，可逐张移除 */
+.pending-images {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pending-image {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(128, 128, 128, 0.28);
+}
+
+.pending-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pending-image-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  border-bottom-left-radius: 6px;
 }
 
 /* 输入框右侧的多选操作区：图片 + 发送 */

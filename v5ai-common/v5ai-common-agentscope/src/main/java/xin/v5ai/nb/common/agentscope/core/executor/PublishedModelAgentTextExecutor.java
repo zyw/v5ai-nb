@@ -101,9 +101,32 @@ public class PublishedModelAgentTextExecutor implements AgentTextExecutor {
             AttachmentContentProvider attachmentContentProvider,
             long historyImageBudgetBytes
     ) {
+        this(modelResolver, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace,
+                webSearchApiKey, ragSearchProvider, attachmentContentProvider, historyImageBudgetBytes,
+                ModelStreamTextExecutor.DEFAULT_IMAGE_TOKENS);
+    }
+
+    /**
+     * 全参构造 + 用量估算参数：额外指定「每张图片折算多少 token」，供用量估算兜底使用。
+     *
+     * @param imageTokensPerImage 图片折算的 token 数（见 {@link ModelStreamTextExecutor#DEFAULT_IMAGE_TOKENS}）
+     */
+    public PublishedModelAgentTextExecutor(
+            AgentModelResolver modelResolver,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditRepository,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey,
+            RagSearchProvider ragSearchProvider,
+            AttachmentContentProvider attachmentContentProvider,
+            long historyImageBudgetBytes,
+            long imageTokensPerImage
+    ) {
         this(modelResolver, model -> new ModelStreamTextExecutor(
                 model, mcpToolResolver, auditRepository, skillWorkspaceResolver, workspace,
-                webSearchApiKey, ragSearchProvider, attachmentContentProvider, historyImageBudgetBytes));
+                webSearchApiKey, ragSearchProvider, attachmentContentProvider, historyImageBudgetBytes,
+                imageTokensPerImage));
     }
 
     /**

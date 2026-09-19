@@ -11,6 +11,7 @@ import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
+import xin.v5ai.nb.common.agentscope.core.token.PromptTokenEstimator;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 import xin.v5ai.nb.model.api.ModelUsageService;
@@ -68,6 +69,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
     private final RunCancellationRegistry cancellationRegistry;
     /** 首轮结束后的标题改写（可空）：只在本次新建了会话时触发一次 */
     private final ConversationTitleGenerator titleGenerator;
+    /** 回答落库后的会话摘要（可空）：把历史窗口之外的旧内容滚动压缩成一段文本 */
+    private final ConversationSummaryGenerator summaryGenerator;
 
     /**
      * 不落库的会话仓储空实现：供「只要消息与运行记录」的最简构造器使用。
@@ -187,6 +190,28 @@ public class PersistingAgentRuntime implements AgentRuntime {
             RunCancellationRegistry cancellationRegistry,
             ConversationTitleGenerator titleGenerator
     ) {
+        this(delegate, messageService, runRecordService, conversationService, runEventService,
+                agentStateService, usageRecorder, quotaService, cancellationRegistry, titleGenerator, null);
+    }
+
+    /**
+     * 完整构造 + 标题改写 + 会话摘要：两个后台增强都只在回答落库之后触发一次。
+     *
+     * @param summaryGenerator 会话摘要端口；为 {@code null} 表示不做摘要
+     */
+    public PersistingAgentRuntime(
+            AgentRuntime delegate,
+            MessageService messageService,
+            RunRecordService runRecordService,
+            ConversationService conversationService,
+            RunEventService runEventService,
+            AgentStateService agentStateService,
+            ModelUsageService usageRecorder,
+            AppQuotaService quotaService,
+            RunCancellationRegistry cancellationRegistry,
+            ConversationTitleGenerator titleGenerator,
+            ConversationSummaryGenerator summaryGenerator
+    ) {
         this.delegate = delegate;
         this.messageService = messageService;
         this.runRecordService = runRecordService;
@@ -198,6 +223,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
         this.cancellationRegistry = cancellationRegistry == null
                 ? new RunCancellationRegistry() : cancellationRegistry;
         this.titleGenerator = titleGenerator;
+        this.summaryGenerator = summaryGenerator;
     }
 
     @Override
@@ -226,6 +252,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
             // 用量埋点状态：模型名、开始时间
             var modelName = new String[1];
             var startedAt = new java.time.Instant[1];
+            // 执行器回报的用量（真实值优先、估算兜底）：见 AgentTextEvent.Usage
+            var reportedUsage = new ReportedUsage();
             // 回答只落库一次：取消与正常完成可能先后到达，重复写入会产生两条助手消息
             var answerSaved = new AtomicBoolean();
             // 本次运行的取消信号：订阅时创建，收到 RUN_STARTED 后按 runId 登记
@@ -237,7 +265,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     .map(event -> attachUserMessageId(event, userMessageId))
                     // 用量必须在副作用（落库 / 推送）之前算好并挂到 RUN_COMPLETED 上：
                     // 这样「前端看到的数字」与「写进 v5ai_model_usage 的数字」是同一份，不会各估一套
-                    .map(event -> attachUsage(event, normalizedRequest, startedAt, answer, usage))
+                    .map(event -> attachUsage(event, normalizedRequest, startedAt, answer, usage, reportedUsage))
                     .doOnNext(event -> {
                         // 外键约束：v5ai_run_event.run_id 引用 v5ai_run.id，
                         // 必须先插入 run 记录再保存其事件
@@ -250,10 +278,17 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (event.type() == RuntimeEventType.MODEL_CALL) {
                             modelName[0] = event.payload();
                         }
+                        // 用量是内部事件：只累加，不落库、不外发（下面统一过滤掉）
+                        if (event.type() == RuntimeEventType.MODEL_USAGE) {
+                            reportedUsage.accept(event);
+                        }
                         // 事件落库；唯一例外是思考增量——它是模型的中间产物、不是回答的一部分，
                         // 落库只会让 v5ai_run_event 随思考长度膨胀，且没有第二个消费方。
                         // 与「知识库问答整体不持久化」同一口径（见 CONTEXT.md「AgentDTO 调试」）。
-                        if (event.type() != RuntimeEventType.REASONING_DELTA) {
+                        // 思考增量与用量都是平台内部产物、没有第二个消费方：落库只会让
+                        // v5ai_run_event 白涨，用量则统一走助手消息 + v5ai_model_usage
+                        if (event.type() != RuntimeEventType.REASONING_DELTA
+                                && event.type() != RuntimeEventType.MODEL_USAGE) {
                             runEventService.save(event);
                         }
                         if (event.type() == RuntimeEventType.TEXT_DELTA) {
@@ -273,10 +308,13 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         if (event.type() == RuntimeEventType.RUN_FAILED) {
                             runRecordService.fail(event.runId(), event.payload());
                             recordUsage(normalizedRequest, runId[0], modelName[0],
-                                    usageOf(normalizedRequest, startedAt[0], answer.toString()),
+                                    usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                     RunStatus.FAILED);
                         }
                     })
+                    // 用量消费完就从流里摘掉：ChatController 把整条流映射成 SSE，
+                    // 不摘掉就会把内部事件推给客户端（与「不落库、不推前端」的约定冲突）
+                    .filter(event -> event.type() != RuntimeEventType.MODEL_USAGE)
                     // 异常兜底：把异常转成 RUN_FAILED 事件，同样落库并标记 run 失败
                     .onErrorResume(exception -> {
                         boolean alreadyStarted = runId[0] != null;
@@ -291,7 +329,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         runEventService.save(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
                         runRecordService.fail(failedRunId, exception.getMessage());
                         recordUsage(normalizedRequest, failedRunId, modelName[0],
-                                usageOf(normalizedRequest, startedAt[0], answer.toString()),
+                                usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                 RunStatus.FAILED);
                         return Flux.just(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
                     })
@@ -300,16 +338,16 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
                             saveAnswerOnce(normalizedRequest, answer,
-                                    usageOf(normalizedRequest, startedAt[0], answer.toString()), answerSaved,
-                                    firstTurn);
+                                    usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
+                                    answerSaved, firstTurn);
                             recordUsage(normalizedRequest, null, modelName[0],
-                                    usageOf(normalizedRequest, startedAt[0], answer.toString()),
+                                    usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                     RunStatus.COMPLETED);
                         }
                     })
                     // 停止/断流：取消是正常收尾，不是异常——保留已生成的部分回答
                     .doOnCancel(() -> finishCanceled(normalizedRequest, runId[0], modelName[0], startedAt[0],
-                            answer, answerSaved, firstTurn))
+                            answer, answerSaved, firstTurn, reportedUsage))
                     // 取消信号触发时取消上游（信号只在本实例登记过才会有值）
                     .takeUntilOther(cancelSignal.asMono())
                     .doFinally(signal -> cancellationRegistry.unregister(runId[0]));
@@ -321,15 +359,16 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 落库已生成的部分回答，并按已生成内容记用量。
      */
     private void finishCanceled(AgentRunBo request, String runId, String modelName, Instant startedAt,
-                                StringBuilder answer, AtomicBoolean answerSaved, boolean firstTurn) {
+                                StringBuilder answer, AtomicBoolean answerSaved, boolean firstTurn,
+                                ReportedUsage reportedUsage) {
         try {
             if (runId != null) {
                 runRecordService.cancel(runId);
             }
-            saveAnswerOnce(request, answer, usageOf(request, startedAt, answer.toString()), answerSaved,
-                    firstTurn);
+            saveAnswerOnce(request, answer, usageOf(request, startedAt, answer.toString(), reportedUsage),
+                    answerSaved, firstTurn);
             recordUsage(request, runId, modelName,
-                    usageOf(request, startedAt, answer.toString()), RunStatus.CANCELED);
+                    usageOf(request, startedAt, answer.toString(), reportedUsage), RunStatus.CANCELED);
             log.info("run {} canceled by caller, {} chars of partial answer kept", runId, answer.length());
         } catch (Exception exception) {
             log.warn("failed to finish canceled run {}: {}", runId, exception.getMessage());
@@ -352,6 +391,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                 MessageRole.ASSISTANT, answer.toString()).withUsage(usage));
         saveAgentState(request, answer.toString());
         generateTitleOnce(request, firstTurn);
+        summarizeOnce(request);
     }
 
     /**
@@ -374,15 +414,82 @@ public class PersistingAgentRuntime implements AgentRuntime {
     }
 
     /**
-     * 按字符数估算用量（与 v5ai_model_usage 记账同一口径）。
+     * 本次运行的用量：**模型回报的真实值优先**，没有回报时依次退回执行器的估算、平台字符估算
+     * （与 {@code v5ai_model_usage} 记账、助手消息落库、{@code RUN_COMPLETED} 载荷共用这一份数字）。
+     *
+     * <p>真实值口径下的输入 token 是「本次运行全部模型调用的提示词之和」——工具循环会调用多次，
+     * 每次都把完整上下文再发一遍，这正是真实成本。</p>
      */
-    private static RunUsage usageOf(AgentRunBo request, Instant startedAt, String answer) {
-        long promptChars = (request.query() == null ? 0 : request.query().length())
-                + (request.ragContext() == null ? 0 : request.ragContext().length());
-        long completionChars = answer == null ? 0 : answer.length();
+    private static RunUsage usageOf(AgentRunBo request, Instant startedAt, String answer,
+                                    ReportedUsage reportedUsage) {
+        long promptTokens;
+        long completionTokens;
+        if (reportedUsage != null && reportedUsage.real) {
+            promptTokens = reportedUsage.inputTokens;
+            completionTokens = reportedUsage.outputTokens;
+        } else {
+            long estimatedPrompt = reportedUsage != null && reportedUsage.estimatedSeen
+                    ? reportedUsage.estimatedInputTokens
+                    : PromptTokenEstimator.estimateRequest(request, PromptTokenEstimator.DEFAULT_IMAGE_TOKENS);
+            promptTokens = Math.max(1, estimatedPrompt);
+            completionTokens = Math.max(1, PromptTokenEstimator.estimateText(answer));
+        }
         long durationMs = startedAt == null ? 0 : Duration.between(startedAt, Instant.now()).toMillis();
-        return RunUsage.of(Math.max(1, promptChars / 4), Math.max(1, completionChars / 4),
-                Math.max(durationMs, 0));
+        return RunUsage.of(Math.max(promptTokens, 0), Math.max(completionTokens, 0), Math.max(durationMs, 0));
+    }
+
+    /**
+     * 执行器回报的用量累积器：真实值累加、估算值只留最后一次，真实值一旦出现就永远优先。
+     *
+     * <p>载荷由 {@code RuntimeRunEventDTO.modelUsage} 产出（JSON），这里只解析两个数字与一个标志位——
+     * 事件是平台内部约定，不值得为它再引入一个 DTO 类。</p>
+     */
+    private static final class ReportedUsage {
+        /** 真实输入 token（多轮调用累加） */
+        private long inputTokens;
+        /** 真实输出 token（多轮调用累加） */
+        private long outputTokens;
+        /** 执行器给出的估算输入 token（真实值缺失时的兜底） */
+        private long estimatedInputTokens;
+        /** 是否收到过真实值 */
+        private boolean real;
+        /** 是否收到过估算值 */
+        private boolean estimatedSeen;
+
+        void accept(RuntimeRunEventDTO event) {
+            try {
+                var payload = JSONUtil.parseObj(event.payload());
+                if (payload.getBool("estimated", false)) {
+                    estimatedInputTokens = payload.getLong("inputTokens", 0L);
+                    estimatedSeen = true;
+                } else {
+                    inputTokens += payload.getLong("inputTokens", 0L);
+                    outputTokens += payload.getLong("outputTokens", 0L);
+                    real = true;
+                }
+            } catch (Exception exception) {
+                log.debug("failed to parse MODEL_USAGE payload: {}", exception.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 回答落库后请求一次会话摘要（异步、失败静默、可关闭）。
+     *
+     * <p>触发点与标题改写同一处、同样受 {@code answerSaved} 的 CAS 保护——取消路径也算
+     * 「这一轮有结果」，那时同样该把窗口外的新内容压进摘要。</p>
+     */
+    private void summarizeOnce(AgentRunBo request) {
+        if (summaryGenerator == null) {
+            return;
+        }
+        try {
+            summaryGenerator.summarizeIfNeeded(request.conversationId(), request.agentKey());
+        } catch (Exception exception) {
+            // 摘要是锦上添花：绝不能把异常带上对话主链路
+            log.debug("failed to schedule conversation summary for {}: {}",
+                    request.conversationId(), exception.getMessage());
+        }
     }
 
     /**
@@ -394,8 +501,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
         if (event.type() != RuntimeEventType.RUN_STARTED || userMessageId == null) {
             return event;
         }
-        return RuntimeRunEventDTO.started(event.runId(),
-                JSONUtil.createObj().set("userMessageId", userMessageId).toString());
+        // 载荷里可能已经有别的字段（如本轮上下文窗口统计），只能补字段、不能整体替换
+        var payload = event.payload() == null || event.payload().isBlank()
+                ? JSONUtil.createObj()
+                : JSONUtil.parseObj(event.payload());
+        payload.set("userMessageId", userMessageId);
+        return RuntimeRunEventDTO.started(event.runId(), payload.toString());
     }
 
     /**
@@ -405,11 +516,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 所以算出来的完成 token 就是整段回答的。</p>
      */
     private static RuntimeRunEventDTO attachUsage(RuntimeRunEventDTO event, AgentRunBo request,
-                                                  Instant[] startedAt, StringBuilder answer, RunUsage[] usage) {
+                                                  Instant[] startedAt, StringBuilder answer, RunUsage[] usage,
+                                                  ReportedUsage reportedUsage) {
         if (event.type() != RuntimeEventType.RUN_COMPLETED) {
             return event;
         }
-        var computed = usageOf(request, startedAt[0], answer.toString());
+        var computed = usageOf(request, startedAt[0], answer.toString(), reportedUsage);
         usage[0] = computed;
         return RuntimeRunEventDTO.completed(event.runId(), computed.toJson());
     }

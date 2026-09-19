@@ -35,6 +35,8 @@ import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.common.agentscope.core.tools.PlatformMcpTool;
 import xin.v5ai.nb.common.agentscope.core.tools.RagSearchTool;
 import xin.v5ai.nb.common.agentscope.core.tools.WebSearchTool;
+import xin.v5ai.nb.common.agentscope.core.token.PromptTokenEstimator;
+import xin.v5ai.nb.common.agentscope.core.token.TokenUsageAccumulator;
 import xin.v5ai.nb.common.agentscope.enums.McpToolPermission;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
@@ -72,6 +74,12 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     /** 图片未能进入上下文时的文字占位。 */
     static final String IMAGE_PLACEHOLDER = "[图片]";
 
+    /**
+     * 每张图片在 token 估算里折算的 token 数（默认 1024）：见
+     * {@link PromptTokenEstimator#DEFAULT_IMAGE_TOKENS}。只影响「模型没回报用量」时的兜底口径。
+     */
+    public static final long DEFAULT_IMAGE_TOKENS = PromptTokenEstimator.DEFAULT_IMAGE_TOKENS;
+
     private final Model model;
     private final McpToolResolver mcpToolResolver;
     private final McpToolCallAuditService auditService;
@@ -83,6 +91,8 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     private final AttachmentContentProvider attachmentContentProvider;
     /** 历史回放的图片体积预算（字节），按最近优先消费。 */
     private final long historyImageBudgetBytes;
+    /** 图片折算的 token 数（仅用于用量估算兜底，见 {@link #DEFAULT_IMAGE_TOKENS}）。 */
+    private final long imageTokensPerImage;
 
     public ModelStreamTextExecutor(Model model) {
         this(model, null, null, null, null, null);
@@ -149,6 +159,27 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             AttachmentContentProvider attachmentContentProvider,
             long historyImageBudgetBytes
     ) {
+        this(model, mcpToolResolver, auditService, skillWorkspaceResolver, workspace, webSearchApiKey,
+                ragSearchProvider, attachmentContentProvider, historyImageBudgetBytes, DEFAULT_IMAGE_TOKENS);
+    }
+
+    /**
+     * 全参构造 + 用量估算参数：在上一构造的基础上指定每张图片折算的 token 数。
+     *
+     * @param imageTokensPerImage 图片折算的 token 数（用量估算兜底用；{@code <= 0} 表示不计图片）
+     */
+    public ModelStreamTextExecutor(
+            Model model,
+            McpToolResolver mcpToolResolver,
+            McpToolCallAuditService auditService,
+            SkillWorkspaceResolver skillWorkspaceResolver,
+            Path workspace,
+            String webSearchApiKey,
+            RagSearchProvider ragSearchProvider,
+            AttachmentContentProvider attachmentContentProvider,
+            long historyImageBudgetBytes,
+            long imageTokensPerImage
+    ) {
         this.model = model;
         this.mcpToolResolver = mcpToolResolver;
         this.auditService = auditService;
@@ -158,6 +189,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         this.ragSearchProvider = ragSearchProvider;
         this.attachmentContentProvider = attachmentContentProvider;
         this.historyImageBudgetBytes = historyImageBudgetBytes;
+        this.imageTokensPerImage = imageTokensPerImage;
     }
 
     @Override
@@ -196,12 +228,38 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
      */
     private Flux<AgentTextEvent> streamDirect(AgentDTO agentDTO, AgentRunBo request) {
         List<Msg> messages = buildMessages(agentDTO, request);
+        var usage = new TokenUsageAccumulator();
         return Flux.concat(
-                Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
+                Flux.just(new AgentTextEvent.ModelCall(model.getModelName()), estimatedUsage(messages)),
                 model.stream(messages, List.of(), generateOptions())
-                        .map(ChatResponseTexts::textOf)
+                        .map(response -> {
+                            // 直连路径整个流就是一次模型调用：用量通常只出现在最后一块上，
+                            // 即使服务端每块都带（累计值），取最后一次也仍然正确
+                            usage.setCall(response == null ? null : response.getUsage());
+                            return ChatResponseTexts.textOf(response);
+                        })
                         .filter(text -> text != null && !text.isEmpty())
-                        .map(AgentTextEvent.Text::new));
+                        .map(AgentTextEvent.Text::new),
+                realUsage(usage));
+    }
+
+    /**
+     * 发送前的估算用量（{@code estimated=true}）：模型没有回报用量时的兜底口径，
+     * 也记录在流开头以便上游在提前中断时仍有数可用。
+     */
+    private AgentTextEvent estimatedUsage(List<Msg> messages) {
+        return new AgentTextEvent.Usage(
+                PromptTokenEstimator.estimateMessages(messages, imageTokensPerImage), 0, true);
+    }
+
+    /**
+     * 流末尾追加真实用量事件（{@code estimated=false}）：服务端一次都没回报时保持空流。
+     */
+    private static Flux<AgentTextEvent> realUsage(TokenUsageAccumulator usage) {
+        return Flux.defer(() -> {
+            var event = usage.toEvent();
+            return event == null ? Flux.<AgentTextEvent>empty() : Flux.just(event);
+        });
     }
 
     /**
@@ -287,13 +345,23 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
                     .build();
         }
 
+        // 消息列表只构建一次：构建过程会按预算真正读取图片字节，重复构建等于重复 IO
+        List<Msg> messages = conversationMessages(request);
+        var usage = new TokenUsageAccumulator();
         return Flux.concat(
-                        Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
-                        agent.streamEvents(conversationMessages(request), RuntimeContext.empty())
-                                // mapAgentEvents 对无关事件返回空列表；rag_search 的 ToolResult
-                                // 会展开为 ToolResult + Retrieval 两个事件
-                                .concatMap(event -> Flux.fromIterable(
-                                        mapAgentEvents(event, toolNames, toolPermissions, ragOutbox))))
+                        Flux.just(new AgentTextEvent.ModelCall(model.getModelName()), estimatedUsage(messages)),
+                        agent.streamEvents(messages, RuntimeContext.empty())
+                                .concatMap(event -> {
+                                    // 每次模型调用结束都会带一条真实用量：工具循环下会有多轮，累加
+                                    if (event instanceof ModelCallEndEvent end) {
+                                        usage.addCall(end.getUsage());
+                                    }
+                                    // mapAgentEvents 对无关事件返回空列表；rag_search 的 ToolResult
+                                    // 会展开为 ToolResult + Retrieval 两个事件
+                                    return Flux.fromIterable(
+                                            mapAgentEvents(event, toolNames, toolPermissions, ragOutbox));
+                                }),
+                        realUsage(usage))
                 .doFinally(signal -> {
                     agent.close();
                     // 同一 Server 的多个工具共享一个连接：按连接去重，只关闭一次
@@ -495,6 +563,13 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
             if (application.description() != null && !application.description().isBlank()) {
                 system.append(' ').append(application.description());
             }
+        }
+        // 会话摘要：本会话更早内容的压缩版（历史窗口之外）。放在 RAG 之前——它是「本会话自己」的
+        // 上下文，比外部知识更贴近当前对话
+        if (request.summaryContext() != null && !request.summaryContext().isBlank()) {
+            system.append("\n\n以下是本会话更早内容的摘要（更早的消息已被裁剪，供你保持连贯，"
+                    + "不要逐字复述，也不要把它当作本轮的新信息）：\n")
+                    .append(request.summaryContext());
         }
         if (request.ragContext() != null && !request.ragContext().isBlank()) {
             system.append("\n\nUse the following knowledge base context when relevant:\n")

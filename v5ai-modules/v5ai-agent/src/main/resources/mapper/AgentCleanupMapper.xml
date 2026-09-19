@@ -50,6 +50,11 @@
     <delete id="deleteMessages">
         DELETE FROM v5ai_message WHERE agent_key = #{agentKey}
     </delete>
+    <!-- 会话摘要与会话是一对一：按 conversation_id 子查询删除，先于会话本身 -->
+    <delete id="deleteConversationSummaries">
+        DELETE FROM v5ai_conversation_summary
+        WHERE conversation_id IN (SELECT id FROM v5ai_conversation WHERE agent_key = #{agentKey})
+    </delete>
     <delete id="deleteConversations">
         DELETE FROM v5ai_conversation WHERE agent_key = #{agentKey}
     </delete>

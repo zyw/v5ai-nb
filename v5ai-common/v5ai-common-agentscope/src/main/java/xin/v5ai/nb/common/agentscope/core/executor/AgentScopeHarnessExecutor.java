@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 
 /**
  * 基于 AgentScope HarnessAgent 的文本流式执行器。
@@ -88,10 +89,18 @@ public class AgentScopeHarnessExecutor implements AgentTextExecutor {
         return Flux.concat(
                         // 先发一个"模型调用开始"标记（供上层转为 MODEL_CALL 事件）
                         Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
-                        // 执行 Agent，把返回的消息转换为文本事件流
+                        // 执行 Agent，把返回的消息转换为文本事件流；消息上还带着这次调用的真实用量
                         agent.call(request.query(), RuntimeContext.empty())
-                                .map(message -> (AgentTextEvent) new AgentTextEvent.Text(message.getTextContent()))
-                                .flux())
+                                .flatMapMany(message -> {
+                                    var events = new ArrayList<AgentTextEvent>(2);
+                                    events.add(new AgentTextEvent.Text(message.getTextContent()));
+                                    var usage = message.getChatUsage();
+                                    if (usage != null) {
+                                        events.add(new AgentTextEvent.Usage(
+                                                usage.getInputTokens(), usage.getOutputTokens(), false));
+                                    }
+                                    return Flux.fromIterable(events);
+                                }))
                 // 流结束后（正常/异常/取消）关闭 Agent 释放资源
                 .doFinally(signal -> agent.close());
     }

@@ -90,6 +90,17 @@ class PersistingAgentRuntimeTest {
         }
 
         @Override
+        public List<SessionMessage> findRecentByConversationId(String conversationId, int limit) {
+            return List.of();
+        }
+
+        @Override
+        public List<SessionMessage> findActiveBetween(String conversationId, Long afterMessageId,
+                                                      Long beforeMessageId, int limit) {
+            return List.of();
+        }
+
+        @Override
         public Optional<SessionMessage> findActiveMessage(Long messageId) {
             return Optional.empty();
         }
@@ -366,10 +377,11 @@ class PersistingAgentRuntimeTest {
                 .findFirst()
                 .orElseThrow();
         var payload = cn.hutool.json.JSONUtil.parseObj(completed.payload());
-        // 8 个字符 → 估算 2 个完成 token；提问 2 个字符 → 至少 1 个 prompt token
+        // 8 个 ASCII 字符 → 估算 2 个完成 token；提问「问题」是 2 个汉字 → 2 个 prompt token
+        // （估算口径：CJK 按 1 字 1 token，其余 4 字符 1 token）
         assertThat(payload.getLong("completionTokens")).isEqualTo(2L);
-        assertThat(payload.getLong("promptTokens")).isEqualTo(1L);
-        assertThat(payload.getLong("totalTokens")).isEqualTo(3L);
+        assertThat(payload.getLong("promptTokens")).isEqualTo(2L);
+        assertThat(payload.getLong("totalTokens")).isEqualTo(4L);
         assertThat(payload.getLong("durationMs")).isGreaterThanOrEqualTo(0L);
         // 载荷与记账同源：同一份数字，不各估一套
         assertThat(usages).singleElement().satisfies(usage -> {
@@ -382,9 +394,79 @@ class PersistingAgentRuntimeTest {
                 .satisfies(answer -> {
                     assertThat(answer.usage()).isNotNull();
                     assertThat(answer.usage().completionTokens()).isEqualTo(2L);
-                    assertThat(answer.usage().totalTokens()).isEqualTo(3L);
+                    assertThat(answer.usage().totalTokens()).isEqualTo(4L);
                     assertThat(answer.usage().durationMs()).isEqualTo(payload.getLong("durationMs"));
                 });
+    }
+
+    /**
+     * 执行器回报的真实用量优先于估算：工具循环里的多轮调用**累加**，估算值只作为没有真实值时的兜底；
+     * 用量事件本身是平台内部事件——既不落库，也不出现在对外的流里。
+     */
+    @Test
+    void reportedModelUsageWinsOverTheEstimateAndStaysInternal() {
+        var runId = "run-real-usage";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.modelCall(runId, "gpt-4o"),
+                // 执行器在流开头发出的估算（先到）
+                RuntimeRunEventDTO.modelUsage(runId, 50, 0, true),
+                // 两次模型调用（工具循环）的真实值
+                RuntimeRunEventDTO.modelUsage(runId, 120, 30, false),
+                RuntimeRunEventDTO.modelUsage(runId, 300, 40, false),
+                RuntimeRunEventDTO.textDelta(runId, "答"),
+                RuntimeRunEventDTO.completed(runId));
+        var persistedEvents = new ArrayList<RuntimeRunEventDTO>();
+        var usages = new ArrayList<ModelUsageDTO>();
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), messages,
+                new RecordingRunRecordService(), new NoopConversations(), persistedEvents::add, null,
+                usage -> {
+                    usages.add(usage);
+                    return true;
+                }, null, new RunCancellationRegistry());
+
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-usage", "问题")).collectList().block();
+
+        assertThat(events).isNotNull();
+        // 不外发：对外的流里一条用量事件都没有
+        assertThat(events).noneMatch(event -> event.type() == RuntimeEventType.MODEL_USAGE);
+        // 不落库：v5ai_run_event 同样没有它
+        assertThat(persistedEvents).noneMatch(event -> event.type() == RuntimeEventType.MODEL_USAGE);
+        var completed = events.stream()
+                .filter(event -> event.type() == RuntimeEventType.RUN_COMPLETED)
+                .findFirst()
+                .orElseThrow();
+        var payload = cn.hutool.json.JSONUtil.parseObj(completed.payload());
+        assertThat(payload.getLong("promptTokens")).isEqualTo(420L);
+        assertThat(payload.getLong("completionTokens")).isEqualTo(70L);
+        // 载荷、助手消息、用量明细三处同源
+        assertThat(usages).singleElement().satisfies(usage -> {
+            assertThat(usage.promptTokens()).isEqualTo(420L);
+            assertThat(usage.completionTokens()).isEqualTo(70L);
+        });
+        assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT)
+                .singleElement()
+                .satisfies(answer -> assertThat(answer.usage().promptTokens()).isEqualTo(420L));
+    }
+
+    /** 回答落库后请求一次会话摘要（异步端口，这里只验证「按什么参数、只调一次」）。 */
+    @Test
+    void aCompletedRunSchedulesTheConversationSummaryOnce() {
+        var runId = "run-summary";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.textDelta(runId, "答"),
+                RuntimeRunEventDTO.completed(runId));
+        var summarized = new ArrayList<String>();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), new RecordingMessageService(),
+                new RecordingRunRecordService(), new NoopConversations(), event -> false, null, null, null,
+                new RunCancellationRegistry(), null,
+                (conversationId, agentKey) -> summarized.add(conversationId + "#" + agentKey));
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-11", "问题")).collectList().block();
+
+        assertThat(summarized).containsExactly("conv-11#agent-x");
     }
 
     /**

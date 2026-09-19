@@ -17,7 +17,7 @@ class AgentRunBoNarrowingTest {
 
     @Test
     void nullListsAreNormalizedToEmptySoConsumersNeedNoNullChecks() {
-        var bo = new AgentRunBo("a", "c", "q", null, null, null, null, null, null, null, null, null, false);
+        var bo = new AgentRunBo("a", "c", "q", null, null, null, null, null, null, null, null, null, false, null);
 
         assertThat(bo.history()).isEmpty();
         assertThat(bo.attachments()).isEmpty();
