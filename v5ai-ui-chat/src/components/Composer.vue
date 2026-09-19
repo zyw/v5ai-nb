@@ -182,7 +182,7 @@ onBeforeUnmount(clearPending)
               :aria-label="canSend ? '发送' : '请输入你的问题'"
               @click="send"
             >
-              <template #icon><n-icon :component="Send" :size="18" /></template>
+              <template #icon><n-icon :component="Send" :size="18" class="send-icon" /></template>
             </n-button>
           </span>
         </template>
@@ -263,13 +263,24 @@ onBeforeUnmount(clearPending)
 }
 
 /*
+ * lucide 的 Send 是斜向「纸飞机」：墨迹外框虽然居中（实测 16.5px、四边等距），
+ * 但描边重心落在圆心右上方 1.4px，肉眼就是「没摆正」（旁边那个方形停止图标的重心是 0）。
+ * 这里按重心把它推回圆心——左下各 1px，取整像素避免半像素发虚。
+ */
+.send-icon {
+  transform: translate(-1px, 1px);
+}
+
+/*
  * 禁用态（输入框空着）别用 naive 默认的「整块 50% 透明主色」：浅色主题下白图标会糊在淡底上，
- * 远看就是「图标没了」。改成中性底 + 次级前景色：既说明「现在还不能发」，又保证图标可辨。
+ * 远看就是「图标没了」。也不要换成中性灰——那等于把品牌色丢掉了。
+ * 现在的做法：沿用启用态的同一主色，只调浅一档（白 18%）。
+ * 不覆盖 color：naive 的 primary 图标本色就是「启用态那一档」（浅色主题白、深色主题黑），
+ * 保持它两套主题都自洽（见 App.vue 的 theme-overrides）。
  */
 .composer-send :deep(.n-button--disabled) {
   opacity: 1;
-  background-color: var(--portal-surface-2);
-  color: var(--portal-fg-muted);
+  background-color: color-mix(in srgb, var(--portal-accent) 65%, #fff);
 }
 
 .composer-actions {
