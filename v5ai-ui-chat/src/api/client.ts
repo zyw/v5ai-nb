@@ -96,14 +96,13 @@ export interface ConversationMessage {
 /** 会话列表行。 */
 export interface ConversationSummary {
   conversationId: string
+  /** 会话名：首条提问自动生成，随后可能被模型改写成短标题；只有「提问为空」的会话为 null */
   name?: string | null
   agentKey: string
   userId?: number | null
   archived: boolean
   createdAt?: string | null
   updatedAt?: string | null
-  /** 未命名会话的展示兜底：首条用户消息的前若干字 */
-  preview?: string | null
 }
 
 export interface ChatStreamBody {

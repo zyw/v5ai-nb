@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useThemeVars } from 'naive-ui'
 import { agentAvatars } from '../stores/portal'
 
 /**
@@ -11,15 +10,12 @@ const props = withDefaults(defineProps<{ agentKey: string; name?: string | null;
   size: 32
 })
 
-const themeVars = useThemeVars()
 const src = computed(() => agentAvatars[props.agentKey] ?? '')
 const initial = computed(() => (props.name || props.agentKey || '?').trim().charAt(0).toUpperCase())
 const style = computed(() => ({
   width: `${props.size}px`,
   height: `${props.size}px`,
-  fontSize: `${Math.round(props.size * 0.42)}px`,
-  background: themeVars.value.actionColor,
-  color: themeVars.value.textColor2
+  fontSize: `${Math.round(props.size * 0.42)}px`
 }))
 </script>
 
@@ -36,7 +32,10 @@ const style = computed(() => ({
   flex: none;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--portal-border);
+  background: var(--portal-accent-soft);
+  color: var(--portal-accent);
   overflow: hidden;
   font-weight: 600;
   line-height: 1;

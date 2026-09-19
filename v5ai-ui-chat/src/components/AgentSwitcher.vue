@@ -34,7 +34,7 @@ function pick(agentKey: string) {
       </n-button>
     </template>
 
-    <div class="switcher-panel" :style="{ background: themeVars.popoverColor, borderColor: themeVars.borderColor }">
+    <div class="switcher-panel">
       <div class="switcher-title">可访问的 Agent（{{ agents.length }}）</div>
       <div v-if="agents.length === 0" class="switcher-empty">当前 Key 没有可访问的 Agent</div>
       <button
@@ -70,21 +70,22 @@ function pick(agentKey: string) {
   max-height: 60vh;
   overflow-y: auto;
   padding: 8px;
-  border: 1px solid;
-  border-radius: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius);
+  background: var(--portal-surface-solid);
+  box-shadow: var(--portal-shadow-lg);
 }
 
 .switcher-title {
   padding: 6px 8px;
   font-size: 12px;
-  opacity: 0.65;
+  color: var(--portal-fg-muted);
 }
 
 .switcher-empty {
   padding: 12px 8px;
   font-size: 13px;
-  opacity: 0.65;
+  color: var(--portal-fg-muted);
 }
 
 .switcher-item {
@@ -103,9 +104,21 @@ function pick(agentKey: string) {
   font: inherit;
 }
 
-.switcher-item:hover,
+.switcher-item {
+  transition: background 0.15s var(--portal-ease);
+}
+
+.switcher-item:hover {
+  background: var(--portal-surface-2);
+}
+
 .switcher-item.is-active {
-  background: rgba(127, 127, 127, 0.12);
+  background: var(--portal-accent-soft);
+}
+
+.switcher-item:focus-visible {
+  outline: 2px solid var(--portal-accent);
+  outline-offset: -2px;
 }
 
 .switcher-text {
@@ -126,7 +139,7 @@ function pick(agentKey: string) {
 
 .switcher-desc {
   font-size: 12px;
-  opacity: 0.65;
+  color: var(--portal-fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -22,6 +22,7 @@ import xin.v5ai.nb.common.agentscope.core.service.McpToolCallAuditService;
 import xin.v5ai.nb.model.api.ModelUsageService;
 import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.runtime.core.AgentScopeRuntime;
+import xin.v5ai.nb.runtime.core.ConversationTitleGenerator;
 import xin.v5ai.nb.runtime.core.PersistingAgentRuntime;
 import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
 import xin.v5ai.nb.runtime.core.config.properties.AgentScopeRuntimeProperties;
@@ -86,14 +87,15 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
             ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
             ObjectProvider<ModelUsageService> usageRecorderProvider,
-            ObjectProvider<AppQuotaService> quotaServiceProvider
+            ObjectProvider<AppQuotaService> quotaServiceProvider,
+            ConversationTitleGenerator conversationTitleGenerator
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolve, executor, ragContextProviderProvider.getIfAvailable(),
                 messageService, modelToolSupportResolverProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
-                cancellationRegistry);
+                cancellationRegistry, conversationTitleGenerator);
     }
 
     /**
@@ -113,13 +115,14 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<RagContextProvider> ragContextProviderProvider,
             ObjectProvider<ModelToolSupportResolver> modelToolSupportResolverProvider,
             ObjectProvider<ModelUsageService> usageRecorderProvider,
-            ObjectProvider<AppQuotaService> quotaServiceProvider
+            ObjectProvider<AppQuotaService> quotaServiceProvider,
+            ConversationTitleGenerator conversationTitleGenerator
     ) {
         var runtime = new AgentScopeRuntime(resolver::resolveForDebug, executor, ragContextProviderProvider.getIfAvailable(),
                 messageService, modelToolSupportResolverProvider.getIfAvailable());
         return new PersistingAgentRuntime(runtime, messageService, runRecordService,
                 conversationService, runEventService, agentStateRepositoryProvider.getIfAvailable(),
                 usageRecorderProvider.getIfAvailable(), quotaServiceProvider.getIfAvailable(),
-                cancellationRegistry);
+                cancellationRegistry, conversationTitleGenerator);
     }
 }

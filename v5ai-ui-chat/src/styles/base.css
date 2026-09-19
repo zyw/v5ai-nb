@@ -1,9 +1,73 @@
-/* 对话门户基础样式：只放全局重置与语义令牌，组件样式一律用 Naive 主题变量，禁止硬编码颜色。 */
+/* 对话门户基础样式：全局重置 + 语义令牌。
+   组件样式优先用这里的令牌；Naive 主题变量只留给 Naive 自己的组件。
+
+   两套主题都在这里定义：:root 是浅色（冷调近白 + 靛蓝→青），
+   :root[data-theme='dark'] 是深色（近黑舞台 + 玻璃 + 冷色辉光）。
+   主题切换由 stores/theme.ts 写 data-theme，组件不需要知道当前是深是浅。 */
 
 :root {
+  /* 布局与节奏 */
   --portal-topbar-height: 56px;
-  --portal-sidebar-width: 260px;
-  --portal-radius: 8px;
+  /* 侧栏宽度是可拖拽的，默认值/上下限与持久化键都在 ChatView.vue，这里不再重复定义 */
+  --portal-radius: 12px;
+  --portal-radius-lg: 18px;
+  --portal-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --portal-font: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    sans-serif;
+  --portal-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* 浅色主题 */
+  --portal-bg: #f2f5fb;
+  --portal-glow-1: rgba(79, 70, 229, 0.18);
+  --portal-glow-2: rgba(6, 182, 212, 0.16);
+  --portal-grid: rgba(15, 23, 42, 0.05);
+  --portal-surface: rgba(255, 255, 255, 0.72);
+  --portal-surface-solid: #ffffff;
+  --portal-surface-2: rgba(15, 23, 42, 0.045);
+  --portal-border: rgba(15, 23, 42, 0.1);
+  --portal-border-strong: rgba(15, 23, 42, 0.2);
+  --portal-fg: #0f172a;
+  --portal-fg-muted: #5b6675;
+  --portal-accent: #4f46e5;
+  --portal-accent-2: #0891b2;
+  --portal-accent-soft: rgba(79, 70, 229, 0.1);
+  --portal-accent-glow: rgba(79, 70, 229, 0.26);
+  --portal-grad: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  --portal-danger: #d03050;
+  --portal-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.16);
+  --portal-shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --portal-code-bg: #f6f8fa;
+  --portal-code-fg: #1f2430;
+  --portal-scrollbar: rgba(15, 23, 42, 0.2);
+  --portal-shine: rgba(255, 255, 255, 0.9);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --portal-bg: #05060a;
+  --portal-glow-1: rgba(99, 102, 241, 0.3);
+  --portal-glow-2: rgba(34, 211, 238, 0.22);
+  --portal-grid: rgba(255, 255, 255, 0.045);
+  --portal-surface: rgba(255, 255, 255, 0.045);
+  --portal-surface-solid: #0d1017;
+  --portal-surface-2: rgba(255, 255, 255, 0.06);
+  --portal-border: rgba(255, 255, 255, 0.09);
+  --portal-border-strong: rgba(255, 255, 255, 0.18);
+  --portal-fg: #edeff5;
+  --portal-fg-muted: #8a90a2;
+  --portal-accent: #818cf8;
+  --portal-accent-2: #22d3ee;
+  --portal-accent-soft: rgba(129, 140, 248, 0.14);
+  --portal-accent-glow: rgba(99, 102, 241, 0.45);
+  --portal-grad: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
+  --portal-danger: #ff6b81;
+  --portal-shadow-lg: 0 28px 70px rgba(0, 0, 0, 0.6);
+  --portal-shadow-sm: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --portal-code-bg: #0b0e15;
+  --portal-code-fg: #e6edf3;
+  --portal-scrollbar: rgba(255, 255, 255, 0.18);
+  --portal-shine: rgba(255, 255, 255, 0.14);
+  color-scheme: dark;
 }
 
 * {
@@ -18,12 +82,225 @@ body,
 }
 
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-family: var(--portal-font);
   -webkit-font-smoothing: antialiased;
+  background-color: var(--portal-bg);
+  color: var(--portal-fg);
+  transition: background-color 0.24s var(--portal-ease), color 0.24s var(--portal-ease);
+}
+
+::selection {
+  background: var(--portal-accent-soft);
 }
 
 /* 长内容（代码块、表格）不在页面级别撑破布局 */
 .portal-main,
 .portal-sidebar {
   min-width: 0;
+}
+
+/* ---- 舞台：环境光斑 + 极淡网格，登录页与对话页共用的底层氛围 ---- */
+.portal-stage {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--portal-bg);
+  /* 光斑/网格都比盒子大一圈，不裁掉会被算进滚动溢出、给页面多出滚动条；
+     clip 只裁绘制、不产生滚动容器（hidden 会），也不影响内部滚动区的滚动 */
+  overflow: clip;
+}
+
+.portal-stage::before {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 42% at 14% 10%, var(--portal-glow-1), transparent 62%),
+    radial-gradient(34% 38% at 86% 6%, var(--portal-glow-2), transparent 60%),
+    radial-gradient(46% 44% at 62% 104%, var(--portal-glow-1), transparent 62%);
+  animation: portal-drift 26s var(--portal-ease) infinite alternate;
+}
+
+.portal-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--portal-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--portal-grid) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(78% 68% at 50% 38%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(78% 68% at 50% 38%, #000 30%, transparent 100%);
+}
+
+@keyframes portal-drift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2%, 1.5%, 0) scale(1.06);
+  }
+}
+
+/* ---- 玻璃层：顶栏、卡片、弹层共用 ---- */
+.portal-glass {
+  background: var(--portal-surface);
+  border: 1px solid var(--portal-border);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* ---- 细滚动条：滚动容器加这个类 ---- */
+.portal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--portal-scrollbar) transparent;
+}
+
+.portal-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.portal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.portal-scroll::-webkit-scrollbar-thumb {
+  background: var(--portal-scrollbar);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+/* ---- highlight.js 双主题配色 ----
+   自写令牌而不是同时引 github 亮/暗两套主题：那两套类名完全相同，后引的会覆盖先引的。
+   浅色取自 GitHub Light，深色取自 GitHub Dark，只覆盖常用 token。 */
+.hljs {
+  color: var(--portal-code-fg);
+  background: transparent;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-type,
+.hljs-literal {
+  color: #d73a49;
+}
+
+.hljs-string,
+.hljs-attr-value,
+.hljs-regexp {
+  color: #032f62;
+}
+
+.hljs-number,
+.hljs-built_in {
+  color: #005cc5;
+}
+
+.hljs-title,
+.hljs-function,
+.hljs-section {
+  color: #6f42c1;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-symbol {
+  color: #e36209;
+}
+
+.hljs-tag .hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #22863a;
+}
+
+.hljs-meta,
+.hljs-doctag {
+  color: #6a737d;
+}
+
+.hljs-addition {
+  color: #22863a;
+}
+
+.hljs-deletion {
+  color: #b31d28;
+}
+
+:root[data-theme='dark'] .hljs-comment,
+:root[data-theme='dark'] .hljs-quote {
+  color: #8b949e;
+}
+
+:root[data-theme='dark'] .hljs-keyword,
+:root[data-theme='dark'] .hljs-selector-tag,
+:root[data-theme='dark'] .hljs-type,
+:root[data-theme='dark'] .hljs-literal {
+  color: #ff7b72;
+}
+
+:root[data-theme='dark'] .hljs-string,
+:root[data-theme='dark'] .hljs-attr-value,
+:root[data-theme='dark'] .hljs-regexp {
+  color: #a5d6ff;
+}
+
+:root[data-theme='dark'] .hljs-number,
+:root[data-theme='dark'] .hljs-built_in {
+  color: #79c0ff;
+}
+
+:root[data-theme='dark'] .hljs-title,
+:root[data-theme='dark'] .hljs-function,
+:root[data-theme='dark'] .hljs-section {
+  color: #d2a8ff;
+}
+
+:root[data-theme='dark'] .hljs-attr,
+:root[data-theme='dark'] .hljs-variable,
+:root[data-theme='dark'] .hljs-template-variable,
+:root[data-theme='dark'] .hljs-symbol {
+  color: #ffa657;
+}
+
+:root[data-theme='dark'] .hljs-tag .hljs-name,
+:root[data-theme='dark'] .hljs-selector-id,
+:root[data-theme='dark'] .hljs-selector-class {
+  color: #7ee787;
+}
+
+:root[data-theme='dark'] .hljs-meta,
+:root[data-theme='dark'] .hljs-doctag {
+  color: #8b949e;
+}
+
+:root[data-theme='dark'] .hljs-addition {
+  color: #aff5b4;
+}
+
+:root[data-theme='dark'] .hljs-deletion {
+  color: #ffdcd7;
+}
+
+/* 尊重系统的「减少动态效果」：环境光斑与流光一律停用 */
+@media (prefers-reduced-motion: reduce) {
+  .portal-stage::before {
+    animation: none;
+  }
+
+  * {
+    scroll-behavior: auto !important;
+  }
 }

@@ -30,7 +30,6 @@ import xin.v5ai.nb.runtime.core.service.RunRecordService;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -43,6 +42,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -129,13 +129,15 @@ class ChatControllerTest {
 
     // ---------- 会话列表 / 改名 / 归档 ----------
 
+    /**
+     * 会话列表只读会话表：名称在会话创建时就由首条提问写好（见 ConversationNaming），
+     * 因此一条消息表查询都不该发生——消息表一大，那种「每个会话查一次首条提问」的兜底就是全表扫。
+     */
     @Test
-    void conversationListIsScopedToThisKeyAndCarriesAPreviewForUnnamedSessions() {
+    void conversationListIsScopedToThisKeyAndNeverTouchesTheMessageTable() {
         var named = conversation("c-1", "我的会话", null);
         var unnamed = conversation("c-2", null, null);
         when(conversationService.list(AGENT_KEY, API_KEY_ID, false)).thenReturn(List.of(named, unnamed));
-        when(messageService.findFirstUserMessageByConversationIds(List.of("c-1", "c-2")))
-                .thenReturn(Map.of("c-2", "这个会话在问什么"));
 
         var rows = controller.conversations(AGENT_KEY, false, request).getData();
 
@@ -143,8 +145,9 @@ class ChatControllerTest {
         assertThat(rows.get(0).conversationId()).isEqualTo("c-1");
         assertThat(rows.get(0).name()).isEqualTo("我的会话");
         assertThat(rows.get(0).archived()).isFalse();
+        // 提问为空的会话（如纯图片提问）才会是 null，前端显示「新会话」
         assertThat(rows.get(1).name()).isNull();
-        assertThat(rows.get(1).preview()).isEqualTo("这个会话在问什么");
+        verifyNoInteractions(messageService);
     }
 
     @Test

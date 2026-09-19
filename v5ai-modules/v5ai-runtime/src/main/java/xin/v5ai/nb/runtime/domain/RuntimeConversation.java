@@ -30,8 +30,16 @@ public class RuntimeConversation extends BaseEntity implements Serializable {
 
     /**
      * 会话名称（调用方可改，1-100 字符）；null 表示未命名。
+     *
+     * <p>新建会话时由首条提问生成（{@code ConversationNaming.fromQuery}），
+     * 首轮结束后可能被模型改写成短标题（见 {@code ConversationTitleWriter}）。</p>
      */
     private String name;
+
+    /**
+     * 名称来源：{@code AUTO}=系统生成（可被模型改写），{@code USER}=用户改名（永不被覆盖）。
+     */
+    private String nameSource;
 
     /**
      * 归档时间；非空表示已归档（列表默认隐藏且禁止继续对话）。

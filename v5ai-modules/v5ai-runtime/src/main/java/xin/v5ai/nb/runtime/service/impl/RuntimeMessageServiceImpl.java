@@ -14,17 +14,14 @@ import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.runtime.core.service.MessageAttachmentService;
 import xin.v5ai.nb.runtime.core.service.MessageService;
 import xin.v5ai.nb.runtime.domain.RuntimeMessage;
-import xin.v5ai.nb.runtime.domain.vo.RuntimeConversationPreviewVo;
 import xin.v5ai.nb.runtime.domain.vo.RuntimeMessageVo;
 import xin.v5ai.nb.runtime.mapper.RuntimeMessageMapper;
 import xin.v5ai.nb.runtime.service.IRuntimeMessageService;
 
 import java.time.OffsetDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -114,18 +111,6 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
                 .gt(RuntimeMessage::getId, messageId)
                 .isNull(RuntimeMessage::getSupersededAt)
                 .set(RuntimeMessage::getSupersededAt, OffsetDateTime.now()));
-    }
-
-    @Override
-    public Map<String, String> findFirstUserMessageByConversationIds(Collection<String> conversationIds) {
-        if (CollUtil.isEmpty(conversationIds)) {
-            return Map.of();
-        }
-        return baseMapper.selectFirstUserMessages(conversationIds).stream()
-                .filter(row -> row.getConversationId() != null)
-                .collect(Collectors.toMap(RuntimeConversationPreviewVo::getConversationId,
-                        row -> row.getContent() == null ? "" : row.getContent(),
-                        (first, ignored) -> first));
     }
 
     /**

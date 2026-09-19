@@ -28,7 +28,7 @@ import sql from 'highlight.js/lib/languages/sql'
 import typescript from 'highlight.js/lib/languages/typescript'
 import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
-import 'highlight.js/styles/github.css'
+// 代码高亮的配色在 styles/base.css 里按 data-theme 写了双份（github 亮/暗两套类名相同，不能同时引）
 import 'katex/dist/katex.min.css'
 
 const props = defineProps<{ content: string }>()
@@ -140,17 +140,18 @@ const html = computed(() =>
 }
 
 .md-content :deep(code) {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--portal-mono);
   font-size: 12.5px;
-  background: rgba(128, 128, 128, 0.14);
+  background: var(--portal-surface-2);
   border-radius: 4px;
   padding: 1px 4px;
 }
 
 .md-content :deep(pre) {
   margin: 0 0 10px;
-  border: 1px solid rgba(128, 128, 128, 0.2);
-  border-radius: 8px;
+  border: 1px solid var(--portal-border);
+  border-radius: 10px;
+  background: var(--portal-code-bg);
   overflow-x: auto;
 }
 
@@ -165,8 +166,8 @@ const html = computed(() =>
 .md-content :deep(blockquote) {
   margin: 0 0 8px;
   padding: 2px 0 2px 10px;
-  border-left: 3px solid rgba(128, 128, 128, 0.35);
-  color: rgba(90, 90, 90, 0.95);
+  border-left: 3px solid var(--portal-border-strong);
+  color: var(--portal-fg-muted);
 }
 
 .md-content :deep(table) {
@@ -179,18 +180,18 @@ const html = computed(() =>
 
 .md-content :deep(th),
 .md-content :deep(td) {
-  border: 1px solid rgba(128, 128, 128, 0.25);
+  border: 1px solid var(--portal-border);
   padding: 4px 8px;
   text-align: left;
 }
 
 .md-content :deep(th) {
-  background: rgba(128, 128, 128, 0.08);
+  background: var(--portal-surface-2);
   font-weight: 600;
 }
 
 .md-content :deep(a) {
-  color: #2f6bff;
+  color: var(--portal-accent);
   text-decoration: none;
 }
 
@@ -200,7 +201,7 @@ const html = computed(() =>
 
 .md-content :deep(hr) {
   border: none;
-  border-top: 1px solid rgba(128, 128, 128, 0.25);
+  border-top: 1px solid var(--portal-border);
   margin: 12px 0;
 }
 

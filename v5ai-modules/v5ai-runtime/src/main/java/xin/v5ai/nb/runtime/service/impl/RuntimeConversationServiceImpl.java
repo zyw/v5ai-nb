@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.runtime.core.utils.ConversationNaming;
 import xin.v5ai.nb.runtime.core.domain.ConversationDTO;
 import xin.v5ai.nb.runtime.core.service.ConversationService;
 import xin.v5ai.nb.runtime.domain.RuntimeConversation;
@@ -30,7 +31,7 @@ public class RuntimeConversationServiceImpl implements IRuntimeConversationServi
     private final RuntimeConversationMapper baseMapper;
 
     @Override
-    public void ensureConversation(ConversationDTO conversation) {
+    public boolean ensureConversation(ConversationDTO conversation) {
         var existing = baseMapper.selectById(conversation.conversationId());
         if (existing == null) {
             var entity = new RuntimeConversation();
@@ -38,8 +39,14 @@ public class RuntimeConversationServiceImpl implements IRuntimeConversationServi
             entity.setAgentKey(conversation.agentKey());
             entity.setApiKeyId(conversation.apiKeyId());
             entity.setUserId(conversation.userId());
+            // 名称只在这里写一次：首条提问的兜底名 + 来源标记。
+            // 门户会话列表因此只读本表（否则要对每个会话回查一次 v5ai_message 取预览）。
+            if (conversation.name() != null) {
+                entity.setName(conversation.name());
+                entity.setNameSource(ConversationNaming.SOURCE_AUTO);
+            }
             baseMapper.insert(entity);
-            return;
+            return true;
         }
         // 归属断言：门户侧的会话只属于创建它的那把 Key。无主的调试会话同样不可被 Key 认领，
         // 否则「猜到调试会话 ID」就等于拿到它的全部历史。
@@ -51,6 +58,7 @@ public class RuntimeConversationServiceImpl implements IRuntimeConversationServi
             throw new V5aiException(ErrorCode.CONFLICT, "会话已归档，请先取消归档再继续对话");
         }
         touch(existing.getId());
+        return false;
     }
 
     /**
@@ -94,7 +102,18 @@ public class RuntimeConversationServiceImpl implements IRuntimeConversationServi
         var entity = new RuntimeConversation();
         entity.setId(conversationId);
         entity.setName(name);
+        // 用户改名即冻结：模型标题的异步回写只认 AUTO，不会盖掉用户输入
+        entity.setNameSource(ConversationNaming.SOURCE_USER);
         return baseMapper.updateById(entity) > 0;
+    }
+
+    @Override
+    public boolean renameIfAutoNamed(String conversationId, String name) {
+        var update = new LambdaUpdateWrapper<RuntimeConversation>()
+                .eq(RuntimeConversation::getId, conversationId)
+                .eq(RuntimeConversation::getNameSource, ConversationNaming.SOURCE_AUTO)
+                .set(RuntimeConversation::getName, name);
+        return baseMapper.update(null, update) > 0;
     }
 
     @Override

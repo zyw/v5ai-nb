@@ -1,6 +1,5 @@
 package xin.v5ai.nb.runtime.controller;
 
-import cn.hutool.core.util.StrUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +23,7 @@ import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.platform.api.ApiKeyAuthAttributes;
 import xin.v5ai.nb.platform.api.domain.ApiKeysAuthDTO;
+import xin.v5ai.nb.runtime.core.utils.ConversationNaming;
 import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
 import xin.v5ai.nb.runtime.core.domain.ConversationDTO;
 import xin.v5ai.nb.runtime.core.service.ConversationService;
@@ -61,14 +61,10 @@ public class ChatController {
     private static final Pattern CONVERSATION_ID_PATTERN = Pattern.compile("^[A-Za-z0-9._-]{1,36}$");
 
     /**
-     * 会话名称长度上限：与 {@code v5ai_conversation.name VARCHAR(100)} 一致。
+     * 会话名称长度上限：与 {@code v5ai_conversation.name VARCHAR(100)}、
+     * 写入侧的 {@link ConversationNaming#MAX_NAME_LENGTH} 是同一处定义。
      */
-    private static final int MAX_CONVERSATION_NAME_LENGTH = 100;
-
-    /**
-     * 未命名会话在列表里的预览长度。
-     */
-    private static final int PREVIEW_MAX_LENGTH = 100;
+    private static final int MAX_CONVERSATION_NAME_LENGTH = ConversationNaming.MAX_NAME_LENGTH;
 
     /**
      * 附件读取地址前缀：与会话消息里返回的 accessUrl 同源。
@@ -123,6 +119,28 @@ public class ChatController {
         return R.ok(list);
     }
 
+    /**
+     * 在指定会话里继续对话（SSE）。
+     *
+     * <p>与 {@code /chat/stream} 的唯一区别是会话从**路径**取：历史在订阅之前就由服务端读出，
+     * 作为**显式历史**装进运行入参（{@link AgentRunBo#withHistory}）。因此这条链路不依赖
+     * {@code memoryEnabled} 的自动记忆注入——入参里已经有历史，{@code AgentScopeRuntime.withMemory}
+     * 会直接短路（不查库、也不再剔除尾部提问），模型的上下文就是这里读到的那份。</p>
+     *
+     * <p>{@link #toRunBo} 组出来的入参里 {@code conversationId} 取自请求体，紧接着被路径参数覆盖
+     * （{@link AgentRunBo#withConversationId(String)}）：**路径是唯一权威**，请求体里同名传什么都不作数。</p>
+     *
+     * <p>归属与归档校验不在这里：下游 {@code PersistingAgentRuntime} 订阅时经
+     * {@code ensureConversation} 统一拦截（{@code api_key_id} 不匹配与不存在同为 404、已归档为 409），
+     * 会话不存在则按上述入参新建——与 {@code /chat/stream} 首次调用是同一行为。控制器只前置校验
+     * 「附件与模型能力」（{@link #assertAttachmentsSupported}），避免把图片悄悄丢掉。</p>
+     *
+     * @param agentKey       Agent 标识；到 Key 的绑定校验由 {@code AgentApiKeysServletFilter} 完成
+     * @param conversationId 会话 ID，取自 URL 路径
+     * @param bo             本次运行的请求体：提问、联网意图、附件与收窄项；
+     *                       其中的 {@code conversationId} 会被路径参数覆盖
+     * @return 与 {@code /chat/stream} 相同的事件流（RUN_STARTED → … → RUN_COMPLETED）
+     */
     @PostMapping("/{agentKey}/chat/conversations/{conversationId}/resume")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> resume(
             @PathVariable("agentKey") String agentKey,
@@ -192,6 +210,11 @@ public class ChatController {
     /**
      * 会话列表：限「本 Key + 本 Agent」，按最近活跃倒序。
      *
+     * <p>只读 {@code v5ai_conversation} 一张表：名称在会话创建时就由首条提问写好
+     * （见 {@link ConversationNaming}），首轮结束后可能被模型改写成短标题。
+     * 过去为了给未命名会话兜底，这里还要对每个会话 {@code DISTINCT ON} 查一次消息表取首条提问，
+     * 消息表一大，列表就成了门户里最贵的接口。</p>
+     *
      * @param archived true 查已归档会话，false（默认）查进行中的会话
      */
     @GetMapping("/{agentKey}/chat/conversations")
@@ -201,12 +224,8 @@ public class ChatController {
             HttpServletRequest request
     ) {
         var auth = requireAuth(request);
-        var conversations = conversationService.list(agentKey, auth.apiKeyId(), archived);
-        var previews = messageService.findFirstUserMessageByConversationIds(
-                conversations.stream().map(ConversationDTO::conversationId).toList());
-        return R.ok(conversations.stream()
-                .map(conversation -> ConversationSummaryResult.from(
-                        conversation, previews.get(conversation.conversationId())))
+        return R.ok(conversationService.list(agentKey, auth.apiKeyId(), archived).stream()
+                .map(ConversationSummaryResult::from)
                 .toList());
     }
 
@@ -374,22 +393,20 @@ public class ChatController {
      * 会话列表行（不可变 record）。
      *
      * @param conversationId 会话 ID
-     * @param name           会话名称；未命名为 null
+     * @param name           会话名称：新建会话时由首条提问生成，首轮结束后可能被模型改写；
+     *                       仅「提问为空」（如纯图片提问）的会话为 null
      * @param agentKey       Agent 标识
      * @param userId         归属用户（展示冗余）
      * @param archived       是否已归档
      * @param createdAt      创建时间
      * @param updatedAt      最近活跃时间
-     * @param preview        未命名会话的展示兜底：首条用户消息的前若干字
      */
     public record ConversationSummaryResult(String conversationId, String name, String agentKey, Long userId,
-                                            boolean archived, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                                            String preview) {
-        static ConversationSummaryResult from(ConversationDTO conversation, String preview) {
+                                            boolean archived, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+        static ConversationSummaryResult from(ConversationDTO conversation) {
             return new ConversationSummaryResult(conversation.conversationId(), conversation.name(),
                     conversation.agentKey(), conversation.userId(), conversation.archived(),
-                    conversation.createdAt(), conversation.updatedAt(),
-                    StrUtil.maxLength(preview, PREVIEW_MAX_LENGTH));
+                    conversation.createdAt(), conversation.updatedAt());
         }
     }
 

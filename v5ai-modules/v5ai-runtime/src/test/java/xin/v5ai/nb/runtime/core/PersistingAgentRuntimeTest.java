@@ -18,9 +18,7 @@ import xin.v5ai.nb.runtime.core.service.MessageService;
 import xin.v5ai.nb.runtime.core.service.RunRecordService;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,11 +99,6 @@ class PersistingAgentRuntimeTest {
             supersededAfter.add(conversationId + "#" + messageId);
             return 1;
         }
-
-        @Override
-        public Map<String, String> findFirstUserMessageByConversationIds(Collection<String> conversationIds) {
-            return Map.of();
-        }
     }
 
     private static final class RecordingRunRecordService implements RunRecordService {
@@ -138,10 +131,11 @@ class PersistingAgentRuntimeTest {
         }
     }
 
-    /** 不持久化会话的空实现。 */
+    /** 不持久化会话的空实现：既不建会话，也就不会触发标题改写。 */
     private static final class NoopConversations implements ConversationService {
         @Override
-        public void ensureConversation(ConversationDTO conversation) {
+        public boolean ensureConversation(ConversationDTO conversation) {
+            return false;
         }
 
         @Override
@@ -156,6 +150,52 @@ class PersistingAgentRuntimeTest {
 
         @Override
         public boolean rename(String conversationId, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean renameIfAutoNamed(String conversationId, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean setArchived(String conversationId, boolean archived) {
+            return false;
+        }
+    }
+
+    /** 记录被要求「保证存在」的会话，并按需回答「这次是不是新建」。 */
+    private static final class RecordingConversations implements ConversationService {
+        private final boolean createsOnEnsure;
+        final List<ConversationDTO> ensured = new ArrayList<>();
+
+        RecordingConversations(boolean createsOnEnsure) {
+            this.createsOnEnsure = createsOnEnsure;
+        }
+
+        @Override
+        public boolean ensureConversation(ConversationDTO conversation) {
+            ensured.add(conversation);
+            return createsOnEnsure;
+        }
+
+        @Override
+        public Optional<ConversationDTO> findById(String conversationId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<ConversationDTO> list(String agentKey, Long apiKeyId, boolean archived) {
+            return List.of();
+        }
+
+        @Override
+        public boolean rename(String conversationId, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean renameIfAutoNamed(String conversationId, String name) {
             return false;
         }
 
@@ -415,5 +455,80 @@ class PersistingAgentRuntimeTest {
         runtime.stream(new AgentRunBo("agent-x", "conv-6", "问题")).collectList().block();
 
         assertThat(usages).singleElement().extracting(ModelUsageDTO::status).isEqualTo("COMPLETED");
+    }
+
+    // ---------- 会话命名（兜底名 + 模型标题） ----------
+
+    /**
+     * 首轮：会话创建时就把「首条提问的兜底名」写进会话（门户列表因此不必再查消息表），
+     * 回答落库后**只排一次**模型标题改写——MESSAGE_COMPLETED 与 RUN_COMPLETED 都走到落库，
+     * 与「回答只落一次」共用同一道 CAS。
+     */
+    @Test
+    void firstTurnWritesTheFallbackNameAndSchedulesTheModelTitleOnce() {
+        var runId = "run-first-turn";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.textDelta(runId, "回答"),
+                RuntimeRunEventDTO.messageCompleted(runId, ""),
+                RuntimeRunEventDTO.completed(runId));
+        var conversations = new RecordingConversations(true);
+        var titles = new ArrayList<String>();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), new RecordingMessageService(),
+                new RecordingRunRecordService(), conversations, event -> false, null, null, null,
+                new RunCancellationRegistry(),
+                (conversationId, agentKey, question) ->
+                        titles.add(conversationId + "|" + agentKey + "|" + question));
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-1", "帮我看看这张图\n第二行不看")).collectList().block();
+
+        assertThat(conversations.ensured).singleElement()
+                .satisfies(conversation -> assertThat(conversation.name()).isEqualTo("帮我看看这张图"));
+        assertThat(titles).containsExactly("conv-1|agent-x|帮我看看这张图\n第二行不看");
+    }
+
+    /** 追问（会话已存在）：不改会话名，也不值得再花一次模型调用。 */
+    @Test
+    void laterTurnsDoNotRewriteTheConversationTitle() {
+        var runId = "run-second-turn";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.textDelta(runId, "回答"),
+                RuntimeRunEventDTO.completed(runId));
+        var conversations = new RecordingConversations(false);
+        var titles = new ArrayList<String>();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), new RecordingMessageService(),
+                new RecordingRunRecordService(), conversations, event -> false, null, null, null,
+                new RunCancellationRegistry(),
+                (conversationId, agentKey, question) -> titles.add(question));
+
+        runtime.stream(new AgentRunBo("agent-x", "conv-1", "追问")).collectList().block();
+
+        // 名称照样算出来交给仓储（写入侧只在「新建」时采用它，已存在的会话不会被改写）
+        assertThat(conversations.ensured).singleElement()
+                .satisfies(conversation -> assertThat(conversation.name()).isEqualTo("追问"));
+        assertThat(titles).isEmpty();
+    }
+
+    /** 标题改写炸了也不能影响对话主链路：它只是锦上添花，兜底名已经在库里。 */
+    @Test
+    void aFailingTitleGeneratorNeverBreaksTheRun() {
+        var runId = "run-title-failure";
+        var scripted = List.of(
+                RuntimeRunEventDTO.started(runId),
+                RuntimeRunEventDTO.textDelta(runId, "回答"),
+                RuntimeRunEventDTO.completed(runId));
+        var messages = new RecordingMessageService();
+        var runtime = new PersistingAgentRuntime(new ScriptedRuntime(scripted), messages,
+                new RecordingRunRecordService(), new RecordingConversations(true), event -> false,
+                null, null, null, new RunCancellationRegistry(),
+                (conversationId, agentKey, question) -> {
+                    throw new IllegalStateException("标题服务不可用");
+                });
+
+        var events = runtime.stream(new AgentRunBo("agent-x", "conv-1", "问题")).collectList().block();
+
+        assertThat(events).isNotEmpty();
+        assertThat(messages.saved).filteredOn(message -> message.role() == MessageRole.ASSISTANT).hasSize(1);
     }
 }

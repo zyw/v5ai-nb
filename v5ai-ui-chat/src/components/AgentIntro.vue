@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useThemeVars } from 'naive-ui'
 import AgentAvatar from './AgentAvatar.vue'
 import type { PortalAgent } from '../api/client'
 
@@ -9,8 +8,6 @@ import type { PortalAgent } from '../api/client'
  */
 defineProps<{ agent: PortalAgent }>()
 const emit = defineEmits<{ (e: 'ask', question: string): void }>()
-
-const themeVars = useThemeVars()
 </script>
 
 <template>
@@ -18,11 +15,7 @@ const themeVars = useThemeVars()
     <AgentAvatar :agent-key="agent.agentKey" :name="agent.name" :size="64" />
     <h2 class="intro-name">{{ agent.name }}</h2>
     <p class="intro-desc">{{ agent.description || '暂无描述' }}</p>
-    <p
-      v-if="agent.greeting"
-      class="intro-greeting"
-      :style="{ background: themeVars.actionColor, borderColor: themeVars.borderColor }"
-    >
+    <p v-if="agent.greeting" class="intro-greeting">
       {{ agent.greeting }}
     </p>
 
@@ -34,7 +27,6 @@ const themeVars = useThemeVars()
           :key="index"
           type="button"
           class="intro-preset"
-          :style="{ borderColor: themeVars.borderColor }"
           @click="emit('ask', question)"
         >
           {{ question }}
@@ -65,15 +57,16 @@ const themeVars = useThemeVars()
   max-width: 56ch;
   font-size: 13px;
   line-height: 1.7;
-  opacity: 0.7;
+  color: var(--portal-fg-muted);
 }
 
 .intro-greeting {
   margin: 6px 0 0;
   max-width: 56ch;
   padding: 10px 14px;
-  border: 1px solid;
-  border-radius: 10px;
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius);
+  background: var(--portal-surface);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -86,7 +79,7 @@ const themeVars = useThemeVars()
 
 .intro-presets-label {
   font-size: 12px;
-  opacity: 0.6;
+  color: var(--portal-fg-muted);
   margin-bottom: 8px;
 }
 
@@ -100,16 +93,28 @@ const themeVars = useThemeVars()
 .intro-preset {
   min-height: 36px;
   padding: 8px 14px;
-  border: 1px solid;
+  border: 1px solid var(--portal-border);
   border-radius: 999px;
-  background: transparent;
+  background: var(--portal-surface);
   color: inherit;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  transition: background 0.15s var(--portal-ease), border-color 0.15s var(--portal-ease),
+    transform 0.15s var(--portal-ease);
 }
 
 .intro-preset:hover {
-  background: rgba(127, 127, 127, 0.1);
+  background: var(--portal-accent-soft);
+  border-color: var(--portal-accent);
+}
+
+.intro-preset:active {
+  transform: scale(0.985);
+}
+
+.intro-preset:focus-visible {
+  outline: 2px solid var(--portal-accent);
+  outline-offset: 2px;
 }
 </style>

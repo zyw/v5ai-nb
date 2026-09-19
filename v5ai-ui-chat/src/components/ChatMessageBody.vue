@@ -50,18 +50,18 @@ const props = defineProps<{ msg: ChatMsg }>()
 .thinking-wait {
   font-size: 13.5px;
   line-height: 1.8;
-  color: rgba(120, 120, 120, 0.95);
+  color: var(--portal-fg-muted);
 }
 
-/* DeepSeek 式"思考中..."：灰字上掠过一道高光的渐变动画（background-clip:text）。 */
+/* "思考中..."：灰字上掠过一道强调色高光的渐变动画（background-clip:text）。 */
 .shimmer {
   background: linear-gradient(
     90deg,
-    rgba(130, 130, 130, 0.9) 0%,
-    rgba(130, 130, 130, 0.9) 35%,
-    #2f6bff 50%,
-    rgba(130, 130, 130, 0.9) 65%,
-    rgba(130, 130, 130, 0.9) 100%
+    var(--portal-fg-muted) 0%,
+    var(--portal-fg-muted) 35%,
+    var(--portal-accent) 50%,
+    var(--portal-fg-muted) 65%,
+    var(--portal-fg-muted) 100%
   );
   background-size: 250% 100%;
   -webkit-background-clip: text;
@@ -82,7 +82,7 @@ const props = defineProps<{ msg: ChatMsg }>()
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
     animation: none;
-    color: rgba(120, 120, 120, 0.95);
+    color: var(--portal-fg-muted);
     background: none;
   }
 }
@@ -95,8 +95,8 @@ const props = defineProps<{ msg: ChatMsg }>()
 /* 思考内容同样按 markdown 渲染：块级排版交给 MarkdownContent，这里只保留视觉降级
    （不改回 pre-wrap，否则块标签之间的换行会变成可见空行） */
 .reasoning-text {
-  color: rgba(105, 105, 105, 0.95);
-  border-left: 2px solid rgba(128, 128, 128, 0.3);
+  color: var(--portal-fg-muted);
+  border-left: 2px solid var(--portal-border-strong);
   padding-left: 10px;
 }
 
@@ -106,7 +106,7 @@ const props = defineProps<{ msg: ChatMsg }>()
 }
 
 .answer-error {
-  color: #d03050;
+  color: var(--portal-danger);
   font-size: 13px;
 }
 
@@ -116,7 +116,7 @@ const props = defineProps<{ msg: ChatMsg }>()
 
 .citation {
   padding: 6px 0;
-  border-top: 1px dashed rgba(128, 128, 128, 0.25);
+  border-top: 1px dashed var(--portal-border);
 }
 
 .cite-doc {
@@ -124,18 +124,18 @@ const props = defineProps<{ msg: ChatMsg }>()
   align-items: center;
   gap: 4px;
   font-size: 12.5px;
-  color: #2f6bff;
+  color: var(--portal-accent);
 }
 
 .cite-score {
   float: right;
   font-size: 12px;
-  color: rgba(120, 120, 120, 0.9);
+  color: var(--portal-fg-muted);
 }
 
 .cite-snippet {
   font-size: 12px;
-  color: rgba(90, 90, 90, 0.95);
+  color: var(--portal-fg-muted);
   line-height: 1.6;
   margin-top: 2px;
   max-height: 60px;

@@ -22,9 +22,13 @@ public interface ConversationService {
      *   <li>请求不带 API Key（管理端调试）：不做归属断言，仅保留归档检查。</li>
      * </ul>
      *
+     * <p>新建时会把 {@code conversation.name()} 写进 {@code name} 列（首条提问的兜底名），
+     * 并把来源标记为 {@code AUTO}；已存在的会话**绝不改写名称**——用户改过的名字必须留住。</p>
+     *
      * @param conversation 要保证存在的会话（必须带 conversationId 与 agentKey）
+     * @return true 表示本次真的新建了会话（调用方据此决定要不要在首轮结束后改写标题）
      */
-    void ensureConversation(ConversationDTO conversation);
+    boolean ensureConversation(ConversationDTO conversation);
 
     /**
      * 按会话 ID 读取会话。
@@ -45,13 +49,25 @@ public interface ConversationService {
     List<ConversationDTO> list(String agentKey, Long apiKeyId, boolean archived);
 
     /**
-     * 改名。
+     * 用户改名：同时把名称来源标记为 {@code USER}，此后任何自动命名都不再覆盖它。
      *
      * @param conversationId 会话 ID
      * @param name           新名称（已由调用方校验长度与空白）
      * @return 是否命中一行
      */
     boolean rename(String conversationId, String name);
+
+    /**
+     * 自动命名回写：**仅当名称来源仍是 {@code AUTO}** 时才改（用户改过名的会话改不动）。
+     *
+     * <p>条件写在 UPDATE 的 WHERE 里而不是先查后写：用户改名与异步标题生成可能并发，
+     * 由数据库做这一次判定，天然没有竞态窗口。</p>
+     *
+     * @param conversationId 会话 ID
+     * @param name           自动生成的名称（已由调用方清洗与截断）
+     * @return 是否命中一行（false = 用户已改名或会话不存在，两种情况都不该重试）
+     */
+    boolean renameIfAutoNamed(String conversationId, String name);
 
     /**
      * 归档 / 取消归档。

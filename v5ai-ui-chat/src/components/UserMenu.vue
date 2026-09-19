@@ -1,23 +1,28 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NIcon, NPopover, useMessage, useThemeVars } from 'naive-ui'
+import { NButton, NIcon, NPopover, NRadioButton, NRadioGroup, useMessage } from 'naive-ui'
 import { ChevronDown, Copy, LogOut } from 'lucide-vue-next'
 import { bootstrapData, clearApiKey } from '../stores/portal'
+import { setThemeMode, themeMode, type ThemeMode } from '../stores/theme'
 
 /**
- * 顶栏右侧用户区：展示 Key 的归属用户与 Key 信息，下拉里提供退出。
+ * 顶栏右侧用户区：展示 Key 的归属用户与 Key 信息，并提供主题切换与退出。
  * 门户没有账号体系 —— 「用户」就是这把 API Key 的归属者，「退出」= 清除本机保存的 Key。
  */
 const router = useRouter()
 const message = useMessage()
-const themeVars = useThemeVars()
 const open = ref(false)
 
 const displayName = computed(() => bootstrapData.value?.ownerName || '未命名用户')
 const keyName = computed(() => bootstrapData.value?.keyName ?? '-')
 const trackingId = computed(() => bootstrapData.value?.trackingId ?? '-')
 const initial = computed(() => displayName.value.trim().charAt(0).toUpperCase())
+
+/** 三档主题：浅色 / 深色 / 跟随系统（选择持久化在 stores/theme.ts） */
+function onThemeChange(value: string | number) {
+  setThemeMode(value as ThemeMode)
+}
 
 async function copyTrackingId() {
   try {
@@ -39,13 +44,13 @@ async function logout() {
   <n-popover v-model:show="open" trigger="click" placement="bottom-end" :show-arrow="false" raw>
     <template #trigger>
       <n-button quaternary size="small" :aria-label="'用户菜单'" :aria-expanded="open" class="user-menu">
-        <span class="user-avatar" :style="{ background: themeVars.primaryColor }" aria-hidden="true">{{ initial }}</span>
+        <span class="user-avatar" aria-hidden="true">{{ initial }}</span>
         <span class="user-name">{{ displayName }}</span>
         <template #icon><n-icon :component="ChevronDown" :size="14" /></template>
       </n-button>
     </template>
 
-    <div class="user-panel" :style="{ background: themeVars.popoverColor, borderColor: themeVars.borderColor }">
+    <div class="user-panel">
       <div class="user-panel-name">{{ displayName }}</div>
       <div class="user-panel-row"><span class="user-panel-label">Key 名称</span><span>{{ keyName }}</span></div>
       <div class="user-panel-row">
@@ -55,6 +60,16 @@ async function logout() {
           <template #icon><n-icon :component="Copy" :size="13" /></template>
         </n-button>
       </div>
+
+      <div class="user-panel-row user-panel-theme">
+        <span class="user-panel-label">主题</span>
+        <n-radio-group :value="themeMode" size="small" @update:value="onThemeChange">
+          <n-radio-button value="light">浅色</n-radio-button>
+          <n-radio-button value="dark">深色</n-radio-button>
+          <n-radio-button value="system">跟随系统</n-radio-button>
+        </n-radio-group>
+      </div>
+
       <n-button block size="small" class="user-panel-exit" @click="logout">
         <template #icon><n-icon :component="LogOut" :size="14" /></template>
         退出
@@ -71,6 +86,7 @@ async function logout() {
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  background: var(--portal-grad);
   color: #fff;
   font-size: 11px;
   font-weight: 600;
@@ -84,11 +100,12 @@ async function logout() {
 }
 
 .user-panel {
-  width: 280px;
+  width: 292px;
   padding: 12px;
-  border: 1px solid;
-  border-radius: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius);
+  background: var(--portal-surface-solid);
+  box-shadow: var(--portal-shadow-lg);
 }
 
 .user-panel-name {
@@ -105,14 +122,20 @@ async function logout() {
   margin-bottom: 6px;
 }
 
+.user-panel-theme {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--portal-border);
+}
+
 .user-panel-label {
   flex: none;
   width: 62px;
-  opacity: 0.6;
+  color: var(--portal-fg-muted);
 }
 
 .user-panel-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--portal-mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -121,7 +144,18 @@ async function logout() {
 .user-panel-exit {
   margin-top: 8px;
 }
+
 .user-menu :deep(.n-button__content) {
   gap: 4px;
+}
+
+.user-panel-theme :deep(.n-radio-group) {
+  flex: 1;
+}
+
+.user-panel-theme :deep(.n-radio-button) {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
 }
 </style>

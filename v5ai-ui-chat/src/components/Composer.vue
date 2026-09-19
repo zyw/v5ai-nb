@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { NButton, NIcon, NInput, NSwitch, NTooltip, useMessage, useThemeVars } from 'naive-ui'
+import { NButton, NIcon, NInput, NSwitch, NTooltip, useMessage } from 'naive-ui'
 import { Paperclip, Send, Square, X } from 'lucide-vue-next'
 import {
   ACCEPTED_ATTACHMENT_TYPES,
@@ -32,7 +32,6 @@ const emit = defineEmits<{
   (e: 'update:webSearch', value: boolean): void
 }>()
 
-const themeVars = useThemeVars()
 const message = useMessage()
 const query = ref('')
 const pending = ref<{ file: File; url: string }[]>([])
@@ -91,7 +90,7 @@ onBeforeUnmount(clearPending)
 </script>
 
 <template>
-  <div class="composer" :style="{ borderColor: themeVars.borderColor, background: themeVars.cardColor }">
+  <div class="composer">
     <div v-if="pending.length" class="composer-attachments">
       <div v-for="(item, index) in pending" :key="item.url" class="attachment">
         <img :src="item.url" :alt="item.file.name" />
@@ -206,9 +205,19 @@ onBeforeUnmount(clearPending)
 
 <style scoped>
 .composer {
-  border: 1px solid;
-  border-radius: 12px;
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius-lg);
   padding: 8px 8px 6px;
+  background: var(--portal-surface);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  transition: border-color 0.18s var(--portal-ease), box-shadow 0.18s var(--portal-ease);
+}
+
+/* 聚焦时给输入区一圈强调色光环，提示「现在可以打字」 */
+.composer:focus-within {
+  border-color: var(--portal-accent);
+  box-shadow: 0 0 0 3px var(--portal-accent-soft);
 }
 
 .composer-input :deep(.n-input__border),
@@ -229,7 +238,7 @@ onBeforeUnmount(clearPending)
   height: 56px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(127, 127, 127, 0.25);
+  border: 1px solid var(--portal-border);
 }
 
 .attachment img {
@@ -251,6 +260,16 @@ onBeforeUnmount(clearPending)
 
 .composer-send {
   display: inline-flex;
+}
+
+/*
+ * 禁用态（输入框空着）别用 naive 默认的「整块 50% 透明主色」：浅色主题下白图标会糊在淡底上，
+ * 远看就是「图标没了」。改成中性底 + 次级前景色：既说明「现在还不能发」，又保证图标可辨。
+ */
+.composer-send :deep(.n-button--disabled) {
+  opacity: 1;
+  background-color: var(--portal-surface-2);
+  color: var(--portal-fg-muted);
 }
 
 .composer-actions {

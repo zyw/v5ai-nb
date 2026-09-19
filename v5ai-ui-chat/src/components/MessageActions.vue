@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { NButton, NIcon, NTooltip, useThemeVars } from 'naive-ui'
+import { NButton, NIcon, NTooltip } from 'naive-ui'
 import { Check, Clock, Copy, Database, RotateCcw } from 'lucide-vue-next'
 import type { ChatMsg } from '../utils/chatStream'
 
@@ -18,7 +18,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'regenerate'): void }>()
 
-const themeVars = useThemeVars()
 const copied = ref(false)
 let resetTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -79,7 +78,7 @@ const usageDetail = computed(() => {
 </script>
 
 <template>
-  <div class="message-actions" :style="{ color: themeVars.textColor3 }">
+  <div class="message-actions">
     <n-tooltip trigger="hover">
       <template #trigger>
         <n-button text size="tiny" :aria-label="copied ? '已复制' : '复制'" @click="copy">
@@ -130,6 +129,7 @@ const usageDetail = computed(() => {
   gap: 12px;
   min-height: 20px;
   font-size: 12px;
+  color: var(--portal-fg-muted);
   opacity: 0;
   transition: opacity 0.15s ease;
 }

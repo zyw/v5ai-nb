@@ -11,7 +11,6 @@ import xin.v5ai.nb.common.agentscope.core.domain.SessionMessage;
 import xin.v5ai.nb.common.agentscope.core.domain.bo.AgentRunBo;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.RuntimeRunEventDTO;
 import xin.v5ai.nb.common.agentscope.core.domain.vo.AgentRunVo;
-import xin.v5ai.nb.common.agentscope.core.service.*;
 import xin.v5ai.nb.common.agentscope.enums.MessageRole;
 import xin.v5ai.nb.common.agentscope.enums.RuntimeEventType;
 import xin.v5ai.nb.model.api.ModelUsageService;
@@ -20,6 +19,7 @@ import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.runtime.core.domain.ConversationDTO;
 import xin.v5ai.nb.runtime.core.enums.RunStatus;
 import xin.v5ai.nb.runtime.core.service.*;
+import xin.v5ai.nb.runtime.core.utils.ConversationNaming;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -66,13 +66,17 @@ public class PersistingAgentRuntime implements AgentRuntime {
     private final AppQuotaService quotaService;
     /** 进行中运行的取消登记处 */
     private final RunCancellationRegistry cancellationRegistry;
+    /** 首轮结束后的标题改写（可空）：只在本次新建了会话时触发一次 */
+    private final ConversationTitleGenerator titleGenerator;
 
     /**
      * 不落库的会话仓储空实现：供「只要消息与运行记录」的最简构造器使用。
      */
     private static final ConversationService NO_OP_CONVERSATIONS = new ConversationService() {
         @Override
-        public void ensureConversation(ConversationDTO conversation) {
+        public boolean ensureConversation(ConversationDTO conversation) {
+            // 不落库的运行时没有「新建会话」可言，也就没有标题改写
+            return false;
         }
 
         @Override
@@ -87,6 +91,11 @@ public class PersistingAgentRuntime implements AgentRuntime {
 
         @Override
         public boolean rename(String conversationId, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean renameIfAutoNamed(String conversationId, String name) {
             return false;
         }
 
@@ -157,6 +166,27 @@ public class PersistingAgentRuntime implements AgentRuntime {
             AppQuotaService quotaService,
             RunCancellationRegistry cancellationRegistry
     ) {
+        this(delegate, messageService, runRecordService, conversationService, runEventService,
+                agentStateService, usageRecorder, quotaService, cancellationRegistry, null);
+    }
+
+    /**
+     * 完整构造 + 标题改写：首轮结束后用模型把兜底会话名换成短标题。
+     *
+     * @param titleGenerator 标题改写端口；为 {@code null} 表示只保留兜底名
+     */
+    public PersistingAgentRuntime(
+            AgentRuntime delegate,
+            MessageService messageService,
+            RunRecordService runRecordService,
+            ConversationService conversationService,
+            RunEventService runEventService,
+            AgentStateService agentStateService,
+            ModelUsageService usageRecorder,
+            AppQuotaService quotaService,
+            RunCancellationRegistry cancellationRegistry,
+            ConversationTitleGenerator titleGenerator
+    ) {
         this.delegate = delegate;
         this.messageService = messageService;
         this.runRecordService = runRecordService;
@@ -167,6 +197,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
         this.quotaService = quotaService;
         this.cancellationRegistry = cancellationRegistry == null
                 ? new RunCancellationRegistry() : cancellationRegistry;
+        this.titleGenerator = titleGenerator;
     }
 
     @Override
@@ -175,11 +206,13 @@ public class PersistingAgentRuntime implements AgentRuntime {
         return Flux.defer(() -> {
             // 若未传 conversationId，则先自动生成一个（normalize 负责）
             var normalizedRequest = normalize(request);
-            // 1) 登记会话（归属断言 + 归档拦截）+ 保存用户提问（含附件）
-            conversationService.ensureConversation(new ConversationDTO(
+            // 1) 登记会话（归属断言 + 归档拦截）+ 保存用户提问（含附件）。
+            // 名称在这里就写好（首条提问的兜底名），门户列表因此只读会话表，不必再查消息表取预览；
+            // 返回值告诉后面「这是不是本次新建的会话」——只有首轮才值得再花一次模型调用改标题。
+            var firstTurn = conversationService.ensureConversation(new ConversationDTO(
                     normalizedRequest.conversationId(), normalizedRequest.agentKey(),
                     normalizedRequest.apiKeyId(), normalizedRequest.userId(),
-                    null, null, null, null));
+                    ConversationNaming.fromQuery(normalizedRequest.query()), null, null, null));
             // 「重新生成」复用的是既有提问行（提问保持有效、只替换回答），因此不再新插用户消息——
             // 否则历史里会出现两条一模一样的提问。
             var userMessageId = normalizedRequest.reuseUserMessage() ? null
@@ -228,10 +261,10 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         }
                         if (event.type() == RuntimeEventType.MESSAGE_COMPLETED) {
                             // 这时还没有用量（它挂在 RUN_COMPLETED 上），落库的用量留空
-                            saveAnswerOnce(normalizedRequest, answer, null, answerSaved);
+                            saveAnswerOnce(normalizedRequest, answer, null, answerSaved, firstTurn);
                         }
                         if (event.type() == RuntimeEventType.RUN_COMPLETED) {
-                            saveAnswerOnce(normalizedRequest, answer, usage[0], answerSaved);
+                            saveAnswerOnce(normalizedRequest, answer, usage[0], answerSaved, firstTurn);
                             runRecordService.complete(event.runId());
                             // attachUsage 已经算过：直接复用，保证载荷与账目一致
                             recordUsage(normalizedRequest, runId[0], modelName[0], usage[0],
@@ -267,7 +300,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     .doOnComplete(() -> {
                         if (runId[0] == null) {
                             saveAnswerOnce(normalizedRequest, answer,
-                                    usageOf(normalizedRequest, startedAt[0], answer.toString()), answerSaved);
+                                    usageOf(normalizedRequest, startedAt[0], answer.toString()), answerSaved,
+                                    firstTurn);
                             recordUsage(normalizedRequest, null, modelName[0],
                                     usageOf(normalizedRequest, startedAt[0], answer.toString()),
                                     RunStatus.COMPLETED);
@@ -275,7 +309,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                     })
                     // 停止/断流：取消是正常收尾，不是异常——保留已生成的部分回答
                     .doOnCancel(() -> finishCanceled(normalizedRequest, runId[0], modelName[0], startedAt[0],
-                            answer, answerSaved))
+                            answer, answerSaved, firstTurn))
                     // 取消信号触发时取消上游（信号只在本实例登记过才会有值）
                     .takeUntilOther(cancelSignal.asMono())
                     .doFinally(signal -> cancellationRegistry.unregister(runId[0]));
@@ -287,12 +321,13 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 落库已生成的部分回答，并按已生成内容记用量。
      */
     private void finishCanceled(AgentRunBo request, String runId, String modelName, Instant startedAt,
-                                StringBuilder answer, AtomicBoolean answerSaved) {
+                                StringBuilder answer, AtomicBoolean answerSaved, boolean firstTurn) {
         try {
             if (runId != null) {
                 runRecordService.cancel(runId);
             }
-            saveAnswerOnce(request, answer, usageOf(request, startedAt, answer.toString()), answerSaved);
+            saveAnswerOnce(request, answer, usageOf(request, startedAt, answer.toString()), answerSaved,
+                    firstTurn);
             recordUsage(request, runId, modelName,
                     usageOf(request, startedAt, answer.toString()), RunStatus.CANCELED);
             log.info("run {} canceled by caller, {} chars of partial answer kept", runId, answer.length());
@@ -304,9 +339,11 @@ public class PersistingAgentRuntime implements AgentRuntime {
     /**
      * 助手回答只落库一次：取消与正常完成可能先后到达（例如先点停止、随后模型又答完），
      * 无保护地写入会产生两条助手消息。
+     *
+     * @param firstTurn 本次运行是否创建了会话：只有首轮才改写标题（后续追问不该改会话名）
      */
     private void saveAnswerOnce(AgentRunBo request, StringBuilder answer, RunUsage usage,
-                                AtomicBoolean answerSaved) {
+                                AtomicBoolean answerSaved, boolean firstTurn) {
         if (!answerSaved.compareAndSet(false, true)) {
             return;
         }
@@ -314,6 +351,26 @@ public class PersistingAgentRuntime implements AgentRuntime {
         messageService.save(new SessionMessage(request.conversationId(), request.agentKey(),
                 MessageRole.ASSISTANT, answer.toString()).withUsage(usage));
         saveAgentState(request, answer.toString());
+        generateTitleOnce(request, firstTurn);
+    }
+
+    /**
+     * 首轮收尾时排一次标题改写（异步、失败静默）。
+     *
+     * <p>放在回答落库之后、且由 {@code answerSaved} 的 CAS 保证只走一次：停止对话（取消路径）
+     * 同样算「首轮有结果」，那时也该给会话起个名字。</p>
+     */
+    private void generateTitleOnce(AgentRunBo request, boolean firstTurn) {
+        if (!firstTurn || titleGenerator == null) {
+            return;
+        }
+        try {
+            titleGenerator.rewriteIfAutoNamed(request.conversationId(), request.agentKey(), request.query());
+        } catch (Exception exception) {
+            // 标题是锦上添花：兜底名已经在库里，这里绝不把异常带上对话主链路
+            log.debug("failed to schedule conversation title for {}: {}",
+                    request.conversationId(), exception.getMessage());
+        }
     }
 
     /**

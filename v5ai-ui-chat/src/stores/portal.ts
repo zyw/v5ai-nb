@@ -42,12 +42,14 @@ export const activeAgent = computed<PortalAgent | null>(
   () => agents.value.find((a) => a.agentKey === activeAgentKey.value) ?? agents.value[0] ?? null
 )
 
-/** 会话在列表里的标题：自定名 → 首条提问预览 → 占位。 */
+/**
+ * 会话在列表里的标题。
+ *
+ * 名字在服务端就已经生成好了（创建时取首条提问，首轮结束后可能被模型改写成短标题），
+ * 客户端不再需要「首条提问预览」兜底；只有提问为空的会话（如纯图片提问）才会是 null。
+ */
 export function sessionTitle(session: ConversationSummary): string {
-  const name = session.name?.trim()
-  if (name) return name
-  const preview = session.preview?.trim()
-  return preview || '新会话'
+  return session.name?.trim() || '新会话'
 }
 
 export function setApiKey(key: string) {

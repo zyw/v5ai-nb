@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h, nextTick, ref } from 'vue'
 import type { Component, ComponentPublicInstance, VNode } from 'vue'
-import { NButton, NDropdown, NIcon, NInput, NSwitch, useThemeVars } from 'naive-ui'
+import { NButton, NDropdown, NIcon, NInput, NSwitch } from 'naive-ui'
 import type { DropdownOption } from 'naive-ui'
 import { Archive, ArchiveRestore, Check, MessageSquare, MoreHorizontal, Pencil, X } from 'lucide-vue-next'
 import type { ConversationSummary } from '../api/client'
@@ -28,7 +28,6 @@ const emit = defineEmits<{
   (e: 'update:showArchived', value: boolean): void
 }>()
 
-const themeVars = useThemeVars()
 const editingId = ref('')
 const editingName = ref('')
 /** 当前展开「…」菜单的会话：菜单开着的时候触发器要保持可见（鼠标移开也不再 hover） */
@@ -113,7 +112,7 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
 </script>
 
 <template>
-  <div class="session-list">
+  <div class="session-list portal-scroll">
     <label class="session-filter">
       <n-switch
         size="small"
@@ -138,7 +137,6 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
         'is-archived': session.archived,
         'is-menu-open': openMenuId === session.conversationId
       }"
-      :style="session.conversationId === currentId ? { background: themeVars.actionColor } : undefined"
       role="button"
       tabindex="0"
       @click="emit('open', session)"
@@ -228,12 +226,22 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
   cursor: pointer;
 }
 
+.session-item {
+  transition: background 0.15s var(--portal-ease);
+}
+
 .session-item:hover {
-  background: rgba(127, 127, 127, 0.12);
+  background: var(--portal-surface-2);
+}
+
+/* 当前会话：淡强调色底 + 左侧竖条，不整块刷成高饱和 */
+.session-item.is-active {
+  background: var(--portal-accent-soft);
+  box-shadow: inset 2px 0 0 var(--portal-accent);
 }
 
 .session-item:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--portal-accent);
   outline-offset: -2px;
 }
 

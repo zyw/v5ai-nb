@@ -117,14 +117,18 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
       "userId": 7,
       "archived": false,
       "createdAt": "2026-09-18T10:00:00+08:00",
-      "updatedAt": "2026-09-18T10:05:00+08:00",
-      "preview": "帮我看看这张图"
+      "updatedAt": "2026-09-18T10:05:00+08:00"
     }
   ]
 }
 ```
 
-`preview` 是该会话**首条用户消息**的前 100 字，供未命名会话（`name` 为 null）在列表里做展示兜底。
+`name` **由服务端生成**：会话创建时取首条提问的首行（压缩空白后截到 100 字）落库，
+首轮回答结束后再由模型改写成不超过 30 字的短标题（可用 `v5ai.portal.conversation-title.enabled=false` 关掉）。
+因此列表只读 `v5ai_conversation` 一张表——过去那种「对每个会话再查一次消息表取首条提问做预览兜底」
+的做法已移除（消息表一大，列表就成了门户最贵的接口）。
+
+`name` 为 null 只出现在**提问为空**的会话（如只发了图片）：门户显示占位「新会话」。
 
 ### `PATCH /api/v1/agents/{agentKey}/chat/conversations/{conversationId}`
 

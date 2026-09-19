@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NAlert, NButton, NFormItem, NIcon, NInput, NSpin, useMessage, useThemeVars } from 'naive-ui'
-import { ArrowRight, KeyRound } from 'lucide-vue-next'
+import { NAlert, NButton, NFormItem, NIcon, NInput, NSpin, useMessage } from 'naive-ui'
+import { ArrowRight, KeyRound, ShieldCheck } from 'lucide-vue-next'
 import { appTitle, ApiError } from '../api/client'
 import { loadBootstrap, setApiKey } from '../stores/portal'
 
 /**
  * API Key 输入页：门户的"登录页"。
  * 校验方式就是调 `/api/v1/agents/auth/bootstrap`——通过即证明 Key 有效且至少有一个可用 Agent。
+ *
+ * 视觉：整页是一块深色舞台（环境光斑 + 极淡网格，见 styles/base.css 的 .portal-stage），
+ * 卡片走玻璃层，品牌色只用一处渐变（logo 与主按钮），避免大面积高饱和。
  */
 const router = useRouter()
 const message = useMessage()
@@ -18,17 +21,6 @@ const loading = ref(false)
 const error = ref('')
 
 const canSubmit = computed(() => key.value.trim().length > 0 && !loading.value)
-
-const themeVars = useThemeVars()
-/** 页面级语义令牌（跟随 Naive 主题，不硬编码颜色） */
-const pageVars = computed<Record<string, string>>(() => ({
-  '--key-bg': themeVars.value.bodyColor,
-  '--key-card': themeVars.value.cardColor,
-  '--key-border': themeVars.value.borderColor,
-  '--key-muted': themeVars.value.textColor3,
-  '--key-accent': themeVars.value.primaryColor,
-  '--key-accent-soft': themeVars.value.primaryColorSuppl
-}))
 
 async function submit() {
   const value = key.value.trim()
@@ -61,18 +53,20 @@ async function submit() {
 </script>
 
 <template>
-  <div class="key-page" :style="pageVars">
-    <n-spin :show="loading">
-      <div class="key-card">
-        <div class="key-brand">
-          <span class="key-logo" aria-hidden="true"><n-icon :component="KeyRound" :size="22" /></span>
+  <div class="key-page portal-stage">
+    <n-spin :show="loading" class="key-spin">
+      <section class="key-card portal-glass">
+        <header class="key-brand">
+          <span class="key-logo" aria-hidden="true">v5</span>
           <h1 class="key-title">{{ appTitle }}</h1>
-          <p class="key-sub">输入你的 API Key 开始对话</p>
-        </div>
+          <p class="key-sub">企业级智能体对话门户</p>
+        </header>
 
-        <n-alert v-if="error" type="error" :bordered="false" class="key-alert">{{ error }}</n-alert>
+        <n-alert v-if="error" type="error" :bordered="false" class="key-alert" role="alert">
+          {{ error }}
+        </n-alert>
 
-        <n-form-item label="API Key" :show-feedback="false">
+        <n-form-item label="API Key" :show-feedback="false" class="key-field">
           <n-input
             v-model:value="key"
             type="password"
@@ -87,16 +81,29 @@ async function submit() {
           </n-input>
         </n-form-item>
 
-        <n-button type="primary" size="large" block :disabled="!canSubmit" :loading="loading" @click="submit">
+        <n-button
+          class="key-submit"
+          size="large"
+          block
+          :disabled="!canSubmit"
+          :loading="loading"
+          @click="submit"
+        >
           进入对话
           <template #icon><n-icon :component="ArrowRight" :size="16" /></template>
         </n-button>
 
         <p class="key-hint">
-          Key 由管理员在「API Key 管理」页签发，仅在创建时展示一次。Key 只保存在本机浏览器，请勿在公共设备上使用。
+          <n-icon :component="ShieldCheck" :size="14" class="key-hint-icon" />
+          <span>
+            Key 由管理员在「API Key 管理」页签发，仅在创建时展示一次；只保存在本机浏览器，
+            请勿在公共设备上使用。
+          </span>
         </p>
-      </div>
+      </section>
     </n-spin>
+
+    <p class="key-foot">{{ appTitle }} · 对话门户</p>
   </div>
 </template>
 
@@ -104,22 +111,42 @@ async function submit() {
 .key-page {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 20px;
   padding: 24px;
-  background: var(--key-bg);
 }
 
-.key-card {
+.key-spin {
   width: 100%;
-  max-width: 420px;
-  padding: 32px 28px 24px;
-  border-radius: 12px;
-  background: var(--key-card);
-  border: 1px solid var(--key-border);
+  max-width: 440px;
+}
+
+/*
+ * 玻璃卡片：半透明底 + 发丝描边 + 顶边高光，外面再罩一层冷色辉光。
+ * 顶边高光用 ::before 做，模拟光源从上方打下来的边界反光。
+ */
+.key-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  padding: 32px 30px 26px;
+  border-radius: var(--portal-radius-lg);
+  box-shadow: var(--portal-shadow-lg), 0 0 0 1px var(--portal-border) inset;
+  overflow: hidden;
+}
+
+.key-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--portal-shine), transparent);
+  pointer-events: none;
 }
 
 .key-brand {
@@ -134,33 +161,80 @@ async function submit() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  color: var(--key-accent);
-  background: var(--key-accent-soft);
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--portal-grad);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 30px var(--portal-accent-glow);
 }
 
 .key-title {
-  margin: 6px 0 0;
-  font-size: 20px;
+  margin: 10px 0 0;
+  font-size: 22px;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .key-sub {
   margin: 0;
   font-size: 13px;
-  color: var(--key-muted);
+  color: var(--portal-fg-muted);
 }
 
 .key-alert {
-  border-radius: 8px;
+  border-radius: 10px;
+}
+
+.key-field :deep(.n-form-item-label) {
+  font-size: 12.5px;
+  color: var(--portal-fg-muted);
+}
+
+/* 主按钮：整页唯一的大面积渐变，hover 提亮、按下轻微缩放（150ms 内给反馈） */
+.key-submit {
+  background: var(--portal-grad);
+  border: 0;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 10px 28px var(--portal-accent-glow);
+  transition: filter 0.18s var(--portal-ease), transform 0.18s var(--portal-ease),
+    box-shadow 0.18s var(--portal-ease);
+}
+
+.key-submit:not(.n-button--disabled):hover {
+  filter: brightness(1.08);
+  box-shadow: 0 14px 34px var(--portal-accent-glow);
+}
+
+.key-submit:not(.n-button--disabled):active {
+  transform: scale(0.99);
 }
 
 .key-hint {
+  display: flex;
+  gap: 8px;
   margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--portal-border);
   font-size: 12px;
   line-height: 1.7;
-  color: var(--key-muted);
+  color: var(--portal-fg-muted);
+}
+
+.key-hint-icon {
+  flex: none;
+  margin-top: 3px;
+}
+
+.key-foot {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--portal-fg-muted);
+  opacity: 0.7;
 }
 </style>

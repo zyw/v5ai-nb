@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NAlert, NButton, NIcon, NSpin, useMessage, useThemeVars } from 'naive-ui'
+import { NAlert, NButton, NIcon, NSpin, useMessage } from 'naive-ui'
 import { ArrowDown, MessageSquarePlus, RefreshCw } from 'lucide-vue-next'
 import AgentAvatar from '../components/AgentAvatar.vue'
 import AgentIntro from '../components/AgentIntro.vue'
@@ -60,12 +60,74 @@ import {
  */
 const router = useRouter()
 const message = useMessage()
-const themeVars = useThemeVars()
 
 /** 流静默超时：超时主动中断，避免发送按钮永久 loading */
 const STREAM_SILENCE_MS = 60_000
 /** 「贴着底部」的容差：自动跟随滚动与「回到最新」按钮共用同一个阈值 */
 const NEAR_BOTTOM_PX = 60
+
+/** 侧栏宽度：可拖拽调整，夹在 CSS 令牌给的范围里，并记住上次的值 */
+const SIDEBAR_STORAGE = 'v5ai_chat_sidebar_width'
+const SIDEBAR_DEFAULT = 260
+const SIDEBAR_MIN = 200
+const SIDEBAR_MAX = 420
+
+function readSidebarWidth(): number {
+  const raw = Number(localStorage.getItem(SIDEBAR_STORAGE))
+  if (!Number.isFinite(raw) || raw <= 0) return SIDEBAR_DEFAULT
+  return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(raw)))
+}
+
+const sidebarWidth = ref(readSidebarWidth())
+const resizing = ref(false)
+
+function applySidebarWidth(px: number) {
+  sidebarWidth.value = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(px)))
+}
+
+function persistSidebarWidth() {
+  localStorage.setItem(SIDEBAR_STORAGE, String(sidebarWidth.value))
+}
+
+/**
+ * 拖拽调宽：从按下那一刻起在 window 上听 pointermove，指针移出把手（甚至移出窗口）也不断链；
+ * 用 pointer 事件而不是 mouse，触屏/触控板同样可用。
+ */
+function startResize(event: PointerEvent) {
+  if (event.button !== 0) return
+  event.preventDefault()
+  const startX = event.clientX
+  const startWidth = sidebarWidth.value
+  resizing.value = true
+  const onMove = (move: PointerEvent) => applySidebarWidth(startWidth + (move.clientX - startX))
+  const onUp = () => {
+    resizing.value = false
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onUp)
+    persistSidebarWidth()
+  }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onUp)
+}
+
+/** 键盘可达：把手聚焦后 ←/→ 微调（Shift 加速），Home/End 到两端，双击复位 */
+function onResizerKeydown(event: KeyboardEvent) {
+  const step = event.shiftKey ? 40 : 16
+  if (event.key === 'ArrowLeft') applySidebarWidth(sidebarWidth.value - step)
+  else if (event.key === 'ArrowRight') applySidebarWidth(sidebarWidth.value + step)
+  else if (event.key === 'Home') applySidebarWidth(SIDEBAR_MIN)
+  else if (event.key === 'End') applySidebarWidth(SIDEBAR_MAX)
+  else return
+  event.preventDefault()
+  persistSidebarWidth()
+}
+
+function resetSidebarWidth() {
+  applySidebarWidth(SIDEBAR_DEFAULT)
+  persistSidebarWidth()
+}
 
 const bootstrapping = ref(true)
 const loading = ref(false)
@@ -497,10 +559,10 @@ async function reloadAgents() {
 </script>
 
 <template>
-  <div class="chat-page" :style="{ background: themeVars.bodyColor }">
-    <header class="topbar" :style="{ borderColor: themeVars.borderColor, background: themeVars.cardColor }">
+  <div class="chat-page portal-stage" :class="{ 'is-resizing': resizing }">
+    <header class="topbar portal-glass">
       <div class="topbar-brand">
-        <span class="brand-logo" :style="{ background: themeVars.primaryColor }" aria-hidden="true">v5</span>
+        <span class="brand-logo" aria-hidden="true">v5</span>
         <span class="brand-title">{{ appTitle }}</span>
       </div>
       <div class="topbar-right">
@@ -510,7 +572,7 @@ async function reloadAgents() {
     </header>
 
     <div class="chat-body">
-      <aside class="sidebar" :style="{ borderColor: themeVars.borderColor, background: themeVars.cardColor }">
+      <aside class="sidebar" :style="{ width: `${sidebarWidth}px` }">
         <div class="sidebar-head">
           <n-button block size="small" type="primary" secondary @click="newSession">
             <template #icon><n-icon :component="MessageSquarePlus" :size="15" /></template>
@@ -526,6 +588,21 @@ async function reloadAgents() {
           @rename="renameSessionRow"
           @archive="archiveSessionRow"
           @update:show-archived="switchArchivedView"
+        />
+
+        <!-- 拖拽调宽（双击复位，聚焦后可用 ←/→ 调） -->
+        <div
+          class="sidebar-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="调整侧栏宽度"
+          :aria-valuenow="sidebarWidth"
+          :aria-valuemin="200"
+          :aria-valuemax="420"
+          tabindex="0"
+          @pointerdown="startResize"
+          @keydown="onResizerKeydown"
+          @dblclick="resetSidebarWidth"
         />
       </aside>
 
@@ -543,7 +620,7 @@ async function reloadAgents() {
 
           <template v-else-if="activeAgent">
             <div class="scroll-wrap">
-              <div ref="listRef" class="scroll-area" @scroll.passive="onScroll">
+              <div ref="listRef" class="scroll-area portal-scroll" @scroll.passive="onScroll">
                 <div v-if="historyLoading" class="history-loading">
                   <n-spin size="small" />
                   <span>正在加载会话历史…</span>
@@ -594,7 +671,6 @@ async function reloadAgents() {
                   type="button"
                   class="scroll-bottom"
                   :class="{ 'is-generating': loading }"
-                  :style="{ background: themeVars.cardColor, borderColor: themeVars.borderColor, color: themeVars.textColor2 }"
                   :aria-label="loading ? '正在生成，回到最新' : '回到最新'"
                   @click="scrollToLatest"
                 >
@@ -630,6 +706,12 @@ async function reloadAgents() {
   min-height: 0;
 }
 
+/* 拖拽调宽期间整页禁选中，并把指针锁成 col-resize，免得拖到文字上变成选词 */
+.chat-page.is-resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
 .topbar {
   flex: none;
   display: flex;
@@ -638,7 +720,10 @@ async function reloadAgents() {
   gap: 16px;
   height: var(--portal-topbar-height);
   padding: 0 16px;
-  border-bottom: 1px solid;
+  /* .portal-glass 给的是四边发丝描边，顶栏只需要底边那一条 */
+  border: 0;
+  border-bottom: 1px solid var(--portal-border);
+  border-radius: 0;
 }
 
 .topbar-brand {
@@ -654,10 +739,12 @@ async function reloadAgents() {
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: 9px;
+  background: var(--portal-grad);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
+  box-shadow: 0 6px 18px var(--portal-accent-glow);
 }
 
 .brand-title {
@@ -682,18 +769,57 @@ async function reloadAgents() {
 }
 
 .sidebar {
+  position: relative;
   flex: none;
   display: flex;
   flex-direction: column;
-  width: var(--portal-sidebar-width);
-  border-right: 1px solid;
   min-height: 0;
+  background: var(--portal-surface);
+  border-right: 1px solid var(--portal-border);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  /* 拖拽时宽度跟手，不做过渡；只给主题切换留过渡 */
+  transition: background-color 0.24s var(--portal-ease);
+}
+
+/* 把手：8px 命中区骑在侧栏右边缘上，可见部分只有 2px 线 */
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 2px;
+  height: 100%;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.18s var(--portal-ease);
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+.chat-page.is-resizing .sidebar-resizer::after {
+  background: var(--portal-accent);
+}
+
+.sidebar-resizer:focus-visible {
+  outline: none;
 }
 
 .sidebar-head {
   flex: none;
   padding: 10px;
-  border-bottom: 1px solid rgba(127, 127, 127, 0.18);
+  border-bottom: 1px solid var(--portal-border);
 }
 
 .main {
@@ -765,11 +891,20 @@ async function reloadAgents() {
   width: 34px;
   height: 34px;
   padding: 0;
-  border: 1px solid;
+  border: 1px solid var(--portal-border);
   border-radius: 50%;
+  background: var(--portal-surface);
+  color: var(--portal-fg-muted);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-  transition: opacity 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  box-shadow: var(--portal-shadow-sm);
+  transition: opacity 0.15s ease, transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.scroll-bottom:hover {
+  color: var(--portal-accent);
+  border-color: var(--portal-accent);
 }
 
 /* 生成中：常边框让位给一圈转动的弧；回答结束（loading=false）恢复常边框 */
@@ -782,8 +917,8 @@ async function reloadAgents() {
   position: absolute;
   inset: -1px;
   border-radius: 50%;
-  border: 2px solid rgba(127, 127, 127, 0.25);
-  border-top-color: currentColor;
+  border: 2px solid var(--portal-border-strong);
+  border-top-color: var(--portal-accent);
   animation: scroll-bottom-spin 0.9s linear infinite;
 }
 
@@ -807,7 +942,7 @@ async function reloadAgents() {
   gap: 10px;
   padding: 24px;
   font-size: 13px;
-  opacity: 0.7;
+  color: var(--portal-fg-muted);
 }
 
 .message-list {
@@ -867,7 +1002,8 @@ async function reloadAgents() {
 }
 
 .bubble.user {
-  background: rgba(127, 127, 127, 0.14);
+  background: var(--portal-accent-soft);
+  border: 1px solid var(--portal-border);
 }
 
 .bubble-text {
@@ -884,14 +1020,15 @@ async function reloadAgents() {
 .bubble-attachment {
   max-width: 160px;
   max-height: 160px;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--portal-border);
   display: block;
 }
 
 .bubble-stopped {
   margin: 4px 0 0;
   font-size: 12px;
-  opacity: 0.6;
+  color: var(--portal-fg-muted);
 }
 
 .composer-wrap {
@@ -903,15 +1040,18 @@ async function reloadAgents() {
 }
 
 .disclaimer {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   text-align: center;
   font-size: 11px;
-  opacity: 0.55;
+  letter-spacing: 0.02em;
+  color: var(--portal-fg-muted);
+  opacity: 0.85;
 }
 
-/* 窄屏：会话栏收起，主区占满 */
+/* 窄屏：会话栏收起，主区占满（把手一并收起，否则会留下一条可拖的隐形条） */
 @media (max-width: 768px) {
-  .sidebar {
+  .sidebar,
+  .sidebar-resizer {
     display: none;
   }
 }
