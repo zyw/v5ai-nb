@@ -64,7 +64,8 @@ public class RuntimeMessageServiceImpl implements IRuntimeMessageService, Messag
             log.info("Message saved failed: {}", message);
             return null;
         }
-        // 附件与消息同事务：消息落库成功才挂附件，且插入后已回填自增主键
+        // 附件与消息同事务：消息落库成功才挂附件，且插入后主键已回填
+        // （雪花号，不是库里的 BIGSERIAL 序列值——对外按字符串收发，见 RuntimeMessage#id）
         messageAttachmentService.saveAll(entity.getId(), message.attachments());
         log.info("Message saved successfully: {}", message);
         return entity.getId();

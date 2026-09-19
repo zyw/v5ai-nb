@@ -26,8 +26,11 @@ export interface ChatMsg {
   /**
    * 持久化主键：用户消息来自历史接口的 messageId 或本轮 RUN_STARTED 载荷的 userMessageId。
    * 「重新生成」以**该轮提问**的 id 为锚点，取不到时按钮不可用。
+   *
+   * 一律按**字符串**存：主键是 19 位雪花号，超出 JS 安全整数，落进 number 就会被四舍五入
+   * （…417794 → …417800），再回传时服务端查无此消息（404「提问不存在」）。
    */
-  messageId?: number
+  messageId?: string
 }
 
 /**
@@ -94,14 +97,29 @@ export function normalizeUsage(value: unknown): RunUsage | undefined {
  * 解析 RUN_STARTED 载荷里的本轮提问消息 id（{@code {"userMessageId":n}}）。
  * 服务端在推送 RUN_STARTED 之前就已落库，因此刚生成的那一轮不用刷新历史也能重新生成。
  */
-export function parseUserMessageId(data: string): number | undefined {
+export function parseUserMessageId(data: string): string | undefined {
   if (!data) return undefined
   try {
     const parsed = JSON.parse(unwrapPayload(data)) as { userMessageId?: unknown } | null
-    return typeof parsed?.userMessageId === 'number' ? parsed.userMessageId : undefined
+    return toMessageId(parsed?.userMessageId)
   } catch {
     return undefined
   }
+}
+
+/**
+ * 把服务端给的消息 id 归一成**字符串**，任何地方都不要把它转成 number。
+ *
+ * 消息主键是 19 位雪花号，超出 JS 的 Number.MAX_SAFE_INTEGER：一旦落进 number 就会被
+ * 四舍五入（…417794 → …417800），「重新生成」把它回传时服务端按这个 id 查不到那条提问，
+ * 直接 404「提问不存在」。服务端两条路给的都是字符串（历史接口的 messageId 走 Jackson 的
+ * BigNumberSerializer，RUN_STARTED 载荷显式转字符串）；这里再兜一层 number，
+ * 兼容小 id 或旧版本服务端。
+ */
+export function toMessageId(raw: unknown): string | undefined {
+  if (typeof raw === 'string') return raw.trim() || undefined
+  if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw)
+  return undefined
 }
 
 /** 首个 token 之前：还没有任何思考内容可展示。 */

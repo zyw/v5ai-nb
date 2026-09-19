@@ -143,7 +143,7 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 
 ### `GET /api/v1/agents/{agentKey}/chat/conversations/{conversationId}`
 
-会话历史，按 `created_at, id` 稳定排序（同一次运行的提问与回答可能同刻写入，故用自增主键兜底），**不含已作废的消息**。
+会话历史，按 `created_at, id` 稳定排序（同一次运行的提问与回答可能同刻写入，故用主键兜底），**不含已作废的消息**。
 每条消息带 `messageId`（「重新生成」的锚点）与 `attachments`，助手消息还带 `usage`（用量与用时；用户消息与 V39 之前落库的历史消息为 `null`）与 `reasoning`（模型的思考过程；用户消息、没有思考的回答、以及关闭了 `v5ai.agentscope.reasoning-persist-enabled` 时为 `null`）：
 
 ```json
@@ -151,7 +151,7 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
   "code": 200,
   "data": [
     {
-      "messageId": 55,
+      "messageId": "2101304707712417794",
       "role": "USER",
       "content": "这张图里是什么？",
       "attachments": [
@@ -160,7 +160,7 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
       "usage": null
     },
     {
-      "messageId": 56,
+      "messageId": "2101304707712417795",
       "role": "ASSISTANT",
       "content": "图里是…",
       "attachments": [],
@@ -169,6 +169,11 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
   ]
 }
 ```
+
+`messageId` 是**字符串**：主键是 19 位雪花号，超出 JS 的 `Number.MAX_SAFE_INTEGER`（全局
+`BigNumberSerializer` 对超范围 `Long` 一律输出字符串）。调用方必须**原样回传**——转成数字就会被
+浏览器四舍五入成另一个 id（`…417794` → `…417800`），「重新生成」随后只能拿到 404「提问不存在」。
+（其余小 id，如 `resourceId`、历史遗留的小主键，仍是数字。）
 
 `accessUrl` 是给门户用的：`<img src>` 带不了 `Authorization` 头，门户需按该地址取 blob。
 
@@ -232,11 +237,13 @@ RUN_COMPLETED
 
 ```json
 RUN_STARTED
-{ "userMessageId": 123,
+{ "userMessageId": "2101304707712417794",
   "context": { "keptMessages": 12, "droppedMessages": 28, "droppedChars": 15230,
                "keptChars": 4210, "trimmed": true } }
 ```
 
+`userMessageId` 同样是**字符串**（载荷由服务端手拼 JSON，显式转字符串）：它会被原样回传给
+`/regenerate`，一旦当成数字解析就会被四舍五入成另一个 id。
 未开启记忆（`memoryEnabled=false`）时载荷仍是空串；开启但未发生裁剪时 `trimmed=false`。
 平台内部还有一个不对外的事件 `MODEL_USAGE`（用量的真实值/估算值）：它在 SSE 里**不会出现**，
 也不会写进 `v5ai_run_event`，只用于把用量从执行器传给持久化侧。
@@ -248,10 +255,12 @@ RUN_STARTED
 作废的回答也不会再进入模型上下文。
 
 ```json
-{ "fromMessageId": 55, "webSearch": false }
+{ "fromMessageId": "2101304707712417794", "webSearch": false }
 ```
 
 - `fromMessageId`：该轮**提问**的消息 id（历史消息里的 `messageId`，或本轮 `RUN_STARTED` 载荷的 `userMessageId`）。
+  **按字符串传**（雪花主键 19 位，超出 JS 安全整数，数字形态会被浏览器四舍五入成另一个 id 而查无此消息）；
+  服务端按字符串接收，数字形态的旧调用方仍可用，非数字则 400。
 - 校验顺序是刻意的，**任何拒绝都发生在作废之前**：会话不属于本 Key → 404；会话已归档 → 409；
   锚点不存在 / 不属于该会话 / 不是用户消息 → 404；锚点那轮有图片但当前模型不支持图片 → 400。
 - 通过后：作废锚点之后的全部消息（含被替换的回答与更晚的整轮问答），**并让覆盖到作废范围的会话摘要整条失效**

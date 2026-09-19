@@ -15,6 +15,12 @@ public class RuntimeMessage implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /**
+     * 主键：MyBatis-Plus 的 ASSIGN_ID 雪花号（19 位，{@code v5ai_message.id} 虽然声明为
+     * {@code BIGSERIAL}，实际值由 MP 生成、不走库里的序列）。超出 JS 的
+     * {@code Number.MAX_SAFE_INTEGER}，因此对外（历史接口、{@code RUN_STARTED} 载荷）
+     * 一律**以字符串给出**，回传也按字符串收——否则会被浏览器四舍五入成另一个 id。
+     */
     @TableId
     private Long id;
     /**

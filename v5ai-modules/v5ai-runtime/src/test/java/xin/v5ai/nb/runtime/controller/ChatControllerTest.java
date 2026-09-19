@@ -254,7 +254,7 @@ class ChatControllerTest {
         when(imageSupportResolver.supportsImageInput(1L)).thenReturn(true);
         when(agentRuntime.stream(any())).thenReturn(Flux.empty());
 
-        controller.regenerate(AGENT_KEY, "c-1", new ChatController.RegenerateBo(55L, false), request);
+        controller.regenerate(AGENT_KEY, "c-1", new ChatController.RegenerateBo("55", false), request);
 
         // 先作废锚点之后的消息（旧回答），再复用这条提问重跑；
         // 覆盖了被作废内容的摘要必须同时失效，否则模型会继续「记得」旧回答
@@ -276,7 +276,7 @@ class ChatControllerTest {
         when(messageService.findActiveMessage(55L)).thenReturn(Optional.empty());
 
         assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
-                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                new ChatController.RegenerateBo("55", null), request), V5aiException.class).code())
                 .isEqualTo(ErrorCode.NOT_FOUND);
         verify(messageService, never()).supersedeAfter(anyString(), anyLong());
         verify(agentRuntime, never()).stream(any());
@@ -292,10 +292,10 @@ class ChatControllerTest {
                 "c-1", AGENT_KEY, MessageRole.ASSISTANT, "回答").withMessageId(56L)));
 
         assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
-                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                new ChatController.RegenerateBo("55", null), request), V5aiException.class).code())
                 .isEqualTo(ErrorCode.NOT_FOUND);
         assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
-                new ChatController.RegenerateBo(56L, null), request), V5aiException.class).code())
+                new ChatController.RegenerateBo("56", null), request), V5aiException.class).code())
                 .isEqualTo(ErrorCode.NOT_FOUND);
         verify(messageService, never()).supersedeAfter(anyString(), anyLong());
     }
@@ -307,7 +307,7 @@ class ChatControllerTest {
                 .thenReturn(Optional.of(conversation("c-1", null, OffsetDateTime.now())));
 
         assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
-                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                new ChatController.RegenerateBo("55", null), request), V5aiException.class).code())
                 .isEqualTo(ErrorCode.CONFLICT);
         verify(messageService, never()).supersedeAfter(anyString(), anyLong());
     }
@@ -323,9 +323,41 @@ class ChatControllerTest {
         when(imageSupportResolver.supportsImageInput(1L)).thenReturn(false);
 
         assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
-                new ChatController.RegenerateBo(55L, null), request), V5aiException.class).code())
+                new ChatController.RegenerateBo("55", null), request), V5aiException.class).code())
                 .isEqualTo(ErrorCode.INVALID_ARGUMENT);
         verify(messageService, never()).supersedeAfter(anyString(), anyLong());
+    }
+
+    /**
+     * 锚点是雪花主键（19 位）：只能以**字符串**回传，原样送进查询，不能被转成数字
+     * （转了就成 2101304707712417800，库里的 2101304707712417794 查不到 → 404「提问不存在」）。
+     */
+    @Test
+    void regenerateAcceptsTheSnowflakeAnchorAsString() {
+        var snowflake = "2101304707712417794";
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+        when(messageService.findActiveMessage(2101304707712417794L)).thenReturn(Optional.of(
+                new SessionMessage("c-1", AGENT_KEY, MessageRole.USER, "原来的提问")
+                        .withMessageId(2101304707712417794L)));
+        when(agentRuntime.stream(any())).thenReturn(Flux.empty());
+
+        controller.regenerate(AGENT_KEY, "c-1", new ChatController.RegenerateBo(snowflake, false), request);
+
+        // 逐位精确：锚点解析没有经过任何浮点/四舍五入
+        verify(messageService).supersedeAfter("c-1", 2101304707712417794L);
+        verify(messageService).findActiveMessage(2101304707712417794L);
+    }
+
+    /** 不是数字的锚点：400（调用方入参错误），而不是穿到下游变成 500。 */
+    @Test
+    void regenerateRejectsAMalformedAnchor() {
+        when(conversationService.findById("c-1")).thenReturn(Optional.of(conversation("c-1", null, null)));
+
+        assertThat(catchThrowableOfType(() -> controller.regenerate(AGENT_KEY, "c-1",
+                new ChatController.RegenerateBo("not-a-number", null), request), V5aiException.class).code())
+                .isEqualTo(ErrorCode.INVALID_ARGUMENT);
+        verify(messageService, never()).supersedeAfter(anyString(), anyLong());
+        verify(agentRuntime, never()).stream(any());
     }
 
     // ---------- 停止对话 ----------

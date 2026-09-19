@@ -565,7 +565,12 @@ class PersistingAgentRuntimeTest {
                 .isEqualTo("");
     }
 
-    /** 普通运行：RUN_STARTED 携带本轮提问的消息 id，前端不用刷新历史就能重新生成这一轮。 */
+    /**
+     * 普通运行：RUN_STARTED 携带本轮提问的消息 id，前端不用刷新历史就能重新生成这一轮。
+     *
+     * <p>形态必须是**字符串**：主键是 19 位雪花号，数字形态过一趟浏览器就被四舍五入，
+     * 前端照着回传时服务端查无此消息（404「提问不存在」）。</p>
+     */
     @Test
     void runStartedCarriesTheUserMessageId() {
         var runId = "run-anchor";
@@ -582,7 +587,7 @@ class PersistingAgentRuntimeTest {
         // RecordingMessageService 的 save 返回递增 id：用户提问是第 1 条
         var started = events.stream().filter(event -> event.type() == RuntimeEventType.RUN_STARTED)
                 .findFirst().orElseThrow();
-        assertThat(cn.hutool.json.JSONUtil.parseObj(started.payload()).getLong("userMessageId")).isEqualTo(1L);
+        assertThat(cn.hutool.json.JSONUtil.parseObj(started.payload()).getStr("userMessageId")).isEqualTo("1");
     }
 
     /** 正常完成时也记用量（回归：改造后在完成路径上仍要记账）。 */

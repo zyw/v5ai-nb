@@ -182,7 +182,7 @@ public class ChatController {
         var auth = requireAuth(request);
         assertConversationNotArchived(requireOwnedConversation(agentKey, conversationId, auth));
         // 锚点必须是「本会话里未作废的用户提问」：不满足一律 404，不泄露存在性
-        var anchor = messageService.findActiveMessage(bo.fromMessageId())
+        var anchor = messageService.findActiveMessage(parseMessageId(bo.fromMessageId()))
                 .filter(message -> conversationId.equals(message.conversationId()))
                 .filter(message -> message.role() == MessageRole.USER)
                 .orElseThrow(() -> new V5aiException(ErrorCode.NOT_FOUND, "提问不存在"));
@@ -209,6 +209,25 @@ public class ChatController {
     private void assertConversationNotArchived(ConversationDTO conversation) {
         if (conversation.archived()) {
             throw new V5aiException(ErrorCode.CONFLICT, "会话已归档，请先取消归档再继续对话");
+        }
+    }
+
+    /**
+     * 解析请求体里的消息 id。入参是**字符串**：消息主键是 19 位雪花号，超出 JS 安全整数，
+     * 数字形态过一趟浏览器就会被四舍五入成另一个 id（见
+     * {@code PersistingAgentRuntime#attachUserMessageId}），前端只能按字符串回传。
+     *
+     * <p>空值返回 {@code null}——「没传」与「传错」不是一回事：前者交给调用方按
+     * 「找不到这条提问」处理（保持原有 404 语义），后者是入参错误，报 400 而不是穿到下游变 500。</p>
+     */
+    private static Long parseMessageId(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException exception) {
+            throw new V5aiException(ErrorCode.INVALID_ARGUMENT, "提问标识无效");
         }
     }
 
@@ -420,10 +439,14 @@ public class ChatController {
     /**
      * 重新生成的请求体（不可变 record）。
      *
-     * @param fromMessageId 该轮提问的消息 id（历史消息里的 {@code messageId}）
+     * @param fromMessageId 该轮提问的消息 id（历史消息里的 {@code messageId}、或本轮
+     *                      {@code RUN_STARTED} 载荷的 {@code userMessageId}）。
+     *                      <b>是字符串</b>：消息主键是 19 位雪花号，超出 JS 安全整数，
+     *                      数字形态的 JSON 会被浏览器四舍五入成另一个 id（表现为 404「提问不存在」），
+     *                      所以服务端以字符串给出、也以字符串接收；数字形态的旧调用方照样能用
      * @param webSearch     本次是否联网：{@code null}=按 Agent 配置
      */
-    public record RegenerateBo(Long fromMessageId, Boolean webSearch) {
+    public record RegenerateBo(String fromMessageId, Boolean webSearch) {
     }
 
     /**

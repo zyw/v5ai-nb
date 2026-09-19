@@ -95,8 +95,12 @@ export interface ConversationMessage {
   attachments?: MessageAttachment[]
   /** 该回答的用量与用时；用户消息、或 V39 之前落库的历史消息为 null */
   usage?: RunUsage | null
-  /** 消息主键：前端用它作为「重新生成」的锚点（取该轮提问的 id） */
-  messageId?: number | null
+  /**
+   * 消息主键：前端用它作为「重新生成」的锚点（取该轮提问的 id）。
+   * 雪花主键超出 JS 安全整数，服务端按字符串给出（小 id 仍可能是数字），取用前归一：
+   * 见 `toMessageId`。
+   */
+  messageId?: string | number | null
 }
 
 /** 会话列表行。 */
@@ -121,8 +125,11 @@ export interface ChatStreamBody {
 
 /** 重新生成某一轮的请求体。 */
 export interface RegenerateBody {
-  /** 该轮提问的消息 id（历史消息里的 messageId，或本轮 RUN_STARTED 载荷给出的 userMessageId） */
-  fromMessageId: number
+  /**
+   * 该轮提问的消息 id（历史消息里的 messageId，或本轮 RUN_STARTED 载荷给出的 userMessageId）。
+   * **字符串**：主键是 19 位雪花号，用 number 传会被 JS 四舍五入成别的 id（服务端 404「提问不存在」）。
+   */
+  fromMessageId: string
   /** 仅用于显式关闭联网；Agent 未开启时后端无论如何不会联网 */
   webSearch?: boolean
 }

@@ -30,6 +30,7 @@ import {
   parseHits,
   parseUsage,
   parseUserMessageId,
+  toMessageId,
   type ChatMsg
 } from '../utils/chatStream'
 import {
@@ -500,7 +501,9 @@ async function openSession(session: ConversationSummary) {
           resourceId: attachment.resourceId
         })),
         // 历史消息自带用量（V39 起落库），刷新页面后「用量 / 用时」依然在
-        usage: normalizeUsage(item.usage)
+        usage: normalizeUsage(item.usage),
+        // 锚点也带上：刷新页面后再点「重新生成」照样能跑（id 一律归一成字符串，见 toMessageId）
+        messageId: toMessageId(item.messageId)
       })
     }
     // 期间用户已切到别的会话 / 新建会话 / 直接提问：丢弃这次迟到的结果

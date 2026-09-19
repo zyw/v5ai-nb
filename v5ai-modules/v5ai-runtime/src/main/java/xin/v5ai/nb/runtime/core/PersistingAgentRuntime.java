@@ -536,6 +536,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
     /**
      * 给 RUN_STARTED 挂上本轮用户消息 id（其余事件原样透传），供前端把「重新生成」的锚点记在这一轮上。
      *
+     * <p><b>必须写成字符串。</b>消息主键是雪花号（19 位），超出 JS 的 Number.MAX_SAFE_INTEGER：
+     * 数字形态过一趟浏览器就会被四舍五入（{@code …417794} → {@code …417800}），前端照着
+     * 「重新生成」回传时服务端查无此消息，表现为 404「提问不存在」。Jackson 那条路（历史接口的
+     * {@code messageId}）由 {@code BigNumberSerializer} 自动输出字符串，而本载荷是 Hutool 手拼的，
+     * 绕过了那个序列化器，只能在这里显式转字符串，两条路才对得上。</p>
+     *
      * <p>复用既有提问的运行没有新消息（id 为 null），载荷留空——前端本来就持有那条提问的 id。</p>
      */
     private static RuntimeRunEventDTO attachUserMessageId(RuntimeRunEventDTO event, Long userMessageId) {
@@ -546,7 +552,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
         var payload = event.payload() == null || event.payload().isBlank()
                 ? JSONUtil.createObj()
                 : JSONUtil.parseObj(event.payload());
-        payload.set("userMessageId", userMessageId);
+        payload.set("userMessageId", String.valueOf(userMessageId));
         return RuntimeRunEventDTO.started(event.runId(), payload.toString());
     }
 
