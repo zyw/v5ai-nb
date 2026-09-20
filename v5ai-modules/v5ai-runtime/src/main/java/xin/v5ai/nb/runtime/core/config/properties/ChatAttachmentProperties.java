@@ -10,8 +10,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 历史回放累计 16MB，超出部分退化为 {@code [图片]} 文字占位——更早的图片会从上下文里消失。</p>
  */
 @Data
-@ConfigurationProperties(prefix = "v5ai.portal.attachment")
-public class PortalAttachmentProperties {
+@ConfigurationProperties(prefix = "v5ai.chat.attachment")
+public class ChatAttachmentProperties {
 
     /**
      * 单张附件的体积上限（字节），默认 5MB。

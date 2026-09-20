@@ -4,13 +4,13 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 会话摘要（{@code v5ai.portal.conversation-summary}）：把历史窗口之外的旧内容压缩成一段文本。
+ * 会话摘要（{@code v5ai.chat.conversation-summary}）：把历史窗口之外的旧内容压缩成一段文本。
  *
- * <p>与标题改写（{@code v5ai.portal.conversation-title}）同一性质：异步、失败静默、不记用量——
+ * <p>与标题改写（{@code v5ai.chat.conversation-title}）同一性质：异步、失败静默、不记用量——
  * 摘要只是为了「不丢信息」，生成失败不该影响对话主链路（旧摘要仍在，窗口内的内容照常回放）。</p>
  */
 @Data
-@ConfigurationProperties(prefix = "v5ai.portal.conversation-summary")
+@ConfigurationProperties(prefix = "v5ai.chat.conversation-summary")
 public class ConversationSummaryProperties {
 
     /**

@@ -28,7 +28,7 @@ import xin.v5ai.nb.runtime.core.PersistingAgentRuntime;
 import xin.v5ai.nb.runtime.core.RunCancellationRegistry;
 import xin.v5ai.nb.runtime.core.config.properties.AgentScopeRuntimeProperties;
 import xin.v5ai.nb.runtime.core.config.properties.HistoryWindowProperties;
-import xin.v5ai.nb.runtime.core.config.properties.PortalAttachmentProperties;
+import xin.v5ai.nb.runtime.core.config.properties.ChatAttachmentProperties;
 import xin.v5ai.nb.runtime.core.service.*;
 
 import java.nio.file.Path;
@@ -46,7 +46,7 @@ public class AgentScopeRuntimeConfiguration {
             ObjectProvider<SkillWorkspaceResolver> skillWorkspaceResolverProvider,
             ObjectProvider<RagSearchProvider> ragSearchProviderProvider,
             ObjectProvider<AttachmentContentProvider> attachmentContentProviderProvider,
-            PortalAttachmentProperties attachmentProperties
+            ChatAttachmentProperties attachmentProperties
     ) {
         McpToolResolver mcpToolResolver = mcpToolResolverProvider.getIfAvailable();
         McpToolCallAuditService auditRepository = auditRepositoryProvider.getIfAvailable();

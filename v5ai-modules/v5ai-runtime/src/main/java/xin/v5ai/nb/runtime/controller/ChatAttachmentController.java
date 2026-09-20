@@ -19,7 +19,7 @@ import xin.v5ai.nb.platform.api.ApiKeyAuthAttributes;
 import xin.v5ai.nb.platform.api.RateLimiter;
 import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.platform.api.domain.ApiKeysAuthDTO;
-import xin.v5ai.nb.runtime.core.config.properties.PortalAttachmentProperties;
+import xin.v5ai.nb.runtime.core.config.properties.ChatAttachmentProperties;
 import xin.v5ai.nb.runtime.core.service.MessageAttachmentService;
 
 import java.util.Base64;
@@ -62,7 +62,7 @@ public class ChatAttachmentController {
     private final ResourceContentPort resourceContentPort;
     private final MessageAttachmentService messageAttachmentService;
     private final RateLimiter rateLimiter;
-    private final PortalAttachmentProperties properties;
+    private final ChatAttachmentProperties properties;
 
     /**
      * 上传附件（图片）。

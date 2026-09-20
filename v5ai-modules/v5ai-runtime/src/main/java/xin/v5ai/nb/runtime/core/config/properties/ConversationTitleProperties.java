@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 这里的开关与超时只决定要不要再花一次小模型调用把名字改好看。</p>
  */
 @Data
-@ConfigurationProperties(prefix = "v5ai.portal.conversation-title")
+@ConfigurationProperties(prefix = "v5ai.chat.conversation-title")
 public class ConversationTitleProperties {
 
     /**

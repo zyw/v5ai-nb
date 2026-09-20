@@ -10,7 +10,7 @@ import xin.v5ai.nb.platform.api.ApiKeyAuthAttributes;
 import xin.v5ai.nb.platform.api.RateLimiter;
 import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.platform.api.domain.ApiKeysAuthDTO;
-import xin.v5ai.nb.runtime.core.config.properties.PortalAttachmentProperties;
+import xin.v5ai.nb.runtime.core.config.properties.ChatAttachmentProperties;
 import xin.v5ai.nb.runtime.core.service.MessageAttachmentService;
 
 import java.util.Base64;
@@ -44,7 +44,7 @@ class ChatAttachmentControllerTest {
     private ResourceContentPort resourcePort;
     private MessageAttachmentService attachmentService;
     private RateLimiter rateLimiter;
-    private PortalAttachmentProperties properties;
+    private ChatAttachmentProperties properties;
     private ChatAttachmentController controller;
     private HttpServletRequest request;
 
@@ -53,7 +53,7 @@ class ChatAttachmentControllerTest {
         resourcePort = mock(ResourceContentPort.class);
         attachmentService = mock(MessageAttachmentService.class);
         rateLimiter = mock(RateLimiter.class);
-        properties = new PortalAttachmentProperties();
+        properties = new ChatAttachmentProperties();
         controller = new ChatAttachmentController(resourcePort, attachmentService, rateLimiter, properties);
 
         request = mock(HttpServletRequest.class);

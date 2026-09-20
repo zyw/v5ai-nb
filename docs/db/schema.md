@@ -394,7 +394,7 @@
 | 列 | 类型 | 约束 | 默认值 | 注释 |
 |---|---|---|---|---|
 | `conversation_id` | character varying(36) | NOT NULL | — | 所属会话（v5ai_conversation.id）；一会话一行 |
-| `summary` | text | NOT NULL | — | 摘要正文（模型生成，长度上限见 v5ai.portal.conversation-summary.max-summary-chars） |
+| `summary` | text | NOT NULL | — | 摘要正文（模型生成，长度上限见 v5ai.chat.conversation-summary.max-summary-chars） |
 | `covered_until_message_id` | bigint | NOT NULL | — | 摘要覆盖水位：id ≤ 该值的消息都已并入摘要（重新生成锚点落在其中时整条摘要作废） |
 | `covered_messages` | integer | NOT NULL | 0 | 已并入摘要的消息条数（观测用） |
 | `model_id` | bigint | NULL | — | 生成该摘要的模型 id（审计用；配置了固定摘要模型时与 Agent 绑定模型不同） |

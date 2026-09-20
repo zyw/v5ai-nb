@@ -21,7 +21,7 @@ export const apiBase = (env.VITE_APP_BASE_API ?? '').replace(/\/$/, '')
 export const appTitle = env.VITE_APP_TITLE ?? 'AI 对话'
 const clientId = env.VITE_APP_CLIENT_ID ?? ''
 
-/** 单张附件的体积上限：与后端 v5ai.portal.attachment.max-file-size-bytes 默认值一致（5MB） */
+/** 单张附件的体积上限：与后端 v5ai.chat.attachment.max-file-size-bytes 默认值一致（5MB） */
 export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 /** 单条消息最多携带的图片数量：与后端 max-per-message 默认值一致 */
 export const MAX_ATTACHMENTS_PER_MESSAGE = 3

@@ -9,7 +9,7 @@ import xin.v5ai.nb.common.agentscope.core.history.HistoryWindow;
  *
  * <p>超窗的旧内容不再直接丢弃，而是由会话摘要（见 {@code ConversationSummaryWriter}）以
  * 「更早内容的摘要」形式继续参与上下文。图片不占这里的字符预算——它有独立的 16MB 字节预算
- * （{@code v5ai.portal.attachment.history-budget-bytes}）。</p>
+ * （{@code v5ai.chat.attachment.history-budget-bytes}）。</p>
  */
 @Data
 @ConfigurationProperties(prefix = "v5ai.agentscope.history")

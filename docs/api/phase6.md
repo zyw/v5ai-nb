@@ -80,10 +80,10 @@
 ```
 
 - `bizType` **由服务端强制为 `ATTACHMENT`**（请求里的值被忽略）；`bizId` 可选，仅作元数据。
-- `content` 解码后必须 ≤ 5MB（`v5ai.portal.attachment.max-file-size-bytes`）；
+- `content` 解码后必须 ≤ 5MB（`v5ai.chat.attachment.max-file-size-bytes`）；
   `fileSize` 仅用于解码前的快速拒绝，实际以解码结果为准。
 - 类型**按文件头（magic bytes）判定**，只接受 PNG / JPEG / WebP：内容是文本的 `x.png` 会被拒。
-- 按 `apiKeyId` 限流（`v5ai.portal.attachment.uploads-per-minute`，默认 20/分钟，进程内滑动窗口）。
+- 按 `apiKeyId` 限流（`v5ai.chat.attachment.uploads-per-minute`，默认 20/分钟，进程内滑动窗口）。
 
 响应：
 
@@ -124,7 +124,7 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 ```
 
 `name` **由服务端生成**：会话创建时取首条提问的首行（压缩空白后截到 100 字）落库，
-首轮回答结束后再由模型改写成不超过 30 字的短标题（可用 `v5ai.portal.conversation-title.enabled=false` 关掉）。
+首轮回答结束后再由模型改写成不超过 30 字的短标题（可用 `v5ai.chat.conversation-title.enabled=false` 关掉）。
 因此列表只读 `v5ai_conversation` 一张表——过去那种「对每个会话再查一次消息表取首条提问做预览兜底」
 的做法已移除（消息表一大，列表就成了门户最贵的接口）。
 
@@ -221,7 +221,7 @@ inline 返回图片字节。鉴权是**推导式**的：只有「本 Key 的某�
 
 ### 图片回放预算
 
-历史回放中的图片按**最近优先**累计，总预算 16MB（`v5ai.portal.attachment.history-budget-bytes`）。
+历史回放中的图片按**最近优先**累计，总预算 16MB（`v5ai.chat.attachment.history-budget-bytes`）。
 超出预算的图片不会去读字节，直接退化为 `[图片]` 文字占位 —— 更早的图片会从上下文里消失。
 
 ### 完成事件携带用量
@@ -247,7 +247,7 @@ RUN_COMPLETED
 - **窗口**（`v5ai.agentscope.history`，默认 `max-messages=40` / `max-chars=8000` / `min-messages=2` / `align-to-user-turn=true`）：
   按「最近优先」保留最近若干条，裁剪后首条一定对齐到用户提问。`enabled=false` 时退回「全量历史」的老行为，
   长会话会顶爆模型窗口，只建议排查问题时临时关闭。显式 `resume` 传入的历史**同样过这道窗口**。
-- **摘要**（`v5ai.portal.conversation-summary`）：窗口之外的旧内容由后台异步压缩成一段文本
+- **摘要**（`v5ai.chat.conversation-summary`）：窗口之外的旧内容由后台异步压缩成一段文本
   （`v5ai_conversation_summary`，水位 `covered_until_message_id` 只增不减），下次运行随**系统提示**注入。
   触发是懒的：水位之后新增的窗口外消息达到 `min-new-messages`（默认 10）才再压一次，
   且有 `min-interval-seconds`（默认 30 秒）防抖。可以指定更便宜的 `model-id`，留空则跟随该 Agent 绑定的 CHAT 模型。
@@ -314,10 +314,10 @@ RUN_STARTED
 
 | 配置 | 默认 | 说明 |
 |---|---|---|
-| `v5ai.portal.attachment.max-file-size-bytes` | `5242880`（5MB） | 单张附件体积上限 |
-| `v5ai.portal.attachment.uploads-per-minute` | `20` | 每把 Key 每分钟的上传次数（进程内滑动窗口） |
-| `v5ai.portal.attachment.max-per-message` | `3` | 每条消息允许携带的图片数量 |
-| `v5ai.portal.attachment.history-budget-bytes` | `16777216`（16MB） | 历史回放图片的累计体积预算 |
+| `v5ai.chat.attachment.max-file-size-bytes` | `5242880`（5MB） | 单张附件体积上限 |
+| `v5ai.chat.attachment.uploads-per-minute` | `20` | 每把 Key 每分钟的上传次数（进程内滑动窗口） |
+| `v5ai.chat.attachment.max-per-message` | `3` | 每条消息允许携带的图片数量 |
+| `v5ai.chat.attachment.history-budget-bytes` | `16777216`（16MB） | 历史回放图片的累计体积预算 |
 
 ## 数据库
 
