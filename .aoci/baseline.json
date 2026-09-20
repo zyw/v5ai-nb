@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-15T01:36:33Z",
-  "updated_at": "2026-09-16T09:33:43Z",
+  "updated_at": "2026-09-20T02:27:35Z",
   "files": {
     ".claude/settings.local.json": {
       "role": "index",
@@ -78,9 +78,10 @@
       "normalized_sha256": "2913285e80fdba967c108c5b79258b927fea7f4ee80313dbf496f8d2c6409785"
     },
     "aoci.code.txt": {
-      "sha256": "26bdccb223b9183f379ad9496fa06719ba4573f65f50fa654e535a233fd3d7dd",
-      "size": 447789,
-      "normalized_sha256": "26bdccb223b9183f379ad9496fa06719ba4573f65f50fa654e535a233fd3d7dd"
+      "role": "index",
+      "sha256": "c2e5c17ac83e2b40c5b826b308e06a21639962e3cfefffcb8c78bae10579e95b",
+      "size": 407793,
+      "normalized_sha256": "c2e5c17ac83e2b40c5b826b308e06a21639962e3cfefffcb8c78bae10579e95b"
     },
     "aoci.meta.txt": {
       "role": "index",
