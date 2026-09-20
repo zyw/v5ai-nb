@@ -83,7 +83,10 @@ const html = computed(() =>
   white-space: normal;
   font-size: 13.5px;
   line-height: 1.75;
-  word-break: break-word;
+  /* 普通正文用 overflow-wrap 而不是 word-break: break-word：
+     前者只在必要时断长 token（URL / ID），后者会改变最小内容宽度，
+     让 flex 子项该收缩时收缩不了（外层 .bubble 用的也是 overflow-wrap: anywhere）。 */
+  overflow-wrap: anywhere;
 }
 
 .md-content :deep(> :first-child) {

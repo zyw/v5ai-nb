@@ -25,12 +25,26 @@ function pick(agentKey: string) {
 <template>
   <n-popover v-model:show="open" trigger="click" placement="bottom-end" :show-arrow="false" raw>
     <template #trigger>
-      <n-button quaternary size="small" :aria-label="'切换 Agent'" :aria-expanded="open">
+      <!--
+        n-button 的 #icon 是「前置」图标槽（iconPlacement 默认 'left'，图标排在内容之前）。
+        这里原先声明了两个同名的 #icon，编译出来是 _createSlots({icon: 箭头}, [有 Agent ? {name:'icon'} : ...])，
+        后者覆盖前者 —— 有 Agent 时只剩头像，箭头一次都不会渲染，「只有一个 Agent 时不显示箭头」
+        的意图其实从未生效（多 Agent 时也照样没有箭头）。
+        现在头像留在前置槽，箭头改成跟在名称后的尾随图标（下拉触发器的惯例位置），
+        条件也照注释的本意改成「多于一个 Agent 才显示」。
+      -->
+      <n-button
+        quaternary
+        size="small"
+        class="agent-switcher"
+        :aria-label="'切换 Agent'"
+        :aria-expanded="open"
+      >
         <template #icon v-if="activeAgent">
           <AgentAvatar :agent-key="activeAgent.agentKey" :name="activeAgent.name" :size="20" />
         </template>
         <span class="switcher-label">{{ activeAgent?.name ?? '选择 Agent' }}</span>
-        <template #icon><n-icon :component="ChevronDown" :size="14" /></template>
+        <n-icon v-if="agents.length > 1" :component="ChevronDown" :size="14" />
       </n-button>
     </template>
 
@@ -57,6 +71,12 @@ function pick(agentKey: string) {
 </template>
 
 <style scoped>
+/* 名称与尾随箭头之间要留缝：n-button 的 .n-button__content 默认没有 gap，
+   而前置图标槽自带的 6px 外边距管不到内容槽内部。取值与 UserMenu 一致。 */
+.agent-switcher :deep(.n-button__content) {
+  gap: 4px;
+}
+
 .switcher-label {
   max-width: 180px;
   overflow: hidden;
@@ -66,7 +86,8 @@ function pick(agentKey: string) {
 }
 
 .switcher-panel {
-  width: 320px;
+  /* 窄屏（320px 视口）下固定 320px 会横向溢出：给两边各留 12px */
+  width: min(320px, calc(100vw - 24px));
   max-height: 60vh;
   overflow-y: auto;
   padding: 8px;

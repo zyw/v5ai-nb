@@ -43,10 +43,15 @@ async function logout() {
 <template>
   <n-popover v-model:show="open" trigger="click" placement="bottom-end" :show-arrow="false" raw>
     <template #trigger>
+      <!--
+        箭头原先放在 #icon 里，但 #icon 是前置图标槽（iconPlacement 默认 'left'，图标排在内容之前），
+        所以渲染出来是「▾ 头像 名字」—— 下拉触发器的箭头跑到了最前面。
+        移进内容槽的末尾，才是惯例的「头像 名字 ▾」（与 AgentSwitcher 一致）。
+      -->
       <n-button quaternary size="small" :aria-label="'用户菜单'" :aria-expanded="open" class="user-menu">
         <span class="user-avatar" aria-hidden="true">{{ initial }}</span>
         <span class="user-name">{{ displayName }}</span>
-        <template #icon><n-icon :component="ChevronDown" :size="14" /></template>
+        <n-icon :component="ChevronDown" :size="14" />
       </n-button>
     </template>
 
@@ -100,7 +105,8 @@ async function logout() {
 }
 
 .user-panel {
-  width: 292px;
+  /* 窄屏（320px 视口）下固定 292px 会横向溢出：给两边各留 12px */
+  width: min(292px, calc(100vw - 24px));
   padding: 12px;
   border: 1px solid var(--portal-border);
   border-radius: var(--portal-radius);

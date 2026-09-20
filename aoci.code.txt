@@ -186,7 +186,7 @@ McpJsonCodec.java[CE5T]: F:MCP 领域 JSON 编解码小工具：args 与 headers
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/===
 ChatResponseTextsTest.java[TA4T]: F:响应文本提取单测 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/utils/ChatResponseTexts.java | A:- | S:固化 null 与空串的语义差异：content 为 null 返回 null，content 为空列表返回空串。
 RagSearchToolTest.java[TE6T]: F:rag_search 工具单测：成功检索回传命中，缺参、空 query、未绑定库降级为 ERROR | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/tools/RagSearchTool.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/RagSearchProvider.java | A:Mockito mock RagSearchProvider，用列表收集 hitsConsumer 回传的命中，断言 ToolResultBlock 的文本与状态 | S:不依赖真实向量库与网络；断言的是工具自身行为而非检索质量
-WebSearchToolTest.java[TN6T]: F:联网搜索工具单测 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/WebSearchTool.java | A:formatResults 格式化答案/标题/链接/正文与空结果；缺 Key 或缺 query 降级为 ERROR | S:formatResults 为纯逻辑可直接调用；真实 Tavily 调用依赖外部网络故不在单测覆盖
+WebSearchToolTest.java[TN6T]: F: 联网搜索工具单测，验证 formatResults 格式化答案/标题/链接/正文与空结果，缺 Key 或缺 query 降级为 ERROR | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/tools/WebSearchTool.java | A: 纯逻辑测试，不依赖外部 Tavily 网络调用 | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/domain/dto/===
 ModelExtConfigAttrsTest.java[TC4T]: F:模型扩展参数单测 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/ModelExtConfigAttrs.java | A:- | S:固化 fromJson 对 null 与空白返回 null、非法 JSON 抛异常、toJson 往返保真（seed 为 long）。
@@ -225,7 +225,7 @@ ModelType.java[DI5T]: F:模型类型枚举 | R:code:v5ai-modules/v5ai-model/src/
 UserType.java[DI5T]: F:用户类型枚举与匹配 | R:code:v5ai-common/v5ai-common-satoken/src/main/java/xin/v5ai/nb/common/satoken/utils/LoginHelper.java | A:SYS_USER/APP_USER 枚举值、getUserType 访问器与静态 getUserType(String) | S:静态匹配用 contains 子串判断且按枚举声明顺序命中，输入串含多个标识时返回先声明者；无匹配抛 RuntimeException 而非业务异常
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/exception/===
-ErrorCode.java[DN7T]: F:业务错误码映射 | R:code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/exception/V5aiException.java | A:INVALID_ARGUMENT/UNAUTHORIZED/NOT_FOUND/CONFLICT/INTERNAL_ERROR 与 code 访问器 | S:枚举名是语义来源、code 才是对外 HTTP 状态；新增错误码必须带 code，ApiGlobalExceptionHandler 依赖它决定响应状态
+ErrorCode.java[DN7T]: F: 业务错误码映射 | R: code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/exception/V5aiException.java | A: INVALID_ARGUMENT/UNAUTHORIZED/NOT_FOUND/CONFLICT/INTERNAL_ERROR 与 code 访问器 | S: 枚举名是语义来源、code 才是对外 HTTP 状态；新增错误码必须带 code，ApiGlobalExceptionHandler 依赖它决定响应状态
 ServiceException.java[CR7S]: F:业务异常与占位符拼接 | R:code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/exception/ErrorCode.java | A:code/message/detailMessage 属性与 setMessage/setDetailMessage 链式 setter、格式化构造器 | S:final 类不可继承；getMessage 恒返回 message 字段，cause 不参与消息拼接；构造器重载 (String,String) 与 (String,Object...) 同名不同义，传字面量字符串会走占位符格式化
 V5aiException.java[CR7T]: F:带错误码的平台异常 | R:code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/exception/ErrorCode.java | A:V5aiException(ErrorCode,String) 构造器与 code() 访问器 | S:code() 是访问器而非 getCode()，全局异常处理器按该方法取码；无无参构造器
 
@@ -328,7 +328,7 @@ Sm4CredentialCipher.java[IS6T]: F:SM4 凭据加解密实现 | R:code:v5ai-common
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/config/===
 ApiDecryptAutoConfiguration.java[FC6T]: F:装配 API 加解密过滤器 | R:code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/filter/CryptoFilter.java,code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/properties/ApiDecryptProperties.java | A:cryptoFilter Bean（FilterRegistration：/*、HIGHEST_PRECEDENCE、仅 REQUEST） | S:仅当 v5ai.api-decrypt.enabled=true 才生效；过滤器优先级最高，先于业务鉴权执行。
-CipherAutoConfiguration.java[FC8T]: F:装配凭据加密与 Key 校验 | R:code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/cipher/CredentialCipher.java,code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/cipher/AesCredentialCipher.java,code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikey/AgentApiKeyVerifier.java | A:CredentialCipher Bean（按 v5ai.crypto.type 选 aes 默认或 sm4）、AgentApiKeyVerifier Bean | S:secretKey 有硬编码默认值且为空只告警不报错，类型配错或密钥非 32 字节时 Bean 创建失败导致启动中断；sm4 分支缺失 v5ai.crypto.iv 会报错。
+CipherAutoConfiguration.java[FC8T]: F: 装配凭据加密与 Key 校验 Bean | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/cipher/CredentialCipher.java | A: CredentialCipher Bean（按 v5ai.crypto.type 选 aes 默认或 sm4）、AgentApiKeysVerifier Bean | S: secretKey 有硬编码默认值且为空只告警不报错；类型配错或密钥非 32 字节时 Bean 创建失败导致启动中断
 EncryptorAutoConfiguration.java[FC6T]: F:装配字段加解密拦截 | R:code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/core/EncryptorManager.java,code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/interceptor/MybatisEncryptInterceptor.java | A:EncryptorManager、EncryptContextFactory、EncryptedFieldProcessor 与两个 MyBatis 拦截器 Bean | S:仅 v5ai.mybatis-encryptor.enable=true 生效且必须在 MybatisPlusAutoConfiguration 之后；AES/SM4 缺 password、RSA/SM2 缺公私钥直接抛异常。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/core/===
@@ -364,7 +364,7 @@ ApiDecryptProperties.java[FC5T]: F:API 加解密配置属性 | R:code:v5ai-commo
 EncryptorProperties.java[FC5T]: F:字段加解密配置属性 | R:code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/config/EncryptorAutoConfiguration.java | A:前缀 v5ai.mybatis-encryptor 的 enable/algorithm/password/publicKey/privateKey/encode | S:algorithm 与 encode 默认 BASE64；AES/SM4 必须显式提供 password，RSA/SM2 必须显式提供公私钥，否则启动失败。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/utils/===
-CipherUtils.java[CS8T]: F:静态凭据与 Key 门面 | R:code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/cipher/CredentialCipher.java,code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikey/AgentApiKeyVerifier.java,code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/utils/SpringUtils.java | A:静态 encrypt/decrypt/verify/generateApiKey | S:两个依赖在类初始化时用 SpringUtils.getBean 静态获取，容器未就绪或对应 Bean 缺失会抛 ExceptionInInitializerError。
+CipherUtils.java[CS8T]: F: 静态凭据与 Key 门面 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/cipher/CredentialCipher.java | A: 静态 encrypt/decrypt/verify/generateApiKey | S: 两个依赖在类初始化时用 SpringUtils.getBean 静态获取，容器未就绪或对应 Bean 缺失会抛 ExceptionInInitializerError
 EncryptUtils.java[KS9L]: F:通用加解密算法工具 | R:- | A:Base64/AES/SM4/SM2/RSA 加解密（含 Hex 变体）、SM2 验签、RSA 与 SM2 密钥生成、RSA 公私钥校验、MD5/SHA256/SM3 摘要 | S:AES 密钥必须 16/24/32 位、SM4 必须 16 位；RSA 公私钥校验最低 1024 位且支持 PKCS8/X509 Base64；encryptByBase64 是明文编码而非加密，误用于凭据等于泄漏。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-encrypt/src/main/resources/META-INF/spring/===
@@ -561,7 +561,7 @@ pom.xml[FV4T]: F:satoken 模块依赖声明 | R:- | A:产出构件 v5ai-common-s
 SaTokenConfiguration.java[FI6T]: F:Sa-Token 认证自动配置 | R:code:v5ai-common/v5ai-common-satoken/src/main/java/xin/v5ai/nb/common/satoken/core/dao/PlusSaTokenDao.java,code:v5ai-common/v5ai-common-satoken/src/main/java/xin/v5ai/nb/common/satoken/core/service/SaPermissionImpl.java | A:注册 StpLogic(JwtForSimple)、StpInterface、SaTokenDao、SaTokenExceptionHandler、RefreshTokenService Bean | S:各 Bean 均未加 @ConditionalOnMissingBean，替换 StpInterface/SaTokenDao 需依赖同名 Bean 覆盖；common-satoken.yml 由 YmlPropertySourceFactory 解析，而非默认 yml 加载器
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-satoken/src/main/java/xin/v5ai/nb/common/satoken/core/dao/===
-PlusSaTokenDao.java[PI6M]: F:Sa-Token 会话持久层 | R:code:v5ai-common/v5ai-common-redis/src/main/java/xin/v5ai/nb/common/redis/utils/RedisUtils.java,code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/utils/StringUtils.java | A:实现 SaTokenDaoBySessionFollowObject：get/set/update/delete/getTimeout/updateTimeout/getObject/searchData 等 | S:本地 Caffeine expireAfterWrite 5 秒、maximumSize 1000；writeValue 在 timeout<=0 时静默丢弃；update 仅在 Redis 存在 key 时生效；TTL 秒换算 +1 补偿毫秒；searchData 以 pattern+分页拼本地缓存键
+PlusSaTokenDao.java[PI6M]: F: Sa-Token 会话持久层 | R: code:v5ai-common/v5ai-common-redis/src/main/java/xin/v5ai/nb/common/redis/utils/RedisUtils.java | A: 实现 SaTokenDaoBySessionFollowObject：get/set/update/delete/getTimeout/updateTimeout/getObject/searchData | S: 本地 Caffeine expireAfterWrite 5 秒/maximumSize 1000；writeValue 在 timeout<=0 时静默丢弃；update 仅在 Redis 存在 key 时生效
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-satoken/src/main/java/xin/v5ai/nb/common/satoken/core/service/===
 SaPermissionImpl.java[CI6S]: F:Sa-Token 权限与角色提供者 | R:code:v5ai-common/v5ai-common-satoken/src/main/java/xin/v5ai/nb/common/satoken/utils/LoginHelper.java,code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/service/PermissionService.java | A:getPermissionList/getRoleList | S:loginId 必须是 用户类型:用户ID 形式，否则抛 ServiceException；当前会话用户与 loginId 一致时直接用会话内权限，否则回落到 PermissionService 远程查询，无实现类时抛异常
@@ -697,10 +697,11 @@ org.springframework.boot.autoconfigure.AutoConfiguration.imports[FC8T]: F:common
 pom.xml[FC7T]: F:业务模块聚合父POM | R:- | A:聚合 v5ai-code-generator/model/platform/agent/rag/mcp/skill/workflow/worker/runtime 十个子模块 | S:新增业务模块必须在此 <modules> 中登记，否则不参与构建。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/===
-pom.xml[FC6T]: F:agent模块依赖声明 | R:code:v5ai-common/v5ai-common-agentscope/pom.xml | A:声明 v5ai-agent 对 common-mybatis/web/satoken/encrypt/agentscope/log 与 spring-context 的依赖 | S:运行时 Agent 契约（AgentRepository、AgentConfigGenerator、PublishedAgentResolver）由 v5ai-common-agentscope 提供，本模块不依赖 v5ai-runtime。
+pom.xml[FC6T]: F: agent 模块依赖声明 | R: code:v5ai-common/v5ai-common-agentscope/pom.xml | A: 声明 v5ai-agent 对 common-mybatis/web/satoken/encrypt/agentscope/log 与 spring-context 的依赖 | S: 运行时 Agent 契约由 v5ai-common-agentscope 提供，本模块不依赖 v5ai-runtime
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/===
 AgentController.java[EB8S]: F:Agent 管理 API | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/IAgentService.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/core/AgentConfigGenerator.java | A:/api/admin/agents 下 generate、分页列表、详情、创建、更新、disable、删除、versions、publish | S:六个写端点均带 @Log（GENCODE/INSERT/UPDATE/DISABLE/DELETE/PUBLISH）落操作日志；versions 忽略 PageQuery 直接按 list.size() 造 PageResult
+AgentDebugController.java[EA6M]: F: Agent 管理端调试控制器，用 Sa-Token 鉴权，resolveForDebug 草稿态解析 | R: code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/AgentServiceImpl.java | A: POST /api/admin/agents/{agentKey}/chat/stream SSE 调试流 | S: DRAFT/PUBLISHED 可跑、DISABLED 拒绝；下游装配链与线上完全相同
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/vo/===
 GenerateAgentConfigRequest.java[EB4T]: F:配置生成请求体 | R:- | A:record(Long modelId, String description) 作为向导生成接口的请求契约 | S:-
@@ -724,8 +725,8 @@ AgentVersionVo.java[EB5T]: F:Agent 版本视图对象 | R:code:v5ai-modules/v5ai
 AgentVo.java[DD6T]: F:Agent 对外视图对象 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/Agent.java,code:v5ai-ui/src/api/client.ts | A:字段 agentKey/status/modelId/publishedVersion/systemPrompt 及 memoryEnabled、mcpEnabled、skillEnabled、webSearchEnabled、ragEnabled 五个能力开关与 ragCallMode | S:字段名必须与 v5ai-ui 的 AgentResponse 类型逐一对齐；presetQuestions 是 JSON 数组字符串而非列表
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/===
-AgentCleanupMapper.java[PD7T]: F:级联删除语句声明 | R:code:v5ai-modules/v5ai-agent/src/main/resources/mapper/AgentCleanupMapper.xml,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/AgentDeletionServiceImpl.java | A:16 个 deleteXxx(agentKey) 方法：4 个 FK 子表、11 个直连 agent_key 表、1 个主表 | S:调用顺序即删除顺序，主表必须最后删；v5ai_run_event、v5ai_mcp_tool_call、v5ai_agent_state、v5ai_agent_model 无 agent_key 列，只能靠子查询定位
-AgentMapper.java[PD6T]: F:Agent 实体数据访问 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/Agent.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/vo/AgentVo.java,code:v5ai-common/v5ai-common-mybatis/src/main/java/xin/v5ai/nb/common/mybatis/core/mapper/BaseMapperPlus.java | A:selectByAgentKey(agentKey)，其余 CRUD 由 BaseMapperPlus 提供 | S:selectByAgentKey 未命中返回 null 而不抛异常，判空由调用方负责
+AgentCleanupMapper.java[PD7T]: F: 级联删除语句声明 | R: code:v5ai-modules/v5ai-agent/src/main/resources/mapper/AgentCleanupMapper.xml | A: 16 个 deleteXxx(agentKey) 方法：4 个 FK 子表、11 个直连 agent_key 表、1 个主表 | S: 调用顺序即删除顺序，主表必须最后删；v5ai_run_event 等无 agent_key 列，靠子查询定位
+AgentMapper.java[PD6T]: F: Agent 实体数据访问 | R: code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/Agent.java | A: selectByAgentKey(agentKey)，其余 CRUD 由 BaseMapperPlus 提供 | S: selectByAgentKey 未命中返回 null 而不抛异常，判空由调用方负责
 AgentVersionMapper.java[PD5T]: F:Agent 版本数据访问 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/AgentVersion.java,code:v5ai-modules/v5ai-agent/src/main/resources/mapper/AgentVersionMapper.xml | A:nextVersion(agentKey)、selectVersionsByAgentKey(agentKey)（版本倒序） | S:只继承 BaseMapper（无 VO 映射）；nextVersion 的取值与插入非原子
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/===
@@ -733,17 +734,19 @@ IAgentDeletionPortService.java[ED7T]: F:级联删除跨模块端口 | R:code:v5a
 IAgentService.java[EB7T]: F:Agent 管理服务契约 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/bo/AgentBo.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/vo/AgentVo.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/domain/vo/AgentVersionVo.java | A:queryPageList、queryList、getAgent、createAgent、updateAgent、disable、delete、listVersions、publish | S:所有入口以 agentKey（业务标识）而非主键 id 定位 Agent；publish 要求模型已启用并把配置固化为版本快照
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/===
-AgentDeletionServiceImpl.java[DD7T]: F:级联删除顺序编排 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentCleanupMapper.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/IAgentDeletionPortService.java | A:delete(agentKey)，标注 @Transactional | S:单个事务内串行执行 16 条删除语句，顺序不可调整；自身不含 SQL，全部下沉到 AgentCleanupMapper 的 XML
+AgentDeletionServiceImpl.java[DD7T]: F: 级联删除顺序编排 | R: code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentCleanupMapper.java | A: delete(agentKey)，标注 @Transactional，16 条删除语句串行执行 | S: 单个事务内不可调整顺序；自身不含 SQL，全部下沉到 AgentCleanupMapper 的 XML
 AgentServiceImpl.java[AB8M]: F:Agent 管理业务实现 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentMapper.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentVersionMapper.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/IAgentDeletionPortService.java | A:IAgentService 全部方法（分页、列表、创建、更新、禁用、删除、版本列表、发布） | S:模型启用校验靠注入 Predicate<Long>，不依赖 model 模块；发布快照为手写文本块拼 JSON + jsonEscape，非 Jackson；updateAgent 逐字段合并、null 保留原值且不回写 status/publishedVersion；keyword 空白时 nested OR 组须整组不参与
 DBAgentServiceImpl.java[PB8S]: F:运行时 Agent 仓储端口 DB 实现 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentMapper.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AgentService.java | A:AgentService 全部方法（findByAgentKey/save/update/disable/delete/list/nextVersion/saveVersion/listVersions/publish） | S:@Primary，同类型不再有其他实现以免多候选；双参构造器不传删除端口时 delete 抛 UnsupportedOperationException；Boolean 列按 Boolean.TRUE.equals 归一为 false，ragCallMode 为空回退 FORCED
+AgentCatalogServiceImpl.java[DB7T]: F: Agent 目录服务实现，为列表/展示/选择器提供聚合视图（Agent + 当前发布版本 + 绑定模型名） | R: code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentMapper.java | A: 提供 listVoPage/listVoSelect/listDetailVo | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/main/resources/mapper/===
-AgentCleanupMapper.xml[PD7T]: F:级联删除 SQL 语句集 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentCleanupMapper.java | A:namespace xin.v5ai.nb.agent.mapper.AgentCleanupMapper，共 16 条 <delete> | S:表名硬编码 v5ai_ 前缀；4 张无 agent_key 列的表分别按 agent_id、run_id、conversation_id 子查询定位。
+AgentCleanupMapper.xml[PD7T]: F: 级联删除 SQL 语句集 | R: code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentCleanupMapper.java | A: 共 16 条 <delete>，4 张无 agent_key 列的表按 run_id/conversation_id 子查询定位 | S: 表名硬编码 v5ai_ 前缀
 AgentMapper.xml[PD3T]: F:空 Mapper 命名空间占位 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentMapper.java | A:仅声明 namespace，无任何自定义语句 | S:空 mapper，Agent 查询全部由 MyBatis-Plus 生成。
 AgentVersionMapper.xml[PD5T]: F:版本号计算 SQL | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentVersionMapper.java | A:nextVersion 语句（resultType long） | S:用 COALESCE(MAX(version),0)+1 计算，无数据库序列，并发发布会取到同一版本号。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/test/java/xin/v5ai/nb/agent/controller/===
 AgentControllerTest.java[TB4T]: F:Agent 控制器单测 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/AgentController.java | A:- | S:控制器以 (IAgentService, AgentConfigGenerator) 双参构造，生成函数用 lambda，不启 Spring 上下文
+AgentDebugControllerTest.java[TA5T]: F: Agent 调试控制器单测，验证 resolveForDebug 草稿态解析与 DRAFT/PUBLISHED/DISABLED 状态门控 | R: code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/controller/AgentDebugController.java | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-agent/src/test/java/xin/v5ai/nb/agent/service/impl/===
 AgentServiceImplTest.java[TB5M]: F:Agent 服务实现单测 | R:code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/service/impl/AgentServiceImpl.java,code:v5ai-modules/v5ai-agent/src/main/java/xin/v5ai/nb/agent/mapper/AgentMapper.java | A:- | S:BeforeEach 手动 TableInfoHelper.initTableInfo，mock mapper 用内存 List 模拟持久化；4 参构造注入模型启用谓词与删除端口；断言 keyword 空白时查询不得残留空括号
@@ -775,40 +778,50 @@ McpToolCallController.java[EB6T]: F:调用审计查询 API | R:code:v5ai-modules
 McpToolPermissionRequest.java[EN4T]: F:Tool 权限调整请求体 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/controller/McpServerController.java | A:record(permission: McpToolPermission) | S:-
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/===
-AgentMcpToolResolver.java[AE7T]: F:运行时解析 MCP Tool | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/McpToolResolver.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/factory/McpClientFactory.java | A:resolveTools(AgentDTO) 返回 List<ResolvedMcpTool> | S:逐 Server 容错，Server 缺失或非 ACTIVE、Tool 全被 DENY、连接异常都只跳过该 Server 而不外抛；同一 Server 的所有 Tool 共享同一个连接实例，由上层在运行结束时关闭
-AgentScopeMcpClientFactory.java[IN8T]: F:按传输类型建 MCP 连接 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/StdioCommandPolicy.java, code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/factory/McpClientFactory.java, code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/cipher/CredentialCipher.java | A:McpConnection connect(McpServerDTO)，支持 STREAMABLE_HTTP、SSE、STDIO | S:STDIO 前先过 StdioCommandPolicy 白名单校验；headers/env 密文只在连接时解密为内存明文；超时默认 30 秒，初始化超时被夹在 5 到 30 秒之间；buildAsync().blockOptional() 为空抛 IllegalStateException，未知 transportType 抛 IllegalArgumentException。
-AgentScopeMcpConnection.java[IN6S]: F:MCP 连接与调用适配 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/McpConnection.java | A:listTools()、callTool(toolName, arguments)、close() | S:首次使用才 initialize（仅 volatile 标志，非双检锁，非线程安全）；调用异常一律转成 McpToolCallVo.failure 不外抛；只提取 TextContent 文本、多段换行拼接；readOnlyHint 映射到 McpToolInfo
+AgentMcpToolResolver.java[AE7T]: F: 运行时解析 MCP Tool | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/McpToolResolver.java | A: resolveTools(AgentDTO) 返回 List<ResolvedMcpTool> | S: 逐 Server 容错，Server 缺失/非 ACTIVE/Tool 全被 DENY/连接异常只跳过不抛；同一 Server 所有 Tool 共享连接，上层统一关闭
+AgentScopeMcpClientFactory.java[IN8M]: F: 按传输类型建 MCP 连接 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/factory/McpClientFactory.java | A: connect(McpServerDTO)，支持 STREAMABLE_HTTP/SSE/STDIO | S: STDIO 前过白名单校验；headers/env 密文仅连接时解密；超时默认 30s；buildAsync().blockOptional() 为空抛 IllegalStateException
+AgentScopeMcpConnection.java[IN6S]: F: MCP 连接与调用适配 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/McpConnection.java | A: listTools()/callTool(toolName,arguments)/close() | S: 首次使用才 initialize（volatile 非双检锁非线程安全）；异常转 failure 不外抛；仅提取 TextContent 文本多段换行拼接
 McpToolPermissionPolicy.java[DS7T]: F:Tool 默认权限判定 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/McpToolInfo.java, code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/McpToolPermission.java | A:defaultPermission(McpToolInfo) 与 defaultPermission(boolean readOnly) | S:只读判为 ALLOW，其余一律 APPROVE（运行时需人工审批），不会默认 DENY。
 PropertyStdioCommandPolicy.java[DS8T]: F:Stdio 命令白名单校验 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/StdioCommandPolicy.java, code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/config/properties/McpRuntimeProperties.java | A:validate(String command) | S:白名单项含 / 或反斜杠时按完整路径匹配，否则只按可执行文件名匹配，Windows 下忽略大小写；白名单为空只做形态校验并打 warn；命令为空或含两点路径穿越即拒绝。
+AgentMcpBindingService.java[DA5T]: F: Agent-MCP 绑定领域服务，管理绑定创建/删除/列表与运行时按 toolPermissions 过滤 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/AgentMcpBindingMapper.java | A: create/remove/listByAgentKey/listActiveWithPermissions | S: -
+McpClientFactory.java[IE5T]: F: MCP 客户端工厂端口，抽象连接创建逻辑 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/AgentScopeMcpClientFactory.java | A: 定义 connect/createConnection 契约 | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/domain/===
 McpConnectionTestResult.java[DD4T]: F:连接测试结果值对象 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/controller/McpServerController.java | A:record(ok, message, toolCount) 与静态工厂 success(toolCount)、failure(message) | S:-
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/===
-AgentMcpBinding.java[PD5T]: F:Agent-MCP 绑定实体 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/AgentMcpBindingMapper.java | A:表 v5ai_agent_mcp，字段 agentKey(@TableId)、mcpServerId、createdAt | S:真实主键是 (agent_key, mcp_server_id) 复合键，但实体只把 agent_key 标为 @TableId，按主键定位单行的 MyBatis-Plus 方法不可用
+AgentMcpBinding.java[PD5T]: F: Agent-MCP 绑定实体 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/AgentMcpBindingMapper.java | A: 表 v5ai_agent_mcp，字段 agentKey(@TableId)/mcpServerId/createdAt | S: 真实主键 (agent_key,mcp_server_id) 复合键，实体只标 agent_key 为 @TableId
 McpServer.java[PD7T]: F:MCP Server 实体 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/bo/McpServerBo.java, code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/vo/McpServerVo.java | A:表 v5ai_mcp_server，字段 name、transportType、endpoint、argsJson、headersCiphertext、envCiphertext、timeoutSeconds、status、lastTestStatus/Message/At | S:headers 与 env 以密文列落库，加解密在服务层完成；Stdio 传输下 endpoint 是可执行命令而非 URL；lastTest* 三列可为 null。
 McpTool.java[PD6T]: F:MCP Tool 缓存实体 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpServer.java, code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/vo/McpToolVo.java | A:表 v5ai_mcp_tool，字段 serverId、toolName、description、inputSchemaJson、readOnly、permission、lastDiscoveredAt | S:(server_id, tool_name) 为唯一键；permission 是平台侧决策（ALLOW/APPROVE/DENY），readOnly 只是服务器声明的提示。
 McpToolCallAudit.java[PD6T]: F:工具调用审计实体 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/vo/McpToolCallAuditVo.java, code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/McpToolCallAuditMapper.java | A:表 v5ai_mcp_tool_call，字段 runId、serverId、serverName、toolName、argumentsSummary、decision、status、durationMs、message、createdAt | S:表无 updated_at 列故不继承 BaseEntity；argumentsSummary 是截断摘要，不落完整敏感参数；serverName 冗余存储以便审计查询。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/bo/===
 McpServerBo.java[EN5T]: F:MCP Server 请求体 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpServer.java, code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/McpTransportType.java | A:字段 id、name、transportType、endpoint、args、headers、envVars、timeoutSeconds、status；校验 name 非空、transportType 非空、id 仅 EditGroup 必填 | S:headers 与 envVars 以明文 Map 传入，加密由服务层负责；transportType 是枚举而实体列是字符串，需转换。
+AgentMcpBindingBo.java[DD4T]: F: Agent-MCP 绑定业务对象，承载创建/更新请求数据 | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/vo/===
 McpServerVo.java[DD5T]: F:MCP Server 视图对象 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpServer.java, code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/bo/McpServerBo.java | A:字段 id、name、transportType、endpoint、args、headers、envVars、timeoutSeconds、status、lastTestStatus/Message/At、createdAt、updatedAt | S:args、headers、envVars 是解密或解析后的明文，不能由实体字段直接映射填充，必须由服务层显式填充。
 McpToolCallAuditVo.java[DD4T]: F:调用审计视图对象 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpToolCallAudit.java | A:字段 id、runId、serverId、serverName、toolName、argumentsSummary、decision、status、durationMs、message、createdAt | S:-
 McpToolVo.java[DD4T]: F:MCP Tool 视图对象 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpTool.java | A:字段 id、serverId、toolName、description、inputSchema(Map)、readOnly、permission、lastDiscoveredAt、createdAt、updatedAt | S:inputSchema 是解析后的 Map，需由服务从实体 inputSchemaJson 解析填充。
+AgentMcpBindingVo.java[DD4T]: F: Agent-MCP 绑定视图对象，前端展示用 | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/===
-AgentMcpBindingMapper.java[PD4T]: F:Agent-MCP 绑定表基础 Mapper | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/AgentMcpBinding.java | A:delete(Wrapper)、selectList(Wrapper)（继承自 BaseMapper，无自定义方法） | S:复合主键 agentKey+mcpServerId；条件由调用方组装，XML 空壳
+AgentMcpBindingMapper.java[PD4T]: F: Agent-MCP 绑定表基础 Mapper | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/AgentMcpBinding.java | A: delete(Wrapper)/selectList(Wrapper)，继承自 BaseMapper | S: 复合主键 agentKey+mcpServerId；条件由调用方组装
 McpServerMapper.java[PD4T]: F:MCP Server 表 Mapper（含 VO 转换） | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpServer.java | A:selectVoPage/selectVoList/selectById（baseMapper 能力，无自定义方法） | S:XML 同名文件只有空 namespace，全部条件查询由 Service 用 LambdaQueryWrapper 完成。
-McpToolCallAuditMapper.java[PD4T]: F:MCP Tool 调用审计表 Mapper | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpToolCallAudit.java | A:insert、selectList(Wrapper)（继承自 BaseMapper，无自定义方法） | S:审计表只写不改不删，无自定义 SQL；查询条件由调用方以 LambdaQueryWrapper 组装。
+McpToolCallAuditMapper.java[PD4T]: F: MCP Tool 调用审计表 Mapper | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpToolCallAudit.java | A: insert/selectList(Wrapper)，继承自 BaseMapper | S: 审计表只写不改不删，无自定义 SQL
 McpToolMapper.java[PD5T]: F:Tool 缓存表 Mapper 与增量清理 | R:code:v5ai-common/v5ai-common-mybatis/src/main/java/xin/v5ai/nb/common/mybatis/core/mapper/BaseMapperPlus.java,code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/McpTool.java,code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/vo/McpToolVo.java | A:deleteByServerIdNotIn(serverId, keepToolNames)（按保留名单删除已消失工具） | S:notIn 带 keepToolNames 非空条件——保留名单为空时该条件被跳过，会清空该 Server 全部工具记录。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/service/===
-IMcpServerService.java[AB7S]: F:MCP Server 管理服务契约（CRUD/测试/发现/绑定/审计） | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/bo/McpServerBo.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/McpToolPermission.java | A:queryPageList、queryList、queryOptionList、createServer、updateServer、disableServer、enableServer、getServer、testConnection、discoverTools、listTools、updateToolPermission、bindServers、getServerBindings、listToolCallsByRun、listToolCallsByServer | S:绑定是全量替换语义；启停用 boolean 返回值表达状态迁移是否成功
+IMcpServerService.java[AB7S]: F: MCP Server 契约：CRUD/连接测试/工具发现/权限三态/绑定替换/审计 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/domain/bo/McpServerBo.java | A: queryPageList/createServer/updateServer/disableServer/enableServer/testConnection/discoverTools | S: 绑定全量替换，启停 boolean 返回值表达状态迁移
+IAgentMcpBindingService.java[DB5T]: F: Agent-MCP 绑定服务契约，定义创建/删除/列表/按权限过滤的运行时操作 | R: - | A: - | S: -
+IMcpToolCallAuditService.java[OO4T]: F: MCP Tool 调用审计服务契约，定义按 runId/serverId 的审计查询 | R: - | A: - | S: -
+IMcpToolService.java[DA4T]: F: MCP Tool 领域服务契约，定义 Tool 缓存同步/权限更新/调用审计记录 | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/service/impl/===
-McpServerServiceImpl.java[AB9L]: F:MCP Server 管理服务实现（CRUD/测试/发现/绑定/审计） | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/McpToolPermissionPolicy.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/factory/McpClientFactory.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/StdioCommandPolicy.java | A:全部 IMcpServerService 方法（Server 增改启停、连接测试、工具发现与增量清理、Tool 权限调整、Agent 绑定替换、审计查询） | S:headers/env 经 CredentialCipher 加密入库、VO 出口解密为明文且解密失败只回落 null；STDIO endpoint 必须过 StdioCommandPolicy 白名单；非分页查询直接用 Mapper 而非 selectVoList；建 Server 缺省 timeout 30 秒、初始 ACTIVE，编辑对 null 字段保留原值；testConnection 永不抛出、总把成功/失败写入 last_test_* 并返回结果对象，discoverTools 则把异常包成 IllegalArgumentException 抛出；upsertTool 更新时不写 permission 以保留管理员调整；bindServers 先全量校验 Server 为 ACTIVE 再替换。
+McpServerServiceImpl.java[AB9L]: F: MCP Server 管理实现：CRUD/连接测试/工具发现/绑定/审计，密文加密入库 VO 解密明文 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/AgentScopeMcpClientFactory.java | A: 全部 IMcpServerService 方法 + discoverToolsWithConnection | S: STDIO 白名单；Tools 增量清理；Agent 绑定全量替换
+AgentMcpBindingServiceImpl.java[DB5T]: F: Agent-MCP 绑定服务实现，创建/删除/列表/按 toolPermissions 过滤 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/AgentMcpBindingMapper.java | A: create/remove/listByAgentKey/listActiveWithPermissions | S: -
+McpToolCallAuditServiceImpl.java[OO5T]: F: MCP Tool 调用审计实现，按 runId/serverId 查询审计记录 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/McpToolCallAuditMapper.java | A: listToolCallsByRun/listToolCallsByServer | S: -
+McpToolServiceImpl.java[DA5T]: F: MCP Tool 领域实现：Tool 缓存同步/权限更新/审计记录 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/McpToolCallAuditMapper.java | A: syncTools/updatePermission/logCall | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/resources/mapper/===
 AgentMcpBindingMapper.xml[FP1T]: F:绑定 Mapper 的空 XML 映射声明 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/AgentMcpBindingMapper.java | A:- | S:仅 namespace，无 SQL 片段，是占位文件；语义归同名 Java 接口。
@@ -820,7 +833,7 @@ McpToolMapper.xml[FP1T]: F:Tool Mapper 的空 XML 映射声明 | R:code:v5ai-mod
 PropertyStdioCommandPolicyTest.java[TQ4T]: F:Stdio 命令白名单策略单测 | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/PropertyStdioCommandPolicy.java | A:- | S:白名单：裸项按文件名、含路径项按全路径；空名单放行非空命令，拒绝空白与 .. 路径。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/test/java/xin/v5ai/nb/mcp/service/impl/===
-McpServerServiceImplTest.java[TQ7M]: F:McpServerServiceImpl 单测（含手写替身） | R:code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/service/impl/McpServerServiceImpl.java,code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/McpToolPermissionPolicy.java | A:- | S:纯 Mockito 加手写 Fake，不用 Spring 容器；Mapper 以内联 List 模拟存储，断言的是替身行为而非真实 SQL，涉及数据库语义的改动不会被这些用例捕获
+McpServerServiceImplTest.java[TQ7M]: F: McpServerServiceImpl 单测含手写替身 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/service/impl/McpServerServiceImpl.java | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/test/resources/mockito-extensions/===
 org.mockito.plugins.MockMaker[TQ5T]: F:指定 Mockito 使用子类代理 | R:- | A:- | S:单行内容 mock-maker-subclass，使 final 类也可被 mock；改动会连带影响同模块全部 Mockito 用例。
@@ -862,7 +875,7 @@ IV5aiModelService.java[AB7T]: F:模型管理服务契约（含启停与默认语
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/service/impl/===
 ModelConfigRetrieveImpl.java[DA7T]: F:模型运行时配置网关实现 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/ModelConfigRetrieve.java,code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/V5aiModelMapper.java | A:findRuntimeConfigByModelId 与 findFirstEmbeddingModel（实现 ModelConfigRetrieve 端口） | S:供应商另经 V5aiModelProviderMapper 读取；模型或供应商任一查不到即返回 null，不回退；findFirstEmbeddingModel 取 id 最小的已启用 EMBEDDING 模型；凭据只传密文。
 V5aiModelProviderServiceImpl.java[DA6S]: F:供应商 CRUD 与停用/删除引用守卫 | R:code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/V5aiModelProviderMapper.java,code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/V5aiModelMapper.java | A:queryPageList、queryList、insertByBo、updateByBo、deleteWithValidByIds（IV5aiModelProviderService 实现） | S:停用被模型引用的供应商抛 409，且仅在 true→false 时校验；providerKey 是业务主键，更新时回填原值不可改；重复 providerKey 抛 IllegalArgumentException。
-V5aiModelServiceImpl.java[DA8M]: F:模型配置服务：凭据加密、默认唯一与引用守卫 | R:code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/V5aiModelMapper.java,code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/core/ModelConnectionTester.java,code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/cipher/CredentialCipher.java | A:IV5aiModelService 全量实现：分页/列表/选项查询、增改删除、启停与默认开关、连通性测试 | S:凭据经 CredentialCipher 加密后才落库；默认模型按 modelType 唯一，切换时清理同类旧默认；删除前用 Mapper 统计 Agent/知识库引用并拒绝
+V5aiModelServiceImpl.java[DA8M]: F: 模型配置服务：凭据 AES-GCM 加密，默认唯一与引用守卫，完整 CRUD | R: code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/domain/V5aiModel.java | A: createModel/updateModel/deleteModel/listPage/getModel | S: 删前检查 Agent/知识库引用，Jsoup HTML 降级
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-model/src/main/resources/mapper/===
 V5aiModelMapper.xml[PD6T]: F:模型表引用计数与同类型默认清零 SQL | R:code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/mapper/V5aiModelMapper.java | A:countAgentUsage、countKnowledgeBaseUsage、clearModelTypeDefaults（namespace xin.v5ai.nb.model.mapper.V5aiModelMapper） | S:计数直接查 v5ai_agent.model_id 与 v5ai_knowledge_base 的 embedding_model_id/rerank_model_id，无软删过滤；清零以 id<>keepId 保留目标行。
@@ -891,32 +904,35 @@ pom.xml[FV5T]: F:v5ai-platform 模块依赖声明 | R:code:v5ai-api/pom.xml,code
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/controller/===
 PlmClientController.java[EI5S]: F:客户端授权配置管理接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmClientService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmClientVo.java | A:GET /api/admin/client/list、GET /{id}、POST /、PUT /、PUT /changeStatus、DELETE /{ids} | S:新增与修改先 checkClickKeyUnique，冲突时返回 R.fail 而非抛异常；删除是物理批量删除且传 isValid=true；导出端点已注释。
 PlmLoginInfoController.java[EO5S]: F:登录访问记录查询与清理接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmLoginInfoService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmLoginInfoVo.java | A:GET /api/admin/login/log/list、DELETE /{infoIds}、DELETE /clean、GET /unlock/{userName} | S:unlock 直接删 Redis 中 CacheNames.PWD_ERR_CNT_KEY+用户名 以解登录失败锁定；clean 加 @Lock4j 防并发清空；导出端点已注释。
-PlmMenuController.java[EI7S]: F:菜单树与角色菜单授权接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmMenuService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/PlmMenu.java | A:GET /api/admin/menus/list、/{menuId}、/treeselect、/roleMenuTreeselect/{roleId} 与 POST/PUT/DELETE 及 DELETE /cascade/{menuIds} | S:新增/修改/删除/级联删除均要求超管角色（@SaCheckRole），列表与详情用 SaMode.OR 放行超管；删除前校验子菜单与角色占用，冲突返回 R.warn 而非异常。
+PlmMenuController.java[EI7S]: F: 菜单树与角色菜单授权接口 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmMenuService.java | A: tree/roleMenuTreeselect/menuTree/roleMenuAssign | S: tenantId 与 i18nKey 暴露但当前为空
 PlmOperLogController.java[EO5T]: F:操作日志查询与清理接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmOperLogService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmOperLogVo.java | A:GET /api/admin/oper/log/list、DELETE /{operIds}、DELETE /clean | S:clean 以 @Lock4j 串行化；导入中存在未使用的 Controller 注解；导出端点已整段注释。
 PlmResourceController.java[ED6S]: F:通用资源上传/预览/下载接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmResourceService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmResourceVo.java | A:GET /api/admin/resources、GET /{id}、POST /upload、PUT /、DELETE /{ids}、GET /{id}/preview、GET /{id}/download | S:preview 用 inline 并按 mimeType 解析，失败退 octet-stream；download 用 RFC5987 filename* 编码中文名；upload 以 file.getBytes() 全量读入内存。
 PlmRoleController.java[EI7M]: F:角色与用户授权管理接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmRoleService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmUserService.java | A:GET /api/admin/roles/list、GET /{roleId}、POST /、PUT /、PUT /permission、PUT /changeStatus、DELETE /{roleIds}、GET /optionselect 及 /authUser/* 授权端点 | S:角色写操作成功后发布 OnlineUserCleanEvent.byRole 清在线会话；写前统一 checkRoleAllowed 与 checkRoleDataScope；部门树端点已注释。
 PlmUserController.java[EI8M]: F:用户管理与角色授权接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmUserService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmRoleService.java | A:GET /api/admin/users/list、GET / 与 /{userId}、POST /、PUT /、DELETE /{userIds}、GET /optionselect、PUT /resetPwd、PUT /changeStatus、GET /unlock/{userId}、GET /authRole/{userId}、PUT /authRole | S:新增用户与重置密码都在此 BCrypt.hashpw 后入库；删除当前登录用户被直接拒绝；unlock 删 Redis 的 PWD_ERR_CNT_KEY+userName 解锁定；非超管场景过滤掉 superAdmin 角色；导入导出端点已注释。
 V5aiAppQuotaController.java[EC6T]: F:应用配额与当日用量接口 | R:code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/AppQuotaService.java,code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/domain/AppQuotaDTO.java | A:GET /api/admin/apps/{agentKey}/quota、PUT /quota、GET /usage/daily | S:配额与用量按 agentKey 维度读写；UpdateQuotaRequest 三字段均可空，null 表示不修改；无权限注解，仅靠 /api/admin/** 登录态兜底。
 V5aiModelUsageController.java[EO5T]: F:模型用量明细分页查询接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IV5aiModelUsageService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/ModelUsagePageVo.java | A:GET /api/admin/usage（分页与 ModelUsageListBo 过滤） | S:类中保留注释掉的 parseDayStart/parseDayEnd 与 Mapper 直查旧实现，现仅透传 service.queryPageList；无权限注解。
+ApiKeysController.java[EI6S]: F: Agent API Key 管理：生成/列表/禁用/删除，生成时仅展示明文一次 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/BcryptAgentApiKeysVerifier.java | A: generateApiKey/listKeys/disableKey/deleteKey | S: akShow 前端前缀展示，后端不保存原始值
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/controller/auth/===
 AuthController.java[EI7S]: F:登录用户信息、路由与登出接口 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/ILoginService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmMenuService.java,code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/model/LoginUser.java | A:GET /api/auth/getInfo、GET /api/auth/getRouters、POST /api/auth/logout | S:getInfo 用 DataPermissionHelper.ignore 绕过数据权限读本人；logout 请求体可选，带 refreshToken 时先吊销刷新令牌再登出；/me 与 /menus 等旧端点已注释。
 LoginController.java[EI8S]: F:登录、刷新与验证码接口（免登录） | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/ILoginService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmClientService.java,code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmSliderCaptchaService.java | A:POST /api/auth/login、POST /api/auth/refresh、GET /api/auth/captcha、POST /api/auth/captcha/verify、GET /api/auth/code | S:类级 @SaIgnore 使这些端点免鉴权；login 先校验 clientId/grantType/状态再委托 loginService；login 与 refresh 收 JSON 字符串，@ApiEncrypt 解密后自行解析；getCode 经 AOP 自调用 getCodeImpl 才让 @RateLimiter 生效。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/===
-PlmClient.java[PI6T]: F:客户端授权对象实体（plm_client） | R:code:v5ai-common/v5ai-common-mybatis/src/main/java/xin/v5ai/nb/common/mybatis/core/domain/PlmBaseEntity.java | A:持久化契约字段 clientId、clientKey、clientSecret、grantType、deviceType、accessPath、ipWhitelist、activeTimeout、timeout、status、delFlag | S:delFlag 标 @TableLogic 走 MyBatis-Plus 逻辑删除，查询自动附加未删条件；id 无自增策略，由 MyBatis-Plus 生成。
+PlmClient.java[PI6T]: F: 客户端授权对象实体 plm_client | R: - | A: clientId/clientSecret 授权，grantType 授权方式 | S: -
 PlmLoginInfo.java[PO5T]: F:登录访问记录实体（plm_login_info） | R:- | A:持久化契约字段 userName、clientKey、deviceType、ipaddr、loginLocation、browser、os、status、msg、loginTime | S:不继承 PlmBaseEntity，无软删与审计字段；主键 IdType.AUTO 自增；loginTime 为 OffsetDateTime。
-PlmMenu.java[DI7M]: F:菜单实体与前端路由/组件推导 | R:code:v5ai-common/v5ai-common-mybatis/src/main/java/xin/v5ai/nb/common/mybatis/core/domain/PlmBaseEntity.java,code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/constant/SystemConstants.java | A:getRouteName、getRouterPath、getComponentInfo、isMenuFrame、isInnerLink、isParentView 与静态 innerLinkReplaceEach | S:路由推导依赖 TOP_PARENT_ID、TYPE_DIR/TYPE_MENU/LAYOUT 等常量与 isFrame 字段，isFrame 为 null 时 equals 会 NPE；children、parentName 是 @TableField(exist=false) 非持久字段。
+PlmMenu.java[DI7M]: F: 菜单实体与前端路由/组件推导 | R: - | A: 菜单类型 DIR/MENU/BUTTON，getChildren 返回子菜单列表 | S: path 可为 null，query/perms/icon 暴露但当前为空
 PlmOperLog.java[PD4S]: F:操作日志表实体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmOperLogBo.java | A:表映射 plm_oper_log；IdType.AUTO 主键 id；Lombok getter/setter | S:无逻辑删除与审计列；Bo 主键名 operId 与实体 id 不一致
 PlmResource.java[PD3T]: F:上传文件元数据实体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmResourceVo.java | A:表映射 plm_resource；storageType LOCAL/MINIO 与 bizType 四态编码 | S:时间列为LocalDateTime的createDt/updateDt，不继承BaseEntity
-PlmRole.java[PD4T]: F:角色实体 plm_role | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmRoleBo.java | A:表映射 plm_role；dataScope 1-6 数据范围编码；@TableLogic delFlag | S:继承 PlmBaseEntity 自动填充审计列，逻辑删除按 delFlag，deptCheckStrictly 仅实体有
-PlmRoleMenu.java[PD3T]: F:角色菜单关联实体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmRoleMenuBo.java | A:表映射 plm_role_menu；输入型主键 roleId 与 menuId | S:仅roleId标@TableId(INPUT)，唯一性靠(role_id,menu_id)组合
-PlmUser.java[PD5S]: F:平台用户实体 plm_user | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmUserBo.java,code:v5ai-common/v5ai-common-mybatis/src/main/java/xin/v5ai/nb/common/mybatis/core/domain/BaseEntity.java | A:表映射 plm_user；isSuperAdmin() 依 SystemConstants.SUPER_ADMIN_USER_ID；PlmUser(Long) 构造器 | S:password 三策略 NOT_EMPTY 故空值不入写；@TableLogic delFlag；avatar 存资源ID 非URL；继承 BaseEntity 无 createdBy/updatedBy 列
-PlmUserRole.java[PD3T]: F:用户角色关联实体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmUserRoleBo.java | A:表映射 plm_user_role；输入型主键 userId 与 roleId | S:仅userId标@TableId(INPUT)，唯一性靠(user_id,role_id)组合
+PlmRole.java[PD4T]: F: 角色实体 plm_role | R: - | A: roleKey 唯一标识/显示排序/数据范围权限/状态 | S: -
+PlmRoleMenu.java[PD3T]: F: 角色菜单关联实体 plm_role_menu | R: - | A: roleId + menuId 复合关联 | S: -
+PlmUser.java[PD5S]: F: 平台用户实体 plm_user | R: - | A: userName/密码/手机号/邮箱/状态/最后 IP/登录时间 | S: -
+PlmUserRole.java[PD3T]: F: 用户角色关联实体 plm_user_role | R: - | A: userId + roleId 复合关联 | S: -
 V5aiAppQuota.java[PD4T]: F:应用配额实体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/V5aiAppQuotaVo.java | A:表映射 v5ai_app_quota；字符串主键 agent_key；dailyModelCalls/dailyTokens/ratePerMinute 三配额 | S:主键为 agentKey 字符串非自增ID，继承 BaseEntity 但业务字段仅三个配额
 V5aiAppUsage.java[PD5T]: F:应用按日用量实体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/V5aiAppUsageMapper.java | A:表映射 v5ai_app_usage；复合主键 (agent_key, usage_date)；modelCalls 与 tokens 计数 | S:无单列 @TableId，禁用 updateById/deleteById/selectById，写入须走 mapper 的 upsertUsage
 V5aiModelUsage.java[PD4T]: F:模型调用用量记录实体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/V5aiModelUsageMapper.java | A:表映射 v5ai_model_usage；记录 runId/agentKey/modelKey 与 token 数、耗时、状态 | S:runId/agentKey/modelKey 为字符串无外键约束；createdAt 为 OffsetDateTime 且无更新列
-VerifyEnum.java[DI3T]: F:滑块校验结果枚举 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmSliderCaptchaService.java | A:OK/EXPIRED/MISMATCH 三态，getValue/getMessage 与 valueOf(int) | S:valueOf(int)取values()[value]，故valueOf(1)=EXPIRED
+VerifyEnum.java[DI3T]: F: 滑块校验结果枚举 | R: - | A: OK/EXPIRED/MISMATCH 三态，getValue/getMessage 与 valueOf(int) | S: valueOf(int) 取 values()[value]，valueOf(1)=EXPIRED
+V5aiApiKeys.java[PD5S]: F: Agent API Key 实体 v5ai_api_keys，SHA3-256+BCrypt 哈希，前缀展示与过期管理 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/BcryptAgentApiKeysVerifier.java | A: agentId/akShow/hashedApiKey/status/expiresAt | S: 生成仅展示明文一次，akShow 是 BCrypt 验证工具列
+V5aiApiKeysAgent.java[PD4T]: F: API Key 与 Agent 关联实体 v5ai_api_keys_agent | R: - | A: apiKeyId + agentKey 复合关联 | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/===
 ModelUsageListBo.java[PD3T]: F:模型用量查询条件 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/controller/V5aiModelUsageController.java | A:agentKey 与 form/to 时间边界三项查询入参 | S:时间字段命名为 form/to，无校验注解
@@ -930,6 +946,7 @@ PlmRoleMenuBo.java[PD3T]: F:角色菜单关联请求体 | R:code:v5ai-modules/v5
 PlmUserBo.java[PD5S]: F:用户新增编辑请求体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/PlmUser.java,code:v5ai-common/v5ai-common-core/src/main/java/xin/v5ai/nb/common/core/xss/Xss.java | A:@AutoMapper 到 PlmUser；userName/nickName 的 Xss 与长度校验、email 格式、roleIds 至少一项；isSuperAdmin() | S:password 无校验注解；createdBy/updatedBy/userIds/excludeUserIds 无实体列，BaseEntity 审计列已注释
 PlmUserRoleBo.java[PD3T]: F:用户角色关联请求体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/PlmUserRole.java | A:@AutoMapper 到 PlmUserRole；EditGroup 下 userId 与 roleId 必填 | S:@NotNull 仅 EditGroup 生效，AddGroup 下无校验
 RefreshBody.java[EI3T]: F:刷新令牌请求体 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/controller/auth/LoginController.java | A:单字段 record refreshToken，带 @NotBlank 校验注解 | S:@NotBlank需调用方显式ValidatorUtils.validate才生效；登出路径不校验
+V5aiApiKeysBo.java[DD4T]: F: API Key 创建/编辑请求业务对象 | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/===
 LoginVo.java[EI4T]: F:登录令牌响应 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/controller/auth/LoginController.java | A:access_token/refresh_token/expire_in/refresh_expire_in/client_id 下划线 JSON 名与 scope/openid | S:JSON 名与 Java 驼峰字段不一致，改名即破坏前端与 OAuth 风格契约
@@ -952,13 +969,15 @@ UserInfoVo.java[DB4T]: F:登录用户信息视图 | R:code:v5ai-modules/v5ai-pla
 V5aiAppQuotaVo.java[DB5T]: F:应用配额视图 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/V5aiAppQuota.java | A:V5aiAppQuotaVo 字段：agentKey/dailyModelCalls/dailyTokens/ratePerMinute | S:配额或限流取 0 即不限。
 V5aiAppUsageVo.java[DB5T]: F:应用日用量视图 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/V5aiAppUsage.java | A:V5aiAppUsageVo 字段：agentKey/usageDate/modelCalls/tokens | S:按 agentKey 加日期唯一，每日一行。
 V5aiModelUsageVo.java[DB5T]: F:模型调用用量视图 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/V5aiModelUsage.java | A:V5aiModelUsageVo 字段：runId/agentKey/modelKey/promptTokens/completionTokens/totalTokens/durationMs/status | S:-
+ApiKeysRespVo.java[DD4T]: F: API Key 生成响应体，含明文密钥仅展示一次 | R: - | A: - | S: 生成后仅展示一次明文，后续永远不可再获取
+V5aiApiKeysVo.java[DD4T]: F: API Key 列表展示视图对象 | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/event/===
 OnlineUserCleanEvent.java[DM4T]: F:在线用户清理事件 | R:- | A:record OnlineUserCleanEvent(roleId, userIds)、静态工厂 byRole/byUsers | S:构造器把非空 userIds 复制为不可变副本。
 UserLoginSuccessEvent.java[DM4T]: F:登录成功事件 | R:- | A:record UserLoginSuccessEvent(loginId, tokenValue, loginParameter) | S:无业务逻辑，由 UserActionListener 在登录时发布。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/listener/===
-OnlineUserCleanListener.java[DM4T]: F:在线用户清理监听 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmRoleService.java | A:@TransactionalEventListener 方法 cleanOnlineUser(OnlineUserCleanEvent) | S:@Async 且 AFTER_COMMIT、fallbackExecution=true，事务外发布同样触发。
+OnlineUserCleanListener.java[DM4T]: F: 在线用户清理监听，角色变更后踢出受影响用户 | R: - | A: @TransactionalEventListener AFTER_COMMIT，@Async 异步执行 | S: fallbackExecution=true，事务外发布同样触发
 UserActionListener.java[DM5S]: F:Sa-Token 用户行为监听 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/event/UserLoginSuccessEvent.java | A:implements SaTokenListener：doLogin 发布登录事件，doLogout/doKickout/doReplaced 清理在线缓存 | S:除上述四个外的方法为空实现；日志 token 只打末 8 位。
 UserLoginSuccessListener.java[DM5S]: F:登录成功落库与在线登记 | R:code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/domain/UserOnlineDTO.java | A:@EventListener 方法 handleLoginSuccess(UserLoginSuccessEvent) | S:User-Agent 与客户端 IP 由当前请求线程取；timeout=-1 时在线缓存不过期。
 
@@ -975,36 +994,41 @@ PlmUserRoleMapper.java[PB4T]: F:用户角色关联查询 | R:code:v5ai-modules/v
 V5aiAppQuotaMapper.java[PB5T]: F:Agent 配额存取 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/V5aiAppQuota.java | A:selectByApp、selectAll | S:配额缺失语义为不限。
 V5aiAppUsageMapper.java[PB5S]: F:Agent 日用量读写 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/V5aiAppUsage.java | A:selectByAppAndDate、selectByAppRange、upsertUsage(agentKey, usageDate, tokens) | S:upsertUsage 是唯一声明式方法，须有 XML 或注解 SQL 实现；靠原子累加规避读改写竞态。
 V5aiModelUsageMapper.java[PB4T]: F:模型用量明细 Mapper | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/V5aiModelUsage.java | A:V5aiModelUsageMapper 继承 BaseMapperPlus<V5aiModelUsage, V5aiModelUsageVo> | S:原范围与最近记录查询已注释，仅剩继承能力。
+V5aiApiKeysAgentMapper.java[PD3T]: F: API Key-Agent 关联表 Mapper | R: - | A: 继承 BaseMapper，无自定义 SQL | S: -
+V5aiApiKeysMapper.java[PD5M]: F: API Key 主表 Mapper | R: code:v5ai-modules/v5ai-platform/src/main/resources/mapper/V5aiApiKeysMapper.xml | A: 继承 BaseMapper，自定义查询在 XML | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/===
 ILoginService.java[AI7T]: F:登录认证与令牌刷新契约 | R:code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/model/LoginUser.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/LoginVo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmUserVo.java | A:login, refresh, logout, recordLoginInfo, updateLastLoginInfo, buildLoginUser | S:refresh 一次性消费刷新令牌并轮换下发新刷新令牌，调用方须保存轮换后的值；logout 与 recordLoginInfo 为 void
 IPlmClientService.java[AI6T]: F:授权客户端配置管理契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmClientBo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmClientVo.java | A:按主键与 clientId 查询、分页与列表查询、新增与修改、状态更新、批量删除、clientKey 唯一性校验 | S:clientId 由 clientKey 与 clientSecret 派生；grantType/ipWhitelist/accessPath 以列表字段暴露给前端编辑
 IPlmLoginInfoService.java[AO5T]: F:登录日志记录与清理契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmLoginInfoBo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmLoginInfoVo.java | A:分页查询、按条件集合查询、新增登录日志、按 ID 批量删除、清空 | S:-
-IPlmMenuService.java[AI7S]: F:菜单树、权限集与前端路由契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/PlmMenu.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmMenuVo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/RouterVo.java | A:按用户或角色查询菜单与权限集、菜单树与前端路由构建、下拉树构建、菜单增删改、菜单名与路由唯一性校验 | S:权限集来自角色与菜单的授权关联；非超级管理员只返回已授权菜单，超级管理员走全量分支
+IPlmMenuService.java[AI7S]: F: 菜单树、权限集与前端路由契约 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/PlmMenu.java | A: 按用户/角色查菜单与权限集，菜单树与路由构建，增删改与唯一性校验 | S: 超管全量，非超管按授权过滤
 IPlmOperLogService.java[AO5T]: F:操作日志查询与清理契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmOperLogBo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmOperLogVo.java | A:分页查询、条件集合查询、按 ID 查询、日志写入、按 ID 批量删除、清空 | S:-
 IPlmPermissionService.java[DI7T]: F:角色、菜单与数据权限聚合契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmRoleService.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmMenuService.java | A:getRolePermission, getMenuPermission, getDataScopeRoleMap | S:超级管理员由实现短路：不查库，角色集直接返回内置超管角色键、菜单集返回 *:*:*
-IPlmResourceService.java[PG6T]: F:通用资源存储与内容读取契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmResourceBo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmResourceVo.java | A:分页查询、按 ID 查询、上传并登记、元数据修改、按 ID 批量删除、内容读取 | S:bizType 仅允许 GENERAL/AVATAR/ATTACHMENT/DOCUMENT；删除为物理删除文件与记录；ResourceContent 为本接口内嵌 record
+IPlmResourceService.java[PG6T]: F: 通用资源存储与内容读取契约 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmResourceBo.java | A: 分页/按 ID 查/上传登记/元数据修改/批量删除/内容读取 | S: bizType 仅 GENERAL/AVATAR/ATTACHMENT/DOCUMENT；删除物理删除
 IPlmRoleService.java[AI8M]: F:角色、权限与用户授权契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/PlmUserRole.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmRoleBo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmRoleVo.java | A:角色分页与条件查询、唯一性与数据权限校验、角色增删改与状态变更、菜单权限重建、用户角色授权与取消、在线用户踢出 | S:已分配用户的角色禁止禁用或删除；超管角色（id=1、键 ADMIN）不可新增、改键或删除；踢出在线用户需遍历全部在线 token，量大时阻塞 Redis
 IPlmSliderCaptchaService.java[AS6T]: F:滑块验证码生成与校验契约 | R:code:v5ai-common/v5ai-common-web/src/main/java/xin/v5ai/nb/common/web/core/SliderCaptchaStore.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/SliderCaptchaVO.java | A:generate, verify, checkAndConsumeVerified, 常量 CAPTCHA_REQUIRED_CODE/WIDTH/HEIGHT/PIECE_SIZE/TOLERANCE | S:缺口 x 坐标仅存服务端、客户端无法获取；拼图一次性使用，校验失败或过期须重新生成
 IPlmUserService.java[AI7S]: F:用户管理与账号唯一性契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmUserBo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/PlmUserVo.java | A:分页与条件查询、已分配与未分配角色用户查询、账号与手机号及邮箱唯一性校验、用户增删改与状态及密码变更、用户角色授权 | S:超级管理员用户不可被操作或删除；列表查询默认过滤已逻辑删除（delFlag）的用户
 IV5aiAppQuotaService.java[AP2T]: F:空配额服务标记接口 | R:- | A:- | S:接口无任何方法，仅作标记与扩展占位
 IV5aiModelUsageService.java[AA5T]: F:模型用量分页查询契约 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/ModelUsageListBo.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/vo/ModelUsagePageVo.java | A:queryPageList | S:-
+IV5aiApiKeysService.java[DI5T]: F: API Key 管理服务契约，定义生成/列表/禁用/删除操作 | R: - | A: generateApiKey/listKeys/disableKey/deleteKey | S: 生成时仅返回明文一次
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/impl/===
 InMemorySlidingWindowRateLimiter.java[RP5T]: F:进程内滑动窗口限流器 | R:code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/RateLimiter.java | A:RateLimiter.tryAcquire | S:仅单实例有效，多实例部署须换 Redis 实现；permitsPerMinute<=0 时直接放行；窗口固定 60 秒
-LoginServiceImpl.java[AI8L]: F:密码登录、令牌刷新与登录门控 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmPermissionService.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmSliderCaptchaService.java, code:v5ai-common/v5ai-common-satoken/src/main/java/xin/v5ai/nb/common/satoken/token/RefreshTokenService.java | A:login, refresh, logout, recordLoginInfo, buildLoginUser, checkLogin | S:失败次数记于 Redis 键 PWD_ERR_CNT_KEY 加用户名，默认上限 5 次、锁定 10 分钟；用户不存在或已停用同样累计次数，避免绕过滑块门控；captcha.type=slider 且失败数达 sliderThreshold 时要求携带已通过校验的滑块令牌，否则抛错误码 1006；Sa-Token is-concurrent=false，新登录使旧访问令牌失效
-PlmClientServiceImpl.java[AI6M]: F:授权客户端配置与缓存实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmClientMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/bo/PlmClientBo.java | A:queryById, queryByClientId, queryPageList, insertByBo, updateByBo, updateClientStatus | S:clientId 为 clientKey 与 clientSecret 的 md5；queryByClientId 走 SYS_CLIENT 缓存，增改按 clientId 失效、批量删除全量失效；accessPath 自动补前导斜杠，* 与 /** 归一为 /**
+LoginServiceImpl.java[AI8L]: F: 密码登录/令牌刷新/登录门控，失败锁定与滑块校验 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmPermissionService.java | A: login/refresh/logout，checkLogin 失败锁 | S: Redis PWD_ERR_CNT_KEY 失败 5 次锁定 10 分钟；新登录使旧 token 失效
+PlmClientServiceImpl.java[AI6M]: F: 授权客户端配置与缓存实现 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmClientMapper.java | A: queryPageList/insertByBo/updateByBo/updateClientStatus | S: clientId 为 clientKey+clientSecret 的 MD5；增改按 clientId 清缓存
 PlmLoginInfoServiceImpl.java[AO5S]: F:登录日志事件落库与查询 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmLoginInfoMapper.java, code:v5ai-common/v5ai-common-log/src/main/java/xin/v5ai/nb/common/log/event/LoginInfoEvent.java | A:recordLoginInfo（事件监听写入）、分页查询、集合查询、按 ID 批量删除、清空 | S:recordLoginInfo 为 @Async @EventListener；按 User-Agent 解析 os 与 browser；登录成功、登出、注册记成功态，登录失败记失败态
-PlmMenuServiceImpl.java[AI8M]: F:菜单树、权限集与路由构建实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmMenuMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmRoleMenuMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/domain/PlmMenu.java | A:菜单与权限集查询、菜单树构建、前端路由 buildMenus、下拉树 buildMenuTreeSelect、菜单增删改、菜单名与路由唯一性校验 | S:超管走全量查询、非超管按用户授权过滤；buildMenus 的路由 name 为 routeName 拼菜单 id；批量删除菜单连带清理 v5ai_role_menu
+PlmMenuServiceImpl.java[AI8M]: F: 菜单树/权限集/前端路由构建实现 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmMenuMapper.java | A: 菜单增删改/buildMenus/buildMenuTreeSelect，超管全量非超管过滤 | S: 路由 name 为 routeName 拼菜单 id；批量删除清理 role_menu
 PlmOperLogServiceImpl.java[AO5S]: F:操作日志事件异步落库与查询 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmOperLogMapper.java, code:v5ai-common/v5ai-common-log/src/main/java/xin/v5ai/nb/common/log/event/OperLogEvent.java | A:recordOper（事件监听）、分页与集合及按 ID 查询、写入、按 ID 批量删除、清空 | S:recordOper 为 @Async @EventListener，按 IP 反查归属地；分页未传排序列时默认按 id 倒序
 PlmPermissionServiceImpl.java[DI7T]: F:角色与菜单权限汇总实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmRoleService.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmMenuService.java | A:IPlmPermissionService 与 common PermissionService 双接口实现、getRolePermission、getMenuPermission、getDataScopeRoleMap | S:超级管理员短路：角色集直接给内置超管角色键、菜单集给 *:*:*，均不查库
-PlmResourceContentPortImpl.java[IG6T]: F:资源内容端口适配与幂等删除 | R:code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ResourceContentPort.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmResourceService.java | A:ResourceContentPort 的 save/read/delete | S:delete 幂等且尽力而为：资源不存在时静默跳过，删除异常仅告警不外抛，避免反噬知识库删除事务
-PlmResourceServiceImpl.java[PG6M]: F:本地与 MinIO 双后端资源存储实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmResourceMapper.java, code:v5ai-common/v5ai-common-storage/src/main/java/xin/v5ai/nb/common/storage/properties/MinioProperties.java | A:queryPageList, queryById, upload, updateByBo, deleteWithValidByIds, loadContent | S:v5ai.storage.type 仅接受 LOCAL/MINIO，其他值拒收；accessUrl 固定为 /api/admin/resources/{id}/preview；本地路径经根目录校验防穿越；MinIO 桶不存在时自动创建
-PlmRoleServiceImpl.java[AI8L]: F:角色权限与用户授权实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmRoleMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmRoleMenuMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmUserRoleMapper.java | A:角色分页与条件查询、唯一性与数据权限校验、角色增删改与状态变更、菜单权限重建、用户授权与取消授权、在线用户踢出 | S:角色已分配用户时禁止禁用或删除；超管角色（id=1、键 ADMIN）不可改键或删除；踢出在线用户遍历全部在线 token，量大时阻塞 Redis；授权变更发布 OnlineUserCleanEvent
+PlmResourceContentPortImpl.java[IG6T]: F: 资源内容端口适配与幂等删除 | R: code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ResourceContentPort.java | A: save/read/delete | S: delete 幂等，资源不存在时静默跳过，异常仅告警不外抛
+PlmResourceServiceImpl.java[PG6M]: F: 本地与 MinIO 双后端资源存储实现 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmResourceMapper.java | A: queryPageList/upload/deleteWithValidByIds/loadContent | S: storage.type 仅 LOCAL/MINIO；本地路径防穿越；MinIO 桶自动创建
+PlmRoleServiceImpl.java[AI8L]: F: 角色权限与用户授权实现 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmRoleMapper.java | A: 角色增删改/状态变更/菜单权限重建/用户授权与取消/在线用户踢出 | S: 超管不可删键；已分配用户的角色禁止禁用删除
 PlmSliderCaptchaServiceImpl.java[AS6M]: F:滑块拼图生成与位置校验实现 | R:code:v5ai-common/v5ai-common-web/src/main/java/xin/v5ai/nb/common/web/core/SliderCaptchaStore.java, code:v5ai-common/v5ai-common-web/src/main/java/xin/v5ai/nb/common/web/config/properties/CaptchaProperties.java | A:generate, verify, checkAndConsumeVerified | S:背景为程序化绘制，不依赖外部图片；拼图块与缺口复用同一 Shape 路径；verify 一次性删除缺口，通过后标记已验证；过期分钟数非法时按 2 兜底
-PlmUserServiceImpl.java[AI8L]: F:用户管理与角色授权实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmUserMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmRoleMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmUserRoleMapper.java | A:用户分页与条件查询、已分配与未分配角色用户查询、账号与手机号及邮箱唯一性校验、用户增删改与状态及密码变更、用户角色授权、UserService 端口查询（selectById/selectListByIds/selectUsersByRoleIds） | S:列表查询固定过滤 delFlag=NORMAL；非超管不得分配超管角色，仅选超管时显式报错；昵称查询走 SYS_NICKNAME 缓存，批量场景经 AOP 代理以命中缓存
+PlmUserServiceImpl.java[AI8L]: F: 用户管理与角色授权实现 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmUserMapper.java | A: 用户增删改/状态密码变更/角色授权/唯一性校验/UserService 端口 | S: 非超管禁分配超管角色；昵称查 SYS_NICKNAME 缓存
 V5aiAppQuotaServiceImpl.java[AP6T]: F:应用配额与按日用量管控实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/V5aiAppQuotaMapper.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/V5aiAppUsageMapper.java, code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/RateLimiter.java | A:AppQuotaService 端口（getQuota/updateQuota/checkAllowed/recordUsage/getDailyUsage） | S:配额值 0 表示不限；checkAllowed 先校验每分钟限流再校验当日调用数；用量按 agent_key 与 usage_date 复合主键原子 upsert 累加
 V5aiModelUsageServiceImpl.java[AA5T]: F:模型用量查询与落库实现 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/V5aiModelUsageMapper.java, code:v5ai-api/src/main/java/xin/v5ai/nb/model/api/ModelUsageService.java | A:queryPageList, record（ModelUsageService 实现） | S:查询按 agentKey 与创建时间区间过滤，默认按 createdAt 升序；record 的 createdAt 为空时取当前时间
+PlmSensitiveServiceImpl.java[IS5T]: F: 敏感数据脱敏实现，日志/响应时按规则掩码 | R: - | A: - | S: -
+V5aiApiKeysServiceImpl.java[DI7M]: F: API Key 管理实现：生成/列表/禁用/删除 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/V5aiApiKeysMapper.java | A: generateApiKey/listKeys/disableKey/deleteKey | S: 生成时 SHA3-256+BCrypt 存哈希，仅返回 AES 加密的临时明文一次；禁用不可逆
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/resources/db/migration/===
 V10__menu_management.sql[PD7T]: F:建菜单表与角色菜单表并播种 | R:- | A:v5ai_menu 表、v5ai_role_menu 表、ADMIN 与 USER 的菜单授权种子 | S:code 与 route_name 唯一，parent_id 自引用外键；ADMIN 授全部菜单，USER 仅 dashboard 与 g-resource 组；菜单为全局资源，无租户列
@@ -1039,6 +1063,19 @@ V7__platform_enhancements.sql[PD8S]: F:RBAC 配额用量审计建表 | R:code:v5
 V8__agent_rename.sql[PD8T]: F:Application 改名 Agent | R:code:v5ai-modules/v5ai-platform/src/main/resources/db/migration/V1__phase1_schema.sql | A:application* 表改名为 agent* 表, app_key 列全量改名为 agent_key, v5ai_agent 新增 system_prompt | S:-
 V9__role_management.sql[PD8T]: F:角色键规范化与扩展 | R:code:v5ai-modules/v5ai-platform/src/main/resources/db/migration/V7__platform_enhancements.sql | A:v5ai_role 新增 description/builtin/created_at/updated_at, role_key 统一转大写 | S:大写 role_key 与 RoleKey 枚举及 hasRole("ADMIN") 判定一致
 V32__agent_rag_call_mode.sql[OD6T]: F:为 v5ai_agent 增加 rag_call_mode 列 | R:- | A:ALTER TABLE v5ai_agent ADD COLUMN rag_call_mode SMALLINT NOT NULL DEFAULT 2 及列注释 | S:默认 2（强制调用）兼容存量行为；迁移只增不改，勿修改已应用脚本
+README.md[SD6T]: F: Flyway 迁移历史说明，V1–V41 逐版本做了什么，V42 起递增规则 | R: - | A: - | S: 历史冻结于 V41，只增不改
+V34__rbac_primary_key_auto_increment.sql[OD3T]: F: RBAC 表主键自增改造 | R: - | A: - | S: -
+V35__api_key_user_agent_binding.sql[OD3T]: F: API Key 表 + 用户与 Agent 绑定 | R: - | A: - | S: -
+V36__api_keys_tracking_id_uuid.sql[OD3T]: F: API Key 表 tracking_id 列 UUID 改造 | R: - | A: - | S: -
+V37__api_keys_key_hash.sql[OD3T]: F: API Key 表 key_hash 列 BCrypt 存储改造 | R: - | A: - | S: -
+V38__portal_conversations_attachments.sql[OD3T]: F: 会话附件表与附件资源类型 | R: - | A: - | S: -
+V39__message_usage_and_supersede.sql[OD3T]: F: 消息用量列 + 作废状态 | R: - | A: - | S: -
+V40__conversation_auto_naming.sql[OD3T]: F: 会话自动命名：name/name_source 列 | R: - | A: - | S: -
+V41__conversation_summary.sql[OD3T]: F: 会话摘要表 v5ai_conversation_summary | R: - | A: - | S: 历史冻结终点
+V42__message_reasoning_and_metadata.sql[OD3T]: F: 消息 reasoning 与 metadata 列 | R: - | A: - | S: -
+V43__schema_comments.sql[OD3T]: F: 全库表/列注释补齐 | R: - | A: - | S: -
+V44__drop_agent_model.sql[OD3T]: F: 删除遗留死表 v5ai_agent_model | R: - | A: - | S: -
+V45__message_metadata_citations.sql[OD3T]: F: 消息 metadata 列改造为 citations JSONB | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/resources/mapper/===
 PlmClientMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.PlmClientMapper，无任何 SQL 语句
@@ -1052,6 +1089,7 @@ PlmUserRoleMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅
 V5aiAppQuotaMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.V5aiAppQuotaMapper，无任何 SQL 语句
 V5aiAppUsageMapper.xml[PC8T]: F:按应用日用量原子累加 | R:code:v5ai-modules/v5ai-platform/src/main/resources/db/migration/V7__platform_enhancements.sql | A:upsertUsage(agentKey, usageDate, tokens) | S:INSERT ... ON CONFLICT (agent_key, usage_date) DO UPDATE，model_calls 固定 +1、tokens 累加 EXCLUDED.tokens、updated_at 取 now()
 V5aiModelUsageMapper.xml[FC7T]: F:空 Mapper 命名空间声明 | R:- | A:- | S:仅有 namespace=xin.v5ai.nb.platform.mapper.V5aiModelUsageMapper，无任何 SQL 语句
+V5aiApiKeysMapper.xml[PD5T]: F: API Key 自定义 SQL：按 id/agentKey 查、分页列表 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/V5aiApiKeysMapper.java | A: selectVoById/selectVoPageList | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/test/java/xin/v5ai/nb/platform/service/impl/===
 InMemorySlidingWindowRateLimiterTest.java[TR4T]: F:内存滑动窗口限流器单测 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/impl/InMemorySlidingWindowRateLimiter.java | A:- | S:上限 0 视为不限流；计数按 key 隔离
@@ -1059,6 +1097,9 @@ MyBatisAppQuotaServiceTest.java[TR5T]: F:应用配额校验与用量落库单测
 PlmResourceContentPortImplTest.java[TD5T]: F:资源内容端口实现单测 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/impl/PlmResourceContentPortImpl.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmResourceService.java | A:- | S:删除语义为幂等：queryById 抛异常即跳过，删除抛异常仅告警不外抛
 PlmResourceServiceImplTest.java[TD6M]: F:资源服务实现单测 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/impl/PlmResourceServiceImpl.java, code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/mapper/PlmResourceMapper.java | A:- | S:手动 initTableInfo 并注册 CopyConverter 替代 mapstruct-plus 装配，localDir/storageType 由反射注入
 SliderCaptchaServiceTest.java[TI6S]: F:滑块验证码服务单测 | R:code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/impl/PlmSliderCaptchaServiceImpl.java, code:v5ai-common/v5ai-common-web/src/main/java/xin/v5ai/nb/common/web/core/SliderCaptchaStore.java | A:- | S:内存 FakeStore 模拟 Redis 一次性令牌；缺口 x 不下发、令牌二次校验报 EXPIRED、PieceShape 路径不得越界
+BcryptAgentApiKeysVerifierTest.java[TQ5T]: F: BCrypt API Key 验证器单测，verify/generateApiKey 正确性 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/BcryptAgentApiKeysVerifier.java | A: - | S: -
+PlmRoleServiceImplTest.java[TQ5T]: F: 角色服务单测 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/impl/PlmRoleServiceImpl.java | A: - | S: -
+V5aiApiKeysServiceImplTest.java[TQ5T]: F: API Key 服务单测 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/impl/V5aiApiKeysServiceImpl.java | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/test/resources/mockito-extensions/===
 org.mockito.plugins.MockMaker[FQ4T]: F:指定 Mockito 使用子类 MockMaker | R:- | A:- | S:全模块 mock 走子类实现，无法 mock final 类与静态方法
@@ -1070,7 +1111,7 @@ pom.xml[FV4T]: F:RAG 模块 Maven 依赖声明 | R:- | A:artifactId v5ai-rag（p
 AgentKnowledgeBindingController.java[AD6T]: F:Agent 绑定知识库 API | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeBaseService.java,code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/KnowledgeBindBo.java | A:bindKnowledgeBases(POST /api/admin/agents/{agentKey}/knowledge-bindings)、getKnowledgeBindings(GET 同路径) | S:绑定为全量覆盖（先按 agentKey 删除再插入，事务内）；knowledgeBaseIds 为 null 时抛 IllegalArgumentException
 KnowledgeBaseController.java[AB6S]: F:知识库管理 API | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeBaseService.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/VectorDimensionService.java | A:createKnowledgeBase/updateKnowledgeBase/updateRagConfig/listKnowledgeBases/options/detail/disable/enable/delete, /dimension-check, /{kbId}/tasks | S:/{kbId}/tasks 恒返回空 R.ok()（分页 TODO 未实现）；/dimension-check 只读解析维度上限
 KnowledgeChunkController.java[AB6T]: F:知识库切片管理 API | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeChunkAdminService.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/KbChunkAddBo.java | A:listChunks(可按 documentId/chunkId/content 筛选), addChunk, updateChunk, deleteChunk | S:kbId 与 chunkId 同时参与定位并校验归属，防跨库越权；编辑切片会重新嵌入
-KnowledgeDebugController.java[AB6T]: F:知识库检索与问答调试 API | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeRetrievalService.java,code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeQaService.java | A:POST /{kbId}/retrieve、POST /{kbId}/chat/stream(SSE) | S:调试会话不落库；SSE 事件名取 RuntimeEvent.type().name()，id 取 runId
+KnowledgeDebugController.java[AB6T]: F: 知识库检索与问答调试 API | R: code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeRetrievalService.java | A: POST /{kbId}/retrieve，POST /{kbId}/chat/stream SSE | S: 调试会话不落库
 KnowledgeDocumentController.java[AB7M]: F:知识库文档管理 API | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeBaseService.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeDocumentService.java, code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ResourceContentPort.java | A:上传(multipart)/URL 导入/列表/删除/重试/重解析/预览/下载/批量重解析/批量删除 | S:上传按文件名判定 DocumentFileType；有 resourceId 的文档内容走 ResourceContentPort，读取失败提示源文件已不存在；下载用 RFC 5987 filename* 编码
 StoreInstanceController.java[AB6S]: F:存储实例管理 API | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IStoreInstanceService.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/StoreInstanceBo.java | A:list/getInfo/add/edit/setDefault/remove/test-connection | S:test-connection 异常一律转 failure 返回 200；同一分类至多一个默认实例；权限注解为 rag:store:*，其它 RAG 控制器未加
 
@@ -1192,7 +1233,7 @@ IKnowledgeBaseService.java[DB8T]: F:知识库 CRUD、文档上传导入与 Agent
 IKnowledgeChunkAdminService.java[DB6T]: F:切片管理端浏览与手工增删改契约 | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/vo/KnowledgeChunkVo.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/impl/KnowledgeChunkAdminServiceImpl.java | A:listChunks、countByKnowledgeBaseId、addChunk、updateChunk、deleteChunk | S:手工写操作与 Worker 索引共用同一向量入库链路（Embedding → VectorStore）以保持口径一致
 IKnowledgeChunkService.java[DB5T]: F:切片持久化端口（批量写入与向量回查） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/KnowledgeChunk.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/KnowledgeChunkDO.java | A:saveBatch、deleteByDocumentId、selectByVectorIds、findChunkByIdsAndLinkKeyword | S:saveBatch 在写入前统一生成关键词分词（BM25 依赖该列），调用方无需自行分词
 IKnowledgeDocumentService.java[DB4T]: F:文档持久化端口（Worker 与检索消费） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/KnowledgeDocument.java | A:save、findById、findByKnowledgeBaseId、delete | S:save 按 id 是否为空择 insert/update；返回对象含生成主键
-IKnowledgeQaService.java[DB6T]: F:知识库页内问答流式契约（检索到回答一轮） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/KbChatBo.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/impl/KnowledgeQaServiceImpl.java | A:chatStream | S:每轮 = 检索 → 邻近补全 → Prompt 注入 → 模型流式回答；回答不落库、不占运行配额，事件语义复用 RuntimeEvent：RETRIEVAL → TEXT_DELTA* → RUN_COMPLETED / RUN_FAILED
+IKnowledgeQaService.java[DB6T]: F: 知识库页内问答流式契约 | R: code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/KbChatBo.java | A: chatStream 检索→补全→注入→流式回答 | S: 回答不落库不占配额，事件复用 RuntimeEvent
 IKnowledgeRetrievalService.java[DB6T]: F:知识库检索调试契约（单库一次检索） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/KbRetrieveBo.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/vo/KbHitVo.java | A:retrieve | S:向量与关键词按融合策略召回、阈值过滤、可选问题改写；空参数按知识库已存 SearchParams → 默认值补齐，调试参数不回写知识库配置
 IKnowledgeTaskService.java[DB5T]: F:索引任务持久化端口（Worker 消费） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/KnowledgeTask.java | A:save、findById、findByDocumentId、findByKnowledgeBaseId、deleteByDocumentId、findProcessable | S:findProcessable = PENDING 加仍有余量的 FAILED，按创建时间从旧到新限量；recoverStaleProcessing 回收卡死 PROCESSING 任务避免永久不被调度
 IStoreInstanceService.java[DB5T]: F:存储实例 CRUD、默认切换与连接测试契约 | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/bo/StoreInstanceBo.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/domain/vo/StoreInstanceVo.java | A:queryPageList、queryList、queryById、insertByBo、updateByBo、deleteWithValidByIds | S:updateDefault 设默认时清除同分类其它默认、取消时仅动自身；testConnection 用未保存表单值测试并在编辑态合并库中脱敏字段
@@ -1203,7 +1244,7 @@ KnowledgeBaseServiceImpl.java[DB9L]: F:知识库管理实现（CRUD、上传导�
 KnowledgeChunkAdminServiceImpl.java[DB7L]: F:切片管理端实现（浏览、手工增删改与向量同步） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/store/VectorStoreResolver.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/EmbeddingClient.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/tokenizer/TextTokenizer.java | A:IKnowledgeChunkAdminService | S:写操作要求所属文档已进入索引终态（状态 ≥ 3），否则 Worker 重建会静默覆盖；业务行先落库再写向量（主键 = vectorId），编辑/删除同步维护两侧并增量调整文档分片数
 KnowledgeChunkServiceImpl.java[DB4T]: F:切片持久化端口实现（写入前生成关键词分词） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/tokenizer/TextTokenizer.java | A:IKnowledgeChunkService | S:saveBatch 用 jieba INDEX 分词写 keyword_tokens，BM25 依赖该列；空列表直接返回空集合不查库
 KnowledgeDocumentServiceImpl.java[DB5T]: F:文档持久化与正文内容存取实现 | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/KnowledgeDocumentContentStore.java, code:v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ResourceContentPort.java | A:IKnowledgeDocumentService、KnowledgeDocumentContentStore | S:loadContent 优先按 resource_id 读资源存储、BYTEA 仅作存量兜底，文档不存在返回空数组而非抛错；saveContent 直接写 BYTEA 列，与新的资源存储路径并存
-KnowledgeQaServiceImpl.java[DB7L]: F:知识库页内问答实现（检索、邻近补全、流式回答） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeRetrievalService.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/mapper/KnowledgeChunkMapper.java | A:IKnowledgeQaService | S:模板以 <Documents> 为注入点，缺失则知识块追加到提示末尾；邻近半径 = (n-1)/2 且总量上限 150 行；思考与回答分流为 REASONING_DELTA / TEXT_DELTA
+KnowledgeQaServiceImpl.java[DB7L]: F: 知识库页内问答实现 | R: code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/service/IKnowledgeRetrievalService.java | A: IKnowledgeQaService | S: <Documents> 为注入点；邻近半径 (n-1)/2 上限 150 行
 KnowledgeRetrievalServiceImpl.java[DB7M]: F:知识库检索调试实现（双路+融合+改写） | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/mapper/KnowledgeDocumentMapper.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/store/VectorStoreResolver.java | A:retrieve(knowledgeBaseId, KbRetrieveBo) → List<KbHitVo> | S:向量路与关键词路异常均吞掉返回空，不中断主流程；改写模型缺失或失败回退原查询；仅 RRF 策略校验 rrfK 在 1~200。
 KnowledgeTaskServiceImpl.java[DB5T]: F:知识任务持久化服务 | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/mapper/KnowledgeTaskMapper.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/repository/KnowledgeTaskRepository.java | A:save 按 id 有无插入或更新，findById、findByDocumentId、findByKnowledgeBaseId（倒序）、deleteByDocumentId、findProcessable、recoverStaleProcessing | S:按知识库查询倒序，按文档查询无序；不校验知识库存在性。
 StoreInstanceServiceImpl.java[DB8M]: F:存储实例配置管理与连接测试服务 | R:code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/store/VectorStoreResolver.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/core/StoreConnectionTester.java, code:v5ai-modules/v5ai-rag/src/main/java/xin/v5ai/nb/rag/mapper/KnowledgeBaseMapper.java | A:queryPageList、queryList、queryById、insertByBo、updateByBo、updateDefault、deleteWithValidByIds、testConnection | S:password/token 查询时移除、提交为空保留库中原值；分类与类型组合校验：向量库支持 1/2/3，搜索引擎仅 3/4；被知识库引用的实例拒删；更新删除后失效存储缓存。
@@ -1262,26 +1303,46 @@ StoreInstanceServiceImplTest.java[TA6L]: F:存储实例服务 CRUD 单测 | R:co
 pom.xml[FV5T]: F:运行时模块构建描述 | R:- | A:Maven 坐标 xin.v5ai.nb:v5ai-runtime | S:父模块 v5ai-modules；仅依赖 v5ai-common-encrypt、v5ai-common-mybatis、v5ai-common-agentscope 与 v5ai-api 及测试 starter。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/===
-ChatController.java[CN8T]: F:对外 Agent 对话接口（SSE/一次性/历史/恢复） | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/MessageService.java,code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/vo/ConversationMessageResponse.java | A:POST /api/v1/agents/{agentKey}/chat/stream、POST 同路径、GET conversations/{conversationId}、POST conversations/{conversationId}/resume | S:事件以 type 名作 SSE event、runId 作 id；conversationId 为空由运行时建新会话；历史查询返回 R<PageResult<ConversationMessageResponse>> 且未用 PageQuery；resume 会把会话历史注入请求
+ChatController.java[CN8T]: F: 对外 Agent 对话接口 SSE/一次性/历史/恢复/停止/重新生成 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java | A: POST stream、POST 一次性、GET conversations、POST resume/regenerate/stop | S: conversationId 为空自动建会话；SSE event=type名 id=runId
+ChatAttachmentController.java[ED5T]: F: 附件上传与读取控制器 | R: - | A: POST upload（JSON+base64），GET /{id} 读取 blob | S: 上传前校验模型 image 能力
+ChatAuthController.java[EI5T]: F: 门户初始化与头像代读 | R: - | A: GET bootstrap（imageSupported+Agent 信息），GET avatar 带鉴权取 blob | S: imageSupported 读发布快照 modelId，换绑定模型需重新发布
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/===
-PersistingAgentRuntime.java[AD8M]: F:运行时持久化装饰器 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java,code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/MyBatisRunEventRepository.java,code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/mapper/MyBatisMessageRepository.java | A:stream(AgentRunBo)、call(AgentRunBo)，四个构造器：可选尾部参数依次为状态仓储、用量记录、配额服务 | S:run_event 外键引用 v5ai_run.id，必须先落 run 记录；REASONING_DELTA 故意不落库；call() 仅拼接 TEXT_DELTA
-AgentScopeRuntime.java[AA8M]: F:Agent 运行时默认编排实现 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/PublishedAgentResolver.java,code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/PersistingAgentRuntime.java | A:stream(AgentRunBo):Flux<RuntimeEvent>、call(AgentRunBo):Mono<AgentRunVo>，5 个构造器（解析器/执行器/RAG/记忆/工具能力） | S:整体惰性（Flux.defer），订阅才解析 Agent 与生成 runId；强制调用或智能调用回退时在模型前检索并先发 RETRIEVAL；智能调用交给执行器注册 rag_search；call 的 runId 与 stream 内部不同
+PersistingAgentRuntime.java[AD8M]: F: 运行时持久化装饰器，事件转持久化/用量/配额/取消收尾 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java | A: stream/call，先落 run 再落 event | S: REASONING_DELTA 不落库；MODEL_USAGE 消费后过滤；call 仅拼接 TEXT_DELTA
+AgentScopeRuntime.java[AA8M]: F: Agent 运行时默认编排，惰性解析/记忆/RAG/能力装配 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java | A: stream Flux.defer 惰性解析与 runId 生成，call Mono | S: 强制 RAG 先检索发 RETRIEVAL 再调模型；智能 RAG 交执行器注册 rag_search
+AgentScopeModelChatClient.java[RA5T]: F: 直连模型 ChatClient，少 token 时绕过 Harness 直调 | R: - | A: streamText 直调模型 | S: 仅无 Skill/MCP/工具时走此路径
+ConversationSummaryGenerator.java[KA4T]: F: 会话摘要生成，调用小模型生成文本摘要 | R: - | A: generate 调用模型生成摘要 | S: -
+ConversationSummaryWriter.java[DC5S]: F: 会话摘要编排，异步触发/水位管理/重入安全 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/ConversationSummaryGenerator.java | A: summarize 异步摘要写入 | S: 水位 coveredUntilMessageId 只增不减；重新生成使摘要失效
+ConversationTitleGenerator.java[KA4T]: F: 会话标题生成，调小模型改为≤30字短标题 | R: - | A: generate 调模型生成标题 | S: -
+ConversationTitleWriter.java[DC5S]: F: 会话标题异步改写，首轮后调用模型生成≤30字标题 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/ConversationTitleGenerator.java | A: rewriteTitle 异步模型改写 | S: name_source=USER 改名后冻结不覆盖
+RunCancellationRegistry.java[RC4T]: F: 运行取消信号注册表，stop 时触发取消回调 | R: - | A: register/unregister/cancel | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/config/===
-AgentScopeRuntimeConfiguration.java[EC7S]: F:运行时装配与调试 Bean | R:code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/PersistingAgentRuntime.java,code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/config/properties/AgentScopeRuntimeProperties.java | A:Bean AgentTextExecutor, Bean AgentRuntime, Bean AgentRuntime agentDebugRuntime | S:执行器三级回退：模型解析器→Model+Harness→回显占位串；调试运行时走 resolveForDebug 放行草稿态但拒禁用态；可选依赖用 ObjectProvider 取
+AgentScopeRuntimeConfiguration.java[EC7S]: F: 运行时装配，执行器三级回退与调试 Bean | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/PersistingAgentRuntime.java | A: Bean AgentTextExecutor/AgentRuntime/agentDebugRuntime | S: 调试 resolveForDebug 放行草稿拒禁用；可选依赖 ObjectProvider
+PortalConfiguration.java[EC4T]: F: 门户装配：附件大小、标题属性、摘要属性 Bean | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/config/properties/===
-AgentScopeRuntimeProperties.java[FC4T]: F:AgentScope 运行目录与联网搜索配置项 | R:- | A:v5ai.agentscope.workspace、state、tavilyApiKey 绑定属性 | S:默认相对当前工作目录，部署需显式覆盖；tavilyApiKey 为空则不启用联网搜索工具
+AgentScopeRuntimeProperties.java[FC4T]: F: AgentScope 工作目录/状态/tavilyApiKey 配置项 | R: - | A: v5ai.agentscope.workspace/state/tavilyApiKey | S: 默认相对 CWD，部署需覆盖；tavilyApiKey 空不启用联网搜索
+ConversationSummaryProperties.java[FC3T]: F: 会话摘要配置：模型/提示/maxTokens | R: - | A: - | S: -
+ConversationTitleProperties.java[FC3T]: F: 会话标题配置：模型/提示/maxTokens | R: - | A: - | S: -
+HistoryWindowProperties.java[FC5M]: F: 历史窗口配置：条数/字符数/保底数/首条对齐用户 | R: - | A: v5ai.agentscope.history 配置 | S: -
+PortalAttachmentProperties.java[FC4T]: F: 门户附件配置：大小上限/允许类型 | R: - | A: v5ai.portal.attachment 配置 | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/resolver/===
 DBAgentModelResolver.java[AD7T]: F:模型配置解析为运行时模型 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/AgentModelResolver.java, code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/factory/AgentScopeModelFactory.java | A:AgentModelResolver.resolve(Long) | S:配置缺失抛 IllegalArgumentException 而非返回 null；密文必须经 CredentialCipher 解密
 AgentScopePublishedAgentResolver.java[IB8T]: F:运行时 Agent 解析器（发布快照 vs 实时编辑行） | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/PublishedAgentResolver.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AgentService.java | A:resolve(agentKey) 读发布快照；resolveForDebug(agentKey) 读实时编辑行 | S:resolve 要求 PUBLISHED 且 publishedVersion 非空，否则抛 AgentPublishException；快照 JSON 不含 status/publishedVersion，回填时状态恒置 PUBLISHED、版本取快照号；改名或新增 AgentDTO 组件时 fromSnapshot 的字段名与顺序必须同改，否则静默取空值
+DBModelImageSupportResolver.java[AA4T]: F: 按发布快照 modelId 数据库查询模型 image 能力 | R: code:v5ai-modules/v5ai-model/src/main/java/xin/v5ai/nb/model/runtime/AgentScopeModelFactory.java | A: isImageSupported 读 model config.capabilities | S: 换绑定模型必须重新发布才能刷新，调试用实时编辑行
+ResourceAttachmentContentProvider.java[IB4T]: F: 附件字节读取，带鉴权取资源内容 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/service/IPlmResourceService.java | A: getAttachmentBytes | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/test/java/xin/v5ai/nb/runtime/core/===
-PersistingAgentRuntimeTest.java[TR7S]: F:持久化装饰器行为单测 | R:code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/PersistingAgentRuntime.java | A:- | S:用 ScriptedRuntime 回放事件、Recording 服务收集落库；断言 REASONING_DELTA 不落库且回答不含思考文本
-AgentScopeRuntimeCitationsTest.java[TB7S]: F:检索事件载荷与截断行为测试 | R:code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/AgentScopeRuntime.java | A:- | S:字段名是前端引用 UI 的读契约，改名会静默丢引用；内容上限 2000 沿用知识库问答，截断结果为 2000+「...」共 2003 而非恰好 2000
-AgentScopeRuntimeSwitchesTest.java[TB8S]: F:运行时能力开关与 RAG 调用方式测试 | R:code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/AgentScopeRuntime.java | A:- | S:三处门禁都要两向覆盖：ragEnabled=false 不构建上下文、memoryEnabled 注入历史但不重复当前轮、显式 resume 历史不被记忆器覆盖；智能调用不预检索，模型不支持工具时回退强制调用
+PersistingAgentRuntimeTest.java[TR7S]: F: 持久化装饰器行为单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/PersistingAgentRuntime.java | A: - | S: ScriptedRuntime 回放事件、Recording 服务收集落库；assert REASONING_DELTA 不落库且回答不含思考文本
+AgentScopeRuntimeCitationsTest.java[TB7S]: F: 检索事件载荷与截断行为测试 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/AgentScopeRuntime.java | A: - | S: 字段名是前端引用 UI 的读契约，改名静默丢引用
+AgentScopeRuntimeSwitchesTest.java[TB8S]: F: 运行时能力开关与 RAG 调用方式测试 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/AgentScopeRuntime.java | A: - | S: 三处门禁两向覆盖，显式 resume 不覆盖，智能调用不预检索
+AgentScopeModelChatClientTest.java[TQ4T]: F: 直连模型 ChatClient 单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/AgentScopeModelChatClient.java | A: - | S: -
+ConversationNamingTest.java[TQ4T]: F: 会话命名工具单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/utils/ConversationNaming.java | A: - | S: -
+ConversationSummaryWriterTest.java[TQ4T]: F: 会话摘要编排单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/ConversationSummaryWriter.java | A: - | S: -
+ConversationTitleWriterTest.java[TQ4T]: F: 会话标题异步改写单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/ConversationTitleWriter.java | A: - | S: -
+RunCancellationRegistryTest.java[TQ4T]: F: 运行取消注册表单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/RunCancellationRegistry.java | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-skill/===
 pom.xml[FV4T]: F:Skill 模块构建描述 | R:- | A:- | S:版本用 ${revision} 占位，由父 POM 统一管理
@@ -1291,7 +1352,7 @@ AgentSkillBindingController.java[EU6T]: F:Agent 绑定 Skill 接口 | R:code:v5a
 SkillController.java[EU8S]: F:Skill 全生命周期管理 API | R:code:v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/service/ISkillService.java | A:POST /api/admin/skills 与 /online, GET /{id}/editor、/{id}/versions、/{id}/usage、/options, POST /{id}/versions/{vid}/publish 与 /offline, /{id}/rollback 与 /{id}/files 增删改 | S:发布与回滚都改写 currentVersionId，语义不同；版本列表不分页按总数建 PageResult；AI 生成用固定字符串包裹返回
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/===
-AgentSkillWorkspaceResolver.java[AD7T]: F:运行时 Skill 解析器 | R:code:v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/service/IAgentSkillBindingService.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/SkillWorkspaceResolver.java | A:SkillWorkspaceResolver.resolveSkills(AgentDTO) 返回 List<ResolvedSkill> | S:仅 ACTIVE 且当前版本 id 非空的 Skill 注入；单条解析失败仅告警跳过，不影响整轮运行
+AgentSkillWorkspaceResolver.java[AD7T]: F: 运行时 Skill 解析器 | R: code:v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/service/IAgentSkillBindingService.java | A: 返回 List ResolvedSkill | S: 仅 ACTIVE 且当前版本 id 非空的 Skill 注入；单条解析失败仅告警跳过
 SkillAiGenerator.java[AC7S]: F:AI 生成与优化 Skill 文件 | R:code:v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/SkillFrontmatterParser.java, code:v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/SkillPackageParser.java | A:generateSkillMd(String String Long), optimizeFile(String String String String String Long) | S:非流式整段返回；SKILL.md 必须 name 与技能名一致且 description、正文非空；超时 90s；ModelChatException 转 IllegalArgumentException 以便全局 handler 透出
 SkillFrontmatterParser.java[KS6T]: F:极简 frontmatter 键值解析 | R:- | A:ParsedMarkdown parseMarkdown(String), parseYaml(String), record ParsedMarkdown | S:仅顶层 key:value 与成对引号剥离；首尾 --- 不成对或原文不以 --- 开头则整段按无 frontmatter 处理；含点文件名不算扩展名
 SkillPackageParser.java[CS8M]: F:Skill 包解析与安全校验 | R:code:v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/SkillFrontmatterParser.java, code:v5ai-modules/v5ai-skill/src/main/java/xin/v5ai/nb/skill/core/domain/SkillPackage.java | A:parse(byte[]), static MAX_FILE_BYTES, static normalizePath(String), static validatePath(String) | S:上限：包 10MB、解压总量 20MB、200 文件、单文件 512KB；禁绝对路径与 .. 穿越；只收 UTF-8 文本，二进制与重名条目即拒；过滤 __MACOSX 与 ._、.DS_Store、Thumbs.db；总量在逐条读取时累计校验；metadata.yaml 仅补缺，frontmatter 优先
@@ -1375,7 +1436,7 @@ KnowledgeTaskScheduler.java[AW7T]: F:知识索引任务定时扫描 | R:code:v5a
 pom.xml[FV6T]: F:workflow 模块构建声明 | R:- | A:- | S:同时依赖 v5ai-common-agentscope 与 v5ai-common-mybatis；JSON 用 tools.jackson（Jackson 3）而非 fastjson；引入 reactor-core 支撑运行
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/controller/===
-WorkflowController.java[AW8S]: F:工作流管理 API 入口 | R:code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/service/IWorkflowService.java, code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/domain/vo/WorkflowVo.java | A:/api/admin/workflows 的增删改查 + /{key}/publish + /{key}/run + /{key}/runs + /runs/{runId} | S:唯一对外标识是 workflowKey；run 跳过服务层直调引擎；runs 一次取全量再包 PageResult 未真分页；DELETE 语义为禁用
+WorkflowController.java[AW8S]: F: 工作流管理 API 入口 | R: code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/service/IWorkflowService.java | A: 增删改查/publish/run/runs{runId} | S: DELETE 为禁用；run 跳过服务层直调引擎
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/===
 ConditionEvaluator.java[KA6T]: F:条件表达式白名单求值 | R:- | A:evaluate(left, operator, right) | S:只支持 == != contains not_contains is_empty is_not_empty 与四个数值比较符，未知运算符抛异常；比较一律先字符串化，数值运算符要求两侧可解析为 double；null 与空白都算空
@@ -1405,9 +1466,11 @@ WorkflowRun.java[LD6S]: F:运行实体（v5ai_workflow_run） | R:code:v5ai-modu
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/domain/bo/===
 WorkflowBo.java[LD6S]: F:工作流创建/更新请求体 | R:code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/domain/Workflow.java, code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/WorkflowDefinition.java | A:workflowKey, name, description, status, definition | S:workflowKey 与 name 用 AddGroup 分组校验、只在创建必填；更新时 key 取自路径参数而忽略请求体；definition 为 null 表示保留现有草稿；无 EditGroup，更新校验全在服务内做
+RunWorkflowBo.java[DD3T]: F: 工作流运行业务对象 | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/domain/vo/===
 WorkflowVo.java[LD6T]: F:工作流视图对象 | R:code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/domain/Workflow.java, code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/WorkflowDefinition.java | A:id, workflowKey, status, draftDefinition, publishedDefinition, publishedVersion | S:两个定义字段由服务从 JSON 解析后填充，实体只持 JSON 文本；createdAt/updatedAt 随 BaseEntity 为 OffsetDateTime；不含运行记录，需另查 /runs/{runId}
+WorkflowRunDetailVo.java[DD3T]: F: 工作流运行详情视图对象 | R: - | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/mapper/===
 MyBatisWorkflowRepository.java[PD8S]: F:工作流仓储 MyBatis 实现 | R:code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/WorkflowRepository.java, code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/domain/Workflow.java, code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/mapper/WorkflowMapper.java | A:实现 WorkflowRepository 的 save/update/findById/findByKey/list/disable | S:因同模块存在同名 record，domain 实体一律用全限定名引用，Lambda 又需显式 .class，故代码风格与别处迥异；toDomain 用 WorkflowStatus.valueOf，非法字符串会抛异常；toEntity 的 status 为 null 时置空不报错；disable 只改 status；底部留有已注释的时间互转方法
@@ -1429,7 +1492,7 @@ WorkflowRunMapper.xml[PC5T]: F:空 Mapper XML 仅声明命名空间 | R:- | A:- 
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-workflow/src/test/java/xin/v5ai/nb/workflow/===
 ConditionEvaluatorTest.java[TW7T]: F:校验条件求值运算符语义 | R:code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/ConditionEvaluator.java | A:- | S:比较宽松：数字与字符串统一转字符串；空判定把 null 与空白串都算空；非数字比大小、未知运算符、operator 为 null 均抛 IllegalArgumentException，消息含 numeric/unsupported/operator
-WorkflowEngineTest.java[TW8M]: F:内存替身驱动的引擎端到端用例 | R:code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/WorkflowEngine.java | A:- | S:仅用内存 WorkflowRepository/WorkflowRunRepository 与 FakeAgentRuntime，不起 Spring 与数据库；覆盖未发布工作流拒绝、AGENT 节点缺 agentKey 使该节点 FAILED、CONDITION true/false 分支未走的那侧记 SKIPPED、以及节点运行按 nodeId 落库
+WorkflowEngineTest.java[TW8M]: F: 内存替身驱动的引擎端到端用例 | R: code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/core/WorkflowEngine.java | A: - | S: 不用 Spring 与数据库；覆盖未发布拒绝/AGENT 缺 key/条件分支 SKIPPED
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-workflow/src/test/java/xin/v5ai/nb/workflow/service/impl/===
 WorkflowServiceImplTest.java[TW7M]: F:mock Mapper 验证工作流服务契约 | R:code:v5ai-modules/v5ai-workflow/src/main/java/xin/v5ai/nb/workflow/service/impl/WorkflowServiceImpl.java | A:- | S:三个 Mapper 全 mock，以内存 List 模拟 CRUD（updateById 只回写非 null 字段）；断言 create 出 DRAFT、重复 key 抛 already exists、无草稿 publish 抛 no draft definition、disable 后 publish 被拒
@@ -1441,7 +1504,7 @@ org.mockito.plugins.MockMaker[TQ7T]: F:声明 Mockito 使用子类 mock | R:- | 
 pom.xml[FV7S]: F:启动模块依赖聚合 | R:- | A:Maven 构件 xin.v5ai.nb:v5ai-starter | S:只声明应用模块与 PostgreSQL 驱动、Flyway、Redis/对象存储、actuator，版本由根 pom 管；v5ai-infrastructure 与 v5ai-api 未直接声明而经 v5ai-platform 传递引入，不可收窄；H2 仅测试作用域
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-starter/src/main/java/xin/v5ai/nb/starter/===
-V5aiApplication.java[EC9T]: F:Spring Boot 启动入口 | R:- | A:Class xin.v5ai.nb.starter.V5aiApplication | S:scanBasePackages 固定 xin.v5ai.nb，Mapper 扫描依赖 MyBatisConfiguration；@EnableScheduling 是文档索引 Worker 定时任务生效的前提；BufferingApplicationStartup 容量 2048 提供启动步骤埋点
+V5aiApplication.java[EC9T]: F: Spring Boot 启动入口 | R: - | A: scanBasePackages xin.v5ai.nb，@MapperScan，@EnableScheduling | S: BufferingApplicationStartup 容量 2048 启动埋点
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-starter/src/main/java/xin/v5ai/nb/starter/controller/===
 HealthController.java[OC7T]: F:健康检查端点 | R:- | A:GET /api/health，返回 status/database/service 三键 Map | S:探活用 JdbcTemplate 执行 SELECT 1，返回类型固定 Map<String,Object> 而非统一 R 包装；库不可达时 status 降为 DEGRADED 且不抛错；必须保持免登录可达
@@ -1496,10 +1559,10 @@ main.ts[FC4T]: F:前端应用入口装配 | R:code:v5ai-ui/src/router/index.ts,c
 monaco-env.d.ts[FC3T]: F:monaco editor.main 类型声明补丁 | R:- | A:declare module 声明，复用 editor.api 的导出形状 | S:仅补类型不改运行时代码；editor.main 入口自带注册全部语言与编辑器特性的副作用。
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui/src/api/===
-client.ts[LG9L]: F:前端统一 API 客户端 | R:code:v5ai-ui/src/utils/crypto.ts | A:各资源请求函数与类型（含 ResourceOption/ResourceRef）、login/logout/streamChat/adminDebugStream/resumeConversation、setSessionHooks、loadImagePreview、previewDocument/downloadDocument/previewResource/downloadResource | S:三个 fetch 入口（doRequest/streamSse/fetchResourceBlob）都必须带 clientid 头；401 先用刷新令牌换新令牌且只重试一次；登录与重置密码请求体走 RSA+AES 加密；后端可能以 HTTP 200 包 R.code!=200 返回，文件类响应按 content-type 识别错误体；令牌存 localStorage 的 v5ai.adminToken/v5ai.adminRefreshToken；loadImagePreview 返回 blob URL，调用方须 revokeObjectURL
+client.ts[IU9L]: F: 管理端 API 客户端，axios+加密+RSA/AES+刷新令牌 | R: code:v5ai-ui/src/utils/crypto.ts | A: 各资源请求/SSE 流/文件 blob/登录登出 | S: 三个 fetch 入口必带 clientid；401 刷新令牌只重试一次；登录密码加密
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui/src/components/===
-ChatMessageBody.vue[EU7S]: F:助手消息正文渲染组件 | R:code:v5ai-ui/src/utils/chatStream.ts, code:v5ai-ui/src/components/MarkdownContent.vue | A:Props { msg: ChatMsg }，知识问答与智能体调试共用 | S:思考默认展开、回答首 token 到达时自动收起一次，之后只看 msg.reasoningOpen；首 token 未到显示 shimmer，该动画在 prefers-reduced-motion 下关闭；引文按 score.toFixed(4) 展示且默认收起
+ChatMessageBody.vue[EU7S]: F: 助手消息正文渲染，思考折叠/shimmer/Markdown/引文 | R: code:v5ai-ui/src/utils/chatStream.ts, code:v5ai-ui/src/components/MarkdownContent.vue | A: Props { msg: ChatMsg }，知识问答与智能体调试共用 | S: 思考默认展开、首 token 到自动收起；引文 score.toFixed(4)
 IconPicker.vue[EU7M]: F:图标选择弹窗组件 | R:code:v5ai-ui/src/api/client.ts | A:Props{show,modelValue,adminToken} 与 update:show、update:modelValue 事件 | S:三路来源都先落到 pending 待确认：资源库筛 bizType=AVATAR 且 mimeType image/*（客户端过滤）、上传即选中、URL 须匹配 ^https?://\S+$；/api/ 地址带鉴权换成 blob: 预览，关闭须 revokeObjectURL
 MarkdownContent.vue[RU8M]: F:流式回答 Markdown 同步渲染 | R:code:v5ai-ui/src/components/MarkdownPreview.vue,code:v5ai-ui/src/components/MonacoTextView.vue | A:props content:string（唯一输入，无事件） | S:模型输出不可信：marked 放行原始 HTML，必经 DOMPurify 再 v-html，FORBID_TAGS 剥离 img；外链补 target/rel；只注册 13 种 hljs 语言，全量包会多约 1MB；不用 Vditor.preview 因其整体重写 DOM 且从 CDN 拉插件。
 MarkdownEditor.vue[RU6T]: F:Markdown 在线编辑器（vditor IR） | R:code:v5ai-ui/src/views/SkillEditorView.vue | A:props content、emits change/error；程序化 setValue 不触发 change | S:vditor 动态 import；挂载时容器缺失或加载失败先 emit error 再返回，mounted 前 ref 可能为 null。
@@ -1587,7 +1650,9 @@ AgentRunVo.java[DA5T]: F:Agent 运行结果（runId 与回答） | R:- | A:recor
 McpToolCallVo.java[DN5T]: F:MCP 工具调用结果统一表示 | R:- | A:success(content), failure(message) 静态工厂 | S:失败用 ok=false 表达而非抛异常；success 空内容补空串，failure 空 message 补默认文案
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/executor/===
-ModelStreamTextExecutorSwitchGateTest.java[TA6T]: F:执行器 MCP/Skill 开关门控单测 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutor.java | A:关闭开关时不调用解析器、开启时才调用（计数器解析器断言调用次数） | S:仅断言解析器是否被调用、不订阅事件流，故 mock 模型返回 Flux.empty() 即可，无需真实模型
+ModelStreamTextExecutorSwitchGateTest.java[TA6T]: F: 执行器 MCP/Skill/WebSearch 开关门控单测 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutor.java | A: 关闭开关时不调用解析器、开启时才调用（计数器解析器断言调用次数） | S: 仅断言解析器是否被调用、不订阅事件流，故 mock 模型返回 Flux.empty() 即可
+ModelStreamTextExecutorMultimodalTest.java[TN5T]: F: 模型执行器多模态单测，验证图像附件在请求构建/模型调用/流式处理中的行为 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutor.java | A: - | S: -
+ModelStreamTextExecutorUsageTest.java[TN5T]: F: 模型执行器用量统计单测，验证 MODEL_USAGE 事件的发出/消费/过滤链路 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutor.java | A: - | S: -
 
 ===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/docs/db/===
 dump-schema.sql[OD6T]: F:导出当前 schema 全貌（表与列、类型、约束、默认值、注释），用于重新生成 docs/db/schema.md | R:code:docs/db/schema.md | A:两条 pg 元数据查询的用法约定：把迁移全部应用到库后依次执行，再按 schema.md 格式渲染 | S:查询刻意把竖线与换行做转义，不转义会得到错位的 Markdown 表（v5ai_knowledge_base.delimiter 默认值就是竖线）；排除 v5ai_flyway_schema_history；无需 psql 或 pg_dump
@@ -1611,3 +1676,380 @@ TokenUsageAccumulator.java[DO6T]: F:一次运行的模型用量累加器：攒�
 PlatformMcpTool.java[IE7S]: F:平台 MCP 工具：按权限决策执行远程 MCP 调用并落审计 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/McpConnection.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/ResolvedMcpTool.java | A:callAsync 执行并审计（ALLOW/APPROVE 放行、DENY 直接拒绝）；checkPermissions 恒放行；参数摘要截断 500 字符 | S:不能设置 externalTool(true)：SDK 会短路为外部编排工具而跳过 callAsync，工具永不真正执行；AgentScope 侧权限钩子直接放行，平台权限在 callAsync 内统一执行与审计
 RagSearchTool.java[IE6T]: F:RAG 智能调用工具 rag_search：按知识库 ID 与问题检索，返回纯文本上下文 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/RagSearchProvider.java,code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/rag/RagHit.java | A:inputSchema 声明必填的 ragId 与 queryQuestion；命中经 hitsConsumer 回传供上层追加 RETRIEVAL；缺参、非数字、空 query、未绑定库均降级为 ERROR | S:参数用 inputSchema 的 JSON Schema 声明而非 @ToolParam（ToolBase 约定）；工具只返回文本上下文，命中事件由执行器在 TOOL_RESULT 之后追加
 WebSearchTool.java[IE6S]: F:联网搜索工具 web_search：调 Tavily Search API 并把 Top 结果拼成文本 | R:code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutor.java | A:callAsync 校验 Key 与 query 后检索；search(query) 组装请求（20 秒超时、max_results 为 5）；formatResults 输出答案与逐条标题链接正文 | S:缺 API Key 或 query 为空返回友好错误而不抛异常；是否注册由 Agent 的 webSearchEnabled 与请求收窄共同决定；formatResults 包外可见供单测直接喂响应
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/banner-design/===
+SKILL.md[XE6S]: F: Banner 设计技能定义，多格式创意 Banner 生成（社交媒体/广告/Web/打印），集成 AI 图像生成与前端设计 | R: - | A: - | S: 依赖 ui-ux-pro-max、frontend-design、ai-artist、ai-multimodal 技能协同
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/banner-design/references/===
+banner-sizes-and-styles.md[XE4S]: F: Banner 尺寸参考与 22 种艺术方向风格定义，含社交媒体/广告/Web/打印平台尺寸表与设计原则 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/brand/===
+SKILL.md[XE6T]: F: 品牌技能入口，管理品牌声音、视觉标识、消息框架、资产组织与一致性，含脚本调用指南 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/brand/references/===
+approval-checklist.md[XE4S]: F: 营销资产审批清单，覆盖视觉元素/无障碍/内容质量/技术/法律合规多维度检查项 | R: - | A: - | S: -
+asset-organization.md[XE4S]: F: 营销资产目录结构与命名规范（{type}_{campaign}_{description}_{timestamp}_{variant}.{ext}），含元数据 schema 与标签系统 | R: - | A: - | S: -
+brand-guideline-template.md[XE4S]: F: 品牌指南完整模板，含调色板/排版/Logo 用法/声音语调/图像规范/设计组件/AI 图像生成章节 | R: - | A: - | S: -
+color-palette-management.md[XE4S]: F: 品牌色彩系统管理指南，含色彩层级/文档格式/无障碍对比度/合规校验规则与工具参考 | R: - | A: - | S: -
+consistency-checklist.md[XE4T]: F: 品牌一致性检查清单，覆盖视觉/声音/渠道审计（网站/社交媒体/邮件/物料）与审计频率 | R: - | A: - | S: -
+logo-usage-rules.md[XE4S]: F: Logo 使用规范，含变体/颜色版本/安全间距/最小尺寸/禁止用法/联合品牌/平台特定指南 | R: - | A: - | S: -
+messaging-framework.md[XE4T]: F: 品牌消息框架，含使命/愿景/价值主张/定位声明/消息架构/受众分层与消息测试标准 | R: - | A: - | S: -
+typography-specifications.md[XE4M]: F: 字体规范，含字体栈/字号阶梯（1.25 Major Third）/字重/行高/字距/段落间距/响应式调整与 Tailwind 配置 | R: - | A: - | S: -
+update.md[XE5S]: F: 品牌更新子命令工作流，从收集输入→更新 brand-guidelines.md→同步 design-tokens→验证的四步流程，含颜色预设 | R: - | A: - | S: -
+visual-identity.md[XE4T]: F: 视觉标识基础指南，含 Logo/调色板/排版/图像/插图/图标模板与快速检查表 | R: - | A: - | S: -
+voice-framework.md[XE4T]: F: 品牌声音框架，区分 Voice（一致人格）与 Tone（场景适应），含四维频谱/开发流程/测试标准与模板 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/brand/scripts/===
+extract-colors.cjs[XE5M]: F: 从品牌指南提取颜色，对比图像主色与品牌调色板的合规性，纯 Node.js 无外部依赖 | R: - | A: - | S: 实际图像颜色提取需配合 ImageMagick 或 ai-multimodal 技能
+inject-brand-context.cjs[XE5M]: F: 从 brand-guidelines.md 提取品牌上下文（颜色/排版/声音/AI 图像风格）生成格式化系统提示注入 | R: - | A: - | S: -
+sync-brand-to-tokens.cjs[XE5M]: F: 同步 brand-guidelines.md 颜色到 design-tokens.json 并重新生成 design-tokens.css | R: - | A: - | S: 依赖 design-system 技能的 generate-tokens.cjs 生成 CSS
+validate-asset.cjs[XE5M]: F: 验证营销资产是否符合品牌规范，检查文件命名/尺寸/大小/格式/Manifest 注册 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/brand/templates/===
+brand-guidelines-starter.md[XE4M]: F: 品牌指南启动模板，含完整调色板/排版/Logo/声音/图像/AI 生成/设计组件/间距/圆角章节 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design-system/===
+SKILL.md[XE6M]: F: 设计系统技能定义，三层 Token 架构（Primitive→Semantic→Component）、组件规范、幻灯片生成系统 | R: - | A: - | S: 幻灯片系统含 BM25 搜索/Chart.js 集成/决策 CSVs/Duarte Sparkline 情感交替
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design-system/data/===
+slide-backgrounds.csv[XE3S]: F: 幻灯片类型→背景图像来源映射（Pexels/Unsplash），为幻灯片生成提供背景图检索依据 | R: - | A: - | S: -
+slide-charts.csv[XE3S]: F: 25 种图表类型定义与 Chart.js 配置，覆盖趋势/占比/对比等图表场景 | R: - | A: - | S: -
+slide-color-logic.csv[XE3T]: F: 情感→颜色处理映射表，为幻灯片生成提供按情感选择颜色方案的决策数据 | R: - | A: - | S: -
+slide-copy.csv[XE3S]: F: 25 种文案公式（PAS/AIDA/FAB 等），为幻灯片文本生成提供结构化写作模板 | R: - | A: - | S: -
+slide-layout-logic.csv[XE3T]: F: 目标→布局决策表，含 break_pattern 标记，为幻灯片系统提供上下文布局选择逻辑 | R: - | A: - | S: -
+slide-layouts.csv[XE3S]: F: 25 种幻灯片布局定义，含内容区域/视觉权重/CTA 位置/CSS 结构与动画类 | R: - | A: - | S: -
+slide-strategies.csv[XE4S]: F: 15 种演示结构策略（YC Seed Deck/Duarte Sparkline 等），含情感弧线与 sparkline 节拍序列 | R: - | A: - | S: -
+slide-typography.csv[XE3T]: F: 内容类型→排版规格映射，为幻灯片生成提供按内容类型选择字号/字重/行高的决策数据 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design-system/references/===
+component-specs.md[XE4T]: F: 组件规范参考，定义按钮/卡片/输入框等组件的默认/悬停/激活/禁用四态属性 | R: - | A: - | S: -
+component-tokens.md[XE4T]: F: 组件级 Token 参考，定义按组件定制的 Token 别名（--button-bg/--card-padding 等） | R: - | A: - | S: -
+primitive-tokens.md[XE4T]: F: 原始 Token 参考，定义颜色/间距/字号/圆角等底层设计值（如 --color-blue-600: #2563EB） | R: - | A: - | S: -
+semantic-tokens.md[XE4T]: F: 语义 Token 参考，定义用途别名（--color-primary/--spacing-section 等），连接原始值与组件 | R: - | A: - | S: -
+states-and-variants.md[XE4T]: F: 组件状态与变体参考，定义组件在默认/悬停/激活/禁用/聚焦/错误状态下的属性变化 | R: - | A: - | S: -
+tailwind-integration.md[XE4T]: F: Tailwind 集成参考，将 Design Token 映射到 Tailwind 配置的字体/颜色/间距主题扩展 | R: - | A: - | S: -
+token-architecture.md[XE4M]: F: Token 架构参考，定义三层 Token 体系（Primitive→Semantic→Component）及命名/继承/主题切换规则 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design-system/scripts/===
+embed-tokens.cjs[XE5T]: F: 将 CSS Token 变量嵌入 HTML 文件，替换硬编码值为 var() 引用 | R: - | A: - | S: -
+fetch-background.py[XE5M]: F: 从 Pexels/Unsplash 抓取幻灯片背景图像（无 API Key），按 slide-backgrounds.csv 映射检索 | R: - | A: - | S: -
+generate-slide.py[XE5M]: F: 幻灯片 HTML 生成器，按策略/布局/排版/颜色/背景决策链组装品牌合规幻灯片 | R: - | A: - | S: -
+generate-tokens.cjs[XE5M]: F: 从 JSON Token 配置生成 CSS 变量或 Tailwind 配置，支持 --config/--format 参数 | R: - | A: - | S: -
+html-token-validator.py[XE5T]: F: 校验 HTML 文件是否使用 CSS 变量而非硬编码值，确保 Token 合规 | R: - | A: - | S: -
+search-slides.py[XE5M]: F: BM25 幻灯片搜索与上下文推荐，支持按域/位置/情感上下文检索匹配的幻灯片策略 | R: - | A: - | S: -
+slide-token-validator.py[XE5M]: F: 校验幻灯片 HTML 是否使用 CSS 变量（var()）而非硬编码值，确保 Token 合规 | R: - | A: - | S: -
+slide_search_core.py[XE5M]: F: 幻灯片搜索核心模块，BM25 算法实现与 CSV 数据加载，被 search-slides.py 导入 | R: - | A: - | S: -
+validate-tokens.cjs[XE5M]: F: 扫描代码目录检测硬编码设计值（hex 颜色/px 尺寸/字体），标记应替换为 Token 引用的位置 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design-system/templates/===
+design-tokens-starter.json[XE4M]: F: Design Token 启动模板 JSON，含三层结构（Primitive→Semantic→Component）的完整初始定义 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/===
+SKILL.md[XE6M]: F: 设计技能入口，统一 Logo/图标/CIP（品牌形象包）/Banner/幻灯片/社交图片设计路由 | R: - | A: - | S: 依赖 ui-ux-pro-max、frontend-design、ai-artist 等技能协同
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/data/cip/===
+deliverables.csv[XE3T]: F: CIP 可交付物清单数据，定义品牌形象包各交付项的类型/格式/规格 | R: - | A: - | S: -
+industries.csv[XE3T]: F: CIP 行业数据，按行业分类的品牌形象包风格推荐与设计参数 | R: - | A: - | S: -
+mockup-contexts.csv[XE3T]: F: CIP 样机场景数据，定义品牌形象包在不同实物载体（名片/信纸/包装）上的展示上下文 | R: - | A: - | S: -
+styles.csv[XE3S]: F: CIP 风格数据，定义品牌形象包的视觉风格分类与设计参数 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/data/icon/===
+styles.csv[XE3T]: F: 图标风格数据，定义图标设计的风格分类/线宽/圆角/颜色等参数 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/data/logo/===
+colors.csv[XE3T]: F: Logo 颜色数据，按行业/风格分类的 Logo 配色方案推荐 | R: - | A: - | S: -
+industries.csv[XE3T]: F: Logo 行业数据，按行业分类的 Logo 设计风格/配色/字体推荐 | R: - | A: - | S: -
+styles.csv[XE3S]: F: Logo 风格数据，定义 Logo 设计的风格分类（极简/几何/手绘/字母等）与视觉参数 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/references/===
+banner-sizes-and-styles.md[XE4S]: F: Banner 尺寸参考与艺术方向风格定义（与 banner-design 技能共享数据） | R: - | A: - | S: -
+cip-deliverable-guide.md[XE4S]: F: CIP 可交付物指南，定义品牌形象包各交付项的规格/格式/质量标准 | R: - | A: - | S: -
+cip-design.md[XE4S]: F: CIP 设计流程参考，品牌形象包的端到端设计方法/步骤/检查点 | R: - | A: - | S: -
+cip-prompt-engineering.md[XE4S]: F: CIP 提示词工程参考，为 AI 生成品牌形象包各组件提供结构化提示词模板 | R: - | A: - | S: -
+cip-style-guide.md[XE4S]: F: CIP 风格指南参考，品牌形象包各风格类别的视觉规范/配色/排版定义 | R: - | A: - | S: -
+design-routing.md[XE4S]: F: 设计路由参考，按需求类型将设计请求分发到 Logo/图标/CIP/Banner/幻灯片/社交图片子技能 | R: - | A: - | S: -
+icon-design.md[XE4T]: F: 图标设计参考，定义图标风格（轮廓/填充/双色）/线宽/圆角/网格/颜色体系与平台适配规范 | R: - | A: - | S: -
+logo-color-psychology.md[XE4T]: F: Logo 色彩心理学参考，定义颜色与品牌情感/行业关联的映射与配色策略 | R: - | A: - | S: -
+logo-design.md[XE4T]: F: Logo 设计参考，定义 Logo 设计流程/风格类型/构图原则与输出规格 | R: - | A: - | S: -
+logo-prompt-engineering.md[XE4T]: F: Logo 提示词工程参考，为 AI 生成 Logo 提供按风格/行业/配色分类的结构化提示词模板 | R: - | A: - | S: -
+logo-style-guide.md[XE4T]: F: Logo 风格指南参考，按 Logo 类型分类定义视觉规范/颜色限制/间距/最小尺寸 | R: - | A: - | S: -
+slides-copywriting-formulas.md[XE4T]: F: 幻灯片文案公式参考，为幻灯片文本生成提供 PAS/AIDA/FAB 等结构化写作模板 | R: - | A: - | S: -
+slides-create.md[XE4T]: F: 幻灯片创建流程参考，端到端幻灯片生成步骤：策略选择→布局→文案→图表→背景→HTML 组装 | R: - | A: - | S: -
+slides-html-template.md[XE4T]: F: 幻灯片 HTML 模板参考，为幻灯片系统提供品牌合规 HTML 骨架/布局/动画模板 | R: - | A: - | S: -
+slides-layout-patterns.md[XE4T]: F: 幻灯片布局模式参考，定义常用幻灯片布局的网格/视觉权重/CTA 位置与 CSS 结构 | R: - | A: - | S: -
+slides-strategies.md[XE4T]: F: 幻灯片策略参考，定义演示文稿整体结构策略与情感叙事弧线的选择方法 | R: - | A: - | S: -
+slides.md[XE4T]: F: 幻灯片子系统总览参考，汇总幻灯片设计的策略/布局/文案/图表/HTML/动画全部组件 | R: - | A: - | S: -
+social-photos-design.md[XE4T]: F: 社交照片设计参考，定义社交媒体图像生成（帖子/故事/广告）的尺寸/风格/文案/品牌合规规范 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/scripts/cip/===
+core.py[XE5M]: F: CIP 品牌形象包核心逻辑，颜色解析/Token 引用/风格映射/行业数据加载 | R: - | A: - | S: -
+generate.py[XE5M]: F: CIP 生成脚本，按行业/风格/可交付物配置生成完整品牌形象包 HTML | R: - | A: - | S: -
+render-html.py[XE5M]: F: CIP HTML 渲染脚本，将品牌形象包数据渲染为标准 HTML 文件 | R: - | A: - | S: -
+search.py[XE5T]: F: CIP 搜索脚本，按关键词检索品牌形象包风格/行业/可交付物数据 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/scripts/icon/===
+generate.py[XE5T]: F: 图标生成脚本，按风格/类型/尺寸参数生成 SVG 图标 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/design/scripts/logo/===
+core.py[XE5T]: F: Logo 生成核心逻辑，颜色方案/风格参数/布局算法的基础模块 | R: - | A: - | S: -
+generate.py[XE5T]: F: Logo 生成脚本，按风格/行业/配色参数生成 Logo SVG | R: - | A: - | S: -
+search.py[XE5T]: F: Logo 搜索脚本，按关键词检索 Logo 设计风格/行业/配色参考数据 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/slides/===
+SKILL.md[XE6T]: F: 幻灯片技能入口，品牌合规演示文稿生成，复用 design-system 的 Token/CSV/Chart.js 决策链 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/slides/references/===
+copywriting-formulas.md[XE4T]: F: 幻灯片文案公式参考，为幻灯片系统提供 PAS/AIDA/FAB 等结构化写作模板 | R: - | A: - | S: -
+create.md[XE4T]: F: 幻灯片创建参考，端到端幻灯片生成流程：策略→布局→文案→图表→HTML 组装 | R: - | A: - | S: -
+html-template.md[XE4T]: F: 幻灯片 HTML 模板参考，品牌合规 HTML 骨架/布局/动画模板 | R: - | A: - | S: -
+layout-patterns.md[XE4T]: F: 幻灯片布局模式参考，网格/视觉权重/CTA 位置与 CSS 结构 | R: - | A: - | S: -
+slide-strategies.md[XE4T]: F: 幻灯片策略参考，演示文稿整体结构策略与情感叙事弧线选择方法 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/ui-styling/===
+LICENSE.txt[XE2T]: F: ui-styling 技能 MIT 许可证文件 | R: - | A: - | S: -
+SKILL.md[XE6T]: F: UI 样式技能入口，Tailwind CSS 定制/shadcn/ui 组件/主题/无障碍/响应式设计 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/ui-styling/references/===
+canvas-design-system.md[XE4T]: F: Canvas 设计系统参考，基于 Canvas 的设计令牌/组件/布局规范 | R: - | A: - | S: -
+shadcn-accessibility.md[XE4T]: F: shadcn/ui 无障碍参考，组件 ARIA 属性/键盘导航/焦点管理/色彩对比度规范 | R: - | A: - | S: -
+shadcn-components.md[XE4T]: F: shadcn/ui 组件参考，Button/Card/Dialog/Form 等组件的 API/Props/变体与用法 | R: - | A: - | S: -
+shadcn-theming.md[XE4T]: F: shadcn/ui 主题参考，CSS 变量驱动的主题系统/明暗模式/颜色令牌化 | R: - | A: - | S: -
+tailwind-customization.md[XE4T]: F: Tailwind 定制参考，插件开发/预设扩产/任意值语法/主题扩展方法 | R: - | A: - | S: -
+tailwind-responsive.md[XE4T]: F: Tailwind 响应式参考，断点系统/移动优先/容器查询/响应式排版与网格 | R: - | A: - | S: -
+tailwind-utilities.md[XE4T]: F: Tailwind 工具类参考，布局/Flex/Grid/间距/颜色/排版/状态变体等核心工具类速查 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/ui-styling/scripts/===
+requirements.txt[XE3T]: F: ui-styling Python 脚本依赖声明 | R: - | A: - | S: -
+shadcn_add.py[XE5T]: F: shadcn/ui 组件添加脚本，自动化安装与配置 shadcn/ui 组件 | R: - | A: - | S: -
+tailwind_config_gen.py[XE5T]: F: Tailwind 配置生成脚本，从 Design Token 自动生成 tailwind.config 主题扩展 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/ui-ux-pro-max/===
+SKILL.md[XE7M]: F: UI/UX 智能库技能入口，67 种设计风格/161 调色板/57 字体/99 UX 规范/25 图表，22 技术栈支持 | R: - | A: - | S: 核心数据资产，被 design_recommend/review/search 工具查询
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/ui-ux-pro-max/data/===
+app-interface.csv[XE3T]: F: 应用界面数据，按产品类型/界面模式分类的设计方案推荐数据 | R: - | A: - | S: -
+catalog-summary.json[XE3T]: F: 设计目录摘要，记录数据文件的版本/来源/条目数/更新日期的元数据清单 | R: - | A: - | S: -
+charts.csv[XE3T]: F: 图表数据，25 种图表类型的名称/分类/使用场景/推荐配置元数据 | R: - | A: - | S: -
+colors.csv[XE3T]: F: 颜色数据，161 个调色板的名称/HEX 令牌/分类/风格标签元数据 | R: - | A: - | S: -
+data-provenance.json[XE3T]: F: 数据溯源记录，记录每个数据文件的上游来源/采集方法/授权信息 | R: - | A: - | S: -
+google-font-licenses.json[XE3T]: F: Google 字体许可证数据，1350+ 字体的 OFL/Apache 许可证信息映射 | R: - | A: - | S: -
+google-fonts.csv[XE3T]: F: Google 字体数据，57 组字体搭配的名称/分类/配对建议/使用场景元数据 | R: - | A: - | S: -
+icons.csv[XE3T]: F: 图标数据，图标库推荐（Phosphor/Lucide/Heroicons）及风格/用途/许可元数据 | R: - | A: - | S: -
+landing.csv[XE3T]: F: 落地页数据，按产品类型分类的落地页模式/版块/CTA 策略元数据 | R: - | A: - | S: -
+motion.csv[XE3T]: F: 动效数据，GSAP/Framer Motion 动效模式/缓动函数/时长/使用场景元数据 | R: - | A: - | S: -
+phosphor-icons-upstream.json[XE3T]: F: Phosphor 图标库上游数据，图标名称/Unicode/分类/标签的结构化索引 | R: - | A: - | S: -
+products.csv[XE3T]: F: 产品类型数据，按行业/产品类别分类的设计方案推荐与界面模式元数据 | R: - | A: - | S: -
+react-performance.csv[XE3T]: F: React 性能数据，渲染优化/记忆化/代码分割/虚拟化等性能策略的适用场景元数据 | R: - | A: - | S: -
+styles.csv[XE3T]: F: 67 种设计风格数据，含名称/分类/色彩倾向/适用场景元数据 | R: - | A: - | S: -
+typography.csv[XE3T]: F: 字体搭配数据，57 组字体方案及配对规则元数据 | R: - | A: - | S: -
+ui-reasoning.csv[XE3T]: F: UI 推理数据，设计决策推理链与选择理由元数据 | R: - | A: - | S: -
+ux-guidelines.csv[XE3T]: F: UX 规范数据，99 条 UX 最佳实践及适用场景元数据 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/ui-ux-pro-max/data/stacks/===
+angular.csv[XE3T]: F: Angular 技术栈规范数据 | R: - | A: - | S: -
+astro.csv[XE3T]: F: Astro 技术栈规范数据 | R: - | A: - | S: -
+avalonia.csv[XE3T]: F: Avalonia 技术栈规范数据 | R: - | A: - | S: -
+flutter.csv[XE3T]: F: Flutter 技术栈规范数据 | R: - | A: - | S: -
+html-tailwind.csv[XE3T]: F: HTML+Tailwind 技术栈规范数据 | R: - | A: - | S: -
+javafx.csv[XE3T]: F: JavaFX 技术栈规范数据 | R: - | A: - | S: -
+jetpack-compose.csv[XE3T]: F: Jetpack Compose 技术栈规范数据 | R: - | A: - | S: -
+laravel.csv[XE3T]: F: Laravel 技术栈规范数据 | R: - | A: - | S: -
+nextjs.csv[XE3T]: F: Next.js 技术栈规范数据 | R: - | A: - | S: -
+nuxt-ui.csv[XE3T]: F: Nuxt UI 技术栈规范数据 | R: - | A: - | S: -
+nuxtjs.csv[XE3T]: F: Nuxt.js 技术栈规范数据 | R: - | A: - | S: -
+react-native.csv[XE3T]: F: React Native 技术栈规范数据 | R: - | A: - | S: -
+react.csv[XE3T]: F: React 技术栈规范数据 | R: - | A: - | S: -
+shadcn.csv[XE3T]: F: shadcn/ui 技术栈规范数据 | R: - | A: - | S: -
+svelte.csv[XE3T]: F: Svelte 技术栈规范数据 | R: - | A: - | S: -
+swiftui.csv[XE3T]: F: SwiftUI 技术栈规范数据 | R: - | A: - | S: -
+threejs.csv[XE3T]: F: Three.js 技术栈规范数据 | R: - | A: - | S: -
+uno.csv[XE3T]: F: Uno Platform 技术栈规范数据 | R: - | A: - | S: -
+uwp.csv[XE3T]: F: UWP 技术栈规范数据 | R: - | A: - | S: -
+vue.csv[XE3T]: F: Vue.js 技术栈规范数据 | R: - | A: - | S: -
+winui.csv[XE3T]: F: WinUI 技术栈规范数据 | R: - | A: - | S: -
+wpf.csv[XE3T]: F: WPF 技术栈规范数据 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/public/icons/brand/===
+v5ai-deep-space-cyan.png[FZ2T]: F: 品牌图标（深空青主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-exploration-board.png[FZ2T]: F: 品牌图标（探索板主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-indigo-cyan.png[FZ2T]: F: 品牌图标（靛蓝青主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-obsidian-gold.png[FZ2T]: F: 品牌图标（黑曜金主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-orange-magenta-violet.png[FZ2T]: F: 品牌图标（橙品紫主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-violet-electric-blue.png[FZ2T]: F: 品牌图标（紫电蓝主题）PNG 二进制资产 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui/public/icons/brand/===
+v5ai-deep-space-cyan.png[FZ2T]: F: 品牌图标（深空青主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-exploration-board.png[FZ2T]: F: 品牌图标（探索板主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-indigo-cyan.png[FZ2T]: F: 品牌图标（靛蓝青主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-obsidian-gold.png[FZ2T]: F: 品牌图标（黑曜金主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-orange-magenta-violet.png[FZ2T]: F: 品牌图标（橙品紫主题）PNG 二进制资产 | R: - | A: - | S: -
+v5ai-violet-electric-blue.png[FZ2T]: F: 品牌图标（紫电蓝主题）PNG 二进制资产 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/.claude/skills/ui-ux-pro-max/scripts/===
+core.py[XE5M]: F: 设计智能核心逻辑，CSV 数据加载/索引/检索/缓存管理 | R: - | A: - | S: -
+design_system.py[XE5M]: F: 设计系统推荐引擎，按产品类型+关键词输出设计风格/配色/字体建议 | R: - | A: - | S: -
+reasoning_contract.py[XE5M]: F: 推理合同脚本，定义设计推理链的输入/输出协议与校验规则 | R: - | A: - | S: -
+search.py[XE5M]: F: 设计智能搜索脚本，按关键词检索设计风格/配色/字体/图表/UX 规范数据 | R: - | A: - | S: -
+validate_data.py[XE5T]: F: 数据校验脚本，验证 CSV/JSON 数据文件的完整性/格式/字段一致性 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/domain/bo/===
+AgentRunBoNarrowingTest.java[TN5T]: F: AgentRunBo 收窄逻辑单测，验证 MCP/Skill 工具列表按允许列表和拒绝列表的收窄行为 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/bo/AgentRunBo.java | A: - | S: -
+AgentRunBoWebSearchTest.java[TN5T]: F: AgentRunBo 联网搜索开关单测，验证 webSearchEnabled 字段的布尔行为与空值处理 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/bo/AgentRunBo.java | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/history/===
+HistoryWindowTest.java[TA5T]: F: 历史窗口裁剪单测，验证按条数/字符数限制与首条对齐用户提问的裁剪行为 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/history/HistoryWindow.java | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/token/===
+PromptTokenEstimatorTest.java[TA5T]: F: Token 估算单测，验证 CJK 1字1token/其余 4字符1token/图片按张的估算逻辑 | R: code:v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/token/PromptTokenEstimator.java | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/===
+AgentApiKeysVerifier.java[IS6T]: F: Agent API Key 校验端口，定义 verify/format 契约 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/BcryptAgentApiKeysVerifier.java | A: verify(agentKey, rawKey)、format(rawKey) 返回 BCrypt 哈希 | S: -
+BcryptAgentApiKeysVerifier.java[IS6T]: F: Agent API Key BCrypt 实现，SHA3-256 预哈希后 BCrypt 校验与生成 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/AgentApiKeysVerifier.java | A: 实现 verify/generateApiKey，使用 v5ai.apiKey.prefix（ak-）生成前缀 | S: BCrypt 盐轮 12
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/domain/dto/===
+AgentMcpBindingDTO.java[DD4T]: F: Agent-MCP 绑定数据传输对象，承载绑定关系与权限配置 | R: - | A: - | S: -
+McpServerDTO.java[DD4T]: F: MCP Server 数据传输对象，含连接参数与能力元数据 | R: - | A: - | S: -
+McpToolDTO.java[DD4T]: F: MCP Tool 数据传输对象，含工具名/描述/参数 schema | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/service/===
+McpServerService.java[DA5T]: F: MCP Server 领域服务，管理 Server 生命周期与工具发现 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/core/AgentScopeMcpClientFactory.java | A: connect/discoverTools/getConnectionStatus | S: -
+McpToolService.java[DA5T]: F: MCP Tool 领域服务，管理 Tool 缓存/权限策略/审计记录 | R: code:v5ai-modules/v5ai-mcp/src/main/java/xin/v5ai/nb/mcp/mapper/McpToolCallAuditMapper.java | A: syncTools/updatePermissions/logCall | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/config/===
+AgentApiKeysConfiguration.java[IC4T]: F: Agent API Key 鉴权装配：验证器/过滤链/限流/配额拦截器与运行时端点 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/AgentApiKeysVerifier.java | A: Bean 装配（验证器/过滤器），白名单自动收集 @AgentApiKeyPermitAll 端点 | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/filter/===
+AgentApiKeysServletFilter.java[IS6M]: F: Agent API Key 鉴权过滤器，校验 Bearer Token 并注入上下文 | R: code:v5ai-common/v5ai-common-encrypt/src/main/java/xin/v5ai/nb/common/encrypt/apikeys/BcryptAgentApiKeysVerifier.java | A: doFilter 提取 Bearer、SHA3-256+BCrypt 验证、注入 AgentDTO/限流/配额上下文 | S: 白名单路径跳过鉴权
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/test/java/xin/v5ai/nb/platform/domain/===
+PlmEntityIdTypeTest.java[TQ4T]: F: 平台实体 ID 类型单测，验证 Long/String/UUID 主键一致性 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/test/java/xin/v5ai/nb/platform/domain/vo/===
+PlmUserVoDesensitizeTest.java[TQ4T]: F: 用户 VO 脱敏单测，验证手机号/邮箱掩码规则 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-platform/src/test/java/xin/v5ai/nb/platform/filter/===
+AgentApiKeysServletFilterTest.java[TQ5T]: F: Agent API Key 过滤器单测，验证 Bearer 提取/白名单/401 响应 | R: code:v5ai-modules/v5ai-platform/src/main/java/xin/v5ai/nb/platform/filter/AgentApiKeysServletFilter.java | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/domain/===
+ConversationDTO.java[DD4T]: F: 会话数据传输对象，运行时跨层传递会话信息 | R: - | A: - | S: -
+ConversationSummaryDTO.java[DD4T]: F: 会话摘要数据传输对象，跨层传递摘要文本与水位信息 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/enums/===
+RunStatus.java[DD4T]: F: 运行状态枚举：CREATED/IN_PROGRESS/COMPLETED/FAILED/CANCELED | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/service/===
+AgentStateService.java[DD5T]: F: Agent 状态持久化服务 | R: - | A: 读/写/删除 Agent 运行状态 | S: -
+ConversationService.java[CD5S]: F: 会话持久化服务，创建/列表/改名/归档 | R: - | A: CRUD + archive，按 apiKey 归属查询 | S: 门户列表仅用 name 字段
+ConversationSummaryService.java[DC5T]: F: 会话摘要持久化服务，读/写/覆盖摘要文本与水位 | R: - | A: save/load/override | S: 水位只增不减
+MessageAttachmentService.java[CD5T]: F: 消息附件持久化服务，消息与资源的关联管理 | R: - | A: saveAttachment/listByMessage | S: -
+MessageService.java[CD7L]: F: 消息持久化服务，保存/查询/作废/最近历史取数，剔除 reasoning 列 | R: - | A: saveMessage/findByConversationId/supersede/findRecentByConversationId | S: HOT_PATH_EXCLUDED_COLUMNS 剔除 reasoning；superseded_at 只在一处过滤
+RunEventService.java[CD5T]: F: 运行事件持久化服务 | R: - | A: saveEvent/listByRunId | S: MODEL_USAGE 事件不落库，由 PersistingAgentRuntime 过滤
+RunRecordService.java[CD5T]: F: 运行记录持久化服务 | R: - | A: saveRun/updateStatus/listByConversation | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/core/utils/===
+ConversationNaming.java[KB4T]: F: 会话命名工具，取首条提问首行≤100字符作为初始名 | R: - | A: fromQuery 静态方法 | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/domain/===
+AgentState.java[CD4T]: F: Agent 运行状态实体 v5ai_agent_state | R: - | A: agentKey + stateJsonB | S: -
+ConversationSummary.java[CD4T]: F: 会话摘要实体 v5ai_conversation_summary | R: - | A: conversationId + summaryContent + coveredUntilMessageId | S: 一行一会话，水位只增不减
+RuntimeConversation.java[DD5S]: F: 会话实体 v5ai_conversation | R: - | A: agentKey/apiKeyId/name/nameSource/isArchived/createdAt | S: 归属主体是 apiKeyId 非 userId；name_source USER 冻结不覆盖
+RuntimeMessage.java[DD6L]: F: 消息实体 v5ai_message | R: - | A: conversationId/role/content/reasoning/supersededAt/usage | S: reasoning 仅助手消息有值不进上下文；superseded_at 保留数据不参与展示
+RuntimeMessageAttachment.java[DD4T]: F: 消息附件实体 v5ai_message_attachment | R: - | A: messageId + resourceId | S: 附件可用性由模型 config.capabilities 含 image 决定
+RuntimeRun.java[DD5S]: F: 运行记录实体 v5ai_run | R: - | A: conversationId/status/startedAt/completedAt/tokenUsage/durationMs | S: -
+RuntimeRunEvent.java[DD5S]: F: 运行事件实体 v5ai_run_event | R: - | A: runId/eventType/payload/sequenceIndex/timestamp | S: MODEL_USAGE 事件不落库
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/domain/bo/===
+AgentStateBo.java[DD3T]: F: Agent 状态业务对象 | R: - | A: - | S: -
+RuntimeConversationBo.java[DD3T]: F: 会话业务对象 | R: - | A: - | S: -
+RuntimeMessageBo.java[DD3T]: F: 消息业务对象 | R: - | A: - | S: -
+RuntimeRunBo.java[DD3T]: F: 运行记录业务对象 | R: - | A: - | S: -
+RuntimeRunEventBo.java[DD3T]: F: 运行事件业务对象 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/domain/vo/===
+AgentStateVo.java[DD3T]: F: Agent 状态视图对象 | R: - | A: - | S: -
+ConversationSummaryVo.java[DD3T]: F: 会话摘要视图对象 | R: - | A: - | S: -
+RuntimeConversationVo.java[DD3T]: F: 会话视图对象 | R: - | A: - | S: -
+RuntimeMessageAttachmentVo.java[DD3T]: F: 消息附件视图对象 | R: - | A: - | S: -
+RuntimeMessageVo.java[DD3T]: F: 消息视图对象 | R: - | A: - | S: -
+RuntimeRunEventVo.java[DD3T]: F: 运行事件视图对象 | R: - | A: - | S: -
+RuntimeRunVo.java[DD3T]: F: 运行记录视图对象 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/===
+AgentStateMapper.java[PD3T]: F: Agent 状态表 Mapper | R: - | A: 继承 BaseMapper | S: -
+ConversationSummaryMapper.java[PD3T]: F: 会话摘要表 Mapper | R: - | A: 继承 BaseMapper | S: -
+RuntimeConversationMapper.java[PD4T]: F: 会话 Mapper，提供 findMapByApiKeyId 自定义查询 | R: - | A: 继承 BaseMapper | S: -
+RuntimeMessageAttachmentMapper.java[PD3T]: F: 消息附件表 Mapper | R: - | A: 继承 BaseMapper | S: -
+RuntimeMessageMapper.java[PD4T]: F: 消息 Mapper，提供 findRecentByConversationId | R: - | A: 继承 BaseMapper | S: -
+RuntimeRunEventMapper.java[PD3T]: F: 运行事件表 Mapper | R: - | A: 继承 BaseMapper | S: -
+RuntimeRunMapper.java[PD3T]: F: 运行记录表 Mapper | R: - | A: 继承 BaseMapper | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/service/===
+IAgentStateService.java[DD4T]: F: Agent 状态持久化服务契约 | R: - | A: 读/写 Agent 运行状态 | S: -
+IRuntimeConversationService.java[DD4T]: F: 会话持久化服务契约 | R: - | A: 分页查/按 ID 查/按 apiKeyId 归属查 | S: -
+IRuntimeMessageService.java[DD5T]: F: 消息持久化服务契约 | R: - | A: 按会话分页查/保存消息/作废消息/最近历史取数 | S: -
+IRuntimeRunEventService.java[DD4T]: F: 运行事件持久化服务契约 | R: - | A: 按 runId 列表/保存事件 | S: -
+IRuntimeRunService.java[DD4T]: F: 运行记录持久化服务契约 | R: - | A: 保存/更新状态/按会话列表 | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/service/impl/===
+AgentStateServiceImpl.java[DD4T]: F: Agent 状态持久化实现 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/AgentStateMapper.java | A: IAgentStateService | S: -
+ConversationSummaryServiceImpl.java[DD4T]: F: 会话摘要持久化实现 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/ConversationSummaryMapper.java | A: ConversationSummaryService | S: -
+RuntimeConversationServiceImpl.java[DD5S]: F: 会话持久化实现 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/RuntimeConversationMapper.java | A: IRuntimeConversationService | S: 归属主体 apiKeyId
+RuntimeMessageAttachmentServiceImpl.java[DD4T]: F: 消息附件持久化实现 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/RuntimeMessageAttachmentMapper.java | A: MessageAttachmentService | S: -
+RuntimeMessageServiceImpl.java[DD6L]: F: 消息持久化实现 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/RuntimeMessageMapper.java | A: IRuntimeMessageService | S: HOT_PATH_EXCLUDED_COLUMNS 剔除 reasoning；superseded_at 过滤
+RuntimeRunEventServiceImpl.java[DD4T]: F: 运行事件持久化实现 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/RuntimeRunEventMapper.java | A: IRuntimeRunEventService | S: -
+RuntimeRunServiceImpl.java[DD4T]: F: 运行记录持久化实现 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/RuntimeRunMapper.java | A: IRuntimeRunService | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/main/resources/mapper/===
+ConversationSummaryMapper.xml[PD3T]: F: 会话摘要自定义 SQL | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/mapper/ConversationSummaryMapper.java | A: insertOrUpdate | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/test/java/xin/v5ai/nb/runtime/controller/===
+ChatAttachmentControllerTest.java[TQ4T]: F: 附件上传/读取控制器单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/ChatAttachmentController.java | A: - | S: -
+ChatAuthControllerTest.java[TQ4T]: F: 门户初始化/头像代读单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/ChatAuthController.java | A: - | S: -
+ChatControllerTest.java[TQ5T]: F: Chat 控制器单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/controller/ChatController.java | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-modules/v5ai-runtime/src/test/java/xin/v5ai/nb/runtime/service/impl/===
+RuntimeConversationServiceImplTest.java[TQ4T]: F: 会话持久化实现单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/service/impl/RuntimeConversationServiceImpl.java | A: - | S: -
+RuntimeMessageServiceImplTest.java[TQ4T]: F: 消息持久化实现单测 | R: code:v5ai-modules/v5ai-runtime/src/main/java/xin/v5ai/nb/runtime/service/impl/RuntimeMessageServiceImpl.java | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/===
+index.html[EU6T]: F: 对话门户入口 HTML，含首屏内联主题脚本防白屏 | R: - | A: - | S: 内联 script 先写 data-theme 避免深色闪白屏
+package-lock.json[FV5T]: F: npm 依赖锁定文件 | R: - | A: - | S: 自动生成，不手工编辑
+package.json[FV6T]: F: 对话门户项目配置与依赖声明 | R: - | A: Vue 3.5/Vite 7/TypeScript 5.9/Naive UI 2.43/Pinia/Vue Router 4 | S: -
+tsconfig.json[FV5T]: F: TypeScript 项目配置 | R: - | A: - | S: -
+vite.config.ts[FV5T]: F: Vite 构建配置，含代理与别名 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/===
+App.vue[EU7T]: F: 对话门户根组件，Naive UI darkTheme + 主题令牌注入 | R: - | A: n-config-provider + n-notification-provider + router-view | S: brand 色对齐管理端同一套令牌
+main.ts[FE7T]: F: 对话门户入口，createApp + Pinia + Router + Naive UI | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/api/===
+client.ts[IU7M]: F: 门户 API 客户端，axios 封装 + API Key 鉴权 + SSE 流式 | R: - | A: bootstrap/auth/chat/stream/conversations/upload/attachments/stop/regenerate | S: 流式用 AbortController；401 自动跳登录
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/components/===
+AgentAvatar.vue[EU5T]: F: Agent 头像组件，带鉴权取 blob → objectURL 渲染 | R: - | A: - | S: img src 带不了鉴权头，同附件手法
+AgentIntro.vue[EU5T]: F: Agent 介绍组件，展示名称/描述/欢迎语 | R: - | A: - | S: -
+AgentSwitcher.vue[EU6T]: F: Agent 切换器组件，多 Agent 下拉切换 | R: - | A: - | S: -
+ChatMessageBody.vue[EU8L]: F: 消息体组件，思考折叠/正文渲染/引文展示/图片附件/重新生成锚点 | R: - | A: Props { msg: ChatMsg }，门户与会话回放共用 | S: 思考默认展开、首 token 自动收起；shimmer 在 prefers-reduced-motion 关闭
+Composer.vue[EU8L]: F: 消息输入区组件，文本输入+图片附件+发送/停止 | R: - | A: - | S: imageSupported 门控附件入口；停止同时调 API + AbortController.abort
+MarkdownContent.vue[EU6T]: F: Markdown 渲染组件，代码块一键复制 | R: - | A: - | S: -
+MessageActions.vue[EU6T]: F: 消息操作组件，复制/重新生成 | R: - | A: - | S: -
+SessionList.vue[EU7S]: F: 会话列表组件，改名/归档/切换 | R: - | A: - | S: 列表名由服务端生成，客户端不兜底
+SidebarPanel.vue[EU7S]: F: 侧栏面板组件，Agent 信息+会话列表+用户菜单 | R: - | A: - | S: 拖拽调宽 clamp 200-420px；窄屏隐藏
+UserMenu.vue[EU5T]: F: 用户菜单组件，退出登录 | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/router/===
+index.ts[FE7T]: F: 对话门户路由，/ → KeyView，/chat → ChatView | R: - | A: - | S: -
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/stores/===
+portal.ts[FD6T]: F: 门户状态管理，API Key/Agent/头像缓存/boot | R: - | A: bootstrap/auth/logout | S: imageSupported 进页只取一次
+theme.ts[FU6T]: F: 主题状态管理，light/dark/system + localStorage | R: - | A: - | S: 落到 html data-theme
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/styles/===
+base.css[FU7M]: F: 对话门户主题令牌，深浅双模式 --portal-* CSS 变量 | R: - | A: - | S: 组件不写死 hex
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/utils/===
+chatStream.ts[IU7S]: F: 门户 SSE 流处理，事件解析+FAT 文本合并+AbortController | R: - | A: - | S: 与 runtime SSE 事件流耦合
+
+===/Users/jingyuan-mb01/javaspace/im/agent-sys/v5ai-nb/v5ai-ui-chat/src/views/===
+ChatView.vue[EU8L]: F: 对话主视图，侧栏+消息区+输入区+拖拽把手 | R: - | A: - | S: sidebar resizer drag + ←/→键盘 + 双击复位
+KeyView.vue[EU7T]: F: API Key 登录视图，输 Key → bootstrap → 跳 Chat | R: - | A: - | S: 旧 localStorage 会话列表登录时清理

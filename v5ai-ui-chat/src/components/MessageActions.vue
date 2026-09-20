@@ -61,11 +61,12 @@ function formatDuration(ms: number): string {
   return seconds >= 10 ? `${Math.round(seconds)}秒` : `${seconds.toFixed(1)}秒`
 }
 
-/** 用量：千位以上收敛成 K（811K / 1.5K），不显示无意义的小数位 */
+/** 用量：千位以上收敛成 K（811K / 1.5K），不显示无意义的小数位。
+    不再缀英文 "tok"——它紧跟在中文单位「用量」后面是重复的。 */
 function formatTokens(tokens: number): string {
-  if (tokens < 1000) return `${tokens} tok`
+  if (tokens < 1000) return `${tokens}`
   const k = tokens / 1000
-  return `${k >= 10 ? Math.round(k) : k.toFixed(1)}K tok`
+  return `${k >= 10 ? Math.round(k) : k.toFixed(1)}K`
 }
 
 const usage = computed(() => props.msg.usage)
@@ -154,6 +155,8 @@ const usageDetail = computed(() => {
   gap: 10px;
   white-space: nowrap;
   cursor: default;
+  /* 等宽数字：流式刷新用量/用时时字符宽度不跳，整条操作条不会跟着抖 */
+  font-variant-numeric: tabular-nums;
 }
 
 .message-metric {

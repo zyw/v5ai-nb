@@ -59,14 +59,18 @@ function startRename(session: ConversationSummary) {
 }
 
 /**
- * 改名输入框的按键：Enter 保存、Esc 取消，并阻断冒泡以免触发行上的「回车打开会话」。
+ * 改名输入框的按键：Enter 保存、Esc 取消。
+ *
+ * 和输入区一样先挡输入法合成态：合成中按 Enter 是在选词、按 Esc 是在取消选词，
+ * 都不该被当成提交/放弃（否则中文改名会把半截名字存下去）。详见 Composer.vue 的说明。
+ *
  * 不写成 `@keydown.enter` + `@keydown.esc`：同一元素的多个 keydown 监听会被编译成数组，
  * 而 n-input 的 `onKeydown` 只接受单个函数（Vue 会报 Invalid prop 警告）。
  */
 function onRenameKeydown(event: KeyboardEvent, session: ConversationSummary) {
+  if (event.isComposing || event.keyCode === 229) return
   if (event.key !== 'Enter' && event.key !== 'Escape') return
   event.preventDefault()
-  event.stopPropagation()
   if (event.key === 'Enter') confirmRename(session)
   else cancelRename()
 }
@@ -137,11 +141,6 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
         'is-archived': session.archived,
         'is-menu-open': openMenuId === session.conversationId
       }"
-      role="button"
-      tabindex="0"
-      @click="emit('open', session)"
-      @keydown.enter="emit('open', session)"
-      @keydown.space.prevent="emit('open', session)"
     >
       <template v-if="editingId === session.conversationId">
         <n-input
@@ -150,25 +149,34 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
           size="tiny"
           maxlength="100"
           :aria-label="'会话名称'"
-          @click.stop
           @keydown="onRenameKeydown($event, session)"
         />
-        <n-button text size="tiny" aria-label="保存名称" @click.stop="confirmRename(session)">
+        <n-button text size="tiny" aria-label="保存名称" @click="confirmRename(session)">
           <template #icon><n-icon :component="Check" :size="14" /></template>
         </n-button>
-        <n-button text size="tiny" aria-label="取消改名" @click.stop="cancelRename">
+        <n-button text size="tiny" aria-label="取消改名" @click="cancelRename">
           <template #icon><n-icon :component="X" :size="14" /></template>
         </n-button>
       </template>
 
       <template v-else>
-        <span class="session-text">
+        <!--
+          整行的命中区是这个真按钮，外层不再挂 role="button"：行内还有「…」菜单
+          （改名时还有输入框和两个按钮），交互控件嵌在 role="button" 里会被无障碍树
+          扁平化，读屏读不到内层控件。
+        -->
+        <button
+          type="button"
+          class="session-open"
+          :aria-current="session.conversationId === currentId ? 'true' : undefined"
+          @click="emit('open', session)"
+        >
           <span class="session-title">{{ titleOf(session) }}</span>
           <span class="session-time">
             <span v-if="session.archived" class="session-flag">已归档</span>
             {{ formatTime(session.updatedAt) }}
           </span>
-        </span>
+        </button>
         <n-dropdown
           trigger="click"
           placement="bottom-end"
@@ -176,7 +184,7 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
           @select="(key: string | number) => onMenuSelect(key, session)"
           @update:show="(show: boolean) => (openMenuId = show ? session.conversationId : '')"
         >
-          <n-button text size="tiny" class="session-more" aria-label="更多操作" @click.stop>
+          <n-button text size="tiny" class="session-more" aria-label="更多操作">
             <template #icon><n-icon :component="MoreHorizontal" :size="16" /></template>
           </n-button>
         </n-dropdown>
@@ -196,13 +204,14 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
   min-height: 0;
 }
 
+/* 次要说明文字：用 muted 令牌给足对比度，不再叠 opacity（见 base.css 的说明） */
 .session-filter {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 6px 8px;
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--portal-fg-muted);
 }
 
 .session-empty {
@@ -213,7 +222,7 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
   padding: 24px 12px;
   font-size: 12px;
   text-align: center;
-  opacity: 0.6;
+  color: var(--portal-fg-muted);
 }
 
 .session-item {
@@ -221,12 +230,9 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
   align-items: center;
   gap: 4px;
   min-height: 44px;
-  padding: 6px 8px;
+  /* 纵向内边距交给 .session-open，好让整行高度都是它的命中区 */
+  padding: 0 8px;
   border-radius: 8px;
-  cursor: pointer;
-}
-
-.session-item {
   transition: background 0.15s var(--portal-ease);
 }
 
@@ -234,27 +240,39 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
   background: var(--portal-surface-2);
 }
 
-/* 当前会话：淡强调色底 + 左侧竖条，不整块刷成高饱和 */
+/* 当前会话：淡强调色底 + 左侧竖条，不整块刷成高饱和。
+   底色之外还有语义——按钮上带 aria-current，读屏才知道「当前在这条」。 */
 .session-item.is-active {
   background: var(--portal-accent-soft);
   box-shadow: inset 2px 0 0 var(--portal-accent);
 }
 
-.session-item:focus-visible {
+/* 整行的命中区：align-self 撑满 44px 行高，键盘 Enter/Space 由原生按钮行为负责 */
+.session-open {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.session-open:focus-visible {
   outline: 2px solid var(--portal-accent);
   outline-offset: -2px;
 }
 
 .session-item.is-archived .session-title {
-  opacity: 0.6;
-}
-
-.session-text {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  gap: 2px;
+  color: var(--portal-fg-muted);
 }
 
 .session-title {
@@ -264,19 +282,23 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
   white-space: nowrap;
 }
 
+/* 时间戳是次要文字：给足对比度（11px + opacity 曾是 2.3:1） */
 .session-time {
-  font-size: 11px;
-  opacity: 0.55;
   display: flex;
   gap: 6px;
+  font-size: 11px;
+  color: var(--portal-fg-muted);
 }
 
 .session-flag {
-  opacity: 0.9;
+  color: var(--portal-fg-muted);
 }
 
 .session-more {
   flex: none;
+  /* 撑到 WCAG 2.2 的 24×24 命中区：图标仍是 16px，多出来的是透明内边距 */
+  min-width: 24px;
+  min-height: 24px;
   opacity: 0;
 }
 
@@ -285,5 +307,15 @@ function onMenuSelect(key: string | number, session: ConversationSummary) {
 .session-item.is-active .session-more,
 .session-item.is-menu-open .session-more {
   opacity: 1;
+}
+
+/*
+ * 触屏没有 hover：操作按钮常驻。否则 opacity: 0 的元素仍然接收点击 ——
+ * 用户会点到一个看不见的「…」，直接触发归档。
+ */
+@media (hover: none) {
+  .session-more {
+    opacity: 1;
+  }
 }
 </style>

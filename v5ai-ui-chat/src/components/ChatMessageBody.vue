@@ -6,15 +6,32 @@
  * 交互（与知识库问答一致）：思考默认展开，思考期间标题走「思考中…」高光；
  * 回答第一个片段到达时自动收起一次，之后用户手动开合不再干预。引用默认收起。
  */
+import { computed } from 'vue'
 import { NCollapse, NCollapseItem, NIcon } from 'naive-ui'
 import { FileText } from 'lucide-vue-next'
 import MarkdownContent from './MarkdownContent.vue'
 import { awaitingFirstToken, isThinking, onReasoningToggle, type ChatMsg } from '../utils/chatStream'
 
 const props = defineProps<{ msg: ChatMsg }>()
+
+/**
+ * 给读屏播报的那句话（见模板里的 role="status"）。
+ *
+ * 文案只在「开始生成」和「结束」这两个时刻变化，所以读屏整轮只念两次；
+ * 正文本身不加 aria-live——那会让每个 token 都去抢播报，反而听不清。
+ */
+const statusText = computed(() => {
+  if (props.msg.error) return `生成失败：${props.msg.error}`
+  if (props.msg.stopped) return '已停止生成'
+  if (props.msg.loading) return '正在生成回答'
+  return props.msg.content ? '回答已完成' : ''
+})
 </script>
 
 <template>
+  <!-- 生成进度只在这一处播报（role="status" 隐含 aria-live="polite"） -->
+  <span class="portal-sr-only" role="status">{{ statusText }}</span>
+
   <!-- 首 token 等待：DeepSeek 风格"思考中..."（已有思考内容时改由折叠标题承担） -->
   <div v-if="awaitingFirstToken(props.msg)" class="thinking-wait"><span class="shimmer">思考中...</span></div>
   <!-- 思考过程默认展开；思考期间标题为"思考中..."，回答开始后自动收起并恢复"思考过程" -->
@@ -39,7 +56,8 @@ const props = defineProps<{ msg: ChatMsg }>()
         <span class="cite-doc">
           <n-icon :component="FileText" size="12" />{{ c.documentTitle || `文档 #${c.documentId}` }}
         </span>
-        <span class="cite-score">相似度 {{ c.score.toFixed(4) }}</span>
+        <!-- 历史回放读的是服务端落库数据，score 缺省过：不加判断会抛 TypeError，整条气泡渲染中断 -->
+        <span v-if="Number.isFinite(c.score)" class="cite-score">相似度 {{ c.score.toFixed(4) }}</span>
         <div class="cite-snippet">{{ c.content }}</div>
       </div>
     </n-collapse-item>

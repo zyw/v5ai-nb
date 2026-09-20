@@ -9,6 +9,15 @@
   --sidebar-width: 248px;
   --sidebar-collapsed: 64px;
   --topbar-height: 64px;
+  --brand-icon: url('/icons/brand/v5ai-brand-light-navy-blue.png');
+  --brand-icon-border: rgba(37, 99, 235, 0.22);
+  --brand-icon-ring: rgba(37, 99, 235, 0.08);
+}
+
+:root[data-theme='dark'] {
+  --brand-icon: url('/icons/brand/v5ai-brand-dark-white.png');
+  --brand-icon-border: rgba(255, 255, 255, 0.24);
+  --brand-icon-ring: rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -91,12 +100,20 @@ body {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #7c3aed, #0891b2);
-  color: #fff;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--brand-icon-border);
+  border-radius: 12px;
+  background-color: transparent;
+  background-image: var(--brand-icon);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
   flex-shrink: 0;
+  box-shadow:
+    0 0 0 3px var(--brand-icon-ring),
+    0 8px 24px rgba(37, 99, 235, 0.16),
+    inset 0 0 14px rgba(37, 99, 235, 0.08);
 }
 
 /* 登录页背景网格光斑 */

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NAlert, NButton, NIcon, NInput } from 'naive-ui'
-import { Bot, Lock, Moon, Sun, User } from 'lucide-vue-next'
+import { Lock, Moon, Sun, User } from 'lucide-vue-next'
 import { ApiError, login } from '../api/client'
 import { ensureSession, setAdminToken } from '../stores/session'
 import { isDark, toggleTheme } from '../stores/theme'
@@ -75,7 +75,7 @@ function onSliderSuccess(uuid: string) {
 
     <div class="login-card">
       <div class="brand">
-        <div class="brand-mark brand-mark-lg"><n-icon :component="Bot" :size="26" /></div>
+        <div class="brand-mark brand-mark-lg" aria-hidden="true"></div>
         <div class="brand-title">v5ai-nb</div>
         <div class="brand-subtitle">AgentScope 中心化 AI 平台控制台</div>
       </div>
@@ -175,9 +175,9 @@ function onSliderSuccess(uuid: string) {
 }
 
 .brand-mark-lg {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
+  width: 64px;
+  height: 64px;
+  border-radius: 17px;
 }
 
 .brand-title {

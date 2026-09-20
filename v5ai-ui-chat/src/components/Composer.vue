@@ -50,6 +50,24 @@ function send() {
   emit('send', text, files)
 }
 
+/**
+ * 键盘发送：Enter 发送，Shift + Enter 换行。
+ *
+ * 必须先挡掉输入法合成态。naive-ui 的 handleWrapperKeydown 把 onKeydown 原样透传
+ * （isComposingRef 只喂给它内部的 handleInput），所以合成中按 Enter 选词会被当成发送。
+ * Chrome 把合成期的 keydown 报成 keyCode 229 / key === 'Process'，因而侥幸不出问题；
+ * Safari 与部分 Firefox 会报 key === 'Enter' 且 isComposing === true ——
+ * 中文用户打一半字选词，就把半成品发出去了。两个条件都判，兼容各家实现。
+ *
+ * 也正因如此不能用 @keydown.enter.exact：.exact 只校验修饰键，不看合成状态。
+ */
+function onKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) return
+  if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
+  event.preventDefault()
+  send()
+}
+
 function pickFiles() {
   if (!props.imageSupported || props.loading) return
   fileInput.value?.click()
@@ -111,10 +129,9 @@ onBeforeUnmount(clearPending)
       type="textarea"
       :autosize="{ minRows: 1, maxRows: 6 }"
       :placeholder="placeholder"
-      :disabled="loading"
       class="composer-input"
       :input-props="{ 'aria-label': '输入你的问题' }"
-      @keydown.enter.exact.prevent="send"
+      @keydown="onKeydown"
     />
 
     <div class="composer-actions">
@@ -248,14 +265,26 @@ onBeforeUnmount(clearPending)
   display: block;
 }
 
+/*
+ * 命中区 24×24（WCAG 2.2 目标尺寸）：原来 padding:2px + 12px 图标只有 ~16px，
+ * 而这是叠在缩略图角上的删除按钮，点不准的代价是丢附件。
+ * 视觉上收成半透明圆片，免得 24px 的实心方块把 56px 的缩略图压掉一大块。
+ */
 .attachment-remove {
   position: absolute;
-  top: 0;
-  right: 0;
-  padding: 2px;
-  background: rgba(0, 0, 0, 0.45);
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
   color: #fff;
-  border-bottom-left-radius: 6px;
 }
 
 .composer-send {

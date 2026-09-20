@@ -8,7 +8,9 @@
 :root {
   /* 布局与节奏 */
   --portal-topbar-height: 56px;
-  /* 侧栏宽度是可拖拽的，默认值/上下限与持久化键都在 ChatView.vue，这里不再重复定义 */
+  /* 侧栏展开宽度是可拖拽的，默认值/上下限与持久化键都在 ChatView.vue，这里不再重复定义；
+     收起后固定成这一档窄栏 —— 正好放一个 40px 圆钮 + 两侧各 8px 内边距 */
+  --portal-rail-width: 56px;
   --portal-radius: 12px;
   --portal-radius-lg: 18px;
   --portal-ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -27,7 +29,17 @@
   --portal-border: rgba(15, 23, 42, 0.1);
   --portal-border-strong: rgba(15, 23, 42, 0.2);
   --portal-fg: #0f172a;
-  --portal-fg-muted: #5b6675;
+  /* 次要与第三级文字共用这一档。三个坑：
+     1) 别写成 muted + opacity —— opacity 按比例压低实际对比度，
+        11px 的时间戳叠 55% 只剩 2.3:1；
+     2) 别另加一档更浅的灰当"第三级" —— 背景的装饰光斑（.portal-stage::before）
+        会给底面上色，#e9e9fb 处只容得下这一档，再浅一档就跌破 4.5；
+     3) 也别把这一档本身调浅 —— 登录页（KeyView）的 muted 文字直接放在带装饰的
+        裸底上，不是都在玻璃上。原先的 #5b6675 压在 .portal-stage::after 的
+        图纸网格线上只有 4.44:1，是两套主题里唯一不达标的一处。
+     现在的值是按"网格线 + 走线 + 扫描线全叠上"的最坏情况定的：
+     底色 6.71:1、玻璃面 7.15:1、装饰层最坏处 4.95:1。 */
+  --portal-fg-muted: #4c5767;
   --portal-accent: #4f46e5;
   --portal-accent-2: #0891b2;
   --portal-accent-soft: rgba(79, 70, 229, 0.1);
@@ -40,6 +52,21 @@
   --portal-code-fg: #1f2430;
   --portal-scrollbar: rgba(15, 23, 42, 0.2);
   --portal-shine: rgba(255, 255, 255, 0.9);
+  --portal-brand-icon: url('/icons/brand/v5ai-brand-light-navy-blue.png');
+  --portal-brand-icon-border: rgba(37, 99, 235, 0.22);
+  --portal-brand-icon-ring: rgba(37, 99, 235, 0.08);
+
+  /* 登录页的科技感装饰层（只有 KeyView 消费）。全部是极低 alpha：
+     这几层会垫在正文底下，alpha 一高就直接吃掉文字对比度（同 --portal-fg-muted 的坑）。
+     浅色主题走「蓝图 / 图纸」而不是「深空」——浅底上做不出深空，硬做只会把文字压花。 */
+  --portal-fx-grid: rgba(15, 23, 42, 0.055);
+  /* 走线 alpha 的上限由 muted 文字的在最坏叠加下的对比度倒推出来：浅色到 0.14 就跌破 4.5，
+     这里留一档余量取 0.10。再想加粗走线，得先把 muted 再压深。 */
+  --portal-fx-trace: rgba(79, 70, 229, 0.1);
+  --portal-fx-scan: rgba(79, 70, 229, 0.05);
+  /* 四周向白收边：边缘留白变亮，压在下方的次要文字反而更好读 */
+  --portal-fx-vignette: rgba(255, 255, 255, 0.5);
+  --portal-fx-corner: rgba(79, 70, 229, 0.45);
   color-scheme: light;
 }
 
@@ -54,6 +81,8 @@
   --portal-border: rgba(255, 255, 255, 0.09);
   --portal-border-strong: rgba(255, 255, 255, 0.18);
   --portal-fg: #edeff5;
+  /* 同浅色主题（见上面的说明）：深色下光斑会提亮底面，同样只保留这一档。
+     玻璃面 5.92:1、底色 6.29:1、光斑覆盖处 5.63:1。 */
   --portal-fg-muted: #8a90a2;
   --portal-accent: #818cf8;
   --portal-accent-2: #22d3ee;
@@ -67,6 +96,18 @@
   --portal-code-fg: #e6edf3;
   --portal-scrollbar: rgba(255, 255, 255, 0.18);
   --portal-shine: rgba(255, 255, 255, 0.14);
+  --portal-brand-icon: url('/icons/brand/v5ai-brand-dark-white.png');
+  --portal-brand-icon-border: rgba(255, 255, 255, 0.24);
+  --portal-brand-icon-ring: rgba(255, 255, 255, 0.08);
+
+  /* 同浅色主题（见上面的说明）：深色走「深空 + 靛/青辉光」，
+     四周向黑收边——边缘压暗同样是在帮文字提对比度。 */
+  --portal-fx-grid: rgba(255, 255, 255, 0.05);
+  /* 同浅色主题：深色到 0.10 就只剩 4.76，取 0.08 留余量 */
+  --portal-fx-trace: rgba(129, 140, 248, 0.08);
+  --portal-fx-scan: rgba(34, 211, 238, 0.05);
+  --portal-fx-vignette: rgba(0, 0, 0, 0.55);
+  --portal-fx-corner: rgba(129, 140, 248, 0.5);
   color-scheme: dark;
 }
 
@@ -151,6 +192,21 @@ body {
   border: 1px solid var(--portal-border);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* ---- 仅供读屏：视觉上不可见，但留在无障碍树里 ----
+   不能用 display:none / visibility:hidden —— 那样读屏也读不到，live region 就白设了。
+   用 clip-path 裁到 1px：仍参与布局（不撑开），也不影响邻近元素。 */
+.portal-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---- 细滚动条：滚动容器加这个类 ---- */
