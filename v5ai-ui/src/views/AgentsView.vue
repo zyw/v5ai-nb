@@ -147,9 +147,10 @@ const columns: DataTableColumns<AgentResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 200,
+    width: 150,
     render: (row) =>
       h(RowActions, {
+        maxInline: 1,
         actions: [
           { key: 'publish', label: '发布', type: 'primary', onClick: () => openPublish(row) },
           { key: 'disable', label: '禁用', secondary: true, type: 'error', onClick: () => handleDisable(row) },
