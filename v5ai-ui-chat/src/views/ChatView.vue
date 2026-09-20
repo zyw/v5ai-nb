@@ -46,6 +46,7 @@ import {
   newSessionId,
   renameSession,
   sessionList,
+  sessionsLoading,
   sessionTitle,
   setActiveAgent,
   setSessionArchived,
@@ -619,7 +620,16 @@ async function switchArchivedView(value: boolean) {
     showArchived.value = value
     return
   }
-  await toggleArchivedView(currentAgentKey.value, value)
+  // showArchived 是在发请求之前就乐观改掉的（分段得立刻跟手），拉取失败就得把它拨回去：
+  // 不退的话，分段停在「已归档」而列表还是未归档那批，两边对不上。
+  // 这里不会退错列表 —— 请求失败时 sessionList 没被赋值，仍是旧视图那批，正好配拨回后的分段。
+  const previous = showArchived.value
+  try {
+    await toggleArchivedView(currentAgentKey.value, value)
+  } catch (e) {
+    showArchived.value = previous
+    message.error(e instanceof Error ? e.message : '切换失败')
+  }
 }
 
 async function reloadAgents() {
@@ -685,6 +695,7 @@ async function reloadAgents() {
           :items="sessionList"
           :current-id="conversationId"
           :show-archived="showArchived"
+          :loading="sessionsLoading"
           :title-of="sessionTitle"
           @new="newSession"
           @open="openSession"
@@ -921,6 +932,7 @@ async function reloadAgents() {
           :items="sessionList"
           :current-id="conversationId"
           :show-archived="showArchived"
+          :loading="sessionsLoading"
           :title-of="sessionTitle"
           @new="newSession"
           @open="openSession"

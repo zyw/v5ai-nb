@@ -32,6 +32,15 @@ export const activeAgentKey = ref(localStorage.getItem(ACTIVE_AGENT_STORAGE) ?? 
 export const sessionList = ref<ConversationSummary[]>([])
 /** 会话列表是否显示已归档会话 */
 export const showArchived = ref(false)
+/**
+ * 会话列表是否正在整表重拉。
+ *
+ * 只有「列表要整个换掉」的场景才点这盏灯：首次进入、换 Agent、切未归档 / 已归档。
+ * 这几处的共同点是旧内容不该再露脸 —— 分段已经指着新视图了，旧视图那批会话留在原位
+ * 只会让人以为切过去还长这样。改名 / 归档后也要重拉，但那是原地刷新，列表没换，
+ * 点灯反倒会把用户刚改完的那一行整片盖住，所以那两处走 loadSessions 的 quiet 分支。
+ */
+export const sessionsLoading = ref(false)
 
 /** agentKey → 可直接用于 <img> 的地址（blob: 或外部 URL）。 */
 export const agentAvatars = reactive<Record<string, string>>({})
@@ -100,18 +109,51 @@ export async function ensureAgentAvatars() {
   )
 }
 
-/** 拉取当前 Agent 的会话列表（服务端已是「限本 Key 本 Agent」）。 */
-export async function loadSessions(agentKey: string): Promise<void> {
+/** 结果归属：只认最后一次发出的请求（见 loadSessions 里的说明） */
+let sessionsRequestSeq = 0
+
+/** 在途的「整表重拉」笔数：归零才熄灯（见 loadSessions 的 finally） */
+let sessionsLoadingPending = 0
+
+/**
+ * 拉取当前 Agent 的会话列表（服务端已是「限本 Key 本 Agent」）。
+ *
+ * 默认点亮 sessionsLoading —— 调用它的都是「列表要整个换掉」的场景。改名 / 归档后的重拉
+ * 传 { quiet: true }：那是原地刷新，不该把列表换成骨架屏（见 sessionsLoading 的说明）。
+ */
+export async function loadSessions(agentKey: string, options: { quiet?: boolean } = {}): Promise<void> {
   if (!agentKey || !apiKey.value) {
     sessionList.value = []
+    sessionsLoadingPending = 0
+    sessionsLoading.value = false
     return
   }
-  sessionList.value = await fetchConversations(apiKey.value, agentKey, showArchived.value)
+  const quiet = options.quiet === true
+  const seq = ++sessionsRequestSeq
+  if (!quiet) {
+    sessionsLoadingPending++
+    sessionsLoading.value = true
+  }
+  try {
+    const list = await fetchConversations(apiKey.value, agentKey, showArchived.value)
+    // 只认最后一次请求的结果：连点两段时，先发的那次可能后到，
+    // 落进去列表就和分段上选着的不是同一个视图了
+    if (seq === sessionsRequestSeq) sessionList.value = list
+  } finally {
+    if (!quiet) {
+      // 计数归零才熄灯。不能一收尾就熄：先发后到的那次收尾时，后发的可能还在路上，
+      // 此刻熄灯会让列表先亮回旧内容、再跳成新的。
+      // 这里不复用 seq 判归属，是因为改名 / 归档那次会推进 seq，
+      // 用它判会让这次的点灯永远熄不掉。
+      sessionsLoadingPending--
+      if (sessionsLoadingPending === 0) sessionsLoading.value = false
+    }
+  }
 }
 
 export async function renameSession(agentKey: string, conversationId: string, name: string): Promise<void> {
   await updateConversation(apiKey.value, agentKey, conversationId, { name })
-  await loadSessions(agentKey)
+  await loadSessions(agentKey, { quiet: true })
 }
 
 export async function setSessionArchived(
@@ -120,7 +162,7 @@ export async function setSessionArchived(
   archived: boolean
 ): Promise<void> {
   await updateConversation(apiKey.value, agentKey, conversationId, { archived })
-  await loadSessions(agentKey)
+  await loadSessions(agentKey, { quiet: true })
 }
 
 /** 切换「显示已归档」并重新拉取列表。 */

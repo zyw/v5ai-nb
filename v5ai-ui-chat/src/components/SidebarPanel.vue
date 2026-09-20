@@ -17,6 +17,8 @@ defineProps<{
   items: ConversationSummary[]
   currentId: string
   showArchived: boolean
+  /** 列表正在整表重拉：转给 SessionList 显示骨架屏 */
+  loading: boolean
   titleOf: (session: ConversationSummary) => string
 }>()
 
@@ -41,6 +43,7 @@ const emit = defineEmits<{
       :items="items"
       :current-id="currentId"
       :show-archived="showArchived"
+      :loading="loading"
       :title-of="titleOf"
       @open="emit('open', $event)"
       @rename="(session, name) => emit('rename', session, name)"
