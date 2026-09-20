@@ -124,6 +124,10 @@ v5ai:
 #      - /warm-flow-ui/config
 #      - /snail-chat/**
 #      - /api/snail/chat/**
+  # 凭据加密（模型 API Key、MCP headers/env 等加解密所用）
+  crypto:
+    # 对称密钥（32 字节）；生产必须通过环境变量替换
+    secret-key: ${V5AI_CREDENTIAL_CIPHER_KEY:tggsbeaGlYKF8JJ9eAaZixMkJIqaqhwe}
   # 数据加密
   mybatis-encryptor:
     # 是否开启加密
@@ -172,6 +176,11 @@ v5ai:
     state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}
     # 联网搜索（Tavily）API Key；为空则不启用联网搜索工具
     tavily-api-key: ${V5AI_TAVILY_API_KEY:}
+  # 模型连通性测试与 Agent 配置生成超时（毫秒）
+  model:
+    connection:
+      test:
+        timeout.ms: ${V5AI_MODEL_CONNECTION_TEST_TIMEOUT_MS:90000}
   storage:
     # 通用资源存储（plm_resource）存储类型：LOCAL=本地磁盘 MINIO=MinIO
     type: ${V5AI_STORAGE_TYPE:LOCAL}
