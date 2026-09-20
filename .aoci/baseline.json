@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-15T01:36:33Z",
-  "updated_at": "2026-09-20T02:27:35Z",
+  "updated_at": "2026-09-20T03:45:55Z",
   "files": {
     ".claude/settings.local.json": {
       "role": "index",
@@ -57,31 +57,29 @@
       "normalized_sha256": "21fa16a2122e2b0360b47502c577428b645437e08e9e87ffba661f84853cb476"
     },
     ".gitignore": {
-      "role": "index",
-      "sha256": "746fc50b16b3e46cbc014631969f7e2da810546d444c06d893a917a488da14eb",
-      "size": 500,
-      "normalized_sha256": "746fc50b16b3e46cbc014631969f7e2da810546d444c06d893a917a488da14eb"
+      "sha256": "93252cac6fcb68f56f1818217c08a5032ab0e5051588c444690426358fe70003",
+      "size": 507,
+      "normalized_sha256": "93252cac6fcb68f56f1818217c08a5032ab0e5051588c444690426358fe70003"
     },
     "AGENTS.md": {
-      "sha256": "6d3a36588d38777b692055f10bccaa8380318fa9080e71128741717a7e5d7616",
-      "size": 41118,
-      "normalized_sha256": "6d3a36588d38777b692055f10bccaa8380318fa9080e71128741717a7e5d7616"
+      "sha256": "bdb55d090728bd776ce5195b6f4858cc9d73ccefcec6b9a687643bd89ccf6289",
+      "size": 49618,
+      "normalized_sha256": "bdb55d090728bd776ce5195b6f4858cc9d73ccefcec6b9a687643bd89ccf6289"
     },
     "CONTEXT.md": {
-      "sha256": "eee43713f8bcdbe3ad4a73327eb733a31acbdd52586c1b30eb70004b422679c8",
-      "size": 15476,
-      "normalized_sha256": "eee43713f8bcdbe3ad4a73327eb733a31acbdd52586c1b30eb70004b422679c8"
+      "sha256": "49f0c5f657261270761176ffd5ae84a02b116898448bd2c9f1402a055ee3fbd2",
+      "size": 22333,
+      "normalized_sha256": "49f0c5f657261270761176ffd5ae84a02b116898448bd2c9f1402a055ee3fbd2"
     },
     "README.md": {
-      "sha256": "2913285e80fdba967c108c5b79258b927fea7f4ee80313dbf496f8d2c6409785",
-      "size": 14238,
-      "normalized_sha256": "2913285e80fdba967c108c5b79258b927fea7f4ee80313dbf496f8d2c6409785"
+      "sha256": "89fbbf1c1a71d7133a6cdbb6ba299ffe87bef3ed5dd4bc5d25363a78e44c5635",
+      "size": 17208,
+      "normalized_sha256": "89fbbf1c1a71d7133a6cdbb6ba299ffe87bef3ed5dd4bc5d25363a78e44c5635"
     },
     "aoci.code.txt": {
-      "role": "index",
-      "sha256": "c2e5c17ac83e2b40c5b826b308e06a21639962e3cfefffcb8c78bae10579e95b",
-      "size": 407793,
-      "normalized_sha256": "c2e5c17ac83e2b40c5b826b308e06a21639962e3cfefffcb8c78bae10579e95b"
+      "sha256": "87fa1d9c27875f091dde3b5006a3e6173db7cfeba2a1632635f89310ee52de8b",
+      "size": 432362,
+      "normalized_sha256": "87fa1d9c27875f091dde3b5006a3e6173db7cfeba2a1632635f89310ee52de8b"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -124,6 +122,26 @@
       "size": 2109,
       "normalized_sha256": "aed3687fc7649dfe28dd8c4828d8693cc913604e1926163a86d8e29474b607d3"
     },
+    "docs/adr/0006-api-key-scoped-conversations.md": {
+      "sha256": "5a133ed44f17b6abd571337f7f593362b29d6baa875baf2d778613b5e7ee3e75",
+      "size": 2456,
+      "normalized_sha256": "5a133ed44f17b6abd571337f7f593362b29d6baa875baf2d778613b5e7ee3e75"
+    },
+    "docs/adr/0007-reasoning-persisted-but-not-replayed.md": {
+      "sha256": "a08189194e628ae0c8a53c1bbecaef834750cabde6143a5fb8a2166ea458d7b0",
+      "size": 3033,
+      "normalized_sha256": "a08189194e628ae0c8a53c1bbecaef834750cabde6143a5fb8a2166ea458d7b0"
+    },
+    "docs/adr/0008-migration-history-frozen.md": {
+      "sha256": "f3a9f637cf93533fa74d47ecdaf89ef487027d8130d8907b9df9bd6ae876543d",
+      "size": 4319,
+      "normalized_sha256": "f3a9f637cf93533fa74d47ecdaf89ef487027d8130d8907b9df9bd6ae876543d"
+    },
+    "docs/adr/0009-citations-persisted-on-assistant-message.md": {
+      "sha256": "620b90a27792ac08bcae1292be717337ff7b6ad95a102b4f5902fee924dbca92",
+      "size": 3999,
+      "normalized_sha256": "620b90a27792ac08bcae1292be717337ff7b6ad95a102b4f5902fee924dbca92"
+    },
     "docs/agents/domain.md": {
       "role": "index",
       "sha256": "b8d653f9bcbe066057061b64afd02e60a55a3dde714368de9d4c8b7aedb1e15a",
@@ -131,10 +149,9 @@
       "normalized_sha256": "b8d653f9bcbe066057061b64afd02e60a55a3dde714368de9d4c8b7aedb1e15a"
     },
     "docs/agents/issue-tracker.md": {
-      "role": "index",
-      "sha256": "b225a77c9fc026d8ec5b68a4cceb792144dd714b6cf1f837537641cf5d0d2f9d",
-      "size": 3487,
-      "normalized_sha256": "b225a77c9fc026d8ec5b68a4cceb792144dd714b6cf1f837537641cf5d0d2f9d"
+      "sha256": "d0e10565ede3e3f369b3170340500f87529490ef2baea850c336b01ca1beeb13",
+      "size": 3749,
+      "normalized_sha256": "d0e10565ede3e3f369b3170340500f87529490ef2baea850c336b01ca1beeb13"
     },
     "docs/agents/triage-labels.md": {
       "role": "index",
@@ -148,10 +165,9 @@
       "normalized_sha256": "a4c0a1940ddec2e52958459a81cdc2a283f16ec8bfea23b074f6b44921e6e824"
     },
     "docs/api/phase2.md": {
-      "role": "index",
-      "sha256": "3c899ca8b6adc09c7aa19266110560adff82f8c7e2a5519db1541d4defb54c48",
-      "size": 17392,
-      "normalized_sha256": "3c899ca8b6adc09c7aa19266110560adff82f8c7e2a5519db1541d4defb54c48"
+      "sha256": "5b99a196ffca1c857aabe876ab5755a1b3d42f8a84ed3575d1c08e07dd5e5bf1",
+      "size": 20200,
+      "normalized_sha256": "5b99a196ffca1c857aabe876ab5755a1b3d42f8a84ed3575d1c08e07dd5e5bf1"
     },
     "docs/api/phase3.md": {
       "role": "index",
@@ -171,11 +187,25 @@
       "size": 8498,
       "normalized_sha256": "604e4c4d0ce052128ecccb7295382751599868ce08c8e14968297e415a053530"
     },
+    "docs/api/phase6.md": {
+      "sha256": "19494bc6ec886086533c7dcffb9b5df327d02b94fbde8c098cd7cb65a9c522c6",
+      "size": 18523,
+      "normalized_sha256": "19494bc6ec886086533c7dcffb9b5df327d02b94fbde8c098cd7cb65a9c522c6"
+    },
+    "docs/db/dump-schema.sql": {
+      "sha256": "91b089cea55fb3b205ee224128751ac66cf83f9a285ac469e0f437ed2e9aed5f",
+      "size": 2398,
+      "normalized_sha256": "91b089cea55fb3b205ee224128751ac66cf83f9a285ac469e0f437ed2e9aed5f"
+    },
+    "docs/db/schema.md": {
+      "sha256": "cd7fa54f123090e4daf3122b8f0afc121bda89935c310ff18ed701ccb9f16a19",
+      "size": 48742,
+      "normalized_sha256": "cd7fa54f123090e4daf3122b8f0afc121bda89935c310ff18ed701ccb9f16a19"
+    },
     "docs/deploy/dev.md": {
-      "role": "index",
-      "sha256": "b6bd3c21ef81d6f7ded0f1080147d06071385be5765d1aa209c7a1057a333b69",
-      "size": 15961,
-      "normalized_sha256": "b6bd3c21ef81d6f7ded0f1080147d06071385be5765d1aa209c7a1057a333b69"
+      "sha256": "1b46faecc295389bf16e9e0cda2de9a7319eb56d4d74af896b7d2f13c7d6af45",
+      "size": 16193,
+      "normalized_sha256": "1b46faecc295389bf16e9e0cda2de9a7319eb56d4d74af896b7d2f13c7d6af45"
     },
     "docs/phase0-verification.md": {
       "role": "index",
@@ -190,10 +220,9 @@
       "normalized_sha256": "63087ce08a1ab20c7fed47b2b3c54c532f4acb3c87b93a66a26bdfbdae4d4ad4"
     },
     "docs/phase1-verification.md": {
-      "role": "index",
-      "sha256": "fabb3468859e6eabe03fb02241caf634321d797ca87cb9b03e23fd50043979c5",
-      "size": 1530,
-      "normalized_sha256": "fabb3468859e6eabe03fb02241caf634321d797ca87cb9b03e23fd50043979c5"
+      "sha256": "69268e122cdb25e8a470ed2225b304a212d62ca4f4e9a5370de79bf3bf11d5dc",
+      "size": 1536,
+      "normalized_sha256": "69268e122cdb25e8a470ed2225b304a212d62ca4f4e9a5370de79bf3bf11d5dc"
     },
     "docs/phase2-verification.md": {
       "role": "index",
@@ -202,15 +231,14 @@
       "normalized_sha256": "ec42b62e05447d6a904cc8152edaf830899290ca376bce36b9e3014e7f319e8b"
     },
     "docs/phase3-verification.md": {
-      "sha256": "e2f2f386169fc6c7724ad814e4826d28e5b8186e0fe022171d771ac4ec0e00c4",
-      "size": 3924,
-      "normalized_sha256": "e2f2f386169fc6c7724ad814e4826d28e5b8186e0fe022171d771ac4ec0e00c4"
+      "sha256": "201499ad60b692bed482bd54b309c538d46643c7fcf9b5fbcb594a6b61d2ef7d",
+      "size": 3927,
+      "normalized_sha256": "201499ad60b692bed482bd54b309c538d46643c7fcf9b5fbcb594a6b61d2ef7d"
     },
     "docs/phase4-verification.md": {
-      "role": "index",
-      "sha256": "441764af91e9bb9865b33031c18395baf61edb042ff8a096266cdcafbfedaf39",
-      "size": 3197,
-      "normalized_sha256": "441764af91e9bb9865b33031c18395baf61edb042ff8a096266cdcafbfedaf39"
+      "sha256": "253c84f5940c776bb7d923817cb1a93303372d396bc05d3f811503df7cf2fb72",
+      "size": 3200,
+      "normalized_sha256": "253c84f5940c776bb7d923817cb1a93303372d396bc05d3f811503df7cf2fb72"
     },
     "docs/phase5-verification.md": {
       "role": "index",
@@ -219,9 +247,9 @@
       "normalized_sha256": "85cc13254942e8197f2644840d7e5d5d8fc2f529ad56cc3188a835d9db2ae678"
     },
     "docs/superpowers/plans/2026-08-12-phase1-foundation-agent.md": {
-      "sha256": "e5bad3cefd21f0204997292a65306f403504a80891076455433711142735cd42",
-      "size": 23411,
-      "normalized_sha256": "e5bad3cefd21f0204997292a65306f403504a80891076455433711142735cd42"
+      "sha256": "10015a40692e891bfd1e18c0fe9b00fa5eb09402be91d9e7cdca4413632f21f4",
+      "size": 23423,
+      "normalized_sha256": "10015a40692e891bfd1e18c0fe9b00fa5eb09402be91d9e7cdca4413632f21f4"
     },
     "docs/superpowers/plans/2026-08-13-agent-model-adapters.md": {
       "role": "index",
@@ -259,11 +287,30 @@
       "size": 15772,
       "normalized_sha256": "cf26c77bcaf33b5288d0249f62ee8805024f4ad06d7d8f466306562cc930bd5b"
     },
+    "docs/superpowers/plans/2026-09-18-portal-conversations-attachments.md": {
+      "sha256": "4ad27f453c44e429fd42acfbb1242cc4d3b3cc83333e1186b388dc7e4801177b",
+      "size": 16546,
+      "normalized_sha256": "4ad27f453c44e429fd42acfbb1242cc4d3b3cc83333e1186b388dc7e4801177b"
+    },
     "docs/superpowers/specs/2026-08-12-v5ai-nb-design.md": {
-      "role": "index",
-      "sha256": "f3cdc081317b9d132908e2c4b80b611a2985d3dfc68ce250315f45a2e15d28d8",
-      "size": 14057,
-      "normalized_sha256": "f3cdc081317b9d132908e2c4b80b611a2985d3dfc68ce250315f45a2e15d28d8"
+      "sha256": "c382e8673799b57afcb665ed96e27e92ef6f39da1316ffc92f36901f455cb317",
+      "size": 14063,
+      "normalized_sha256": "c382e8673799b57afcb665ed96e27e92ef6f39da1316ffc92f36901f455cb317"
+    },
+    "docs/会话上下文+记忆功能前期规划.md": {
+      "sha256": "079d61f84f62df0b17923054bc84a4584065bab9d55ce9fb80a9be880b85b89e",
+      "size": 10250,
+      "normalized_sha256": "079d61f84f62df0b17923054bc84a4584065bab9d55ce9fb80a9be880b85b89e"
+    },
+    "docs/会话名称命名设计方案.md": {
+      "sha256": "82cf4c927a59012b1cd3d1aa0220f25dd0e948b87b7e25e5f1dd99a13beec290",
+      "size": 23670,
+      "normalized_sha256": "82cf4c927a59012b1cd3d1aa0220f25dd0e948b87b7e25e5f1dd99a13beec290"
+    },
+    "docs/同会话短期记忆实现方案.md": {
+      "sha256": "945e463493309c7ff19b844d40482da95ff44d7881d4a6e8f4c0992f7e1f2d12",
+      "size": 23979,
+      "normalized_sha256": "945e463493309c7ff19b844d40482da95ff44d7881d4a6e8f4c0992f7e1f2d12"
     },
     "pom.xml": {
       "role": "index",
@@ -277,6 +324,11 @@
       "size": 782,
       "normalized_sha256": "d95532b178fa6dfd921b0048a4024644abada84f2f89ea647d4dd71aeba2ff6a"
     },
+    "v5ai-api/src/main/java/xin/v5ai/nb/agent/api/AgentCatalogService.java": {
+      "sha256": "752bcdb5e1fc279eab9729c3499985249c73239fa87018b44b63040cd710c985",
+      "size": 646,
+      "normalized_sha256": "752bcdb5e1fc279eab9729c3499985249c73239fa87018b44b63040cd710c985"
+    },
     "v5ai-api/src/main/java/xin/v5ai/nb/model/api/ModelUsageService.java": {
       "role": "index",
       "sha256": "1730345b458771ee4854191039d68298e30f8b49b6e746996e2b683072033eb6",
@@ -289,11 +341,21 @@
       "size": 1136,
       "normalized_sha256": "6f99aa49fb45a6442be0fc4a04a0239b7d2b437778d6eafa0e57c0fb16f2c13f"
     },
+    "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ApiKeyAuthAttributes.java": {
+      "sha256": "4fd469bac620b99bc0d27d6f47043c1196d9fcddc86a3568a6faebd488e8aeba",
+      "size": 692,
+      "normalized_sha256": "4fd469bac620b99bc0d27d6f47043c1196d9fcddc86a3568a6faebd488e8aeba"
+    },
     "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ApiKeyService.java": {
       "role": "index",
       "sha256": "5abd7d2e7e899b17304efd534d43c46f6933517f89e62556205919953bf1b6d5",
       "size": 246,
       "normalized_sha256": "5abd7d2e7e899b17304efd534d43c46f6933517f89e62556205919953bf1b6d5"
+    },
+    "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ApiKeysService.java": {
+      "sha256": "6d1c48cd3114381c2079710ec6d4432bff71fb51918467dfaf0e7b4a3e8377ef",
+      "size": 771,
+      "normalized_sha256": "6d1c48cd3114381c2079710ec6d4432bff71fb51918467dfaf0e7b4a3e8377ef"
     },
     "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/AppQuotaService.java": {
       "role": "index",
@@ -308,16 +370,20 @@
       "normalized_sha256": "d605dc14fc64fd7861678c3bdb22401811fb988e54f8506e897692ef813db758"
     },
     "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/ResourceContentPort.java": {
-      "role": "index",
-      "sha256": "fe573f5132dd408760c7fcb3184ba45c5e1182245c29037a9e3d89cd3b90c127",
-      "size": 1521,
-      "normalized_sha256": "fe573f5132dd408760c7fcb3184ba45c5e1182245c29037a9e3d89cd3b90c127"
+      "sha256": "02e3bff1a65e8173ae71dbb98c147389c704d00c7e370237c5006acbbdfd5cce",
+      "size": 2399,
+      "normalized_sha256": "02e3bff1a65e8173ae71dbb98c147389c704d00c7e370237c5006acbbdfd5cce"
     },
     "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/UserService.java": {
       "role": "index",
       "sha256": "8b26cc61484491917f2466292f098f9c547cdcde322fee0fb636298c2617f7b0",
       "size": 2078,
       "normalized_sha256": "8b26cc61484491917f2466292f098f9c547cdcde322fee0fb636298c2617f7b0"
+    },
+    "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/domain/ApiKeysAuthDTO.java": {
+      "sha256": "f5bee805000fce3802e5b2c4e6735237348e22c62088bf500933ce4f6ef33d63",
+      "size": 1133,
+      "normalized_sha256": "f5bee805000fce3802e5b2c4e6735237348e22c62088bf500933ce4f6ef33d63"
     },
     "v5ai-api/src/main/java/xin/v5ai/nb/platform/api/domain/AppQuotaDTO.java": {
       "role": "index",
@@ -384,9 +450,9 @@
       "normalized_sha256": "f7fc8dcf3d3d42be67b9e0ce7db16a05f4dd72cdea48d18d976da144d949cbd2"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentRuntime.java": {
-      "sha256": "5db1e17c9716c727fd2a1410be48fd2984723ec0ff04a64d7bfca566f76ac6de",
-      "size": 1007,
-      "normalized_sha256": "5db1e17c9716c727fd2a1410be48fd2984723ec0ff04a64d7bfca566f76ac6de"
+      "sha256": "78a9d985cd1a62306960232d59a855f956535dadaf7534cfdb46301b6a602887",
+      "size": 1029,
+      "normalized_sha256": "78a9d985cd1a62306960232d59a855f956535dadaf7534cfdb46301b6a602887"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentScopeModelChatClient.java": {
       "role": "index",
@@ -400,9 +466,9 @@
       "normalized_sha256": "e47d8984a91ee36773dd392772a5552c42c80ccf20009b0b44eef4fbe863e736"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/AgentTextEvent.java": {
-      "sha256": "04d582f9f3c2005a48479fe437a69306d3f7b54cd6362a9f9e9328256b9e6628",
-      "size": 2866,
-      "normalized_sha256": "04d582f9f3c2005a48479fe437a69306d3f7b54cd6362a9f9e9328256b9e6628"
+      "sha256": "fa366f5e02f333952ccdec677929f19fa8a7270c89eb848e3c1c9a8a9c8c3ab1",
+      "size": 3822,
+      "normalized_sha256": "fa366f5e02f333952ccdec677929f19fa8a7270c89eb848e3c1c9a8a9c8c3ab1"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/McpConnection.java": {
       "sha256": "c16d454d154dd620d5ca97480ede391f2bdc877b5c6ce64710291183cde29aac",
@@ -437,9 +503,9 @@
       "normalized_sha256": "85b953ff32fb0b4cbd397319891d09b5e72e48db16faec7c01b4d9ad4e64ad20"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/RagContextProvider.java": {
-      "sha256": "b5101bb549839f699aadf814d64599ea911521299ebb1b5e91662d7bd65c897e",
-      "size": 1028,
-      "normalized_sha256": "b5101bb549839f699aadf814d64599ea911521299ebb1b5e91662d7bd65c897e"
+      "sha256": "9897ae67e0880ccdc1449f57c06782c97c30739dac2ad618aeb8f186d81a5aee",
+      "size": 1026,
+      "normalized_sha256": "9897ae67e0880ccdc1449f57c06782c97c30739dac2ad618aeb8f186d81a5aee"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/RagSearchProvider.java": {
       "sha256": "56e1852496cbe192cef48a8ebf3bf9980ecd308bb2d2ca7c16a9dbe2f3c08148",
@@ -485,6 +551,11 @@
       "sha256": "ac73d29cc95068d1194fdfa59fcce873eca2842f4c83521d44e9170674559af8",
       "size": 529,
       "normalized_sha256": "ac73d29cc95068d1194fdfa59fcce873eca2842f4c83521d44e9170674559af8"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/AttachmentRef.java": {
+      "sha256": "aff8ad62a59fd241abef3018fe961b0f7bbc1473a178f2289c70efc979ecb451",
+      "size": 1111,
+      "normalized_sha256": "aff8ad62a59fd241abef3018fe961b0f7bbc1473a178f2289c70efc979ecb451"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/Conversation.java": {
       "role": "index",
@@ -532,10 +603,14 @@
       "normalized_sha256": "b725ecc120448da9851a018c722ca8cd70140a7b3d8eab60e4cf476b6734e1e2"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/ResolvedSkill.java": {
-      "role": "index",
-      "sha256": "67ead65b6e211d0a0a316b136c3120f0caaef2dfa751aa695f066a4edf413240",
-      "size": 490,
-      "normalized_sha256": "67ead65b6e211d0a0a316b136c3120f0caaef2dfa751aa695f066a4edf413240"
+      "sha256": "681b9fe8464f069ada5beaf808707e02c4dc2ffc3e8eb5d174e38f80d26895b6",
+      "size": 600,
+      "normalized_sha256": "681b9fe8464f069ada5beaf808707e02c4dc2ffc3e8eb5d174e38f80d26895b6"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/RunUsage.java": {
+      "sha256": "4e2a44b2ccaa60b4eb391ea9045a0c93e5ca65df4cfbf34302cc86d86aa4f5c9",
+      "size": 2778,
+      "normalized_sha256": "4e2a44b2ccaa60b4eb391ea9045a0c93e5ca65df4cfbf34302cc86d86aa4f5c9"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/RuntimeEvent.java": {
       "sha256": "b152022c7652d233670d6c8003e02c7055d540e470d8ed29f28ed67be5fa1ab3",
@@ -543,14 +618,19 @@
       "normalized_sha256": "b152022c7652d233670d6c8003e02c7055d540e470d8ed29f28ed67be5fa1ab3"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/SessionMessage.java": {
-      "sha256": "14b6e93e2fd4ceae670315521508d43c3f87bbab9ffb6f5875c07e0ec4c2b6d9",
-      "size": 456,
-      "normalized_sha256": "14b6e93e2fd4ceae670315521508d43c3f87bbab9ffb6f5875c07e0ec4c2b6d9"
+      "sha256": "6540cd473a5fecd7753d19833ff390a3befb2a9b245e928079cb4eba9746890c",
+      "size": 4912,
+      "normalized_sha256": "6540cd473a5fecd7753d19833ff390a3befb2a9b245e928079cb4eba9746890c"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/bo/AgentRunBo.java": {
-      "sha256": "2b8a54ad6e82966d1540e7ebd0d57629d7033bd093d2937e5b5b8336b1a505d6",
-      "size": 2163,
-      "normalized_sha256": "2b8a54ad6e82966d1540e7ebd0d57629d7033bd093d2937e5b5b8336b1a505d6"
+      "sha256": "2a1953f2595b1fdc5b59bc2b337449c760479b2613f1f492a8aef9535ee3c289",
+      "size": 10378,
+      "normalized_sha256": "2a1953f2595b1fdc5b59bc2b337449c760479b2613f1f492a8aef9535ee3c289"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/bo/ChatBo.java": {
+      "sha256": "99b530b4f23d001b897633eb480621472490818f615cf16f4f7d33074f2e6f66",
+      "size": 2126,
+      "normalized_sha256": "99b530b4f23d001b897633eb480621472490818f615cf16f4f7d33074f2e6f66"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/bo/ConversationBo.java": {
       "sha256": "c7a9ae31f80a9fa33fd93ad9025e470540d69c935ef71d78a39b1afbd297170b",
@@ -583,6 +663,11 @@
       "size": 1657,
       "normalized_sha256": "bd47414c59231614fc63cae01ac96865f6a8b1a09977d2eb847767137280c56a"
     },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/McpToolCallAuditDTO.java": {
+      "sha256": "8facdf806782354db7aa1171e9889cc61a58239adc83f40e54e09678196b57b2",
+      "size": 1232,
+      "normalized_sha256": "8facdf806782354db7aa1171e9889cc61a58239adc83f40e54e09678196b57b2"
+    },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/McpToolDTO.java": {
       "role": "index",
       "sha256": "7eb1f08097748f5b36938d93aced624707f80f96c7abba970bfd25b4944dfbe8",
@@ -601,6 +686,11 @@
       "size": 1044,
       "normalized_sha256": "7d20976107e941da9a09549ec6f3c2e73a590ad24bf43a7c0b5cbd77a07016e6"
     },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/RuntimeRunEventDTO.java": {
+      "sha256": "b8a02ac795dbdc734a0e55e75d102dc1f3a9642bec526543f92b0d79209f84fd",
+      "size": 5441,
+      "normalized_sha256": "b8a02ac795dbdc734a0e55e75d102dc1f3a9642bec526543f92b0d79209f84fd"
+    },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/dto/SkillDTO.java": {
       "role": "index",
       "sha256": "e76cff084e5925699bf204a89ab21eb22611447672f02307723783cc5b97d346",
@@ -612,6 +702,11 @@
       "sha256": "ba747ec1fd50ea1182a0b5c2f0173d030eac25a0063db346f70e0dd42a58f823",
       "size": 1112,
       "normalized_sha256": "ba747ec1fd50ea1182a0b5c2f0173d030eac25a0063db346f70e0dd42a58f823"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/rag/CitationPayload.java": {
+      "sha256": "a13d1ef9464e757c21e6560adce3375f3edf9275bd4b29b086b2e71cd7117f4c",
+      "size": 5009,
+      "normalized_sha256": "a13d1ef9464e757c21e6560adce3375f3edf9275bd4b29b086b2e71cd7117f4c"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/domain/rag/RagContext.java": {
       "sha256": "2d7daf7680d8d1a21984b6d4068b2f4520f5e9e9376cef0b5d87c58477825dd2",
@@ -646,19 +741,24 @@
       "normalized_sha256": "ee95fc81203b6a47c3f9b0d498f7f26c5cbb9ed45364fc73bed7e5fa29edc664"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/AgentScopeHarnessExecutor.java": {
-      "sha256": "a4643af027dd60eec1e24969ff8a7a0fbfe8f26e55414fdc357ef97ad1c13def",
-      "size": 4158,
-      "normalized_sha256": "a4643af027dd60eec1e24969ff8a7a0fbfe8f26e55414fdc357ef97ad1c13def"
+      "sha256": "f3827480a1100d1fc84db6aac717cc705b490eb6b20e97182754e4a4c9ef33f4",
+      "size": 5163,
+      "normalized_sha256": "f3827480a1100d1fc84db6aac717cc705b490eb6b20e97182754e4a4c9ef33f4"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/AgentTextExecutor.java": {
-      "sha256": "d4f68569d46601d0a96f67c5cafd958d12722e0d8153190e07c0861c349dc7b1",
-      "size": 1120,
-      "normalized_sha256": "d4f68569d46601d0a96f67c5cafd958d12722e0d8153190e07c0861c349dc7b1"
+      "sha256": "886c5de321cc3cced5e7a26217a6199593f8f42669517f10e9e3d5f9900bce32",
+      "size": 1130,
+      "normalized_sha256": "886c5de321cc3cced5e7a26217a6199593f8f42669517f10e9e3d5f9900bce32"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/ModelStreamTextExecutor.java": {
-      "sha256": "1fb5ed1503817073aabd92dd3d74cf645099a77e4e072d79740ed409356db754",
-      "size": 20306,
-      "normalized_sha256": "1fb5ed1503817073aabd92dd3d74cf645099a77e4e072d79740ed409356db754"
+      "sha256": "519e24124a02bb1b62cba7592bf06fea06da8c8e33b8e72bf772d63e24404a50",
+      "size": 30906,
+      "normalized_sha256": "519e24124a02bb1b62cba7592bf06fea06da8c8e33b8e72bf772d63e24404a50"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/executor/PublishedModelAgentTextExecutor.java": {
+      "sha256": "baf6eebaa959f0133956ba7c873ce3b72b202733b38452b4163e32d5b7a61781",
+      "size": 8049,
+      "normalized_sha256": "baf6eebaa959f0133956ba7c873ce3b72b202733b38452b4163e32d5b7a61781"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/factory/AgentScopeModelFactory.java": {
       "role": "index",
@@ -677,6 +777,16 @@
       "sha256": "7e53508d52048a037369271f9acf65acd2a0d9ec7fb18d0d81024cad31ca500e",
       "size": 1147,
       "normalized_sha256": "7e53508d52048a037369271f9acf65acd2a0d9ec7fb18d0d81024cad31ca500e"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/history/HistoryWindow.java": {
+      "sha256": "3a038cdf64feb5c5f27e50cf93ffef98522441a1a3c283d711ac41b14bce3083",
+      "size": 5399,
+      "normalized_sha256": "3a038cdf64feb5c5f27e50cf93ffef98522441a1a3c283d711ac41b14bce3083"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/history/HistoryWindowResult.java": {
+      "sha256": "f104f7faf2e60ba78d9d97440364dd6e982aa8f9bcc8fe52f4e758445449863c",
+      "size": 1758,
+      "normalized_sha256": "f104f7faf2e60ba78d9d97440364dd6e982aa8f9bcc8fe52f4e758445449863c"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/rag/RagContext.java": {
       "role": "index",
@@ -701,15 +811,25 @@
       "size": 825,
       "normalized_sha256": "a81f67ec6e3bc92f6d689f75f00818deb9218b86dee7c03547f38a700b4d0cc4"
     },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/repository/ResolvedSkillAgentSkillRepository.java": {
+      "sha256": "aa2772a8e0aa8e4bdf07b459abc31ec5a0f31d0691e8d5df4ad431c5a50a3f25",
+      "size": 3473,
+      "normalized_sha256": "aa2772a8e0aa8e4bdf07b459abc31ec5a0f31d0691e8d5df4ad431c5a50a3f25"
+    },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/AgentModelResolver.java": {
       "sha256": "191b3d672f537b79edf6aabcd44462704604ff0cbbd2248cabd229655581fce7",
       "size": 778,
       "normalized_sha256": "191b3d672f537b79edf6aabcd44462704604ff0cbbd2248cabd229655581fce7"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/McpToolResolver.java": {
-      "sha256": "96aeb1cc639ac95accd5e23b9f3aace5b2e30d20a0a72e7ec1eacac84122dae7",
-      "size": 885,
-      "normalized_sha256": "96aeb1cc639ac95accd5e23b9f3aace5b2e30d20a0a72e7ec1eacac84122dae7"
+      "sha256": "2b80ea2462b3ddf00667a8f62260d0a9f759fcf06567a4d05fa9e0352d6f0875",
+      "size": 1443,
+      "normalized_sha256": "2b80ea2462b3ddf00667a8f62260d0a9f759fcf06567a4d05fa9e0352d6f0875"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/ModelImageSupportResolver.java": {
+      "sha256": "257305a52f100eb001c3b7d770647e65e2b1906078e180e0a712d6cef17048db",
+      "size": 908,
+      "normalized_sha256": "257305a52f100eb001c3b7d770647e65e2b1906078e180e0a712d6cef17048db"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/ModelToolSupportResolver.java": {
       "sha256": "c1668949e1a7960d65253f479206b5314fae07390aee72b672eaf1919c7d854c",
@@ -722,9 +842,9 @@
       "normalized_sha256": "4905b63c92b2bc193c41e81aa069596f46f07636ee78e20d5c747011d7f71619"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/resolver/SkillWorkspaceResolver.java": {
-      "sha256": "046236c796db823b332865cfe4fdd9f2423e56b81e695d30b435e8546112a3e6",
-      "size": 866,
-      "normalized_sha256": "046236c796db823b332865cfe4fdd9f2423e56b81e695d30b435e8546112a3e6"
+      "sha256": "218edff6eb1074cd9c9284425ccee4f828649dacd50c37069ec204811a9b2bbd",
+      "size": 1383,
+      "normalized_sha256": "218edff6eb1074cd9c9284425ccee4f828649dacd50c37069ec204811a9b2bbd"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AgentMcpBindingService.java": {
       "role": "index",
@@ -747,6 +867,11 @@
       "size": 925,
       "normalized_sha256": "091638f382ae9b6c187b7cdc7d6396b202426aa5a35e91c6916231d415c15de3"
     },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/AttachmentContentProvider.java": {
+      "sha256": "ca80ff7bfb9dd01e585acaa753583e10af4f2bdf56c0a75f2870c17abef266f2",
+      "size": 1032,
+      "normalized_sha256": "ca80ff7bfb9dd01e585acaa753583e10af4f2bdf56c0a75f2870c17abef266f2"
+    },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/ConversationService.java": {
       "sha256": "176b1fee2891cc9d98ca18164d46fc6df7c7c32852bba5243de300f03f22a52b",
       "size": 584,
@@ -759,10 +884,9 @@
       "normalized_sha256": "93de4955c57e0bad6bb7a5850fd1a0c8a01988f5c82301dd16830b85e1674a29"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/McpToolCallAuditService.java": {
-      "role": "index",
-      "sha256": "c9d0436831772c7d118038c1043bf7b7f8f6d6b665c9a29c2eefc76345ff12e5",
-      "size": 355,
-      "normalized_sha256": "c9d0436831772c7d118038c1043bf7b7f8f6d6b665c9a29c2eefc76345ff12e5"
+      "sha256": "28848d861490c04ec6748180da558d8ed90eeb4960a4e52d310d77a3451e6b1b",
+      "size": 1706,
+      "normalized_sha256": "28848d861490c04ec6748180da558d8ed90eeb4960a4e52d310d77a3451e6b1b"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/service/McpToolService.java": {
       "role": "index",
@@ -804,6 +928,31 @@
       "size": 523,
       "normalized_sha256": "4820de600e0142e3022322e60d92e2dc506352fd15dc1089fb423e9c68adb321"
     },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/token/PromptTokenEstimator.java": {
+      "sha256": "7966e5a69791e40e523479a8dd2e3b57b05ac684aefd3033d5a090f94a1e5aeb",
+      "size": 5427,
+      "normalized_sha256": "7966e5a69791e40e523479a8dd2e3b57b05ac684aefd3033d5a090f94a1e5aeb"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/token/TokenUsageAccumulator.java": {
+      "sha256": "7e8aaf424c6598653a14c10f7cab4a2207445259deb87c47debe68aa70e3162e",
+      "size": 2464,
+      "normalized_sha256": "7e8aaf424c6598653a14c10f7cab4a2207445259deb87c47debe68aa70e3162e"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/tools/PlatformMcpTool.java": {
+      "sha256": "427611e557a329546e29422870066ec5586e2f76ec5f30ef608baffc44f1ea61",
+      "size": 5265,
+      "normalized_sha256": "427611e557a329546e29422870066ec5586e2f76ec5f30ef608baffc44f1ea61"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/tools/RagSearchTool.java": {
+      "sha256": "d7444fcd7a2eded50971afc99399b879874e49b31e921317aa70147d068f688e",
+      "size": 3678,
+      "normalized_sha256": "d7444fcd7a2eded50971afc99399b879874e49b31e921317aa70147d068f688e"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/core/tools/WebSearchTool.java": {
+      "sha256": "af200cde824fe94d2e529b4a63598f136db348f4eb2111fe5bd01aac3f887304",
+      "size": 4455,
+      "normalized_sha256": "af200cde824fe94d2e529b4a63598f136db348f4eb2111fe5bd01aac3f887304"
+    },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/AgentStatus.java": {
       "role": "index",
       "sha256": "c3b10ada89512002369703b7720910b1cd8b649dd37889ce124528a174dbc538",
@@ -839,15 +988,20 @@
       "normalized_sha256": "beaad91127bd63b8e032a05831c2933c68e1130c8196c10fee8c9edd1732e179"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/enums/RuntimeEventType.java": {
-      "sha256": "49dc9330a36c97ebfd9e0015e1fe75fe83fd5b0c48af24042d4a7dd27d9bcb11",
-      "size": 741,
-      "normalized_sha256": "49dc9330a36c97ebfd9e0015e1fe75fe83fd5b0c48af24042d4a7dd27d9bcb11"
+      "sha256": "f2bb6b84c1188e2abb0b18a6212fc82db6ec2674c6d74f9ffc7c9167c63d5044",
+      "size": 1169,
+      "normalized_sha256": "f2bb6b84c1188e2abb0b18a6212fc82db6ec2674c6d74f9ffc7c9167c63d5044"
     },
     "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/utils/ChatResponseTexts.java": {
       "role": "index",
       "sha256": "8d701fe2fb5487348230f74a24aa14df5e8f48fdf5d6d7f15c44390597a0c134",
       "size": 2018,
       "normalized_sha256": "8d701fe2fb5487348230f74a24aa14df5e8f48fdf5d6d7f15c44390597a0c134"
+    },
+    "v5ai-common/v5ai-common-agentscope/src/main/java/xin/v5ai/nb/common/agentscope/utils/McpJsonCodec.java": {
+      "sha256": "fcb043d8e8c3e2a59e49de1551bf82d20a56c79910ea33275a522b33e732bfe2",
+      "size": 2043,
+      "normalized_sha256": "fcb043d8e8c3e2a59e49de1551bf82d20a56c79910ea33275a522b33e732bfe2"
     },
     "v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/AgentScopeModelChatClientTest.java": {
       "role": "index",
@@ -868,9 +1022,9 @@
       "normalized_sha256": "c80c2aff0d5575142adc6a16af7d8afcb1ddd2edf8ae693375db58a9a19d67f0"
     },
     "v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/RagSearchToolTest.java": {
-      "sha256": "bf2502d6c96b2e04d7828193c4375f947a3a75d262889b0289e7377cd35d06eb",
-      "size": 3204,
-      "normalized_sha256": "bf2502d6c96b2e04d7828193c4375f947a3a75d262889b0289e7377cd35d06eb"
+      "sha256": "4fecf855d5ac022d872e5c4acb9fabf6da6a83cb1f4cbc84bfcaf8507526aaf2",
+      "size": 3267,
+      "normalized_sha256": "4fecf855d5ac022d872e5c4acb9fabf6da6a83cb1f4cbc84bfcaf8507526aaf2"
     },
     "v5ai-common/v5ai-common-agentscope/src/test/java/xin/v5ai/nb/common/agentscope/core/WebSearchToolTest.java": {
       "sha256": "24e8c980a7ae150d4f513288bfea93b41ec5a59504d02ad5eecc49e4f030e308",
