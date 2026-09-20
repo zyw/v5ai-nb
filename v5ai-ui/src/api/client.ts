@@ -1,5 +1,9 @@
 import { encryptRequest } from '../utils/crypto'
 
+const env = import.meta.env
+export const appTitle = env.VITE_APP_TITLE ?? 'V5Ai 管理系统'
+export const appDescription = env.VITE_APP_DESCRIPTION ?? 'AI Agent Platform'
+
 export interface LoginResponse {
   access_token: string
   expire_in?: number

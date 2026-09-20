@@ -19,7 +19,7 @@ import { LogOut, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-vue-nex
 import { resolveMenuIcon } from '../utils/menuIcons'
 import { isDark, toggleTheme } from '../stores/theme'
 import { adminToken, clearAdminToken, currentMenus, displayName, ensureSession, isAdmin, refreshToken } from '../stores/session'
-import { logout, type RouterVo } from '../api/client'
+import { logout, appTitle, appDescription, type RouterVo } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -232,8 +232,8 @@ onMounted(() => {
       <div class="sider-brand" :class="{ collapsed }">
         <div class="brand-mark" aria-hidden="true"></div>
         <div v-if="!collapsed" class="brand-text">
-          <div class="brand-name">V5Ai-NB</div>
-          <div class="brand-sub">Agent Platform</div>
+          <div class="brand-name">{{ appTitle }}</div>
+          <div class="brand-sub">{{ appDescription }}</div>
         </div>
         <!-- 收起：与品牌标识同一行、贴这一行的最右。收起后这一行只剩 44px 标识，塞不下它，
              展开入口换到栏底（见 .sider-footer）—— 两个入口按状态互斥渲染，不会同时出现 -->
