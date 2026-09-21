@@ -261,11 +261,11 @@ v5ai:
       maxLength: 30
 
     # 会话摘要（把历史窗口之外的旧内容压缩成一段文本，异步、失败静默、不记用量）
+    # 用哪个模型不在这里配：由 Agent 的「次要模型」决定（未配置则回退该 Agent 绑定的对话模型），
+    # 与标题改写共用同一个字段。原 v5ai.chat.conversation-summary.model-id 全局项已下线。
     conversation-summary:
       # 是否启用摘要（关闭后窗口外内容直接丢弃）
       enabled: true
-      # 生成摘要用的模型 id；留空则用该 Agent 绑定的 CHAT 模型（建议给便宜的小模型）
-      # model-id:
       # 单次摘要生成超时（毫秒）
       timeoutMillis: 20000
       # 触发阈值：水位之后至少新增多少条「窗口外」消息才再压一次

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.AgentDTO;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
+import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
 import xin.v5ai.nb.runtime.core.config.properties.ConversationTitleProperties;
 import xin.v5ai.nb.runtime.core.service.ConversationService;
 
@@ -35,16 +36,19 @@ class ConversationTitleWriterTest {
 
     private static final long MODEL_ID = 7L;
 
-    /** 假模型：只关心「有没有被调用」，返回什么由用例决定。 */
+    /** 假模型：关心「有没有被调用」与「用的哪个模型」，返回什么由用例决定。 */
     private static final class FakeChatClient implements ModelChatClient {
         final AtomicInteger calls = new AtomicInteger();
         final CountDownLatch called = new CountDownLatch(1);
+        /** 每次调用传入的模型 id：次要模型是否生效只能从这里看出来（不落库、不记用量）。 */
+        final List<Long> modelIds = new CopyOnWriteArrayList<>();
         String answer = "图片内容识别";
         RuntimeException failure;
 
         @Override
         public String chatText(Long modelId, List<Msg> messages, Duration timeout) {
             calls.incrementAndGet();
+            modelIds.add(modelId);
             called.countDown();
             if (failure != null) {
                 throw failure;
@@ -62,6 +66,7 @@ class ConversationTitleWriterTest {
     private FakeChatClient chatClient;
     private ConversationService conversationService;
     private ConversationTitleProperties properties;
+    private PublishedAgentResolver agentResolver;
     private ConversationTitleWriter writer;
 
     @BeforeEach
@@ -69,10 +74,16 @@ class ConversationTitleWriterTest {
         chatClient = new FakeChatClient();
         conversationService = mock(ConversationService.class);
         properties = new ConversationTitleProperties();
-        var resolver = mock(PublishedAgentResolver.class);
-        when(resolver.resolve("a1"))
-                .thenReturn(new AgentDTO("a1", "Demo", null, null, MODEL_ID, null, null));
-        writer = new ConversationTitleWriter(resolver, chatClient, conversationService, properties);
+        agentResolver = mock(PublishedAgentResolver.class);
+        when(agentResolver.resolve("a1")).thenReturn(agent(MODEL_ID, null));
+        writer = new ConversationTitleWriter(agentResolver, chatClient, conversationService, properties);
+    }
+
+    /** 只用到「绑定模型 / 次要模型 / 记忆开关」三项，其余走便捷构造器默认值。 */
+    private static AgentDTO agent(Long modelId, Long secondaryModelId) {
+        return new AgentDTO("a1", "Demo", null, null, modelId, null, null,
+                null, null, null, false, false, false, false, false,
+                RagCallMode.FORCED.value(), secondaryModelId, true);
     }
 
     @Test
@@ -143,5 +154,42 @@ class ConversationTitleWriterTest {
 
         assertThat(chatClient.called.await(200, TimeUnit.MILLISECONDS)).isFalse();
         assertThat(chatClient.calls).hasValue(0);
+    }
+
+    /** 配了次要模型就用它：这是本项功能的落点。 */
+    @Test
+    void theSecondaryModelIsUsedWhenConfigured() throws Exception {
+        when(agentResolver.resolve("a1")).thenReturn(agent(MODEL_ID, 99L));
+
+        writer.rewriteIfAutoNamed("c-1", "a1", "提问");
+
+        assertThat(chatClient.called.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(chatClient.modelIds).containsExactly(99L);
+    }
+
+    /** 未配置次要模型时回退绑定的对话模型（存量 Agent 行为不变）。 */
+    @Test
+    void theBoundModelIsUsedWithoutASecondaryModel() throws Exception {
+        writer.rewriteIfAutoNamed("c-1", "a1", "提问");
+
+        assertThat(chatClient.called.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(chatClient.modelIds).containsExactly(MODEL_ID);
+    }
+
+    /**
+     * 两个模型都没有：没有可调用的模型，连模型都不该调。
+     *
+     * <p>收口之前这里没有空值保护，会在 {@code chatText(null, …)} 处抛异常再被 catch 吞掉——
+     * 结果一样是保留兜底名，但白走一趟异常构造。</p>
+     */
+    @Test
+    void withoutAnyModelTheModelIsNeverCalled() throws Exception {
+        when(agentResolver.resolve("a1")).thenReturn(agent(null, null));
+
+        writer.rewriteIfAutoNamed("c-1", "a1", "提问");
+
+        assertThat(chatClient.called.await(200, TimeUnit.MILLISECONDS)).isFalse();
+        assertThat(chatClient.calls).hasValue(0);
+        verify(conversationService, never()).renameIfAutoNamed(anyString(), anyString());
     }
 }

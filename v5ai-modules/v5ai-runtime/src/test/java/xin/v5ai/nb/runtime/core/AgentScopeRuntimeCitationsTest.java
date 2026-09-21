@@ -41,7 +41,7 @@ class AgentScopeRuntimeCitationsTest {
     private static AgentDTO agentWithRag() {
         return new AgentDTO("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
-                false, false, false, false, true, RagCallMode.FORCED.value());
+                false, false, false, false, true, RagCallMode.FORCED.value(), null, true);
     }
 
     private static AgentScopeRuntime runtimeWith(RagContext rag) {

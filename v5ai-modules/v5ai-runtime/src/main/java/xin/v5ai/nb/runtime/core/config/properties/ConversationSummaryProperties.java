@@ -8,6 +8,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * <p>与标题改写（{@code v5ai.chat.conversation-title}）同一性质：异步、失败静默、不记用量——
  * 摘要只是为了「不丢信息」，生成失败不该影响对话主链路（旧摘要仍在，窗口内的内容照常回放）。</p>
+ *
+ * <p><b>用哪个模型不在这里配</b>：原先的 {@code v5ai.chat.conversation-summary.model-id} 已下线，
+ * 改由 Agent 的<em>次要模型</em>决定（{@code v5ai_agent.secondary_model_id}，未配置则回退该 Agent
+ * 绑定的对话模型）。这样「摘要用哪个模型」与 Agent 靠在一起，且与标题改写共用同一个字段，
+ * 见 {@code xin.v5ai.nb.runtime.core.utils.AuxiliaryModel}。</p>
  */
 @Data
 @ConfigurationProperties(prefix = "v5ai.chat.conversation-summary")
@@ -17,13 +22,6 @@ public class ConversationSummaryProperties {
      * 是否启用摘要。关闭后历史窗口之外的内容直接丢弃（超窗不再顶爆，但模型会忘记更早的内容）。
      */
     private boolean enabled = true;
-
-    /**
-     * 生成摘要用的模型 id；留空时用该 Agent 绑定的 CHAT 模型。
-     *
-     * <p>摘要是一次平台内部的额外模型调用，给一个便宜的小模型更划算。</p>
-     */
-    private Long modelId;
 
     /**
      * 单次摘要生成的超时（毫秒）：超时即放弃，保留旧摘要。

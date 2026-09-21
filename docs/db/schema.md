@@ -5,8 +5,10 @@
 >
 > **怎么生成的**：把 V1–V44 完整重放到临时库 `v5ai_nb_verify`（Flyway `migrate`，43 个迁移全部成功），
 > 再用 [`dump-schema.sql`](./dump-schema.sql) 导出。生成时间：**2026-09-19**。
-> V45 只更新 `v5ai_message.metadata` 的**列注释**（无 DDL 变化），该行已按 V45 迁移文本同步；
-> 下次出现真实 DDL 变更时，按上面的流程整体重新生成。
+> V45 只更新 `v5ai_message.metadata` 的**列注释**（无 DDL 变化），该行已按 V45 迁移文本同步。
+> V46（`v5ai_agent` 新增 `secondary_model_id`、`show_citations` 两列）**未走整体重放**，两条列行按迁移文本手工追加
+> （列名/类型/约束/默认值/注释逐字取自 V46，新增列在 PG 里排在 `attnum` 末位，故追加在表尾）。
+> **下次出现真实 DDL 变更时应按上面的流程整体重新生成一次**，以消除手工同步的残留风险。
 >
 > **权威性**：权威永远是 `db/migration/` 里的迁移文件本身。本文件是**快照**，新增迁移后不重新生成就会滞后；
 > 它的价值是「不用 replay 四十多个历史文件就能读懂现在长什么样」，不是取代迁移。
@@ -24,7 +26,7 @@
 - [`plm_role_menu`](#plm-role-menu) — 2 列
 - [`plm_user`](#plm-user) — 18 列
 - [`plm_user_role`](#plm-user-role) — 2 列
-- [`v5ai_agent`](#v5ai-agent) — 19 列
+- [`v5ai_agent`](#v5ai-agent) — 21 列
 - [`v5ai_agent_knowledge`](#v5ai-agent-knowledge) — 3 列
 - [`v5ai_agent_mcp`](#v5ai-agent-mcp) — 3 列
 - [`v5ai_agent_skill`](#v5ai-agent-skill) — 3 列
@@ -263,6 +265,8 @@
 | `web_search_enabled` | boolean | NOT NULL | false | 是否启用联网搜索 |
 | `rag_enabled` | boolean | NOT NULL | false | 是否启用RAG |
 | `rag_call_mode` | smallint | NOT NULL | 2 | RAG调用方式: 1=智能调用 2=强制调用 |
+| `secondary_model_id` | bigint | NULL | — | 次要模型 id（v5ai_model.id，须为 CHAT 类型且已启用）：供会话标题改写与会话摘要压缩调用；为空则回退绑定的对话模型 |
+| `show_citations` | boolean | NOT NULL | true | 是否在聊天窗口展示 RAG 引用折叠块；默认 true；仅影响渲染，引用照常检索与落库（见 docs/adr/0009） |
 
 ## v5ai_agent_knowledge
 

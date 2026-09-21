@@ -56,7 +56,8 @@
         "greeting": "你好",
         "presetQuestions": ["你能做什么？"],
         "webSearchEnabled": true,
-        "imageSupported": true
+        "imageSupported": true,
+        "showCitations": true
       }
     ]
   }

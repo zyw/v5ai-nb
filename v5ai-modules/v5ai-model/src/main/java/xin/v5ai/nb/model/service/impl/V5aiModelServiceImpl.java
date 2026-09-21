@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
+import xin.v5ai.nb.common.core.enums.ModelType;
 import xin.v5ai.nb.common.core.exception.ErrorCode;
 import xin.v5ai.nb.common.core.exception.ServiceException;
 import xin.v5ai.nb.common.core.exception.V5aiException;
@@ -17,6 +18,7 @@ import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelExtConfigAttrs;
+import xin.v5ai.nb.model.api.ModelCatalogPort;
 import xin.v5ai.nb.model.core.ModelConnectionTester;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
@@ -41,7 +43,7 @@ import java.util.function.Predicate;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class V5aiModelServiceImpl implements IV5aiModelService, Predicate<Long> {
+public class V5aiModelServiceImpl implements IV5aiModelService, Predicate<Long>, ModelCatalogPort {
 
     /**
      * 模型作用域: 全局
@@ -322,5 +324,22 @@ public class V5aiModelServiceImpl implements IV5aiModelService, Predicate<Long> 
         }
         V5aiModel entity = mapper.selectById(modelId);
         return entity != null && Boolean.TRUE.equals(entity.getEnabled());
+    }
+
+    /**
+     * 跨模块端口：该模型是否存在、为 CHAT 类型且已启用。
+     *
+     * <p>与 {@link #test(Long)} 的差别是多了类型这一维。类型不对的运行期异常会被
+     * 静默吞掉（见 {@link ModelCatalogPort}），所以保存配置时必须拦下。</p>
+     */
+    @Override
+    public boolean isEnabledChatModel(Long modelId) {
+        if (modelId == null) {
+            return false;
+        }
+        V5aiModel entity = mapper.selectById(modelId);
+        return entity != null
+                && Boolean.TRUE.equals(entity.getEnabled())
+                && ModelType.CHAT.name().equals(entity.getModelType());
     }
 }

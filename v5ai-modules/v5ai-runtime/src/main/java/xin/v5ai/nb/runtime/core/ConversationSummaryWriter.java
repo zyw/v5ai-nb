@@ -16,6 +16,7 @@ import xin.v5ai.nb.runtime.core.config.properties.HistoryWindowProperties;
 import xin.v5ai.nb.runtime.core.domain.ConversationSummaryDTO;
 import xin.v5ai.nb.runtime.core.service.ConversationSummaryService;
 import xin.v5ai.nb.runtime.core.service.MessageService;
+import xin.v5ai.nb.runtime.core.utils.AuxiliaryModel;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -87,10 +88,13 @@ public class ConversationSummaryWriter implements ConversationSummaryGenerator {
             if (outside.size() < Math.max(properties.getMinNewMessages(), 1)) {
                 return;
             }
-            var modelId = properties.getModelId() != null ? properties.getModelId() : agent.modelId();
+            var modelId = AuxiliaryModel.resolve(agent);
             if (modelId == null) {
                 return;
             }
+            // 这条链路不记用量、不落事件，「用的哪个模型」只能靠日志归因
+            log.debug("会话 {} 的摘要使用{}模型 modelId={}",
+                    conversationId, AuxiliaryModel.isSecondary(agent) ? "次要" : "主", modelId);
             var messages = List.of(
                     Msg.builder().role(MsgRole.SYSTEM).textContent(prompt()).build(),
                     Msg.builder().role(MsgRole.USER).textContent(userPrompt(existing, outside)).build());

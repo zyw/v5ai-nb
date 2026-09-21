@@ -91,6 +91,16 @@ public class AgentVo implements Serializable {
      */
     private Integer ragCallMode;
 
+    /**
+     * 次要模型 ID（为空表示回退绑定的对话模型）
+     */
+    private Long secondaryModelId;
+
+    /**
+     * 是否在聊天窗口展示 RAG 引用折叠块
+     */
+    private Boolean showCitations;
+
     private OffsetDateTime createdAt;
 
     private OffsetDateTime updatedAt;

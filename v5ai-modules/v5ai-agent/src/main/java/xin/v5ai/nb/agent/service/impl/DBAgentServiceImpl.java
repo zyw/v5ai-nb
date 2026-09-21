@@ -162,6 +162,9 @@ public class DBAgentServiceImpl implements AgentService {
                 Boolean.TRUE.equals(entity.getSkillEnabled()),
                 Boolean.TRUE.equals(entity.getWebSearchEnabled()),
                 Boolean.TRUE.equals(entity.getRagEnabled()),
-                entity.getRagCallMode() == null ? RagCallMode.FORCED.value() : entity.getRagCallMode());
+                entity.getRagCallMode() == null ? RagCallMode.FORCED.value() : entity.getRagCallMode(),
+                entity.getSecondaryModelId(),
+                // 缺省 true：该列加入之前引用一律展示，null 不能被当作「不展示」
+                !Boolean.FALSE.equals(entity.getShowCitations()));
     }
 }

@@ -65,10 +65,11 @@ public class ChatAuthController {
      * @param presetQuestions 预设问题（已把快照里的 JSON 数组解析成列表）
      * @param webSearchEnabled Agent 是否允许联网搜索（门户开关据此启用/禁用）
      * @param imageSupported   所绑 CHAT 模型是否支持图片输入（门户据此启用/禁用附件入口）
+     * @param showCitations    是否展示 RAG 引用折叠块（仅影响渲染；引用照常检索与落库）
      */
     public record ChatAgent(String agentKey, String name, String description, String avatarUrl,
                               String greeting, List<String> presetQuestions, boolean webSearchEnabled,
-                              boolean imageSupported) {
+                              boolean imageSupported, boolean showCitations) {
     }
 
     /**
@@ -141,7 +142,8 @@ public class ChatAuthController {
     private ChatAgent toChatAgent(AgentDTO agent) {
         return new ChatAgent(agent.agentKey(), agent.name(), agent.description(),
                 avatarUrlOf(agent), agent.greeting(), parsePresetQuestions(agent.presetQuestions()),
-                agent.webSearchEnabled(), modelImageSupportResolver.supportsImageInput(agent.modelId()));
+                agent.webSearchEnabled(), modelImageSupportResolver.supportsImageInput(agent.modelId()),
+                agent.showCitations());
     }
 
     /**

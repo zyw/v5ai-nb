@@ -48,6 +48,13 @@ export interface PortalAgent {
   webSearchEnabled: boolean
   /** 所绑 CHAT 模型是否支持图片输入：为假时附件入口禁用（后端也会拒绝） */
   imageSupported: boolean
+  /**
+   * 是否展示助手回答下方的「引用（N 条）」折叠块（Agent 级配置，随发布快照下发）。
+   *
+   * 关掉只是不渲染：检索、RETRIEVAL 事件与引用落库都不受影响（见 ADR-0009）。
+   * 后端未下发时按 true 处理（与改动前的行为一致）。
+   */
+  showCitations?: boolean
 }
 
 export interface PortalBootstrap {

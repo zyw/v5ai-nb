@@ -30,7 +30,7 @@
 - `v5ai-common`: 公共响应、异常、分页、API Key 校验端口和平台领域（租户/用户/角色/配额/用量/审计/限流）
 - `v5ai-model`: 模型配置与凭证加密、连通性测试端口
 - `v5ai-agent`: Agent 草稿/更新/禁用/发布/版本解析核心
-- `v5ai-runtime`: Agent 运行时边界、事件模型、会话/消息/run/AgentState 持久化装饰器、历史窗口裁剪（`v5ai.agentscope.history`）、会话摘要（`ConversationSummaryWriter`）、用量埋点（真实用量优先）、RAG 上下文端口
+- `v5ai-runtime`: Agent 运行时边界、事件模型、会话/消息/run/AgentState 持久化装饰器、历史窗口裁剪（`v5ai.agentscope.history`）、会话摘要（`ConversationSummaryWriter`）、用量埋点（真实用量优先）、RAG 上下文端口；会话标题/摘要的模型取自 Agent 的**次要模型**（未配置则回退绑定的对话模型，见 `AuxiliaryModel`）
 - `v5ai-rag`: 知识库/文档/任务领域模型、解析/切片/Embedding/向量存储端口、检索上下文构建
 - `v5ai-mcp`: MCP Server/工具/审计领域模型、管理服务（连接测试、Tool 发现、Agent 绑定、权限）、连接与 Stdio 策略端口
 - `v5ai-skill`: Skill 包解析校验、版本发布/回滚、Agent 绑定、运行时 Workspace 注入端口
@@ -138,7 +138,7 @@ flowchart LR
     E --> F["SSE 事件流"]
 ```
 
-关键差异：线上 `resolve()` 按 `publishedVersion` 找 `v5ai_agent_version.snapshot_json` 还原标量字段（模型/系统提示词/5 个能力开关/RAG 调用方式/展示字段），编辑未重新发布不影响线上；调试 `resolveForDebug()` 直接返回实时编辑行，便于在草稿态下预览/调试。MCP/Skill/RAG 绑定列表两路都不固化、仍按 `agentKey` 实时解析。
+关键差异：线上 `resolve()` 按 `publishedVersion` 找 `v5ai_agent_version.snapshot_json` 还原标量字段（对话模型/次要模型/系统提示词/5 个能力开关/RAG 调用方式/引用展示开关/展示字段），编辑未重新发布不影响线上；调试 `resolveForDebug()` 直接返回实时编辑行，便于在草稿态下预览/调试。MCP/Skill/RAG 绑定列表两路都不固化、仍按 `agentKey` 实时解析。
 
 ### 4. SSE 事件顺序
 
@@ -196,71 +196,70 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 | 15 | `v5ai.chat.conversation-title.timeoutMillis` | `5000` | 单次标题生成超时（毫秒） |
 | 16 | `v5ai.chat.conversation-title.maxLength` | `30` | 标题长度上限（码点） |
 | 17 | `v5ai.chat.conversation-summary.enabled` | `true` | 会话摘要开关（关闭则历史窗口外内容直接丢弃） |
-| 18 | `v5ai.chat.conversation-summary.model-id` | 空（可选） | 生成摘要用的模型 id；留空则跟随该 Agent 绑定的 CHAT 模型 |
-| 19 | `v5ai.chat.conversation-summary.timeoutMillis` | `20000` | 单次摘要生成超时（毫秒），超时保留旧摘要 |
-| 20 | `v5ai.chat.conversation-summary.minNewMessages` | `10` | 水位之后至少新增多少条窗口外消息才再压一次 |
-| 21 | `v5ai.chat.conversation-summary.maxInputMessages` | `100` | 单次喂给摘要模型的消息条数上限 |
-| 22 | `v5ai.chat.conversation-summary.maxInputCharsPerMessage` | `500` | 单条输入消息的截断长度（字符） |
-| 23 | `v5ai.chat.conversation-summary.maxSummaryChars` | `1000` | 摘要长度上限（字符） |
-| 24 | `v5ai.chat.conversation-summary.minIntervalSeconds` | `30` | 同一会话两次摘要生成的最小间隔（秒） |
-| 25 | `v5ai.storage.type` | `${V5AI_STORAGE_TYPE:LOCAL}`；可选 `LOCAL` / `MINIO` | 通用资源（`plm_resource`）存储类型 |
-| 26 | `v5ai.storage.local-dir` | `${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}` | `LOCAL` 模式的存储根目录 |
-| 27 | `v5ai.minio.endpoint` | `${V5AI_MINIO_ENDPOINT:http://localhost:9000}` | MinIO 服务地址 |
-| 28 | `v5ai.minio.access-key` | `${V5AI_MINIO_ACCESS_KEY:minioadmin}` | MinIO Access Key |
-| 29 | `v5ai.minio.secret-key` | `${V5AI_MINIO_SECRET_KEY:minioadmin}` | MinIO Secret Key |
-| 30 | `v5ai.minio.bucket` | `${V5AI_MINIO_BUCKET:v5ai}` | MinIO 桶名 |
-| 31 | `v5ai.model.connection.test.timeout.ms` | `${V5AI_MODEL_CONNECTION_TEST_TIMEOUT_MS:90000}` | 模型连通性测试与 Agent 配置生成超时（毫秒） |
-| 32 | `v5ai.auth.refresh-token-ttl` | `43200` | 刷新令牌有效期（分钟，默认 30 天） |
-| 33 | `v5ai.worker.scan-interval-ms` | `5000` | 知识库索引任务扫描间隔（毫秒） |
-| 34 | `v5ai.worker.initial-delay-ms` | `10000` | 首次扫描延迟（毫秒） |
-| 35 | `v5ai.worker.batch-size` | `5` | 单次扫描处理的任务数上限 |
+| 18 | `v5ai.chat.conversation-summary.timeoutMillis` | `20000` | 单次摘要生成超时（毫秒），超时保留旧摘要 |
+| 19 | `v5ai.chat.conversation-summary.minNewMessages` | `10` | 水位之后至少新增多少条窗口外消息才再压一次 |
+| 20 | `v5ai.chat.conversation-summary.maxInputMessages` | `100` | 单次喂给摘要模型的消息条数上限 |
+| 21 | `v5ai.chat.conversation-summary.maxInputCharsPerMessage` | `500` | 单条输入消息的截断长度（字符） |
+| 22 | `v5ai.chat.conversation-summary.maxSummaryChars` | `1000` | 摘要长度上限（字符） |
+| 23 | `v5ai.chat.conversation-summary.minIntervalSeconds` | `30` | 同一会话两次摘要生成的最小间隔（秒） |
+| 24 | `v5ai.storage.type` | `${V5AI_STORAGE_TYPE:LOCAL}`；可选 `LOCAL` / `MINIO` | 通用资源（`plm_resource`）存储类型 |
+| 25 | `v5ai.storage.local-dir` | `${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}` | `LOCAL` 模式的存储根目录 |
+| 26 | `v5ai.minio.endpoint` | `${V5AI_MINIO_ENDPOINT:http://localhost:9000}` | MinIO 服务地址 |
+| 27 | `v5ai.minio.access-key` | `${V5AI_MINIO_ACCESS_KEY:minioadmin}` | MinIO Access Key |
+| 28 | `v5ai.minio.secret-key` | `${V5AI_MINIO_SECRET_KEY:minioadmin}` | MinIO Secret Key |
+| 29 | `v5ai.minio.bucket` | `${V5AI_MINIO_BUCKET:v5ai}` | MinIO 桶名 |
+| 30 | `v5ai.model.connection.test.timeout.ms` | `${V5AI_MODEL_CONNECTION_TEST_TIMEOUT_MS:90000}` | 模型连通性测试与 Agent 配置生成超时（毫秒） |
+| 31 | `v5ai.auth.refresh-token-ttl` | `43200` | 刷新令牌有效期（分钟，默认 30 天） |
+| 32 | `v5ai.worker.scan-interval-ms` | `5000` | 知识库索引任务扫描间隔（毫秒） |
+| 33 | `v5ai.worker.initial-delay-ms` | `10000` | 首次扫描延迟（毫秒） |
+| 34 | `v5ai.worker.batch-size` | `5` | 单次扫描处理的任务数上限 |
 
 ### 高级配置
 
 | 编号 | 配置项 | 默认值 / 可选值                                                     | 描述 |
 |---|---|---------------------------------------------------------------------|---|
-| 36 | `v5ai.security.excludes` | `[/api/v1/agents/**]`                                               | Sa-Token 免登录路径；运行 API 由 API Key 自行鉴权 |
-| 37 | `v5ai.crypto.type` | `aes`；可选 `aes` / `sm4`                                           | 凭据（模型 API Key、MCP headers/env）加密实现 |
-| 38 | `v5ai.crypto.secret-key` | `${V5AI_CREDENTIAL_CIPHER_KEY:xxxx}`                                | 对称密钥（32 字节），生产必须通过环境变量替换 |
-| 39 | `v5ai.crypto.iv` | 无默认值（可选，`type=sm4` 时必填）                                 | SM4 初始化向量 |
-| 40 | `v5ai.mybatis-encryptor.enable` | `false`                                                             | MyBatis 字段级加解密开关（`@EncryptField`） |
-| 41 | `v5ai.mybatis-encryptor.algorithm` | `BASE64`；可选 `DEFAULT` / `BASE64` / `AES` / `RSA` / `SM2` / `SM4` | 默认加密算法 |
-| 42 | `v5ai.mybatis-encryptor.encode` | `BASE64`；可选 `BASE64` / `HEX`                                     | 密文编码方式 |
-| 43 | `v5ai.mybatis-encryptor.password` | 空                                                                  | 对称算法密钥 |
-| 44 | `v5ai.mybatis-encryptor.publicKey` | 空                                                                  | 非对称算法公钥 |
-| 45 | `v5ai.mybatis-encryptor.privateKey` | 空                                                                  | 非对称算法私钥 |
-| 46 | `v5ai.api-decrypt.enabled` | `true`                                                              | 全局接口加解密开关 |
-| 47 | `v5ai.api-decrypt.headerFlag` | `encrypt-key`                                                       | 加密请求头标识 |
-| 48 | `v5ai.api-decrypt.publicKey` | 内置示例公钥                                                        | 响应加密公钥（使用前请自行更换） |
-| 49 | `v5ai.api-decrypt.privateKey` | 内置示例私钥                                                        | 请求解密私钥（使用前请自行更换） |
-| 50 | `v5ai.captcha.enable` | `true`                                                              | 登录验证码校验开关 |
-| 51 | `v5ai.captcha.type` | `slider`                                                            | 验证码类型（`slider`=图片滑块） |
-| 52 | `v5ai.captcha.numberLength` | 无默认值（可选，`type=math` 时生效）                                | 数字验证码位数 |
-| 53 | `v5ai.captcha.charLength` | 无默认值（可选，`type=char` 时生效）                                | 字符验证码长度 |
-| 54 | `v5ai.captcha.slider-threshold` | `3`                                                                 | 登录错误次数达到该值后需先过滑块（须小于 `user.password.maxRetryCount`） |
-| 55 | `v5ai.captcha.expire-minutes` | `2`                                                                 | 滑块拼图令牌有效期（分钟） |
-| 56 | `v5ai.web.cors.allowCredentials` | `true`                                                              | 是否允许跨域携带凭证 |
-| 57 | `v5ai.web.cors.allowedOriginPatterns` | `["*"]`                                                             | 允许的来源匹配规则 |
-| 58 | `v5ai.web.cors.allowedHeaders` | `["*"]`                                                             | 允许的请求头 |
-| 59 | `v5ai.web.cors.allowedMethods` | `["*"]`                                                             | 允许的请求方法 |
-| 60 | `v5ai.web.cors.maxAge` | `1800`                                                              | 预检请求缓存时间（秒） |
-| 61 | `v5ai.xss.enabled` | `false`                                                             | XSS 过滤开关（仅 `true` 时注册过滤器） |
-| 62 | `v5ai.xss.excludeUrls` | `[]`                                                                | 跳过 XSS 过滤的请求路径 |
-| 63 | `v5ai.agentscope.image-tokens-per-image` | `1024`                                                              | 用量估算中每张图片折算的 token 数（只影响估算兜底口径） |
-| 64 | `v5ai.redisson.keyPrefix` | `${V5AI_REDIS_KEY_PREFIX:v5ai}`                                     | Redis key 前缀（profile 专属，见 `application-dev.yml.template`） |
-| 65 | `v5ai.redisson.threads` | `4`                                                                 | Redisson 线程池数量 |
-| 66 | `v5ai.redisson.nettyThreads` | `8`                                                                 | Redisson Netty 线程池数量 |
-| 67 | `v5ai.redisson.singleServerConfig.clientName` | `${spring.application.name}`                                        | 客户端名称（单机模式） |
-| 68 | `v5ai.redisson.singleServerConfig.connectionMinimumIdleSize` | `8`                                                                 | 最小空闲连接数 |
-| 69 | `v5ai.redisson.singleServerConfig.connectionPoolSize` | `32`                                                                | 连接池大小 |
-| 70 | `v5ai.redisson.singleServerConfig.idleConnectionTimeout` | `10000`                                                             | 连接空闲超时（毫秒） |
-| 71 | `v5ai.redisson.singleServerConfig.timeout` | `3000`                                                              | 命令等待超时（毫秒） |
-| 72 | `v5ai.redisson.singleServerConfig.subscriptionConnectionPoolSize` | `50`                                                                | 发布订阅连接池大小 |
-| 73 | `v5ai.redisson.clusterServersConfig.*` | 可选（集群部署时替代 `singleServerConfig`）                         | 集群模式的主从连接池、读写模式与订阅模式配置 |
-| 74 | `v5ai.mcp.stdio-command-whitelist` | `${V5AI_MCP_STDIO_COMMAND_WHITELIST:}`；空=不限制                   | Stdio MCP 命令白名单（逗号分隔，生产环境必须配置） |
-| 75 | `v5ai.rag.smart-chunk.timeout-seconds` | `60`                                                                | 智能切片调用模型生成切片方案的超时（秒） |
-| 76 | `v5ai.skill.ai.timeout-seconds` | `90`                                                                | Skill 内容 AI 生成调用超时（秒） |
-| 77 | `v5ai.store.connection-test.timeout-seconds` | `5`                                                                 | 向量库 / 检索存储连通性测试超时（秒） |
+| 35 | `v5ai.security.excludes` | `[/api/v1/agents/**]`                                               | Sa-Token 免登录路径；运行 API 由 API Key 自行鉴权 |
+| 36 | `v5ai.crypto.type` | `aes`；可选 `aes` / `sm4`                                           | 凭据（模型 API Key、MCP headers/env）加密实现 |
+| 37 | `v5ai.crypto.secret-key` | `${V5AI_CREDENTIAL_CIPHER_KEY:xxxx}`                                | 对称密钥（32 字节），生产必须通过环境变量替换 |
+| 38 | `v5ai.crypto.iv` | 无默认值（可选，`type=sm4` 时必填）                                 | SM4 初始化向量 |
+| 39 | `v5ai.mybatis-encryptor.enable` | `false`                                                             | MyBatis 字段级加解密开关（`@EncryptField`） |
+| 40 | `v5ai.mybatis-encryptor.algorithm` | `BASE64`；可选 `DEFAULT` / `BASE64` / `AES` / `RSA` / `SM2` / `SM4` | 默认加密算法 |
+| 41 | `v5ai.mybatis-encryptor.encode` | `BASE64`；可选 `BASE64` / `HEX`                                     | 密文编码方式 |
+| 42 | `v5ai.mybatis-encryptor.password` | 空                                                                  | 对称算法密钥 |
+| 43 | `v5ai.mybatis-encryptor.publicKey` | 空                                                                  | 非对称算法公钥 |
+| 44 | `v5ai.mybatis-encryptor.privateKey` | 空                                                                  | 非对称算法私钥 |
+| 45 | `v5ai.api-decrypt.enabled` | `true`                                                              | 全局接口加解密开关 |
+| 46 | `v5ai.api-decrypt.headerFlag` | `encrypt-key`                                                       | 加密请求头标识 |
+| 47 | `v5ai.api-decrypt.publicKey` | 内置示例公钥                                                        | 响应加密公钥（使用前请自行更换） |
+| 48 | `v5ai.api-decrypt.privateKey` | 内置示例私钥                                                        | 请求解密私钥（使用前请自行更换） |
+| 49 | `v5ai.captcha.enable` | `true`                                                              | 登录验证码校验开关 |
+| 50 | `v5ai.captcha.type` | `slider`                                                            | 验证码类型（`slider`=图片滑块） |
+| 51 | `v5ai.captcha.numberLength` | 无默认值（可选，`type=math` 时生效）                                | 数字验证码位数 |
+| 52 | `v5ai.captcha.charLength` | 无默认值（可选，`type=char` 时生效）                                | 字符验证码长度 |
+| 53 | `v5ai.captcha.slider-threshold` | `3`                                                                 | 登录错误次数达到该值后需先过滑块（须小于 `user.password.maxRetryCount`） |
+| 54 | `v5ai.captcha.expire-minutes` | `2`                                                                 | 滑块拼图令牌有效期（分钟） |
+| 55 | `v5ai.web.cors.allowCredentials` | `true`                                                              | 是否允许跨域携带凭证 |
+| 56 | `v5ai.web.cors.allowedOriginPatterns` | `["*"]`                                                             | 允许的来源匹配规则 |
+| 57 | `v5ai.web.cors.allowedHeaders` | `["*"]`                                                             | 允许的请求头 |
+| 58 | `v5ai.web.cors.allowedMethods` | `["*"]`                                                             | 允许的请求方法 |
+| 59 | `v5ai.web.cors.maxAge` | `1800`                                                              | 预检请求缓存时间（秒） |
+| 60 | `v5ai.xss.enabled` | `false`                                                             | XSS 过滤开关（仅 `true` 时注册过滤器） |
+| 61 | `v5ai.xss.excludeUrls` | `[]`                                                                | 跳过 XSS 过滤的请求路径 |
+| 62 | `v5ai.agentscope.image-tokens-per-image` | `1024`                                                              | 用量估算中每张图片折算的 token 数（只影响估算兜底口径） |
+| 63 | `v5ai.redisson.keyPrefix` | `${V5AI_REDIS_KEY_PREFIX:v5ai}`                                     | Redis key 前缀（profile 专属，见 `application-dev.yml.template`） |
+| 64 | `v5ai.redisson.threads` | `4`                                                                 | Redisson 线程池数量 |
+| 65 | `v5ai.redisson.nettyThreads` | `8`                                                                 | Redisson Netty 线程池数量 |
+| 66 | `v5ai.redisson.singleServerConfig.clientName` | `${spring.application.name}`                                        | 客户端名称（单机模式） |
+| 67 | `v5ai.redisson.singleServerConfig.connectionMinimumIdleSize` | `8`                                                                 | 最小空闲连接数 |
+| 68 | `v5ai.redisson.singleServerConfig.connectionPoolSize` | `32`                                                                | 连接池大小 |
+| 69 | `v5ai.redisson.singleServerConfig.idleConnectionTimeout` | `10000`                                                             | 连接空闲超时（毫秒） |
+| 70 | `v5ai.redisson.singleServerConfig.timeout` | `3000`                                                              | 命令等待超时（毫秒） |
+| 71 | `v5ai.redisson.singleServerConfig.subscriptionConnectionPoolSize` | `50`                                                                | 发布订阅连接池大小 |
+| 72 | `v5ai.redisson.clusterServersConfig.*` | 可选（集群部署时替代 `singleServerConfig`）                         | 集群模式的主从连接池、读写模式与订阅模式配置 |
+| 73 | `v5ai.mcp.stdio-command-whitelist` | `${V5AI_MCP_STDIO_COMMAND_WHITELIST:}`；空=不限制                   | Stdio MCP 命令白名单（逗号分隔，生产环境必须配置） |
+| 74 | `v5ai.rag.smart-chunk.timeout-seconds` | `60`                                                                | 智能切片调用模型生成切片方案的超时（秒） |
+| 75 | `v5ai.skill.ai.timeout-seconds` | `90`                                                                | Skill 内容 AI 生成调用超时（秒） |
+| 76 | `v5ai.store.connection-test.timeout-seconds` | `5`                                                                 | 向量库 / 检索存储连通性测试超时（秒） |
 ## 本地验证
 
 ```bash
@@ -301,12 +300,13 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
     - **附件入口的两个坑**：①判定用的是**发布快照**里的 `modelId`（`PublishedAgentResolver.resolve`），而能力本身按模型 ID 实时读——所以在「模型管理」里给模型开启「支持图片输入」无需重新发布即可生效，但**给 Agent 换了绑定模型必须重新发布**，否则门户仍按旧快照的模型判定；②`imageSupported` 只在进入页面时取一次，改完模型/能力后需**刷新页面（或重登）**才会重新取到；
     - 会话列表 `GET /api/v1/agents/{agentKey}/chat/conversations`（`?archived=true` 查归档）、改名/归档 `PATCH …/conversations/{id}`；
     - 图片先 `POST /api/v1/agents/resource/upload`（JSON + base64，≤5MB，文件头必须是 PNG/JPEG/WebP）拿 `id`，再随 `chat/stream` 的 `attachments` 提交；历史回放里的图片按 `GET /api/v1/agents/attachments/{id}` 取；
-    - 停止生成：点停止即调 `POST /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`（runId 取自 SSE 的 `id:` 字段）并断开本地流，run 落定为 `CANCELED` 且保留已生成的部分回答。
+    - 停止生成：点停止即调 `POST /api/v1/agents/{agentKey}/chat/runs/{runId}/stop`（runId 取自 SSE 的 `id:` 字段）并断开本地流，run 落定为 `CANCELED` 且保留已生成的部分回答；
+    - bootstrap 还下发 `showCitations`（Agent 的「引用展示」开关，默认开）：关掉后助手消息下方的「引用（N 条）」折叠块**不渲染**，但检索、`RETRIEVAL` 事件、引用随消息落库（`v5ai_message.metadata`）**全部照旧**（见 `docs/adr/0011-citations-toggle-is-display-only.md`）。它和「次要模型」一样取自**发布快照**，**改完必须重新发布**，且 bootstrap 每页面只取一次、需**刷新页面（或重登）**才拿到新值；管理端「预览与调试」走实时编辑行，改完当场可见。
 
 说明：
 
 - 未配置 EMBEDDING 模型时，向量化回退到确定性本地 Hash 嵌入（维度 1536），便于本地端到端验证；
-- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V41 门户会话/附件/用量落库 + 历史摘要，需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；
+- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V41 门户会话/附件/用量落库 + 历史摘要，V42–V46 继续递增：思考落库、列注释补齐、删遗留表、引用随消息落库、Agent 次要模型 + 引用展示开关；需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；当前 schema 全貌见 `docs/db/schema.md`；
 - MCP 运行时使用已发现的 Tool 元数据：先"发现工具"再"绑定 + 发布"，运行时才会注册工具；
 - Skill 上传生成 DRAFT 版本，发布后成为"当前版本"，运行时注入当前版本文件（回滚改变当前版本）；
 - Stdio MCP 命令受白名单限制（`V5AI_MCP_STDIO_COMMAND_WHITELIST`，生产环境必须配置）；

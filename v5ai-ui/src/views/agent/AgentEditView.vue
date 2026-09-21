@@ -66,7 +66,7 @@ const skillCatalog = ref<ResourceOption[]>([])
 const mcpCatalog = ref<ResourceOption[]>([])
 const kbCatalog = ref<ResourceOption[]>([])
 
-type PickerKind = 'model' | 'skill' | 'mcp' | 'rag'
+type PickerKind = 'model' | 'secondaryModel' | 'skill' | 'mcp' | 'rag'
 const pickerOpen = ref(false)
 const pickerKind = ref<PickerKind>('skill')
 const pickerMultiple = ref(true)
@@ -82,6 +82,8 @@ const form = reactive({
   systemPrompt: '',
   presetQuestions: [] as string[],
   modelId: null as number | null,
+  /** 次要模型：供会话标题改写与会话摘要压缩调用；null = 留空回退对话模型（提交 null 即清除） */
+  secondaryModelId: null as number | null,
   skillIds: [] as number[],
   mcpServerIds: [] as number[],
   knowledgeBaseIds: [] as number[],
@@ -90,10 +92,23 @@ const form = reactive({
   skillEnabled: false,
   webSearchEnabled: false,
   ragEnabled: false,
-  ragCallMode: 2
+  ragCallMode: 2,
+  showCitations: true
 })
 
 const selectedModel = computed(() => modelCatalog.value.find((m) => m.id === form.modelId) ?? null)
+const selectedSecondaryModel = computed(
+  () => modelCatalog.value.find((m) => m.id === form.secondaryModelId) ?? null
+)
+/**
+ * 选择器卡片上的图标类别。
+ *
+ * pickerKind 既决定「选中后落到哪个表单字段」也决定图标；次要模型是另一个字段，但图标仍是模型，
+ * 所以在这里收敛成图标侧的四类，避免让选择器组件多认一个与它无关的 kind。
+ */
+const pickerIconKind = computed<'model' | 'skill' | 'mcp' | 'rag'>(() =>
+  pickerKind.value === 'secondaryModel' ? 'model' : pickerKind.value
+)
 const selectedSkills = computed(() =>
   form.skillIds.map((id) => skillCatalog.value.find((s) => s.id === id)).filter((s): s is ResourceOption => !!s)
 )
@@ -121,6 +136,19 @@ function openPicker(kind: PickerKind, title: string, multiple: boolean, items: R
 function openModelPicker() {
   openPicker('model', '选择对话模型', false, modelCatalog.value, form.modelId != null ? [form.modelId] : [])
 }
+function openSecondaryModelPicker() {
+  openPicker('secondaryModel', '选择次要模型', false, modelCatalog.value,
+    form.secondaryModelId != null ? [form.secondaryModelId] : [])
+}
+/**
+ * 清除次要模型（回到「复用对话模型」）。
+ *
+ * 后端把「提交 null」当作清除（与其它字段的 null=不改不同），所以要能回到空值：
+ * 只在选择器里换模型是回不去的，必须显式置空。
+ */
+function clearSecondaryModel() {
+  form.secondaryModelId = null
+}
 function openSkillPicker() {
   openPicker('skill', '添加 Skill', true, skillCatalog.value, form.skillIds)
 }
@@ -133,6 +161,7 @@ function openKbPicker() {
 
 function onPickerSelect(id: number) {
   if (pickerKind.value === 'model') form.modelId = id
+  else if (pickerKind.value === 'secondaryModel') form.secondaryModelId = id
 }
 function onPickerConfirm(ids: number[]) {
   if (pickerKind.value === 'skill') form.skillIds = ids
@@ -253,12 +282,14 @@ function applyAgent(row: AgentResponse) {
   form.systemPrompt = row.systemPrompt ?? ''
   form.presetQuestions = parseQuestions(row.presetQuestions)
   form.modelId = row.modelId ?? null
+  form.secondaryModelId = row.secondaryModelId ?? null
   form.memoryEnabled = row.memoryEnabled ?? false
   form.mcpEnabled = row.mcpEnabled ?? false
   form.skillEnabled = row.skillEnabled ?? false
   form.webSearchEnabled = row.webSearchEnabled ?? false
   form.ragEnabled = row.ragEnabled ?? false
   form.ragCallMode = row.ragCallMode ?? 2
+  form.showCitations = row.showCitations ?? true
 }
 
 async function load() {
@@ -333,6 +364,8 @@ async function save() {
   saving.value = true
   try {
     // 更新接口对 null 字段是「保留原值」语义，所以这里始终显式提交全部字段。
+    // 例外是 secondaryModelId：那里的 null 表示**清除**（回退对话模型），
+    // 正因如此才必须「整表单提交」——漏传会被当成清除。
     await updateAgent(adminToken.value, agentKey.value, {
       name: form.name,
       description: form.description,
@@ -346,7 +379,9 @@ async function save() {
       webSearchEnabled: form.webSearchEnabled,
       ragEnabled: form.ragEnabled,
       ragCallMode: form.ragEnabled ? form.ragCallMode : 2,
-      modelId: form.modelId
+      showCitations: form.showCitations,
+      modelId: form.modelId,
+      secondaryModelId: form.secondaryModelId
     })
     await Promise.all([
       bindSkills(adminToken.value, agentKey.value, form.skillIds),
@@ -489,6 +524,42 @@ onMounted(load)
                 </div>
               </div>
 
+              <!-- 次要模型（单选，可留空）：只服务平台内部调用，不参与对话回复 -->
+              <div class="config-group">
+                <div class="config-group-head">
+                  <div class="config-group-title">
+                    次要模型
+                    <n-tooltip placement="top">
+                      <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+                      <span style="font-size: 12px;">
+                        供两处平台内部调用使用：生成会话标题、压缩过长的历史会话。<br />
+                        不参与对话回复。留空表示复用上面的对话模型。
+                      </span>
+                    </n-tooltip>
+                  </div>
+                  <n-tag size="small" :bordered="false" type="info" style="margin-left: 8px">可选</n-tag>
+                  <div class="config-group-actions">
+                    <n-button v-if="selectedSecondaryModel" size="tiny" tertiary @click="clearSecondaryModel">清除</n-button>
+                    <n-button size="tiny" secondary @click="openSecondaryModelPicker">
+                      {{ selectedSecondaryModel ? '更换模型' : '选择模型' }}
+                    </n-button>
+                  </div>
+                </div>
+                <div class="resource-list">
+                  <div v-if="selectedSecondaryModel" class="resource-item">
+                    <ResourceIcon kind="model" :size="36" />
+                    <div class="resource-item-main">
+                      <div class="resource-item-name">{{ selectedSecondaryModel.name }}</div>
+                      <div v-if="selectedSecondaryModel.description" class="resource-item-desc">{{ selectedSecondaryModel.description }}</div>
+                    </div>
+                  </div>
+                  <n-empty v-else description="未配置：复用对话模型" size="small" style="padding: 8px 0" />
+                </div>
+                <div class="field-hint" style="margin-top: 6px">
+                  改动需重新发布后对门户生效（右侧调试面板即时生效）
+                </div>
+              </div>
+
               <!-- Skill -->
               <div class="config-group">
                 <div class="config-group-head">
@@ -586,6 +657,23 @@ onMounted(load)
                   </n-radio-group>
                   <span>{{ form.ragCallMode === 1 ? '由 LLM 自主判断是否检索知识库' : '每次对话都强制检索知识库' }}</span>
                 </div>
+                <div v-if="!!selectedKbs.length" class="rag-call-mode-wrapper">
+                  <span>
+                    引用展示
+                    <n-tooltip placement="top">
+                      <template #trigger><n-icon size="13" class="q-icon"><CircleQuestionMark /></n-icon></template>
+                      <span style="font-size: 12px;">
+                        仅控制聊天窗口是否显示「引用（N 条）」折叠块。<br />
+                        知识库检索、引用记录都不受影响——关掉只是不展示，回答依据仍会照常记录。
+                      </span>
+                    </n-tooltip>
+                  </span>
+                  <n-switch v-model:value="form.showCitations" size="small" :disabled="!form.ragEnabled">
+                    <template #checked>开</template>
+                    <template #unchecked>关</template>
+                  </n-switch>
+                  <span>{{ form.showCitations ? '回答下方展示引用的来源切片' : '不展示引用折叠块（仍照常检索与记录）' }}</span>
+                </div>
                 <div class="resource-list">
                   <div v-for="s in selectedKbs" :key="s.id" class="resource-item">
                     <ResourceIcon kind="rag" :icon="s.icon" :size="36" />
@@ -681,6 +769,7 @@ onMounted(load)
               :greeting="form.greeting"
               :preset-questions="form.presetQuestions"
               :image-supported="imageSupported"
+              :show-citations="form.showCitations"
             />
           </div>
         </div>
@@ -698,7 +787,7 @@ onMounted(load)
   <ResourcePickerList
     v-model:show="pickerOpen"
     :title="pickerTitle"
-    :kind="pickerKind"
+    :kind="pickerIconKind"
     :multiple="pickerMultiple"
     :items="pickerItems"
     :selected-ids="pickerSelected"

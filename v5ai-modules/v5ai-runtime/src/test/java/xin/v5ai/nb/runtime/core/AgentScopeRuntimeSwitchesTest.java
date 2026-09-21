@@ -105,7 +105,7 @@ class AgentScopeRuntimeSwitchesTest {
     private static AgentDTO agent(boolean ragEnabled, boolean memoryEnabled, int ragCallMode) {
         return new AgentDTO("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
-                memoryEnabled, false, false, false, ragEnabled, ragCallMode);
+                memoryEnabled, false, false, false, ragEnabled, ragCallMode, null, true);
     }
 
     @Test

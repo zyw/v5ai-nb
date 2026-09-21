@@ -115,6 +115,8 @@ export interface AgentResponse {
   description?: string | null
   status: string
   modelId: number
+  /** 次要模型：供会话标题改写与会话摘要压缩调用；为空表示回退 modelId */
+  secondaryModelId?: number | null
   publishedVersion?: number | null
   systemPrompt?: string | null
   avatar?: string | null
@@ -126,6 +128,8 @@ export interface AgentResponse {
   webSearchEnabled?: boolean
   ragEnabled?: boolean
   ragCallMode?: number
+  /** 聊天窗口是否展示 RAG 引用折叠块（仅影响渲染，不改检索与落库） */
+  showCitations?: boolean
   createdAt?: string | null
   updatedAt?: string | null
 }
@@ -135,6 +139,7 @@ export interface CreateAgentRequest {
   name: string
   description?: string
   modelId: number
+  secondaryModelId?: number | null
   systemPrompt?: string
   avatar?: string
   greeting?: string
@@ -145,12 +150,15 @@ export interface CreateAgentRequest {
   webSearchEnabled?: boolean
   ragEnabled?: boolean
   ragCallMode?: number
+  showCitations?: boolean
 }
 
 export interface UpdateAgentRequest {
   name?: string
   description?: string
   modelId?: number
+  /** null 表示清除（回退对话模型）——与其它字段的「null 即不改」不同，见后端 AgentServiceImpl */
+  secondaryModelId?: number | null
   systemPrompt?: string
   avatar?: string
   greeting?: string
@@ -161,6 +169,7 @@ export interface UpdateAgentRequest {
   webSearchEnabled?: boolean
   ragEnabled?: boolean
   ragCallMode?: number
+  showCitations?: boolean
 }
 
 export interface AgentVersionResponse {

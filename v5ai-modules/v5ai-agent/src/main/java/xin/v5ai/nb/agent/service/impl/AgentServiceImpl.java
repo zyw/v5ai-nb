@@ -3,6 +3,7 @@ package xin.v5ai.nb.agent.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.agent.domain.Agent;
@@ -16,9 +17,12 @@ import xin.v5ai.nb.agent.service.IAgentDeletionPortService;
 import xin.v5ai.nb.agent.service.IAgentService;
 import xin.v5ai.nb.common.agentscope.core.exception.AgentPublishException;
 import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.core.exception.ErrorCode;
+import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.core.utils.StringUtils;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.model.api.ModelCatalogPort;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -43,6 +47,14 @@ public class AgentServiceImpl implements IAgentService {
     private final AgentVersionMapper versionMapper;
     private final Predicate<Long> modelEnabled;
     private final IAgentDeletionPortService deletionPort;
+    /**
+     * 模型目录端口：校验次要模型「存在 + CHAT + 已启用」。
+     *
+     * <p>用 {@link ObjectProvider} 而非硬依赖：本模块的单测与部分装配场景不提供该实现
+     * （与运行时侧对 ModelUsageService 的处理一致）。取不到时跳过次要模型校验——
+     * 校验是「提前发现配置错误」的增强，缺了它运行期仍有兜底（回退主模型）。</p>
+     */
+    private final ObjectProvider<ModelCatalogPort> modelCatalog;
 
     @Override
     public PageResult<AgentVo> queryPageList(AgentBo bo, PageQuery pageQuery) {
@@ -72,12 +84,14 @@ public class AgentServiceImpl implements IAgentService {
         if (agentMapper.selectByAgentKey(bo.getAgentKey()) != null) {
             throw new IllegalArgumentException("agent already exists: " + bo.getAgentKey());
         }
+        requireUsableSecondaryModel(bo.getSecondaryModelId());
         var agent = new Agent();
         agent.setAgentKey(bo.getAgentKey().trim());
         agent.setName(bo.getName().trim());
         agent.setDescription(bo.getDescription());
         agent.setStatus(STATUS_DRAFT);
         agent.setModelId(bo.getModelId());
+        agent.setSecondaryModelId(bo.getSecondaryModelId());
         agent.setSystemPrompt(bo.getSystemPrompt());
         agent.setAvatar(bo.getAvatar());
         agent.setGreeting(bo.getGreeting());
@@ -88,6 +102,7 @@ public class AgentServiceImpl implements IAgentService {
         agent.setWebSearchEnabled(Boolean.TRUE.equals(bo.getWebSearchEnabled()));
         agent.setRagEnabled(Boolean.TRUE.equals(bo.getRagEnabled()));
         agent.setRagCallMode(bo.getRagCallMode() == null ? RAG_CALL_MODE_FORCED : bo.getRagCallMode());
+        agent.setShowCitations(!Boolean.FALSE.equals(bo.getShowCitations()));
         agentMapper.insert(agent);
         return toVo(agent);
     }
@@ -105,6 +120,15 @@ public class AgentServiceImpl implements IAgentService {
                 ? existing.getDescription() : bo.getDescription());
         update.setStatus(existing.getStatus());
         update.setModelId(bo == null || bo.getModelId() == null ? existing.getModelId() : bo.getModelId());
+        // 次要模型是「可清除」的可选项：这里的 null 表示**清除**（回退绑定的对话模型），
+        // 与其它字段的「null 即不改」不同。前端提交的是整个表单、该字段恒在，故不会误清；
+        // 若沿用 null=不改，用户一旦选了次要模型就再也回不到「复用对话模型」。
+        // 清除必须走单独一条语句——updateById 的 NOT_NULL 策略写不进 null（见 AgentMapper#clearSecondaryModel）。
+        boolean clearSecondaryModel = bo != null && bo.getSecondaryModelId() == null;
+        if (bo != null && bo.getSecondaryModelId() != null) {
+            requireUsableSecondaryModel(bo.getSecondaryModelId());
+            update.setSecondaryModelId(bo.getSecondaryModelId());
+        }
         update.setPublishedVersion(existing.getPublishedVersion());
         update.setSystemPrompt(bo == null || bo.getSystemPrompt() == null
                 ? existing.getSystemPrompt() : bo.getSystemPrompt());
@@ -125,7 +149,12 @@ public class AgentServiceImpl implements IAgentService {
         update.setRagCallMode(bo == null || bo.getRagCallMode() == null
                 ? (existing.getRagCallMode() == null ? RAG_CALL_MODE_FORCED : existing.getRagCallMode())
                 : bo.getRagCallMode());
+        update.setShowCitations(bo == null || bo.getShowCitations() == null
+                ? existing.getShowCitations() : bo.getShowCitations());
         agentMapper.updateById(update);
+        if (clearSecondaryModel) {
+            agentMapper.clearSecondaryModel(existing.getId());
+        }
         return toVo(requireAgent(agentKey));
     }
 
@@ -223,6 +252,8 @@ public class AgentServiceImpl implements IAgentService {
         vo.setWebSearchEnabled(agent.getWebSearchEnabled());
         vo.setRagEnabled(agent.getRagEnabled());
         vo.setRagCallMode(agent.getRagCallMode());
+        vo.setSecondaryModelId(agent.getSecondaryModelId());
+        vo.setShowCitations(!Boolean.FALSE.equals(agent.getShowCitations()));
         vo.setCreatedAt(agent.getCreatedAt());
         vo.setUpdatedAt(agent.getUpdatedAt());
         return vo;
@@ -241,15 +272,19 @@ public class AgentServiceImpl implements IAgentService {
 
     /**
      * 生成发布快照 JSON（与 v5ai_agent_version.snapshot_json 的既有格式保持一致）。
+     *
+     * <p>{@code secondaryModelId} 可空，用 {@link #jsonLong} 输出 {@code null}；{@code showCitations}
+     * 缺省为 true（与数据库列默认值、{@code AgentDTO} 的便捷构造器三处一致）。</p>
      */
     private String snapshot(Agent agent) {
         return """
-                {"agentKey":"%s","name":"%s","description":"%s","modelId":%d,"systemPrompt":"%s","avatar":"%s","greeting":"%s","presetQuestions":"%s","memoryEnabled":%b,"mcpEnabled":%b,"skillEnabled":%b,"webSearchEnabled":%b,"ragEnabled":%b,"ragCallMode":%d}
+                {"agentKey":"%s","name":"%s","description":"%s","modelId":%d,"secondaryModelId":%s,"systemPrompt":"%s","avatar":"%s","greeting":"%s","presetQuestions":"%s","memoryEnabled":%b,"mcpEnabled":%b,"skillEnabled":%b,"webSearchEnabled":%b,"ragEnabled":%b,"ragCallMode":%d,"showCitations":%b}
                 """.formatted(
                 jsonEscape(agent.getAgentKey()),
                 jsonEscape(agent.getName()),
                 jsonEscape(agent.getDescription()),
                 agent.getModelId(),
+                jsonLong(agent.getSecondaryModelId()),
                 jsonEscape(agent.getSystemPrompt()),
                 jsonEscape(agent.getAvatar()),
                 jsonEscape(agent.getGreeting()),
@@ -259,7 +294,37 @@ public class AgentServiceImpl implements IAgentService {
                 Boolean.TRUE.equals(agent.getSkillEnabled()),
                 Boolean.TRUE.equals(agent.getWebSearchEnabled()),
                 Boolean.TRUE.equals(agent.getRagEnabled()),
-                agent.getRagCallMode() == null ? RAG_CALL_MODE_FORCED : agent.getRagCallMode()).trim();
+                agent.getRagCallMode() == null ? RAG_CALL_MODE_FORCED : agent.getRagCallMode(),
+                !Boolean.FALSE.equals(agent.getShowCitations())).trim();
+    }
+
+    /**
+     * 可空 Long 的 JSON 字面量：{@code null} 输出 {@code null}，否则输出数字。
+     *
+     * <p>不要用 {@code %d} 直接格式化可空 Long——它在 null 时会输出不带引号的字面量 {@code null}
+     * （碰巧合法），但这一行为依赖 Formatter 的实现细节、且参数顺序错位时毫无提示。</p>
+     */
+    private static String jsonLong(Long value) {
+        return value == null ? "null" : value.toString();
+    }
+
+    /**
+     * 校验次要模型可用于内部调用：存在 + CHAT 类型 + 已启用。为 null 表示不配置，直接通过。
+     *
+     * <p><b>为什么必须在这里拦</b>：类型/启用状态不对时，运行期异常发生在
+     * {@code AgentScopeModelFactory}，而调用方（会话标题改写、会话摘要压缩）是
+     * fire-and-forget 且只打 debug 日志——用户侧看不到任何报错，只会发现「标题不再被改写、
+     * 摘要不再更新」。保存时报错是唯一能被使用者看见的时机。</p>
+     */
+    private void requireUsableSecondaryModel(Long secondaryModelId) {
+        if (secondaryModelId == null) {
+            return;
+        }
+        var catalog = modelCatalog.getIfAvailable();
+        if (catalog != null && !catalog.isEnabledChatModel(secondaryModelId)) {
+            throw new V5aiException(ErrorCode.INVALID_ARGUMENT,
+                    "次要模型不可用：需为已启用的对话（CHAT）模型，modelId=" + secondaryModelId);
+        }
     }
 
     private static String jsonEscape(String value) {

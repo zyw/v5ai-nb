@@ -68,9 +68,17 @@ class ConversationSummaryWriterTest {
 
     /** 默认开启记忆——摘要只为「会注入历史」的 Agent 生成。 */
     private static AgentDTO agent(boolean memoryEnabled) {
-        return new AgentDTO("agent-x", "Demo", "desc", null, 7L, null,
+        return agent(memoryEnabled, 7L, null);
+    }
+
+    private static AgentDTO agent(boolean memoryEnabled, Long secondaryModelId) {
+        return agent(memoryEnabled, 7L, secondaryModelId);
+    }
+
+    private static AgentDTO agent(boolean memoryEnabled, Long modelId, Long secondaryModelId) {
+        return new AgentDTO("agent-x", "Demo", "desc", null, modelId, null,
                 null, null, null, null, memoryEnabled, false, false, false, false,
-                RagCallMode.FORCED.value());
+                RagCallMode.FORCED.value(), secondaryModelId, true);
     }
 
     /** 四条历史、窗口只留两条：11/12 落在窗口外。 */
@@ -168,15 +176,43 @@ class ConversationSummaryWriterTest {
                 .upsertIfNewer(any(), any(), anyLong(), anyInt(), any());
     }
 
+    /** 配了次要模型就用它——这是本项功能的落点（标题与摘要共用同一个字段）。 */
     @Test
-    void aConfiguredModelOverridesTheAgentModel() {
+    void aSecondaryModelOverridesTheAgentModel() {
         givenFourMessages();
-        properties.setModelId(99L);
+        when(agentResolver.resolve("agent-x")).thenReturn(agent(true, 99L));
         when(modelChatClient.chatText(eq(99L), anyList(), any(Duration.class))).thenReturn("摘要正文");
 
         writer.summarizeIfNeeded("c1", "agent-x");
 
         verify(modelChatClient, timeout(3000)).chatText(eq(99L), anyList(), any(Duration.class));
+    }
+
+    /** 没配次要模型就回退绑定的对话模型（存量 Agent 行为不变）。 */
+    @Test
+    void withoutASecondaryModelTheAgentModelIsUsed() {
+        givenFourMessages();
+        when(modelChatClient.chatText(eq(7L), anyList(), any(Duration.class))).thenReturn("摘要正文");
+
+        writer.summarizeIfNeeded("c1", "agent-x");
+
+        verify(modelChatClient, timeout(3000)).chatText(eq(7L), anyList(), any(Duration.class));
+    }
+
+    /**
+     * 两个模型都没有：没有可调用的模型，一次模型调用都不该发。
+     *
+     * <p>解析链收口之前这里是「主模型为空时抛异常 → 被 catch 吞成 debug 日志」，
+     * 行为上同样不落摘要，但会走一遍异常构造；现在直接短路。</p>
+     */
+    @Test
+    void withNoModelAtAllTheModelIsNeverCalled() {
+        givenFourMessages();
+        when(agentResolver.resolve("agent-x")).thenReturn(agent(true, null, null));
+
+        writer.summarizeIfNeeded("c1", "agent-x");
+
+        verifyNoInteractions(modelChatClient);
     }
 
     /** 记忆关闭的 Agent 不注入历史，摘要对它毫无用处：一次模型调用都不该发。 */

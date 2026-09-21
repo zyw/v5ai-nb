@@ -65,7 +65,11 @@ public class AgentScopePublishedAgentResolver implements PublishedAgentResolver 
                 obj.getBool("skillEnabled", false),
                 obj.getBool("webSearchEnabled", false),
                 obj.getBool("ragEnabled", false),
-                obj.getInt("ragCallMode", RagCallMode.FORCED.value()));
+                obj.getInt("ragCallMode", RagCallMode.FORCED.value()),
+                // 存量快照没有这两个 key：次要模型缺省为 null（回退主模型）、引用缺省展示。
+                // 二者都不需要回填历史快照——行为与加这两个字段之前一致。
+                obj.getLong("secondaryModelId"),
+                obj.getBool("showCitations", true));
     }
 
     /**

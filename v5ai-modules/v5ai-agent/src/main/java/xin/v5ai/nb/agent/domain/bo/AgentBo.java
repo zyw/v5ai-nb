@@ -48,6 +48,12 @@ public class AgentBo {
     private Long modelId;
 
     /**
+     * 次要模型 ID（可空）：供会话标题改写与会话摘要压缩调用；留空则回退绑定的对话模型。
+     * 保存时校验「存在 + CHAT 类型 + 已启用」。
+     */
+    private Long secondaryModelId;
+
+    /**
      * 系统提示词
      */
     private String systemPrompt;
@@ -96,6 +102,11 @@ public class AgentBo {
      * RAG 调用方式（1=智能调用，2=强制调用；仅在 ragEnabled 开启时生效）
      */
     private Integer ragCallMode;
+
+    /**
+     * 是否在聊天窗口展示 RAG 引用折叠块（可空；缺省按 true 解析，与存量行为一致）
+     */
+    private Boolean showCitations;
 
     /**
      * 启用状态（查询条件：DRAFT / PUBLISHED / DISABLED，精确匹配）

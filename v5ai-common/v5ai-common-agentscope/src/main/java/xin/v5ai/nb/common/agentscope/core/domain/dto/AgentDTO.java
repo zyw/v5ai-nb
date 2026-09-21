@@ -23,6 +23,8 @@ import xin.v5ai.nb.common.agentscope.enums.RagCallMode;
  * @param webSearchEnabled  是否启用联网搜索
  * @param ragEnabled        是否启用 RAG 知识库检索
  * @param ragCallMode       RAG 调用方式（{@code 1=智能/2=强制}，仅在 {@code ragEnabled} 开启时生效）
+ * @param secondaryModelId  次要模型 ID（会话标题改写与会话摘要压缩使用）；为空表示回退 {@code modelId}
+ * @param showCitations     是否在聊天窗口展示 RAG 引用折叠块（仅影响渲染，引用照常检索与落库）
  */
 public record AgentDTO(
         String agentKey,
@@ -40,16 +42,22 @@ public record AgentDTO(
         boolean skillEnabled,
         boolean webSearchEnabled,
         boolean ragEnabled,
-        int ragCallMode
+        int ragCallMode,
+        Long secondaryModelId,
+        boolean showCitations
 ) {
     /**
      * 便捷构造器：未设置展示与能力开关字段，使用默认值
-     * （字符串为 null、开关为 false、RAG 调用方式为强制 2）。
+     * （字符串为 null、开关为 false、RAG 调用方式为强制 2、无次要模型、展示引用）。
+     *
+     * <p>注意 {@code showCitations} 的默认值是 {@code true}：它是「存量默认」——
+     * 本项加入之前引用一律展示，缺省若取 false 会让所有未显式传参的调用点静默藏掉引用。</p>
      */
     public AgentDTO(String agentKey, String name, String description, AgentStatus status,
                     Long modelId, Long publishedVersion, String systemPrompt) {
         this(agentKey, name, description, status, modelId, publishedVersion, systemPrompt,
-                null, null, null, false, false, false, false, false, RagCallMode.FORCED.value());
+                null, null, null, false, false, false, false, false, RagCallMode.FORCED.value(),
+                null, true);
     }
 
     /**

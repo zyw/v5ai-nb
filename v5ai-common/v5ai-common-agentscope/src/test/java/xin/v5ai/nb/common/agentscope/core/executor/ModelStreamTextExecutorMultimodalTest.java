@@ -56,7 +56,8 @@ class ModelStreamTextExecutorMultimodalTest {
 
     private static AgentDTO agent() {
         return new AgentDTO("agent-x", "Demo", "desc", null, 1L, null,
-                null, null, null, null, false, false, false, false, false, RagCallMode.FORCED.value());
+                null, null, null, null, false, false, false, false, false, RagCallMode.FORCED.value(),
+                null, true);
     }
 
     @Test

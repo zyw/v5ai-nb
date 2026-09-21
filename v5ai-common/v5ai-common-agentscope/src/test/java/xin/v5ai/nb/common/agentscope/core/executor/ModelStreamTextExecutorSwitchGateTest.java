@@ -55,7 +55,8 @@ class ModelStreamTextExecutorSwitchGateTest {
     private static AgentDTO agent(boolean mcpEnabled, boolean skillEnabled) {
         return new AgentDTO("agent-x", "Demo", "desc", null, 1L, null,
                 null, null, null, null,
-                false, mcpEnabled, skillEnabled, false, false, RagCallMode.FORCED.value());
+                false, mcpEnabled, skillEnabled, false, false, RagCallMode.FORCED.value(),
+                null, true);
     }
 
     private static ModelStreamTextExecutor executor(Path workspace, McpToolResolver mcp, SkillWorkspaceResolver skill) {

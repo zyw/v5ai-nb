@@ -8,7 +8,7 @@
  */
 import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue'
 import { NButton, NIcon, NInput, NTooltip, useMessage } from 'naive-ui'
-import { Image, Send, X } from 'lucide-vue-next'
+import { Image, Link2, Send, X } from 'lucide-vue-next'
 import ChatMessageBody from '../../components/ChatMessageBody.vue'
 import MessageActions from '../../components/MessageActions.vue'
 import { mergeHits, parseHits, type ChatMsg } from '../../utils/chatStream'
@@ -29,6 +29,13 @@ const props = defineProps<{
   presetQuestions: string[]
   /** 当前所选模型是否支持图片输入（取决于「模型管理」里的模型配置）。 */
   imageSupported?: boolean
+  /**
+   * 是否展示 RAG 引用折叠块（Agent 的「引用展示」开关）。
+   *
+   * <p>调试面板与门户走同一个组件、同一份开关值，所以在这里改开关能**当场看到**引用的显隐；
+   * 默认 true 是「未传即展示」——与改动前的行为一致。</p>
+   */
+  showCitations?: boolean
 }>()
 
 const message = useMessage()
@@ -401,7 +408,11 @@ defineExpose({ reset })
       <div v-for="(msg, index) in messages" :key="index" :class="['chat-row', msg.role]">
         <div class="chat-bubble">
           <!-- 助手消息：思考折叠 + 回答 + 引用，与知识库问答 tab 共用同一组件 -->
-          <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
+          <ChatMessageBody
+            v-if="msg.role === 'assistant'"
+            :msg="msg"
+            :show-citations="showCitations ?? true"
+          />
           <template v-else>
             <div v-if="msg.images?.length" class="bubble-images">
               <img
@@ -495,6 +506,14 @@ defineExpose({ reset })
       <div v-if="!imageSupported" class="chat-image-hint">
         <n-icon :component="Image" size="13" />
         <span>当前模型未开启「支持图片输入」，暂不能发送图片</span>
+      </div>
+      <!--
+        关掉引用展示后，调试时看到的「没有引用」与「RAG 没命中」长得一样，
+        所以把原因写出来——这一区分只有调试面板做得了（门户不该提示这件事）。
+      -->
+      <div v-if="showCitations === false" class="chat-citations-hint">
+        <n-icon :component="Link2" size="13" />
+        <span>该智能体已关闭「引用展示」：回答下方不显示引用（检索与引用记录不受影响）</span>
       </div>
       <div class="chat-disclaimer">AI 生成内容可能有误，请核实重要信息</div>
     </div>
@@ -790,6 +809,17 @@ defineExpose({ reset })
 }
 
 .chat-image-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--n-text-color-3, #98a2b3);
+}
+
+/* 与 .chat-image-hint 同一视觉权重：都是「写出来免得你以为是坏了」的说明行 */
+.chat-citations-hint {
   display: flex;
   align-items: center;
   justify-content: center;

@@ -861,7 +861,11 @@ async function reloadAgents() {
                     />
                     <div class="message-main">
                       <div class="bubble" :class="msg.role">
-                        <ChatMessageBody v-if="msg.role === 'assistant'" :msg="msg" />
+                        <ChatMessageBody
+                          v-if="msg.role === 'assistant'"
+                          :msg="msg"
+                          :show-citations="activeAgent?.showCitations ?? true"
+                        />
                         <template v-else>
                           <div v-if="msg.attachments?.length" class="bubble-attachments">
                             <img

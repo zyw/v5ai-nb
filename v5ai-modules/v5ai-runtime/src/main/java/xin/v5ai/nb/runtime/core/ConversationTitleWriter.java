@@ -11,6 +11,7 @@ import xin.v5ai.nb.common.agentscope.core.ModelChatClient;
 import xin.v5ai.nb.common.agentscope.core.resolver.PublishedAgentResolver;
 import xin.v5ai.nb.runtime.core.config.properties.ConversationTitleProperties;
 import xin.v5ai.nb.runtime.core.service.ConversationService;
+import xin.v5ai.nb.runtime.core.utils.AuxiliaryModel;
 import xin.v5ai.nb.runtime.core.utils.ConversationNaming;
 
 import java.time.Duration;
@@ -57,12 +58,22 @@ public class ConversationTitleWriter implements ConversationTitleGenerator {
     }
 
     /**
-     * 真正的一次标题生成：解析该 Agent 绑定的 CHAT 模型 → 一次最小对话 → 清洗 → 条件回写。
-     * 任何异常都在这里被吞掉（调用方是 fire-and-forget 的异步任务，无人接住异常）。
+     * 真正的一次标题生成：解析次要模型（未配置则回退绑定的对话模型）→ 一次最小对话 →
+     * 清洗 → 条件回写。任何异常都在这里被吞掉（调用方是 fire-and-forget 的异步任务，
+     * 无人接住异常）。
      */
     private void rewrite(String conversationId, String agentKey, String prompt) {
         try {
-            var modelId = publishedAgentResolver.resolve(agentKey).modelId();
+            var agent = publishedAgentResolver.resolve(agentKey);
+            var modelId = AuxiliaryModel.resolve(agent);
+            if (modelId == null) {
+                // 未绑定模型：没有可调用的模型，保留兜底名（与摘要侧的同类保护对齐）
+                log.debug("会话 {} 的标题跳过：Agent {} 未解析出可用模型", conversationId, agentKey);
+                return;
+            }
+            // 这条链路不记用量、不落事件，「用的哪个模型」只能靠日志归因
+            log.debug("会话 {} 的标题改使用{}模型 modelId={}",
+                    conversationId, AuxiliaryModel.isSecondary(agent) ? "次要" : "主", modelId);
             var messages = List.of(
                     Msg.builder().role(MsgRole.SYSTEM).textContent(systemPrompt()).build(),
                     Msg.builder().role(MsgRole.USER).textContent(prompt).build());

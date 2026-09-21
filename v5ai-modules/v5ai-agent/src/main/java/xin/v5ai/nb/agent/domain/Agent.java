@@ -53,6 +53,12 @@ public class Agent extends BaseEntity {
     private Long modelId;
 
     /**
+     * 次要模型 ID（须为 CHAT 类型且已启用）：供会话标题改写与会话摘要压缩两处平台内部调用使用；
+     * 为空则回退 {@link #modelId}
+     */
+    private Long secondaryModelId;
+
+    /**
      * 当前生效的已发布版本号（未发布为 null）
      */
     private Long publishedVersion;
@@ -106,4 +112,9 @@ public class Agent extends BaseEntity {
      * RAG 调用方式（1=智能调用，2=强制调用；仅在 ragEnabled 开启时生效）
      */
     private Integer ragCallMode;
+
+    /**
+     * 是否在聊天窗口展示 RAG 引用折叠块（仅影响渲染；引用照常检索与落库）
+     */
+    private Boolean showCitations;
 }

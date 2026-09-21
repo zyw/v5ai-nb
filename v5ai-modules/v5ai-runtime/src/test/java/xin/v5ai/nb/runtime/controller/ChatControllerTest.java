@@ -455,6 +455,7 @@ class ChatControllerTest {
 
     private static AgentDTO agent(Long modelId) {
         return new AgentDTO(AGENT_KEY, "Demo", "desc", AgentStatus.PUBLISHED, modelId, 1L,
-                "sys", null, null, null, false, false, false, false, false, RagCallMode.FORCED.value());
+                "sys", null, null, null, false, false, false, false, false, RagCallMode.FORCED.value(),
+                null, true);
     }
 }

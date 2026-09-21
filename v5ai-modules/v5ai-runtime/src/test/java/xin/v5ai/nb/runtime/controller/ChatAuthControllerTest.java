@@ -15,6 +15,8 @@ import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.platform.api.UserService;
 import xin.v5ai.nb.platform.api.domain.ApiKeysAuthDTO;
 
+import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,7 +96,8 @@ class ChatAuthControllerTest {
     @Test
     void bootstrapToleratesBrokenPresetQuestionsJson() {
         when(resolver.resolve("a1")).thenReturn(new AgentDTO("a1", "Demo", "描述", AgentStatus.PUBLISHED, 1L, 1L,
-                "sys", null, null, "{不是数组}", false, false, false, false, false, RagCallMode.FORCED.value()));
+                "sys", null, null, "{不是数组}", false, false, false, false, false, RagCallMode.FORCED.value(),
+                null, true));
 
         assertThat(controller.bootstrap(request).getData().agents().get(0).presetQuestions()).isEmpty();
     }
@@ -120,8 +123,43 @@ class ChatAuthControllerTest {
         assertThat(controller.avatar("a2").getStatusCode().value()).isEqualTo(404);
     }
 
+    /**
+     * 引用展示开关随 bootstrap 下发门户（供聊天窗口决定是否渲染引用折叠块）。
+     *
+     * <p>默认真值：存量 Agent（列默认 {@code true}）与存量快照（无该 key）都落到「展示」。</p>
+     */
+    @Test
+    void bootstrapCarriesTheCitationsToggle() {
+        when(resolver.resolve("a1")).thenReturn(agent("a1", null, true));
+        assertThat(controller.bootstrap(request).getData().agents().get(0).showCitations()).isTrue();
+
+        when(resolver.resolve("a1")).thenReturn(agent("a1", null, false));
+        assertThat(controller.bootstrap(request).getData().agents().get(0).showCitations()).isFalse();
+    }
+
+    /**
+     * 次要模型**不下发门户**：终端用户既不需要知道、也没有 UI 用得到它。
+     *
+     * <p>按契约（record 组件）断言而非按序列化结果——门户契约就是这个 record，
+     * 谁把它加进来这条用例就会红，这正是想要的效果。</p>
+     */
+    @Test
+    void secondaryModelIsNotPartOfThePortalContract() {
+        var components = Arrays.stream(ChatAuthController.ChatAgent.class.getRecordComponents())
+                .map(RecordComponent::getName)
+                .toList();
+
+        assertThat(components).doesNotContain("secondaryModelId");
+        assertThat(components).contains("showCitations");
+    }
+
     private AgentDTO agent(String agentKey, String avatar) {
+        return agent(agentKey, avatar, true);
+    }
+
+    private AgentDTO agent(String agentKey, String avatar, boolean showCitations) {
         return new AgentDTO(agentKey, "Demo", "描述", AgentStatus.PUBLISHED, 1L, 1L, "sys",
-                avatar, "你好", "[\"Q1\",\"Q2\"]", false, false, false, true, false, RagCallMode.FORCED.value());
+                avatar, "你好", "[\"Q1\",\"Q2\"]", false, false, false, true, false, RagCallMode.FORCED.value(),
+                null, showCitations);
     }
 }

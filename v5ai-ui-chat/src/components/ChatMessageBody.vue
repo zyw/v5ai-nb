@@ -12,7 +12,16 @@ import { FileText } from 'lucide-vue-next'
 import MarkdownContent from './MarkdownContent.vue'
 import { awaitingFirstToken, isThinking, onReasoningToggle, type ChatMsg } from '../utils/chatStream'
 
-const props = defineProps<{ msg: ChatMsg }>()
+/**
+ * showCitations：是否渲染引用折叠块（Agent 的「引用展示」开关，默认展示）。
+ *
+ * 只影响渲染——引用照常检索、照常随 RETRIEVAL 事件推送、照常随消息落库（见 ADR-0009）：
+ * 引用是「这条回答当时依据了什么」的快照，事后无法重建，所以开关不能是破坏性的。
+ * 默认 true 是「未传参即展示」，与本次改动之前的行为一致（管理端另有一份本组件的副本，两处默认值必须相同）。
+ */
+const props = withDefaults(defineProps<{ msg: ChatMsg; showCitations?: boolean }>(), {
+  showCitations: true
+})
 
 /**
  * 给读屏播报的那句话（见模板里的 role="status"）。
@@ -50,7 +59,10 @@ const statusText = computed(() => {
   </n-collapse>
   <MarkdownContent v-if="props.msg.content" :content="props.msg.content" />
   <div v-if="props.msg.error" class="answer-error">{{ props.msg.error }}</div>
-  <n-collapse v-if="props.msg.citations && props.msg.citations.length > 0" class="citations">
+  <n-collapse
+    v-if="props.showCitations && props.msg.citations && props.msg.citations.length > 0"
+    class="citations"
+  >
     <n-collapse-item :title="`引用（${props.msg.citations?.length ?? 0} 条）`" name="refs">
       <div v-for="(c, ci) in props.msg.citations" :key="ci" class="citation">
         <span class="cite-doc">
