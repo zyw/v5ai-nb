@@ -123,6 +123,7 @@ Content-Type: application/json
 { "url": "https://example.com/doc", "title": "可选" }
 
 GET  /api/admin/knowledge-bases/{kbId}/documents
+GET  /api/admin/parser-engines/health
 DELETE /api/admin/documents/{id}
 POST  /api/admin/documents/{id}/retry          # 重置任务为 PENDING
 GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试次数/错误）
@@ -130,7 +131,8 @@ GET  /api/admin/knowledge-bases/{kbId}/tasks   # 索引任务（含状态/尝试
 
 文档状态：`0-待处理 → 1-解析中 → 2-处理中 → 3-处理完成 | 4-处理失败`（Worker 异步处理，最多重试 3 次）；
 `sourceType` 标识来源（`UPLOAD`=上传 / `URL`=网络），另含存储元数据列
-（`storageType`/`storagePath`/`fileSize`/`chunkCount`/`parseTime`/`contentHash`）与资源库关联列 `resourceId`（见迁移 V25）。
+（`storageType`/`storagePath`/`fileSize`/`chunkCount`/`parseTime`/`contentHash`）与资源库关联列 `resourceId`（见迁移 V25）。新增 `parseEngine`、`parseDiagnostics` 保存实际解析引擎与文档级诊断（迁移 V47）。
+知识库 `config.parseParams.engine` 支持 `default`、`docling`、`mineru`；外部服务不可用、异常、超时或结果为空时记录 WARN 并自动回退 `default`。服务地址、认证和 headers 仅由应用部署配置提供，不从知识库 JSON 或前端提交。
 
 分片业务表 `v5ai_knowledge_chunk`（迁移 V24 扩展 + V30 存储解耦改造 + V31 关键词索引）：
 - 内容/元数据列：`paragraph_index`（段落索引）、`token_count`（分片 token 数量）、`vector_id`（向量 id）、

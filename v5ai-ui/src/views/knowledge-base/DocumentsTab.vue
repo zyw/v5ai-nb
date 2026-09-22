@@ -110,6 +110,7 @@ const columns: DataTableColumns<DocumentResponse> = [
     render: (row) => renderStatus(row.status)
   },
   { title: '切片数', key: 'chunkCount', width: 80, render: (row) => row.chunkCount ?? '—' },
+  { title: '解析引擎', key: 'parseEngine', width: 100, render: (row) => row.parseEngine ?? 'default' },
   { title: '页数', key: 'pageCount', width: 70, render: () => '—' },
   { title: '文件大小', key: 'fileSize', width: 100, render: (row) => fileSizeText(row.fileSize ?? 0) },
   {

@@ -12,7 +12,8 @@ import xin.v5ai.nb.rag.core.EmbeddingClient;
 import xin.v5ai.nb.rag.core.KnowledgeDocumentContentStore;
 import xin.v5ai.nb.rag.core.config.RagConfigDO;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
-import xin.v5ai.nb.rag.core.parser.DocumentParser;
+import xin.v5ai.nb.rag.core.parser.DocumentParseCoordinator;
+import xin.v5ai.nb.rag.core.parser.ParseRequest;
 import xin.v5ai.nb.rag.core.store.KeywordStore;
 import xin.v5ai.nb.rag.core.store.VectorStore;
 import xin.v5ai.nb.rag.core.store.VectorStoreResolver;
@@ -68,7 +69,7 @@ public class KnowledgeIndexingService {
     private final IKnowledgeDocumentService documentService;
     private final IKnowledgeBaseService knowledgeBaseService;
     private final KnowledgeDocumentContentStore contentStore;
-    private final DocumentParser documentParser;
+    private final DocumentParseCoordinator documentParseCoordinator;
     private final DocumentChunker documentChunker;
     private final EmbeddingClient embeddingClient;
     private final VectorStoreResolver vectorStoreResolver;
@@ -91,13 +92,27 @@ public class KnowledgeIndexingService {
         documentService.save(document);
         try {
             var content = contentStore.loadContent(document.getId());
-            var parseStart = System.currentTimeMillis();
-            var text = documentParser.parse(content, DocumentFileType.valueOf(document.getFileType()));
-            var parseTime = (int) (System.currentTimeMillis() - parseStart);
             var knowledgeBase = knowledgeBaseService.getKnowledgeBase(document.getKnowledgeBaseId());
             if (knowledgeBase == null || knowledgeBase.getVectorStoreInstanceId() == null) {
                 throw new IllegalStateException("知识库未绑定向量存储实例，无法索引: kb=" + document.getKnowledgeBaseId());
             }
+            var parseStart = System.currentTimeMillis();
+            var config = knowledgeBase.getConfig();
+            var parseParams = config == null ? null : config.getParseParams();
+            var parsed = documentParseCoordinator.parse(new ParseRequest(
+                    content,
+                    document.getTitle(),
+                    DocumentFileType.valueOf(document.getFileType()),
+                    document.getId(),
+                    document.getKnowledgeBaseId(),
+                    parseParams));
+            var text = parsed.content();
+            var parseTime = (int) (System.currentTimeMillis() - parseStart);
+            document.setParsedText(text);
+            document.setParseEngine(parsed.getEngine());
+            document.setParseDiagnostics(parsed.getStructuredJson());
+            document.setParseTime(parseTime);
+            documentService.save(document);
             var chunks = documentChunker.chunk(text, chunkingOptions(knowledgeBase));
             document.setStatus(DOC_STATUS_PROCESSING);
             document.setChunkCount(chunks.size());
@@ -143,7 +158,6 @@ public class KnowledgeIndexingService {
                 keywordStore.deleteByDocumentId(document.getKnowledgeBaseId(), document.getId());
                 keywordStore.store(vectors);
             }
-            document.setParseTime(parseTime);
             document.setStatus(DOC_STATUS_COMPLETED);
             documentService.save(document);
             task.setStatus(STATUS_COMPLETED);

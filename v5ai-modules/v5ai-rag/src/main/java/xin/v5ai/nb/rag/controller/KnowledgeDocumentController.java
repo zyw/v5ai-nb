@@ -21,6 +21,7 @@ import xin.v5ai.nb.platform.api.ResourceContentPort;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.rag.core.enums.DocumentFileType;
+import xin.v5ai.nb.rag.core.parser.ParserHealthService;
 import xin.v5ai.nb.rag.domain.KnowledgeDocument;
 import xin.v5ai.nb.rag.domain.bo.DocumentIdsBo;
 import xin.v5ai.nb.rag.domain.bo.ImportUrlBo;
@@ -51,6 +52,12 @@ public class KnowledgeDocumentController extends BaseController {
     private final IKnowledgeBaseService knowledgeBaseService;
     private final IKnowledgeDocumentService documentService;
     private final ResourceContentPort resourceContentPort;
+    private final ParserHealthService parserHealthService;
+
+    @GetMapping("/parser-engines/health")
+    public R<java.util.Map<String, java.util.Map<String, Object>>> parserHealth() {
+        return R.ok(parserHealthService.check());
+    }
 
     @PostMapping(value = "/knowledge-bases/{kbId}/documents", consumes = "multipart/form-data")
     public R<KnowledgeDocumentVo> uploadDocument(

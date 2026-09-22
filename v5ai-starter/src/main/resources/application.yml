@@ -108,6 +108,24 @@ logging:
 
 
 v5ai:
+  rag:
+    parser:
+      docling:
+        enabled: ${V5AI_DOCLING_ENABLED:false}
+        base-url: ${V5AI_DOCLING_URL:http://127.0.0.1:5001}
+        api-key: ${V5AI_DOCLING_API_KEY:}
+        connect-timeout-millis: ${V5AI_DOCLING_CONNECT_TIMEOUT_MS:5000}
+        read-timeout-millis: ${V5AI_DOCLING_READ_TIMEOUT_MS:600000}
+        poll-interval-millis: ${V5AI_DOCLING_POLL_INTERVAL_MS:2000}
+        poll-timeout-millis: ${V5AI_DOCLING_POLL_TIMEOUT_MS:1800000}
+        concurrency: ${V5AI_DOCLING_CONCURRENCY:3}
+      mineru:
+        enabled: ${V5AI_MINERU_ENABLED:false}
+        base-url: ${V5AI_MINERU_URL:http://127.0.0.1:8000}
+        connect-timeout-millis: ${V5AI_MINERU_CONNECT_TIMEOUT_MS:5000}
+        read-timeout-millis: ${V5AI_MINERU_READ_TIMEOUT_MS:600000}
+        poll-interval-millis: ${V5AI_MINERU_POLL_INTERVAL_MS:3000}
+        poll-timeout-millis: ${V5AI_MINERU_POLL_TIMEOUT_MS:1800000}
   # security配置
   security:
     # 排除路径

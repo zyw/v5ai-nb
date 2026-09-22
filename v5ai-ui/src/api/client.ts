@@ -264,9 +264,28 @@ export interface RagDoclingParams {
   maxImageBytes?: number
 }
 
+export interface RagMineruParams {
+  langList?: string[]
+  backend?: string
+  effort?: string
+  parseMethod?: string
+  formulaEnable?: boolean
+  tableEnable?: boolean
+  imageAnalysis?: boolean
+  serverUrl?: string
+  returnMd?: boolean
+  returnMiddleJson?: boolean
+  returnContentList?: boolean
+  returnImages?: boolean
+  responseFormatZip?: boolean
+  startPageId?: number
+  endPageId?: number
+}
+
 export interface RagParseParams {
-  engine?: 'default' | 'docling'
+  engine?: 'default' | 'docling' | 'mineru'
   docling?: RagDoclingParams
+  mineru?: RagMineruParams
 }
 
 export interface RagSearchParams {
@@ -361,6 +380,8 @@ export interface DocumentResponse {
   fileSize?: number
   chunkCount?: number
   parseTime?: number
+  parseEngine?: string | null
+  parseDiagnostics?: string | null
   contentHash?: string | null
   resourceId?: number | null
   createdAt?: string
@@ -1041,6 +1062,17 @@ export interface DimensionCheckResponse {
   storeMaxDimension: number | null
   effectiveMaxDimension: number | null
   dimensionAdjustable: boolean
+}
+
+export interface ParserEngineHealth {
+  enabled: boolean
+  available: boolean
+  status: string
+  httpStatus?: number
+}
+
+export function getParserEngineHealth(adminToken: string): Promise<Record<string, ParserEngineHealth>> {
+  return requestJson<Record<string, ParserEngineHealth>>('/api/admin/parser-engines/health', {}, adminToken)
 }
 
 /** 维度检查：给定「嵌入模型 × 向量库实例」返回各自上限与可用上限（切换模型/库时调用）。 */

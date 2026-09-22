@@ -576,6 +576,9 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         if (bo.getConfig() != null && bo.getConfig().getChunkParams() != null) {
             validateChunkParams(bo.getConfig().getChunkParams());
         }
+        if (bo.getConfig() != null && bo.getConfig().getParseParams() != null) {
+            validateParseParams(bo.getConfig().getParseParams());
+        }
         validateDedup(bo.getDedupStrategy(), bo.getDedupAction());
     }
 
@@ -608,6 +611,53 @@ public class KnowledgeBaseServiceImpl implements IKnowledgeBaseService {
         }
         if ("smart".equals(mode) && chunkParams.getChunkModelId() == null) {
             throw new ServiceException("智能切片必须配置对话模型");
+        }
+    }
+
+    private void validateParseParams(RagConfigDO.ParseParams params) {
+        String engine = StrUtil.blankToDefault(params.getEngine(), "default").trim().toLowerCase();
+        if (!List.of("default", "docling", "mineru").contains(engine)) {
+            throw new ServiceException("文档解析引擎不合法: default/docling/mineru");
+        }
+        if (params.getDocling() != null) {
+            var docling = params.getDocling();
+            if (docling.getImageExportMode() != null
+                    && !List.of("placeholder", "embedded", "referenced").contains(docling.getImageExportMode())) {
+                throw new ServiceException("Docling imageExportMode 不合法: placeholder/embedded/referenced");
+            }
+            if (docling.getMaxImageCount() != null && docling.getMaxImageCount() < 0) {
+                throw new ServiceException("Docling maxImageCount 不能小于 0");
+            }
+            if (docling.getMaxImageBytes() != null && docling.getMaxImageBytes() < 0) {
+                throw new ServiceException("Docling maxImageBytes 不能小于 0");
+            }
+        }
+        if (params.getMineru() == null) return;
+        var mineru = params.getMineru();
+        if (mineru.getBackend() != null && !List.of("pipeline", "vlm-engine", "hybrid-engine", "vlm-http-client", "hybrid-http-client").contains(mineru.getBackend())) {
+            throw new ServiceException("MinerU backend 不合法");
+        }
+        if (mineru.getEffort() != null && !List.of("medium", "high").contains(mineru.getEffort())) {
+            throw new ServiceException("MinerU effort 不合法: medium/high");
+        }
+        if (mineru.getParseMethod() != null && !List.of("auto", "txt", "ocr").contains(mineru.getParseMethod())) {
+            throw new ServiceException("MinerU parseMethod 不合法: auto/txt/ocr");
+        }
+        if (mineru.getStartPageId() != null && mineru.getStartPageId() < 0) {
+            throw new ServiceException("MinerU startPageId 不能小于 0");
+        }
+        if (mineru.getEndPageId() != null && mineru.getEndPageId() < 0) {
+            throw new ServiceException("MinerU endPageId 不能小于 0");
+        }
+        if (mineru.getStartPageId() != null && mineru.getEndPageId() != null
+                && mineru.getStartPageId() > mineru.getEndPageId()) {
+            throw new ServiceException("MinerU 页码范围不合法");
+        }
+        if (mineru.getLangList() != null) {
+            var supported = List.of("ch", "ch_server", "korean", "ta", "te", "ka", "th", "el", "arabic", "east_slavic", "cyrillic", "devanagari");
+            if (mineru.getLangList().stream().anyMatch(lang -> !supported.contains(lang))) {
+                throw new ServiceException("MinerU langList 包含不支持的语言");
+            }
         }
     }
 

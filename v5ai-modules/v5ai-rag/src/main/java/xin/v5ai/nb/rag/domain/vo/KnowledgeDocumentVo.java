@@ -74,6 +74,10 @@ public class KnowledgeDocumentVo implements Serializable {
      */
     private Integer parseTime;
 
+    private String parseEngine;
+
+    private String parseDiagnostics;
+
     /**
      * 文件内容 SHA-256 哈希，用于去重
      */

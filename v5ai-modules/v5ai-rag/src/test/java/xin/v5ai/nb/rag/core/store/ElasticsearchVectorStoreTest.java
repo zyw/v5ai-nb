@@ -45,7 +45,8 @@ class ElasticsearchVectorStoreTest {
 
     @Test
     void deleteByDocumentIdSkipsWhenIndexMissing() throws IOException {
-        when(client.performRequest(any(Request.class))).thenReturn(response(404));
+        var response = response(404);
+        when(client.performRequest(any(Request.class))).thenReturn(response);
 
         store.deleteByDocumentId(2L, 10L);
 
@@ -56,7 +57,8 @@ class ElasticsearchVectorStoreTest {
 
     @Test
     void deleteByVectorIdSkipsWhenIndexMissing() throws IOException {
-        when(client.performRequest(any(Request.class))).thenReturn(response(404));
+        var response = response(404);
+        when(client.performRequest(any(Request.class))).thenReturn(response);
 
         store.deleteByVectorId(2L, "v1");
 
@@ -67,7 +69,8 @@ class ElasticsearchVectorStoreTest {
 
     @Test
     void deleteByDocumentIdDeletesByQueryWhenIndexExists() throws IOException {
-        when(client.performRequest(any(Request.class))).thenReturn(response(200));
+        var response = response(200);
+        when(client.performRequest(any(Request.class))).thenReturn(response);
 
         store.deleteByDocumentId(2L, 10L);
 
@@ -81,7 +84,8 @@ class ElasticsearchVectorStoreTest {
 
     @Test
     void deleteByVectorIdDeletesDocWhenIndexExists() throws IOException {
-        when(client.performRequest(any(Request.class))).thenReturn(response(200));
+        var response = response(200);
+        when(client.performRequest(any(Request.class))).thenReturn(response);
 
         store.deleteByVectorId(2L, "v1");
 

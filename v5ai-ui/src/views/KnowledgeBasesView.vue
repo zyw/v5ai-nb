@@ -40,6 +40,7 @@ import {
   createKnowledgeBase,
   deleteKnowledgeBase,
   dimensionCheck,
+  getParserEngineHealth,
   disableKnowledgeBase,
   enableKnowledgeBase,
   listKnowledgeBases,
@@ -86,6 +87,7 @@ const searchEngines = ref<StoreInstanceResponse[]>([])
 const chatModels = ref<OptionResponse[]>([])
 const rerankModels = ref<OptionResponse[]>([])
 const capability = ref<DimensionCheckResponse>()
+const parserHealth = ref<Record<string, { enabled: boolean; available: boolean; status: string }>>({})
 
 type SliceStrategy = 'length' | 'delimiter' | 'regex' | 'smart'
 
@@ -106,8 +108,9 @@ const form = reactive({
   chunkRegex: '',
   chunkModelId: null as number | null,
   mergeShortSegments: false,
-  parseEngine: 'default' as 'default' | 'docling',
+  parseEngine: 'default' as 'default' | 'docling' | 'mineru',
   docling: { doOcr: false, doTableStructure: false, saveImages: false, imageOcr: false },
+  mineru: { backend: 'hybrid-engine', effort: 'medium', parseMethod: 'auto', langList: 'ch', formulaEnable: true, tableEnable: true, imageAnalysis: true, returnMiddleJson: false, returnImages: false, startPageId: 0, endPageId: 99999 },
   // 检索/模型回答参数：本页不直接编辑（编辑在详情页 tab 完成），仅用于新建默认值 / 编辑回写 round-trip。
   searchParams: {} as RagSearchParams,
   modelParams: {} as RagModelParams
@@ -284,6 +287,7 @@ function resetForm() {
   form.mergeShortSegments = false
   form.parseEngine = 'default'
   form.docling = { doOcr: false, doTableStructure: false, saveImages: false, imageOcr: false }
+  form.mineru = { backend: 'hybrid-engine', effort: 'medium', parseMethod: 'auto', langList: 'ch', formulaEnable: true, tableEnable: true, imageAnalysis: true, returnMiddleJson: false, returnImages: false, startPageId: 0, endPageId: 99999 }
   // 新建：对话模型 / 重排模型默认取同类型首个（若有），其余走共享默认值。
   form.searchParams = {
     ...toRagSearchParams(defaultSearchParams()),
@@ -321,12 +325,19 @@ function openEdit(kb: KnowledgeBaseResponse) {
   form.chunkModelId = chunk?.chunkModelId ?? null
   form.mergeShortSegments = !!chunk?.mergeShortSegments
   const parse = kb.config?.parseParams
-  form.parseEngine = parse?.engine === 'docling' ? 'docling' : 'default'
+  form.parseEngine = parse?.engine === 'docling' || parse?.engine === 'mineru' ? parse.engine : 'default'
   form.docling = {
     doOcr: !!parse?.docling?.doOcr,
     doTableStructure: !!parse?.docling?.doTableStructure,
     saveImages: !!parse?.docling?.saveImages,
     imageOcr: !!chunk?.imageOcr
+  }
+  form.mineru = {
+    backend: parse?.mineru?.backend ?? 'hybrid-engine', effort: parse?.mineru?.effort ?? 'medium', parseMethod: parse?.mineru?.parseMethod ?? 'auto',
+    langList: parse?.mineru?.langList?.join(',') ?? 'ch', formulaEnable: parse?.mineru?.formulaEnable ?? true,
+    tableEnable: parse?.mineru?.tableEnable ?? true, imageAnalysis: parse?.mineru?.imageAnalysis ?? true,
+    returnMiddleJson: !!parse?.mineru?.returnMiddleJson, returnImages: !!parse?.mineru?.returnImages,
+    startPageId: parse?.mineru?.startPageId ?? 0, endPageId: parse?.mineru?.endPageId ?? 99999
   }
   // 编辑：原样保留已存检索/模型回答参数（这些参数在详情页 tab 中编辑，本页不做改动）。
   form.searchParams = kb.config?.searchParams ?? toRagSearchParams(defaultSearchParams())
@@ -351,6 +362,15 @@ function buildRequest(): CreateKnowledgeBaseRequest {
       doOcr: form.docling.doOcr,
       doTableStructure: form.docling.doTableStructure,
       saveImages: form.docling.saveImages
+    }
+  }
+  if (form.parseEngine === 'mineru') {
+    parseParams.mineru = {
+      backend: form.mineru.backend, effort: form.mineru.effort, parseMethod: form.mineru.parseMethod,
+      langList: form.mineru.langList.split(',').map((item: string) => item.trim()).filter(Boolean),
+      formulaEnable: form.mineru.formulaEnable, tableEnable: form.mineru.tableEnable, imageAnalysis: form.mineru.imageAnalysis,
+      returnMd: true, returnMiddleJson: form.mineru.returnMiddleJson, returnImages: form.mineru.returnImages,
+      startPageId: form.mineru.startPageId, endPageId: form.mineru.endPageId
     }
   }
   return {
@@ -562,13 +582,27 @@ onMounted(() => {
   }
   void loadFormOptions()
   void reload()
+  void loadParserHealth()
 })
+
+async function loadParserHealth() {
+  try {
+    parserHealth.value = await getParserEngineHealth(adminToken.value)
+  } catch {
+    // 健康状态仅用于提示，不阻断知识库管理页面。
+  }
+}
 </script>
 
 <template>
   <div class="page">
     <PageHeader title="知识库管理" description="创建知识库并导入文档，由后台 Worker 解析、切片并写入向量库；点击知识库名称进入详情页调试。">
       <template #actions>
+        <n-space v-if="Object.keys(parserHealth).length" size="small" align="center">
+          <n-tag v-for="name in ['default', 'docling', 'mineru']" :key="name" size="small" :type="parserHealth[name]?.available ? 'success' : 'warning'" bordered>
+            {{ name }}: {{ parserHealth[name]?.status ?? 'UNKNOWN' }}
+          </n-tag>
+        </n-space>
         <n-button size="small" type="primary" @click="openCreate">
           <template #icon><n-icon :component="Plus" /></template>
           新建知识库
@@ -735,6 +769,7 @@ onMounted(() => {
         <n-radio-group v-model:value="form.parseEngine">
           <n-radio-button value="default">内置解析器</n-radio-button>
           <n-radio-button value="docling">Docling 引擎</n-radio-button>
+          <n-radio-button value="mineru">MinerU 引擎</n-radio-button>
         </n-radio-group>
         <template v-if="form.parseEngine === 'docling'">
           <n-text depth="3" style="display: block; font-size: 12px; margin: 10px 0">使用外部 Docling Serve 服务，提供更精准的结构化解析、表格识别和图片提取。</n-text>
@@ -773,6 +808,21 @@ onMounted(() => {
                   <template #unchecked>否</template>
                 </n-switch>
               </n-form-item-gi>
+            </n-grid>
+          </n-form>
+        </template>
+        <template v-if="form.parseEngine === 'mineru'">
+          <n-text depth="3" style="display: block; font-size: 12px; margin: 10px 0">使用 MinerU 服务；服务不可用时自动回退内置解析器并记录 WARN。</n-text>
+          <n-form label-placement="top">
+            <n-grid :cols="2" :x-gap="16">
+              <n-form-item-gi label="Backend"><n-select v-model:value="form.mineru.backend" :options="[{label:'pipeline',value:'pipeline'},{label:'vlm-engine',value:'vlm-engine'},{label:'hybrid-engine',value:'hybrid-engine'},{label:'vlm-http-client',value:'vlm-http-client'},{label:'hybrid-http-client',value:'hybrid-http-client'}]" /></n-form-item-gi>
+              <n-form-item-gi label="Effort"><n-select v-model:value="form.mineru.effort" :options="[{label:'medium',value:'medium'},{label:'high',value:'high'}]" /></n-form-item-gi>
+              <n-form-item-gi label="解析方式"><n-select v-model:value="form.mineru.parseMethod" :options="[{label:'auto',value:'auto'},{label:'txt',value:'txt'},{label:'ocr',value:'ocr'}]" /></n-form-item-gi>
+              <n-form-item-gi label="OCR 语言"><n-input v-model:value="form.mineru.langList" placeholder="ch,korean" /></n-form-item-gi>
+              <n-form-item-gi label="公式 / 表格 / 图像分析"><n-space><n-switch v-model:value="form.mineru.formulaEnable" /><n-switch v-model:value="form.mineru.tableEnable" /><n-switch v-model:value="form.mineru.imageAnalysis" /></n-space></n-form-item-gi>
+              <n-form-item-gi label="页码范围"><n-space><n-input-number v-model:value="form.mineru.startPageId" :min="0" /><n-input-number v-model:value="form.mineru.endPageId" :min="0" /></n-space></n-form-item-gi>
+              <n-form-item-gi label="返回结构化 JSON"><n-switch v-model:value="form.mineru.returnMiddleJson" /></n-form-item-gi>
+              <n-form-item-gi label="返回图片"><n-switch v-model:value="form.mineru.returnImages" /></n-form-item-gi>
             </n-grid>
           </n-form>
         </template>

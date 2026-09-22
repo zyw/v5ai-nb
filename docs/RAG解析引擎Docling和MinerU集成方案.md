@@ -1,6 +1,6 @@
 # RAG 文档解析引擎接入设计：Docling 与 MinerU
 
-> 状态：实现设计稿
+> 状态：首期功能已实现（外部服务联调与真实服务压测待部署后完成）
 >
 > 适用版本：`v5ai-nb` 当前 RAG/Worker 架构（2026-09）
 >
@@ -614,6 +614,20 @@ UI 应根据引擎显示不同字段：
 3. **Docling adapter**：配置属性、HTTP client、sync/async、单元测试和 Docker/部署说明。
 4. **MinerU adapter**：`/tasks` multipart 提交、task 状态轮询、结果 JSON/ZIP 分流、附件字段映射和单元测试。
 5. **API/UI**：校验和 MinerU 表单；增加解析服务健康检查与错误提示。
+
+### 11.1 当前代码落地情况
+
+首期代码已经完成以下内容：
+
+- `DocumentParseEngine`、`ParseRequest`、`ParsedDocument`、注册表和统一协调器；`default` 由内置 PDFBox/POI/Jsoup 解析器包装而成。
+- `DoclingParseEngine`：健康检查、multipart 异步提交、状态轮询、结果读取、Docling 选项映射和可选 `X-Api-Key`。
+- `MineruParseEngine`：严格按附件 `openapi.json` 使用 `/health`、`/tasks`、`/tasks/{task_id}` 和 `/tasks/{task_id}/result`，支持 multipart 字段映射以及 JSON/ZIP 结果分流。
+- Worker 已按知识库 `parseParams.engine` 选择解析器，并将解析文本、实际引擎、结构化诊断和耗时写回文档；外部引擎未启用、不可用、异常、超时、空结果或响应解析失败时，统一记录 `WARN` 并调用 `default`。
+- 知识库后端校验已覆盖 `default/docling/mineru`、MinerU backend/effort/parseMethod/语言和页码范围；管理端已增加 MinerU 配置表单。
+- 管理端提供 `GET /api/admin/parser-engines/health`，展示 default、Docling、MinerU 的启用与健康状态；健康检查会携带部署配置中的可选认证信息，但不会返回或记录密钥。
+- 默认外部服务开关为关闭，服务地址和认证信息只允许通过应用配置/环境变量提供，不进入知识库 JSON。
+
+真实 Docling/MinerU 服务的接口联调、图片资源持久化和 OCR/多模态增强属于部署后的调试与后续迭代，不影响首期文本解析、切片和兜底链路。
 6. **统一兜底与诊断**：外部引擎异常的 `WARN` 日志、`fallbackFrom`/原因记录、default 回退测试和监控指标。
 7. **图片/引用增强**：资产表、资源权限、chunk locator；这一步不要和首期文本解析强绑定。
 8. **文档与验收**：更新 phase2 API、部署文档、真实服务契约测试和回滚说明。

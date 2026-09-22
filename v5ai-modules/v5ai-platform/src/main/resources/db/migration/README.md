@@ -58,12 +58,15 @@
 | V42 | `V42__message_reasoning_and_metadata.sql` | 助手消息思考列 reasoning（只回看不回放）+ 保留列 metadata |
 | V43 | `V43__schema_comments.sql` | 补齐 schema 注释：221 个列注释 + 29 个表注释（纯 COMMENT ON，无 DDL） |
 | V44 | `V44__drop_agent_model.sql` | 删除遗留死表 v5ai_agent_model（0 行、无实体、无写入方） |
+| V45 | `V45__message_metadata_citations.sql` | 消息引用快照 metadata 语义落地 |
+| V46 | `V46__agent_secondary_model_and_citations.sql` | Agent 次要模型与门户 RAG 引用展示开关 |
+| V47 | `V47__knowledge_document_parser_metadata.sql` | 保存文档实际解析引擎与结构化解析诊断 |
 
-> V1–V41 是历史（冻结于 2026-09-19）；V42 起为后续演进。**V33 从未创建**，属跳号，不是缺失。
+> V1–V41 是历史（冻结于 2026-09-19）；V42 起为后续演进。**V33 从未创建**，属跳号，不是缺失。当前最大迁移版本为 V47。
 
 ## 新增一个迁移
 
-1. **取下一个递增号**（当前最大是 V44）——号一旦被任何库应用过就只能顺延，不能改名；
+1. **取下一个递增号**（当前最大是 V47）——号一旦被任何库应用过就只能顺延，不能改名；
 2. 命名 `V<n>__snake_case_描述.sql`，与 Flyway 的默认命名规则一致；
 3. **写头注释**：说清背景（为什么现在要改）、边界（这个迁移**不做**什么）。V42/V43/V44 是现成的样板；
 4. 改现有表一律 `ALTER`，不要回头改历史文件；

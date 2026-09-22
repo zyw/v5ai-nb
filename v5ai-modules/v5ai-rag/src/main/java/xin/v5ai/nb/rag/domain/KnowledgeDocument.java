@@ -64,6 +64,12 @@ public class KnowledgeDocument extends BaseEntity {
      */
     private String parsedText;
 
+    /** 实际使用的解析引擎（外部引擎失败时记录 default）。 */
+    private String parseEngine;
+
+    /** 外部解析器返回的文档级结构化结果/诊断原文。 */
+    private String parseDiagnostics;
+
     /**
      * 失败时的错误信息
      */

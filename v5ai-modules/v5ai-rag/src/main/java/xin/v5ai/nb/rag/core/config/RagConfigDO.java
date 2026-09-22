@@ -61,13 +61,17 @@ public class RagConfigDO {
     @AllArgsConstructor
     public static class ParseParams {
         /**
-         * 解析引擎：default 使用内置解析器，docling 使用外部 Docling Serve。
+         * 解析引擎：default 使用内置解析器，docling/mineru 使用外部服务；外部服务失败时回退 default。
          */
         private String engine;
         /**
          * Docling 专属参数，仅 engine=docling 时生效。
          */
         private DoclingParams docling;
+        /**
+         * MinerU 专属参数，仅 engine=mineru 时生效。
+         */
+        private MineruParams mineru;
     }
 
     @Data
@@ -107,6 +111,31 @@ public class RagConfigDO {
          * 单张 Docling 图片最大字节数。
          */
         private Long maxImageBytes;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MineruParams {
+        private List<String> langList;
+        private String backend;
+        private String effort;
+        private String parseMethod;
+        private Boolean formulaEnable;
+        private Boolean tableEnable;
+        private Boolean imageAnalysis;
+        private String serverUrl;
+        private Boolean returnMd;
+        private Boolean returnMiddleJson;
+        private Boolean returnModelOutput;
+        private Boolean returnContentList;
+        private Boolean returnImages;
+        private Boolean responseFormatZip;
+        private Boolean returnOriginalFile;
+        private Boolean clientSideOutputGeneration;
+        private Integer startPageId;
+        private Integer endPageId;
     }
 
     @Data

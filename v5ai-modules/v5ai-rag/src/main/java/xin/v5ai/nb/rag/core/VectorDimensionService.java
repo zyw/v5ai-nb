@@ -37,8 +37,8 @@ public class VectorDimensionService {
      * config 用 {@code maxDimension} 显式覆盖（如 16000）；覆盖后检索走 hnsw。
      */
     private static final int PG_VECTOR_DEFAULT_MAX = 2000;
-    private static final int MILVUS_DEFAULT_MAX = 4096;
-    private static final int ES_DEFAULT_MAX = 4096;
+    private static final int MILVUS_DEFAULT_MAX = 32768;
+    private static final int ES_DEFAULT_MAX = 2048;
 
     private final ModelConfigRetrieve modelConfigRetrieve;
     private final StoreInstanceMapper storeInstanceMapper;
