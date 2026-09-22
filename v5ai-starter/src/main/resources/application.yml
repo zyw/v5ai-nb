@@ -110,21 +110,37 @@ logging:
 v5ai:
   rag:
     parser:
+      # Docling Serve 配置。服务地址和 API Key 只通过部署配置/环境变量提供，不进入知识库 JSON。
       docling:
+        # 是否允许 Worker 调用 Docling；关闭后选择 docling 会回退到 default 内置解析器。
         enabled: ${V5AI_DOCLING_ENABLED:false}
+        # Docling Serve 地址。
         base-url: ${V5AI_DOCLING_URL:http://127.0.0.1:5001}
+        # 可选的 X-Api-Key，不要提交到前端或写入知识库配置。
         api-key: ${V5AI_DOCLING_API_KEY:}
+        # 建立 HTTP 连接超时（毫秒）。
         connect-timeout-millis: ${V5AI_DOCLING_CONNECT_TIMEOUT_MS:5000}
+        # 单次健康检查、提交、轮询和结果请求的读取超时（毫秒）。
         read-timeout-millis: ${V5AI_DOCLING_READ_TIMEOUT_MS:600000}
+        # Docling 异步任务轮询间隔（毫秒）。
         poll-interval-millis: ${V5AI_DOCLING_POLL_INTERVAL_MS:2000}
+        # 单个 Docling 任务允许等待的最长时间（毫秒）。
         poll-timeout-millis: ${V5AI_DOCLING_POLL_TIMEOUT_MS:1800000}
+        # Worker 进程内同时提交/处理的 Docling 任务数上限。
         concurrency: ${V5AI_DOCLING_CONCURRENCY:3}
+      # MinerU Router 配置，服务地址和超时参数通过部署配置/环境变量提供。
       mineru:
+        # 是否允许 Worker 调用 MinerU；关闭后选择 mineru 会回退到 default 内置解析器。
         enabled: ${V5AI_MINERU_ENABLED:false}
+        # MinerU Router 地址。
         base-url: ${V5AI_MINERU_URL:http://127.0.0.1:8000}
+        # 建立 HTTP 连接超时（毫秒）。
         connect-timeout-millis: ${V5AI_MINERU_CONNECT_TIMEOUT_MS:5000}
+        # 单次健康检查、提交、轮询和结果请求的读取超时（毫秒）。
         read-timeout-millis: ${V5AI_MINERU_READ_TIMEOUT_MS:600000}
+        # MinerU 异步任务轮询间隔（毫秒）。
         poll-interval-millis: ${V5AI_MINERU_POLL_INTERVAL_MS:3000}
+        # 单个 MinerU 任务允许等待的最长时间（毫秒）。
         poll-timeout-millis: ${V5AI_MINERU_POLL_TIMEOUT_MS:1800000}
   # security配置
   security:
