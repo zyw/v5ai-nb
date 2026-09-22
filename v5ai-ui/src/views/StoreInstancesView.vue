@@ -119,9 +119,9 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
     key: 'name',
     width: 180,
     render: (row) =>
-      h('div', [
-        row.name,
-        row.isDefault ? h(NTag, { size: 'small', type: 'warning', bordered: false, style: 'margin-left: 6px' }, { default: () => '默认' }) : null
+      h('div', { style: 'display:flex;align-items:center;gap:6px;min-width:0' }, [
+        row.isDefault ? h(NTag, { size: 'small', type: 'warning', bordered: false }, { default: () => '默认' }) : null,
+        h('span', { style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap', title: row.name }, row.name)
       ])
   },
   { title: '描述', key: 'description', width: 200 },

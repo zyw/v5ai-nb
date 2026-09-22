@@ -331,13 +331,22 @@ function providerLabel(providerId: number): string {
 const modelColumns: DataTableColumns<ModelResponse> = [
   { title: 'ID', key: 'id', width: 64 },
   {
+    title: '名称',
+    key: 'modelName',
+    width: 180,
+    render: (row) =>
+      h('div', { style: 'display:flex;align-items:center;gap:6px;min-width:0' }, [
+        row.isDefault ? h(NTag, { size: 'small', type: 'warning', bordered: false }, { default: () => '默认' }) : null,
+        h('span', { style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap', title: row.modelName ?? row.modelKey }, row.modelName ?? row.modelKey)
+      ])
+  },
+  { title: '模型ID', key: 'modelKey',width: 180 },
+  {
     title: '供应商',
     key: 'providerId',
     width: 180,
     render: (row) => providerLabel(row.providerId)
   },
-  { title: '名称', key: 'modelName',width: 180, render: (row) => row.modelName ?? row.modelKey },
-  { title: '模型Key', key: 'modelKey',width: 180 },
   { title: '描述', key: 'description', width: 200, ellipsis: { tooltip: true } },
   {
     title: '类型',
@@ -844,7 +853,7 @@ onMounted(reload)
       <!-- 模型管理 -->
       <n-tab-pane name="model" tab="模型管理">
         <n-space style="margin-bottom: 12px" :size="8" align="center">
-          <n-input v-model:value="modelSearch.keyword" placeholder="模型名称 / Key" clearable style="width: 220px" @keyup.enter="handleModelSearch" />
+          <n-input v-model:value="modelSearch.keyword" placeholder="模型名称 / 模型ID" clearable style="width: 220px" @keyup.enter="handleModelSearch" />
           <n-select v-model:value="modelSearch.providerKey" placeholder="模型供应商" clearable style="width: 180px" :options="providerOptions()" />
           <n-select v-model:value="modelSearch.modelType" placeholder="模型类型" clearable style="width: 140px" :options="modelTypeOptions" />
           <n-select v-model:value="modelSearch.enabled" placeholder="状态" clearable style="width: 110px" :options="enabledOptions" />
@@ -973,7 +982,7 @@ onMounted(reload)
         <n-form-item-gi :span="12" label="模型名称">
           <n-input v-model:value="modelForm.modelName" :maxlength="255" show-count placeholder="如 GPT-4o Mini" />
         </n-form-item-gi>
-        <n-form-item-gi :span="12" label="模型Key">
+        <n-form-item-gi :span="12" label="模型ID">
           <n-input v-model:value="modelForm.modelKey" :maxlength="100" show-count placeholder="如 gpt-4o-mini" />
         </n-form-item-gi>
           <n-form-item-gi :span="24" label="描述">
