@@ -1957,6 +1957,34 @@ export interface UsageRecord {
   createdAt?: string | null
 }
 
+export interface ApiKeyUsageSummary {
+  apiKeyId?: number | null
+  apiKeyName: string
+  trackingId?: string | null
+  modelCalls: number
+  totalTokens: number
+  promptTokens: number
+  completionTokens: number
+  successCalls: number
+  failedCalls: number
+  runCount: number
+  conversationCount: number
+  averageDurationMs: number
+}
+
+export interface ApiKeyUsageDaily {
+  usageDate: string
+  modelCalls: number
+  totalTokens: number
+  successCalls: number
+  failedCalls: number
+}
+
+export interface ApiKeyUsageStats {
+  summaries: ApiKeyUsageSummary[]
+  daily: ApiKeyUsageDaily[]
+}
+
 export interface OverviewResponse {
   agents: number
   models: number
@@ -2331,6 +2359,18 @@ export function listUsage(adminToken: string, params: { agentKey?: string; from?
 
 export function getStatsOverview(adminToken: string): Promise<OverviewResponse> {
   return requestJson<OverviewResponse>('/api/admin/stats/overview', {}, adminToken)
+}
+
+export function getApiKeyUsageStats(
+  adminToken: string,
+  params: { from?: string; to?: string; apiKeyId?: number | null } = {}
+): Promise<ApiKeyUsageStats> {
+  const query = new URLSearchParams()
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.apiKeyId != null) query.set('apiKeyId', String(params.apiKeyId))
+  const qs = query.toString()
+  return requestJson<ApiKeyUsageStats>(`/api/admin/stats/api-key-usage${qs ? `?${qs}` : ''}`, {}, adminToken)
 }
 
 // ---- Workflows ----

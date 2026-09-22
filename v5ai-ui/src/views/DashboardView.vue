@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch, type Component } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NCard, NIcon, NTag, useMessage } from 'naive-ui'
+import { NButton, NCard, NIcon, NSelect, NTag, useMessage } from 'naive-ui'
 import { Activity, Bot, Boxes, Database, MessageSquare, Sparkles } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
-import { getStatsOverview, listAgents, listAppUsage, type AgentResponse, type AppUsage, type OverviewResponse } from '../api/client'
+import {
+  getApiKeyUsageStats,
+  getStatsOverview,
+  listAgents,
+  listAppUsage,
+  type AgentResponse,
+  type ApiKeyUsageStats,
+  type AppUsage,
+  type OverviewResponse
+} from '../api/client'
 import { adminToken, displayName } from '../stores/session'
 
 const router = useRouter()
@@ -15,6 +24,9 @@ const agents = ref<AgentResponse[]>([])
 const selectedAgentKey = ref('')
 const usageTrend = ref<AppUsage[]>([])
 const usageLoading = ref(false)
+const apiKeyStats = ref<ApiKeyUsageStats | null>(null)
+const selectedApiKeyId = ref<number | null>(null)
+const apiKeyUsageLoading = ref(false)
 
 interface StatDef {
   key: keyof OverviewResponse
@@ -45,12 +57,17 @@ const quickLinks = [
 async function reload() {
   loading.value = true
   try {
-    const [overviewData, agentPage] = await Promise.all([
+    const [overviewData, agentPage, apiKeyData] = await Promise.all([
       getStatsOverview(adminToken.value),
-      listAgents(adminToken.value, { pageNum: 1, pageSize: 100 })
+      listAgents(adminToken.value, { pageNum: 1, pageSize: 100 }),
+      getApiKeyUsageStats(adminToken.value)
     ])
     overview.value = overviewData
     agents.value = agentPage.rows
+    apiKeyStats.value = apiKeyData
+    if (!apiKeyData.summaries.some((summary) => summary.apiKeyId === selectedApiKeyId.value)) {
+      selectedApiKeyId.value = apiKeyData.summaries.find((summary) => summary.apiKeyId != null)?.apiKeyId ?? null
+    }
     if (!agents.value.some((agent) => agent.agentKey === selectedAgentKey.value)) {
       selectedAgentKey.value = agents.value[0]?.agentKey ?? ''
     }
@@ -99,6 +116,39 @@ const agentOptions = computed(() => agents.value.map((agent) => ({
   value: agent.agentKey
 })))
 
+const apiKeyOptions = computed(() => (apiKeyStats.value?.summaries ?? [])
+  .filter((summary) => summary.apiKeyId != null)
+  .map((summary) => ({
+    label: summary.trackingId ? `${summary.apiKeyName} (${summary.trackingId})` : summary.apiKeyName,
+    value: summary.apiKeyId as number
+  })))
+
+const selectedApiKeySummary = computed(() =>
+  apiKeyStats.value?.summaries.find((summary) => summary.apiKeyId === selectedApiKeyId.value) ?? null
+)
+
+const apiKeyRanking = computed(() => (apiKeyStats.value?.summaries ?? [])
+  .filter((summary) => summary.modelCalls > 0)
+  .slice(0, 6))
+
+const apiKeyRankingMaxTokens = computed(() => Math.max(...apiKeyRanking.value.map((summary) => summary.totalTokens), 1))
+
+function apiKeyRankingWidth(summary: ApiKeyUsageStats['summaries'][number]): string {
+  return `${Math.max((summary.totalTokens / apiKeyRankingMaxTokens.value) * 100, 3)}%`
+}
+
+const apiKeyTrendData = computed(() => {
+  const values = new Map((apiKeyStats.value?.daily ?? []).map((item) => [item.usageDate, item]))
+  return trendDays.value.map((usageDate) => {
+    const item = values.get(usageDate)
+    return {
+      usageDate,
+      modelCalls: item?.modelCalls ?? 0,
+      tokens: item?.totalTokens ?? 0
+    }
+  })
+})
+
 async function reloadUsageTrend() {
   if (!selectedAgentKey.value) {
     usageTrend.value = []
@@ -115,15 +165,34 @@ async function reloadUsageTrend() {
   }
 }
 
-type TrendMetric = 'modelCalls' | 'tokens'
-
-function metricMax(metric: TrendMetric): number {
-  return Math.max(...trendData.value.map((item) => item[metric]), 1)
+async function reloadApiKeyUsage() {
+  if (selectedApiKeyId.value == null) {
+    return
+  }
+  apiKeyUsageLoading.value = true
+  try {
+    apiKeyStats.value = await getApiKeyUsageStats(adminToken.value, {
+      from: dateKey(trendFrom.value),
+      to: dateKey(trendTo.value),
+      apiKeyId: selectedApiKeyId.value
+    })
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '加载 API Key 用量失败')
+  } finally {
+    apiKeyUsageLoading.value = false
+  }
 }
 
-function metricPath(metric: TrendMetric): string {
-  const data = trendData.value
-  const max = metricMax(metric)
+type TrendMetric = 'modelCalls' | 'tokens'
+
+type TrendDataPoint = { usageDate: string; modelCalls: number; tokens: number }
+
+function metricMax(metric: TrendMetric, data: TrendDataPoint[] = trendData.value): number {
+  return Math.max(...data.map((item) => item[metric]), 1)
+}
+
+function metricPath(metric: TrendMetric, data: TrendDataPoint[] = trendData.value): string {
+  const max = metricMax(metric, data)
   const width = 560
   const height = 190
   const left = 14
@@ -137,8 +206,8 @@ function metricPath(metric: TrendMetric): string {
   }).join(' ')
 }
 
-function metricPoint(metric: TrendMetric, index: number): { x: number; y: number } {
-  const max = metricMax(metric)
+function metricPoint(metric: TrendMetric, index: number, data: TrendDataPoint[] = trendData.value): { x: number; y: number } {
+  const max = metricMax(metric, data)
   const width = 560
   const height = 190
   const left = 14
@@ -147,7 +216,7 @@ function metricPoint(metric: TrendMetric, index: number): { x: number; y: number
   const innerHeight = height - top * 2
   const value = trendData.value[index]?.[metric] ?? 0
   return {
-    x: left + (trendData.value.length === 1 ? innerWidth / 2 : (index / (trendData.value.length - 1)) * innerWidth),
+    x: left + (data.length === 1 ? innerWidth / 2 : (index / (data.length - 1)) * innerWidth),
     y: top + innerHeight - (value / max) * innerHeight
   }
 }
@@ -159,6 +228,7 @@ function formatTrendLabel(value: number): string {
 }
 
 watch(selectedAgentKey, () => void reloadUsageTrend())
+watch(selectedApiKeyId, () => void reloadApiKeyUsage())
 
 onMounted(reload)
 </script>
@@ -226,6 +296,80 @@ onMounted(reload)
           </div>
         </div>
       </div>
+    </n-card>
+
+    <n-card class="usage-trend-card api-key-usage-card" title="API Key 用量趋势" :bordered="true">
+      <template #header-extra>
+        <n-select
+          v-model:value="selectedApiKeyId"
+          :options="apiKeyOptions"
+          filterable
+          placeholder="选择 API Key"
+          style="width: 280px"
+        />
+      </template>
+      <div v-if="apiKeyUsageLoading" class="chart-placeholder">正在加载 API Key 用量…</div>
+      <n-empty v-else-if="!selectedApiKeySummary" description="暂无 API Key 用量" />
+      <template v-else>
+        <div class="api-key-summary-grid">
+          <div class="api-key-summary-item">
+            <span>模型调用</span>
+            <strong>{{ selectedApiKeySummary.modelCalls }}</strong>
+          </div>
+          <div class="api-key-summary-item">
+            <span>Token 总量</span>
+            <strong>{{ formatTrendLabel(selectedApiKeySummary.totalTokens) }}</strong>
+          </div>
+          <div class="api-key-summary-item">
+            <span>成功率</span>
+            <strong>{{ selectedApiKeySummary.modelCalls ? `${((selectedApiKeySummary.successCalls / selectedApiKeySummary.modelCalls) * 100).toFixed(1)}%` : '—' }}</strong>
+          </div>
+          <div class="api-key-summary-item">
+            <span>平均耗时</span>
+            <strong>{{ selectedApiKeySummary.averageDurationMs }} ms</strong>
+          </div>
+        </div>
+
+        <div class="trend-charts">
+          <div v-for="metric in (['modelCalls', 'tokens'] as TrendMetric[])" :key="metric" class="trend-chart">
+            <div class="trend-chart-header">
+              <span>{{ metric === 'modelCalls' ? '调用次数' : 'Token 用量' }}</span>
+              <strong>{{ formatTrendLabel(apiKeyTrendData.reduce((sum, item) => sum + item[metric], 0)) }}</strong>
+            </div>
+            <svg viewBox="0 0 560 190" preserveAspectRatio="none" role="img" :aria-label="metric === 'modelCalls' ? 'API Key 调用次数趋势' : 'API Key Token 用量趋势'">
+              <line v-for="level in [0, 0.5, 1]" :key="level" x1="14" :y1="16 + (1 - level) * 158" x2="546" :y2="16 + (1 - level) * 158" class="chart-grid-line" />
+              <path :d="metricPath(metric, apiKeyTrendData)" class="chart-line" :class="metric" />
+              <circle
+                v-for="(_, index) in apiKeyTrendData"
+                :key="index"
+                :cx="metricPoint(metric, index, apiKeyTrendData).x"
+                :cy="metricPoint(metric, index, apiKeyTrendData).y"
+                r="3"
+                class="chart-point"
+                :class="metric"
+              />
+            </svg>
+            <div class="chart-axis">
+              <span>{{ apiKeyTrendData[0]?.usageDate.slice(5) }}</span>
+              <span>{{ apiKeyTrendData[Math.floor(apiKeyTrendData.length / 2)]?.usageDate.slice(5) }}</span>
+              <span>{{ apiKeyTrendData[apiKeyTrendData.length - 1]?.usageDate.slice(5) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="api-key-ranking">
+          <div class="ranking-header">
+            <span>API Key Token 用量排行</span>
+            <span>总量</span>
+          </div>
+          <div v-for="summary in apiKeyRanking" :key="summary.apiKeyId ?? 'unassociated'" class="ranking-row">
+            <span class="ranking-name">{{ summary.apiKeyName }}</span>
+            <span class="ranking-bar"><i :style="{ width: apiKeyRankingWidth(summary) }" /></span>
+            <strong>{{ formatTrendLabel(summary.totalTokens) }}</strong>
+          </div>
+          <n-empty v-if="!apiKeyRanking.length" description="暂无排行数据" size="small" />
+        </div>
+      </template>
     </n-card>
 
     <div class="quick-grid">
@@ -304,6 +448,88 @@ onMounted(reload)
 .usage-trend-card {
   margin-top: 16px;
   border-radius: 12px;
+}
+
+.api-key-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.api-key-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(128, 128, 128, 0.16);
+  border-radius: 10px;
+  background: rgba(128, 128, 128, 0.035);
+}
+
+.api-key-summary-item span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.api-key-summary-item strong {
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+.api-key-ranking {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(128, 128, 128, 0.25);
+}
+
+.ranking-header,
+.ranking-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(120px, 3fr) 64px;
+  gap: 12px;
+  align-items: center;
+}
+
+.ranking-header {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.ranking-header span:last-child {
+  text-align: right;
+}
+
+.ranking-row {
+  min-height: 30px;
+  font-size: 13px;
+}
+
+.ranking-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-bar {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.ranking-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+}
+
+.ranking-row strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .trend-charts {
@@ -443,11 +669,25 @@ onMounted(reload)
   .trend-charts {
     grid-template-columns: 1fr;
   }
+
+  .api-key-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .api-key-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-header,
+  .ranking-row {
+    grid-template-columns: minmax(100px, 1fr) minmax(80px, 2fr) 54px;
+    gap: 8px;
   }
 }
 </style>

@@ -4,12 +4,14 @@ import { ExternalLink } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 
 const baseline = [
-  { label: 'JDK', value: '21' },
-  { label: 'Spring Boot', value: '4.1.0' },
-  { label: 'ORM', value: 'MyBatis-Plus' },
-  { label: 'Auth', value: 'Sa-Token + JWT' },
-  { label: 'Vector DB', value: 'PostgreSQL + pgvector' },
-  { label: 'Migrations', value: 'Flyway' }
+  { label: '后端运行时', value: 'JDK 21' },
+  { label: '应用框架', value: 'Spring Boot 4.1.0（Servlet MVC）' },
+  { label: '数据访问', value: 'MyBatis-Plus 3.5.12' },
+  { label: '数据库', value: 'PostgreSQL 14+ / pgvector' },
+  { label: '模型运行时', value: 'AgentScope Java 2.0' },
+  { label: '认证安全', value: 'Sa-Token + JWT / AES-GCM' },
+  { label: '前端', value: 'Vue 3.5 + Vite 7 + TypeScript 5.9' },
+  { label: '数据库迁移', value: 'Flyway（当前 V48）' }
 ]
 /** 独立对话门户（v5ai-ui-chat）地址；未配置时不显示入口，避免死链。 */
 const chatPortalUrl = import.meta.env.VITE_CHAT_UI_URL ?? ''
@@ -49,13 +51,12 @@ function openChatPortal() {
         <ol>
           <li>
             登录获取 JWT：<code>POST /api/auth/login</code>，请求体
-            <code>{"username": "admin", "password": "..."}</code>（前端会先做 RSA+AES 加密传输），
+            <code>{"username": "admin", "password": "..."}</code>（前端通过 RSA+AES 混合加密传输），
             返回 <code>{"tokenType": "Bearer", "token": "&lt;jwt&gt;"}</code>。
           </li>
           <li>
             后续所有管理请求携带 <code>Authorization: Bearer &lt;jwt&gt;</code>，
-            用于创建模型、Agent、知识库、MCP、Skill、用户等资源（如
-            <code>POST /api/admin/models</code>、<code>POST /api/admin/agents</code>）。
+            用于管理模型、Agent、知识库、MCP、Skill、工作流以及用户、角色、菜单、API Key 等平台资源。
           </li>
           <li>管理接口强制登录；写操作需管理员角色。</li>
         </ol>
@@ -85,6 +86,17 @@ function openChatPortal() {
             请求头需加 <code>Accept: text/event-stream</code>，事件顺序为：
             <code>RUN_STARTED → MODEL_CALL →（TEXT_DELTA / TOOL_CALL→TOOL_RESULT / RETRIEVAL）* → MESSAGE_COMPLETED → RUN_COMPLETED</code>；
             失败时推 <code>RUN_FAILED</code>，需用户授权时推 <code>PERMISSION_REQUIRED</code>。
+          </li>
+          <li>
+            运行时按 Agent 的已发布版本构造 AgentScope Agent，动态接入知识库检索、MCP 工具、Skill、联网搜索和记忆；
+            管理端调试接口使用实时编辑配置，不要求先发布。
+          </li>
+          <li>
+            运行请求会按 Agent 执行每分钟限流和每日配额校验（配额设置为 <code>0</code> 表示不限制），
+            用量明细记录模型调用次数、输入/输出 Token、耗时和状态。
+          </li>
+          <li>
+            对话门户支持会话管理、停止运行、重新生成和图片附件；图片能力由 Agent 当前发布版本绑定的模型能力决定。
           </li>
         </ol>
       </div>
