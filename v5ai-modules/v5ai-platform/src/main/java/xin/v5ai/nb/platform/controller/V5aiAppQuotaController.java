@@ -9,6 +9,9 @@ import xin.v5ai.nb.platform.api.AppQuotaService;
 import xin.v5ai.nb.platform.api.domain.AppQuotaDTO;
 import xin.v5ai.nb.platform.api.domain.AppUsageDTO;
 
+import java.time.LocalDate;
+import java.util.List;
+
 /**
  * 应用配额与当日用量 API（限流/配额/用量管理）。
  */
@@ -38,5 +41,12 @@ public class V5aiAppQuotaController {
     @GetMapping("/usage/daily")
     public R<AppUsageDTO> getDailyUsage(@PathVariable("agentKey") String agentKey) {
         return R.ok(quotaService.getDailyUsage(agentKey));
+    }
+
+    @GetMapping("/usage/range")
+    public R<List<AppUsageDTO>> getUsageRange(@PathVariable("agentKey") String agentKey,
+                                              @RequestParam LocalDate from,
+                                              @RequestParam LocalDate to) {
+        return R.ok(quotaService.getUsageRange(agentKey, from, to));
     }
 }

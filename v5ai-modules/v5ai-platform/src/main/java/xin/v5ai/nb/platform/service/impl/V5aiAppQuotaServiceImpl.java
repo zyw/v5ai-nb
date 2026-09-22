@@ -13,6 +13,7 @@ import xin.v5ai.nb.platform.service.IV5aiAppQuotaService;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * 应用配额/用量服务：v5ai_app_quota（配额配置）+ v5ai_app_usage（按日用量）+ 内存限流器。
@@ -80,6 +81,16 @@ public class V5aiAppQuotaServiceImpl implements IV5aiAppQuotaService, AppQuotaSe
         return entity == null
                 ? new AppUsageDTO(agentKey, LocalDate.now(), 0, 0)
                 : new AppUsageDTO(agentKey, entity.getUsageDate(), nz(entity.getModelCalls()), nz(entity.getTokens()));
+    }
+
+    @Override
+    public List<AppUsageDTO> getUsageRange(String agentKey, LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            return List.of();
+        }
+        return usageMapper.selectByAppRange(agentKey, from, to).stream()
+                .map(entity -> new AppUsageDTO(agentKey, entity.getUsageDate(), nz(entity.getModelCalls()), nz(entity.getTokens())))
+                .toList();
     }
 
     private static int nz(Integer value) {

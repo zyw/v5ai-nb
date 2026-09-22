@@ -3,6 +3,9 @@ package xin.v5ai.nb.platform.api;
 import xin.v5ai.nb.platform.api.domain.AppQuotaDTO;
 import xin.v5ai.nb.platform.api.domain.AppUsageDTO;
 
+import java.time.LocalDate;
+import java.util.List;
+
 /**
  * 应用配额与用量服务：调用前检查（配额 + 限流），完成后记账。
  */
@@ -26,4 +29,7 @@ public interface AppQuotaService {
 
     /** 应用当日用量（调用次数 + Token）。 */
     AppUsageDTO getDailyUsage(String agentKey);
+
+    /** 查询应用在指定日期范围内的按日用量。 */
+    List<AppUsageDTO> getUsageRange(String agentKey, LocalDate from, LocalDate to);
 }

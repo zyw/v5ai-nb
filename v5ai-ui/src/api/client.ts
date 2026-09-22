@@ -2313,6 +2313,11 @@ export function getAppDailyUsage(adminToken: string, agentKey: string): Promise<
   return requestJson<AppUsage>(`/api/admin/apps/${encodeURIComponent(agentKey)}/usage/daily`, {}, adminToken)
 }
 
+export function listAppUsage(adminToken: string, agentKey: string, from: string, to: string): Promise<AppUsage[]> {
+  const query = new URLSearchParams({ from, to })
+  return requestJson<AppUsage[]>(`/api/admin/apps/${encodeURIComponent(agentKey)}/usage/range?${query}`, {}, adminToken)
+}
+
 export function listUsage(adminToken: string, params: { agentKey?: string; from?: string; to?: string; pageNum?: number; pageSize?: number } = {}): Promise<PageResult<UsageRecord>> {
   const query = new URLSearchParams()
   if (params.agentKey) query.set('agentKey', params.agentKey)

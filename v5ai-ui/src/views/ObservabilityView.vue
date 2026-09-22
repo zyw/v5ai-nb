@@ -1,32 +1,25 @@
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
 import {
-  NButton,
   NCard,
   NDataTable,
-  NGi,
-  NGrid,
   NPagination,
   NSelect,
   NSpace,
-  NStatistic,
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
-  getStatsOverview,
   listAgents,
   listUsage,
-  type OverviewResponse,
   type UsageRecord
 } from '../api/client'
 import { adminToken } from '../stores/session'
 import { formatDateTime } from '../utils/dateUtils'
 
 const message = useMessage()
-const overview = ref<OverviewResponse | null>(null)
 const usage = ref<UsageRecord[]>([])
 const apps = ref<{ agentKey: string }[]>([])
 const filterAppKey = ref('')
@@ -45,16 +38,12 @@ const usageColumns: DataTableColumns<UsageRecord> = [
   { title: '时间', key: 'createdAt', width: 180, render: (row) => (row.createdAt ? (formatDateTime(row.createdAt) ?? '-') : '-') }
 ]
 
-async function reloadOverview() {
+async function reloadApps() {
   try {
-    const [overviewData, appRows] = await Promise.all([
-      getStatsOverview(adminToken.value),
-      listAgents(adminToken.value)
-    ])
-    overview.value = overviewData
+    const appRows = await listAgents(adminToken.value)
     apps.value = appRows.rows
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '加载统计失败')
+    message.error(e instanceof Error ? e.message : '加载 Agent 列表失败')
   }
 }
 
@@ -89,43 +78,13 @@ function handleUsagePageSizeChange(pageSize: number) {
 }
 
 onMounted(async () => {
-  await reloadOverview()
-  await reloadUsage()
+  await Promise.all([reloadApps(), reloadUsage()])
 })
 </script>
 
 <template>
   <div class="page">
-    <PageHeader title="可观测性" description="查看平台运行统计和用量明细。（审计日志已迁移至 系统管理 → 日志管理）" />
-
-    <n-card title="平台总览" :bordered="true">
-      <n-grid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="Agent" :value="overview?.agents ?? 0" />
-        </n-gi>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="模型" :value="overview?.models ?? 0" />
-        </n-gi>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="知识库" :value="overview?.knowledgeBases ?? 0" />
-        </n-gi>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="Skill" :value="overview?.skills ?? 0" />
-        </n-gi>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="运行总数" :value="overview?.totalRuns ?? 0" />
-        </n-gi>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="今日运行" :value="overview?.todayRuns ?? 0" />
-        </n-gi>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="今日模型调用" :value="overview?.todayModelCalls ?? 0" />
-        </n-gi>
-        <n-gi span="4 m:2 l:1">
-          <n-statistic label="今日 Token" :value="overview?.todayTokens ?? 0" />
-        </n-gi>
-      </n-grid>
-    </n-card>
+    <PageHeader title="可观测性" description="查看 Agent 用量明细。（审计日志已迁移至 系统管理 → 日志管理）" />
 
     <n-card title="用量明细" :bordered="true">
       <n-space style="margin-bottom: 12px" align="center">
