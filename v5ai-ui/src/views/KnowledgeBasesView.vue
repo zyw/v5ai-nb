@@ -438,14 +438,28 @@ const kbColumns: DataTableColumns<KnowledgeBaseResponse> = [
   {
     title: '名称',
     key: 'name',
-    width: 150,
-    render: (row) =>
-      h(NButton, {
+    width: 190,
+    render: (row) => {
+      const label = row.icon ? `${row.icon} ${row.name}` : row.name
+      return h(NButton, {
         size: 'small',
         type: 'primary',
         text: true,
+        title: label,
+        style: { maxWidth: '100%', overflow: 'hidden' },
         onClick: () => openDetail(row)
-      }, { default: () => (row.icon ? `${row.icon} ${row.name}` : row.name) })
+      }, {
+        default: () => h('span', {
+          style: {
+            display: 'block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }
+        }, label)
+      })
+    }
   },
   { title: '描述', key: 'description',width: 180, ellipsis: { tooltip: true } },
   { title: '文档数', key: 'docCount', width: 80, render: (row) => row.docCount ?? 0 },
@@ -672,7 +686,7 @@ async function loadParserHealth() {
                 <span style="vertical-align: baseline">向量维度</span>
                 <n-popover trigger="hover">
                   <template #trigger>
-                    <n-icon><CircleQuestionMark /></n-icon>
+                    <n-icon class="field-help" aria-label="向量维度使用说明"><CircleQuestionMark /></n-icon>
                   </template>
                   <n-text depth="3" style="font-size: 12px">
                     模型最大维度: {{capability?.modelMaxDimension ?? '未知'}}，向量库最大维度: {{capability?.storeMaxDimension ?? '未知'}}，当前可用上限: {{ capability?.effectiveMaxDimension ?? '未知' }}
@@ -815,14 +829,96 @@ async function loadParserHealth() {
           <n-text depth="3" style="display: block; font-size: 12px; margin: 10px 0">使用 MinerU 服务；服务不可用时自动回退内置解析器并记录 WARN。</n-text>
           <n-form label-placement="top">
             <n-grid :cols="2" :x-gap="16">
-              <n-form-item-gi label="Backend"><n-select v-model:value="form.mineru.backend" :options="[{label:'pipeline',value:'pipeline'},{label:'vlm-engine',value:'vlm-engine'},{label:'hybrid-engine',value:'hybrid-engine'},{label:'vlm-http-client',value:'vlm-http-client'},{label:'hybrid-http-client',value:'hybrid-http-client'}]" /></n-form-item-gi>
-              <n-form-item-gi label="Effort"><n-select v-model:value="form.mineru.effort" :options="[{label:'medium',value:'medium'},{label:'high',value:'high'}]" /></n-form-item-gi>
-              <n-form-item-gi label="解析方式"><n-select v-model:value="form.mineru.parseMethod" :options="[{label:'auto',value:'auto'},{label:'txt',value:'txt'},{label:'ocr',value:'ocr'}]" /></n-form-item-gi>
-              <n-form-item-gi label="OCR 语言"><n-input v-model:value="form.mineru.langList" placeholder="ch,korean" /></n-form-item-gi>
-              <n-form-item-gi label="公式 / 表格 / 图像分析"><n-space><n-switch v-model:value="form.mineru.formulaEnable" /><n-switch v-model:value="form.mineru.tableEnable" /><n-switch v-model:value="form.mineru.imageAnalysis" /></n-space></n-form-item-gi>
-              <n-form-item-gi label="页码范围"><n-space><n-input-number v-model:value="form.mineru.startPageId" :min="0" /><n-input-number v-model:value="form.mineru.endPageId" :min="0" /></n-space></n-form-item-gi>
-              <n-form-item-gi label="返回结构化 JSON"><n-switch v-model:value="form.mineru.returnMiddleJson" /></n-form-item-gi>
-              <n-form-item-gi label="返回图片"><n-switch v-model:value="form.mineru.returnImages" /></n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>Backend</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="Backend 说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">选择 MinerU 的解析后端：<br/> 1. pipeline 资源开销较低；<br/> 2. vlm-engine 使用本地视觉模型；<br/> 3. hybrid-engine 综合传统解析与视觉模型；<br/> 4. vlm-http-client / hybrid-http-client 使用远程视觉模型服务。</n-text>
+                  </n-popover>
+                </template>
+                <n-select v-model:value="form.mineru.backend" :options="[{label:'pipeline',value:'pipeline'},{label:'vlm-engine',value:'vlm-engine'},{label:'hybrid-engine',value:'hybrid-engine'},{label:'vlm-http-client',value:'vlm-http-client'},{label:'hybrid-http-client',value:'hybrid-http-client'}]" />
+              </n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>Effort</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="Effort 说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">解析工作量等级：<br/> 1. medium 速度和资源消耗较均衡；<br/> 2. high 通常能获得更好的图像/图表分析效果，但耗时和资源消耗更高，主要对 hybrid 后端有意义。
+                    </n-text>
+                  </n-popover>
+                </template>
+                <n-select v-model:value="form.mineru.effort" :options="[{label:'medium',value:'medium'},{label:'high',value:'high'}]" />
+              </n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>解析方式</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="解析方式说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">PDF 解析策略：<br/> 1. auto 自动选择；<br/> 2. txt 侧重文本提取；<br/> 3. ocr 强制使用 OCR，适合扫描件或图片型 PDF。
+                    </n-text>
+                  </n-popover>
+                </template>
+                <n-select v-model:value="form.mineru.parseMethod" :options="[{label:'auto',value:'auto'},{label:'txt',value:'txt'},{label:'ocr',value:'ocr'}]" />
+              </n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>OCR 语言</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="OCR 语言说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">
+                      OCR 识别语言代码，多个语言用英文逗号分隔，例如 ch,korean。语言越多，识别范围越广，但可能增加处理时间。
+                      <br/> 1. ch 简体中文（默认值，含中英文混合）<br/> 2. en 英语 <br/> 3. japan 日语 <br/> 4. chinese_cht 繁体中文
+                    </n-text>
+                  </n-popover>
+                </template>
+                <n-input v-model:value="form.mineru.langList" placeholder="ch,korean" />
+              </n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>公式 / 表格 / 图像分析</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="公式、表格、图像分析说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">
+                      依次控制: <br/> 1. 公式识别 <br/> 2. 表格结构识别 <br/> 3. 图片/图表分析。开启后能保留更多结构化信息，但会增加解析耗时和模型资源消耗。
+                    </n-text>
+                  </n-popover>
+                </template>
+                <n-space><n-switch v-model:value="form.mineru.formulaEnable" /><n-switch v-model:value="form.mineru.tableEnable" /><n-switch v-model:value="form.mineru.imageAnalysis" /></n-space>
+              </n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>页码范围</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="页码范围说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">限制参与解析的起始页和结束页。默认 0 到 99999 表示不主动缩小范围，适合只处理大型 PDF 的部分页面。
+                    </n-text>
+                  </n-popover>
+                </template>
+                <n-space><n-input-number v-model:value="form.mineru.startPageId" :min="0" /><n-input-number v-model:value="form.mineru.endPageId" :min="0" /></n-space>
+              </n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>返回结构化 JSON</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="返回结构化 JSON 说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">返回 MinerU 的中间结构化结果，便于保留和诊断标题、表格、图片等文档结构；会增加响应数据量。
+                    </n-text>
+                  </n-popover>
+                </template>
+                <n-switch v-model:value="form.mineru.returnMiddleJson" />
+              </n-form-item-gi>
+              <n-form-item-gi>
+                <template #label>
+                  <span>返回图片</span>
+                  <n-popover trigger="hover">
+                    <template #trigger><n-icon class="field-help" aria-label="返回图片说明"><CircleQuestionMark /></n-icon></template>
+                    <n-text depth="3" class="parser-help">是否让 MinerU 返回文档中的图片资源；开启后便于图片提取和展示，但会增加响应数据量与存储占用。
+                    </n-text>
+                  </n-popover>
+                </template>
+                <n-switch v-model:value="form.mineru.returnImages" />
+              </n-form-item-gi>
             </n-grid>
           </n-form>
         </template>
@@ -846,5 +942,18 @@ async function loadParserHealth() {
 
 .chunk-inp {
   width: 350px;
+}
+
+.field-help {
+  margin-left: 4px;
+  color: var(--n-text-color-3);
+  cursor: help;
+  vertical-align: -2px;
+}
+
+.parser-help {
+  display: block;
+  max-width: 320px;
+  line-height: 1.55;
 }
 </style>

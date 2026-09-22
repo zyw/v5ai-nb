@@ -131,9 +131,9 @@ v5ai:
       # MinerU Router 配置，服务地址和超时参数通过部署配置/环境变量提供。
       mineru:
         # 是否允许 Worker 调用 MinerU；关闭后选择 mineru 会回退到 default 内置解析器。
-        enabled: ${V5AI_MINERU_ENABLED:false}
+        enabled: ${V5AI_MINERU_ENABLED:true}
         # MinerU Router 地址。
-        base-url: ${V5AI_MINERU_URL:http://127.0.0.1:8000}
+        base-url: ${V5AI_MINERU_URL:http://192.168.129.131:8002}
         # 建立 HTTP 连接超时（毫秒）。
         connect-timeout-millis: ${V5AI_MINERU_CONNECT_TIMEOUT_MS:5000}
         # 单次健康检查、提交、轮询和结果请求的读取超时（毫秒）。

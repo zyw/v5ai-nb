@@ -259,7 +259,7 @@ function handleDetailShow(show: boolean) {
       </n-space>
     </div>
 
-    <n-spin :show="loading">
+    <n-spin class="chunk-spin" :show="loading">
       <div v-if="chunks.length === 0 && !loading" class="empty-box">
         <n-empty :description="noDocuments ? '该知识库还没有文档，请先在「原始文档」页导入' : '暂无切片数据'">
           <template #extra>
@@ -404,6 +404,15 @@ function handleDetailShow(show: boolean) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 12px;
+}
+
+/* 首次加载时内容为空，给 spinner 一个稳定的内容区，避免贴在筛选栏下方。 */
+.chunk-spin {
+  min-height: 260px;
+}
+
+.chunk-spin :deep(.n-spin-container) {
+  min-height: 260px;
 }
 
 .chunk-card {

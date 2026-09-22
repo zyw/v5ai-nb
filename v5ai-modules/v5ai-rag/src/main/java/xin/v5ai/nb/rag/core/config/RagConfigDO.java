@@ -118,23 +118,95 @@ public class RagConfigDO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class MineruParams {
+        /**
+         * OCR 语言列表，例如 {@code ch}、{@code korean}。
+         */
         private List<String> langList;
+
+        /**
+         * MinerU 解析后端：{@code pipeline}、{@code vlm-engine}、{@code hybrid-engine}、
+         * {@code vlm-http-client} 或 {@code hybrid-http-client}。
+         */
         private String backend;
+
+        /**
+         * 解析工作量等级，支持 {@code medium} 或 {@code high}；主要对 hybrid 后端生效。
+         */
         private String effort;
+
+        /**
+         * PDF 解析方式：{@code auto} 自动选择、{@code txt} 文本提取、{@code ocr} 强制 OCR。
+         */
         private String parseMethod;
+
+        /**
+         * 是否启用公式识别。
+         */
         private Boolean formulaEnable;
+
+        /**
+         * 是否启用表格结构识别。
+         */
         private Boolean tableEnable;
+
+        /**
+         * 是否启用图片或图表分析。
+         */
         private Boolean imageAnalysis;
+
+        /**
+         * 远程 VLM 或 hybrid 后端使用的模型服务地址。
+         */
         private String serverUrl;
+
+        /**
+         * 是否返回 Markdown 结果。
+         */
         private Boolean returnMd;
+
+        /**
+         * 是否返回中间结构化 JSON。
+         */
         private Boolean returnMiddleJson;
+
+        /**
+         * 是否返回模型原始输出。
+         */
         private Boolean returnModelOutput;
+
+        /**
+         * 是否返回内容列表结构。
+         */
         private Boolean returnContentList;
+
+        /**
+         * 是否返回文档中的图片资源。
+         */
         private Boolean returnImages;
+
+        /**
+         * 是否以 ZIP 格式返回结果包。
+         */
         private Boolean responseFormatZip;
+
+        /**
+         * 是否返回原始上传文件。
+         */
         private Boolean returnOriginalFile;
+
+        /**
+         * 是否由客户端生成输出结果。
+         */
         private Boolean clientSideOutputGeneration;
+
+        /**
+         * 解析起始页码，默认由 MinerU 服务解释。
+         */
         private Integer startPageId;
+
+        /**
+         * 解析结束页码，默认由 MinerU 服务解释。
+         */
         private Integer endPageId;
     }
 
