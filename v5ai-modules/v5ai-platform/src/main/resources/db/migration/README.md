@@ -53,8 +53,6 @@
 | V37 | `V37__api_keys_key_hash.sql` | API Key key_hash 与名称唯一 |
 | V38 | `V38__portal_conversations_attachments.sql` | 门户会话归属（api_key_id/name/archived_at）+ 消息附件表 |
 | V39 | `V39__message_usage_and_supersede.sql` | 助手回答用量与用时落库 + 消息作废标记 superseded_at |
-| V45 | `V45__model_identity_and_usage_model_id.sql` | 移除模型 provider_id/model_key 联合唯一约束，新增用量 model_id 及索引 |
-| V46 | `V46__model_identity_comments.sql` | 更新模型身份与用量 model_id 的表/列注释 |
 | V40 | `V40__conversation_auto_naming.sql` | 会话名称来源 name_source + 存量会话名回填 |
 | V41 | `V41__conversation_summary.sql` | 会话历史摘要表 v5ai_conversation_summary + 修正用量列注释 |
 | V42 | `V42__message_reasoning_and_metadata.sql` | 助手消息思考列 reasoning（只回看不回放）+ 保留列 metadata |
@@ -63,12 +61,13 @@
 | V45 | `V45__message_metadata_citations.sql` | 消息引用快照 metadata 语义落地 |
 | V46 | `V46__agent_secondary_model_and_citations.sql` | Agent 次要模型与门户 RAG 引用展示开关 |
 | V47 | `V47__knowledge_document_parser_metadata.sql` | 保存文档实际解析引擎与结构化解析诊断 |
+| V48 | `V48__model_identity_comments.sql` | 移除模型 provider_id/model_key 联合唯一约束，新增用量 model_id、索引及相关注释 |
 
-> V1–V41 是历史（冻结于 2026-09-19）；V42 起为后续演进。**V33 从未创建**，属跳号，不是缺失。当前最大迁移版本为 V47。
+> V1–V41 是历史（冻结于 2026-09-19）；V42 起为后续演进。**V33 从未创建**，属跳号，不是缺失。当前最大迁移版本为 V48。
 
 ## 新增一个迁移
 
-1. **取下一个递增号**（当前最大是 V47）——号一旦被任何库应用过就只能顺延，不能改名；
+1. **取下一个递增号**（当前最大是 V48）——号一旦被任何库应用过就只能顺延，不能改名；
 2. 命名 `V<n>__snake_case_描述.sql`，与 Flyway 的默认命名规则一致；
 3. **写头注释**：说清背景（为什么现在要改）、边界（这个迁移**不做**什么）。V42/V43/V44 是现成的样板；
 4. 改现有表一律 `ALTER`，不要回头改历史文件；

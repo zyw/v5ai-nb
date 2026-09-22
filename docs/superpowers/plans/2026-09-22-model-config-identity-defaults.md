@@ -29,7 +29,7 @@
 ### Task 1: Schema and model option identity
 
 **Files:**
-- Create: `v5ai-modules/v5ai-platform/src/main/resources/db/migration/V45__model_identity_and_usage_model_id.sql`
+- Create: `v5ai-modules/v5ai-platform/src/main/resources/db/migration/V48__model_identity_comments.sql`
 - Modify: model option service, model entity comments, schema docs, model usage domain/VO
 - Test: model service option tests and migration-oriented assertions where available
 
