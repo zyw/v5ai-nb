@@ -115,6 +115,8 @@ export interface AgentResponse {
   description?: string | null
   status: string
   modelId: number
+  /** 绑定的模型名称 */
+  modelName?: string | null
   /** 次要模型：供会话标题改写与会话摘要压缩调用；为空表示回退 modelId */
   secondaryModelId?: number | null
   publishedVersion?: number | null

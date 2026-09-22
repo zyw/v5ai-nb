@@ -150,7 +150,13 @@ const columns: DataTableColumns<AgentResponse> = [
     width: 90,
     render: (row) => h(StatusTag, { status: row.status })
   },
-  { title: '模型ID', key: 'modelId', width: 90 },
+  {
+    title: '模型名称',
+    key: 'modelId',
+    width: 180,
+    ellipsis: { tooltip: true },
+    render: (row) => row.modelName ?? `#${row.modelId}`
+  },
   {
     title: '发布版本',
     key: 'publishedVersion',

@@ -46,6 +46,11 @@ public class AgentVo implements Serializable {
     private Long modelId;
 
     /**
+     * 绑定模型名称；列表查询由服务端按模型 ID 批量补齐。
+     */
+    private String modelName;
+
+    /**
      * 当前生效的已发布版本号
      */
     private Long publishedVersion;

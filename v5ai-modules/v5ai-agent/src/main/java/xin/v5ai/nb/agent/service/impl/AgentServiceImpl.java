@@ -25,7 +25,10 @@ import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
 import xin.v5ai.nb.model.api.ModelCatalogPort;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * AgentDTO 管理服务实现类。
@@ -60,12 +63,15 @@ public class AgentServiceImpl implements IAgentService {
     public PageResult<AgentVo> queryPageList(AgentBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<Agent> lqw = buildQueryWrapper(bo);
         IPage<AgentVo> page = agentMapper.selectVoPage(pageQuery.build(), lqw);
+        fillModelNames(page.getRecords());
         return PageResult.build(page.getRecords(), page.getTotal());
     }
 
     @Override
     public List<AgentVo> queryList(AgentBo bo) {
-        return agentMapper.selectVoList(buildQueryWrapper(bo));
+        List<AgentVo> records = agentMapper.selectVoList(buildQueryWrapper(bo));
+        fillModelNames(records);
+        return records;
     }
 
     @Override
@@ -268,6 +274,31 @@ public class AgentServiceImpl implements IAgentService {
         vo.setDescription(version.getDescription());
         vo.setCreatedAt(version.getCreatedAt());
         return vo;
+    }
+
+    /**
+     * 为 Agent 列表批量补齐模型名称，避免前端再发起全量模型查询。
+     */
+    private void fillModelNames(List<AgentVo> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        Set<Long> modelIds = records.stream()
+                .map(AgentVo::getModelId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (modelIds.isEmpty()) {
+            return;
+        }
+        ModelCatalogPort catalog = modelCatalog.getIfAvailable();
+        if (catalog == null) {
+            return;
+        }
+        Map<Long, String> modelNames = catalog.findModelNamesByIds(modelIds);
+        if (modelNames == null || modelNames.isEmpty()) {
+            return;
+        }
+        records.forEach(record -> record.setModelName(modelNames.get(record.getModelId())));
     }
 
     /**

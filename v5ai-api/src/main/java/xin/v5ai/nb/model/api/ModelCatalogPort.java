@@ -1,5 +1,8 @@
 package xin.v5ai.nb.model.api;
 
+import java.util.Collection;
+import java.util.Map;
+
 /**
  * 模型目录只读端口：供其它模块在**保存配置时**校验「某个模型是否可用于某项用途」。
  *
@@ -17,4 +20,14 @@ public interface ModelCatalogPort {
      * @param modelId 模型 ID；为 null 时返回 false
      */
     boolean isEnabledChatModel(Long modelId);
+
+    /**
+     * 批量读取模型展示名称，供管理端列表在服务端一次性补齐关联名称。
+     *
+     * @param modelIds 模型 ID 集合
+     * @return 模型 ID 到展示名称的映射
+     */
+    default Map<Long, String> findModelNamesByIds(Collection<Long> modelIds) {
+        return Map.of();
+    }
 }

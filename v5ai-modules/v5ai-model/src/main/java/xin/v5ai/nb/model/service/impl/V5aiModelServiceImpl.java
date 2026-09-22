@@ -29,8 +29,11 @@ import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
 import xin.v5ai.nb.model.service.IV5aiModelService;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -343,5 +346,22 @@ public class V5aiModelServiceImpl implements IV5aiModelService, Predicate<Long>,
         return entity != null
                 && Boolean.TRUE.equals(entity.getEnabled())
                 && ModelType.CHAT.name().equals(entity.getModelType());
+    }
+
+    /**
+     * 跨模块端口：批量返回模型展示名称；未填写名称时回退模型 key。
+     */
+    @Override
+    public Map<Long, String> findModelNamesByIds(Collection<Long> modelIds) {
+        if (modelIds == null || modelIds.isEmpty()) {
+            return Map.of();
+        }
+        return mapper.selectList(new LambdaQueryWrapper<V5aiModel>()
+                        .select(V5aiModel::getId, V5aiModel::getModelName, V5aiModel::getModelKey)
+                        .in(V5aiModel::getId, modelIds))
+                .stream()
+                .collect(Collectors.toMap(V5aiModel::getId,
+                        model -> StrUtil.isBlank(model.getModelName())
+                                ? model.getModelKey() : model.getModelName()));
     }
 }
