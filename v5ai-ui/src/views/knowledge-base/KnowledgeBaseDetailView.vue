@@ -91,7 +91,7 @@ async function load() {
     rerankModels.value = rerankRows
     applyConfig(detail.config)
     if (modelParams.modelId == null && chatModels.value.length > 0) {
-      modelParams.modelId = chatModels.value[0].value
+      modelParams.modelId = chatModels.value.find((model) => model.isDefault)?.value ?? chatModels.value[0].value
     }
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载知识库详情失败')

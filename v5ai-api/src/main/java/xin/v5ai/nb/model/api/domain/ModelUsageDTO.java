@@ -7,7 +7,8 @@ import java.time.OffsetDateTime;
  *
  * @param runId             运行 ID
  * @param agentKey            应用标识
- * @param modelKey          模型标识
+ * @param modelId           平台模型配置 ID
+ * @param modelKey          上游模型标识快照
  * @param promptTokens      输入 Token（估算）
  * @param completionTokens  输出 Token（估算）
  * @param durationMs        耗时（毫秒）
@@ -20,7 +21,9 @@ public record ModelUsageDTO(
         String runId,
         /** 应用标识 */
         String agentKey,
-        /** 模型标识 */
+        /** 平台模型配置 ID；历史/非模型调用可为空 */
+        Long modelId,
+        /** 上游模型标识快照 */
         String modelKey,
         /** 输入 Token（估算） */
         long promptTokens,

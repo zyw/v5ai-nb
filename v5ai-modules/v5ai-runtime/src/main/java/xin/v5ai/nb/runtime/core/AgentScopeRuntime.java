@@ -284,7 +284,9 @@ public class AgentScopeRuntime implements AgentRuntime {
             case AgentTextEvent.Reasoning reasoning ->
                     Flux.just(RuntimeRunEventDTO.reasoningDelta(runId, reasoning.text()));
             case AgentTextEvent.Text text -> Flux.just(RuntimeRunEventDTO.textDelta(runId, text.text()));
-            case AgentTextEvent.ModelCall call -> Flux.just(RuntimeRunEventDTO.modelCall(runId, call.modelName()));
+            case AgentTextEvent.ModelCall call -> call.modelId() == null
+                    ? Flux.just(RuntimeRunEventDTO.modelCall(runId, call.modelName()))
+                    : Flux.just(RuntimeRunEventDTO.modelCall(runId, call.modelId(), call.modelKey(), call.modelName()));
             case AgentTextEvent.ToolCall call -> {
                 var callEvent = Flux.just(RuntimeRunEventDTO.toolCall(runId, toolCallPayload(call)));
                 // APPROVE 决策：先发出 PERMISSION_REQUIRED 事件（人工审批提示），随后自动放行

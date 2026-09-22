@@ -100,7 +100,7 @@ POST   /api/admin/models/{id}/test
 
 Provider rows are stored in `v5ai_model_provider`. Model rows are stored in `v5ai_model`; credentials are encrypted before persistence.
 
-`GET /api/admin/models/options` 返回模型下拉选项（`[{ "value": <modelId>, "label": "<providerId>/<modelKey> (<modelType>)" }]`），仅返回启用模型，不加载凭据密文，供 Agent 编辑/绑定弹窗按需加载。
+`GET /api/admin/models/options` 返回模型下拉选项（`[{ "value": <modelId>, "label": "<modelId>/<modelName> (<modelType>)" }]`），仅返回启用模型，不加载凭据密文，供 Agent 编辑/绑定弹窗按需加载；模型名称为空时 label 使用 `modelKey`。
 
 创建 Provider 请求体：`{ "providerKey": "openai", "name": "OpenAI", "enabled": true }`（可选：`description` 提供商描述、`iconUrl` LOGO 图标 URL）；更新通过 `PUT /api/admin/providers`（body 带 `id`），删除通过 `DELETE /api/admin/providers/{ids}`（逗号分隔的 id 列表）。`provider_type` 已移除（V26），运行时按 `providerKey` + 模型的 `adapterKey` 判别 SDK 适配器。**停用约束**：`enabled: false` 且该供应商下存在任一模型引用时返回 409（`该供应商下存在模型，无法停用`）；`iconUrl` 传空串（`""`）表示清空图标。
 

@@ -53,6 +53,8 @@
 | V37 | `V37__api_keys_key_hash.sql` | API Key key_hash 与名称唯一 |
 | V38 | `V38__portal_conversations_attachments.sql` | 门户会话归属（api_key_id/name/archived_at）+ 消息附件表 |
 | V39 | `V39__message_usage_and_supersede.sql` | 助手回答用量与用时落库 + 消息作废标记 superseded_at |
+| V45 | `V45__model_identity_and_usage_model_id.sql` | 移除模型 provider_id/model_key 联合唯一约束，新增用量 model_id 及索引 |
+| V46 | `V46__model_identity_comments.sql` | 更新模型身份与用量 model_id 的表/列注释 |
 | V40 | `V40__conversation_auto_naming.sql` | 会话名称来源 name_source + 存量会话名回填 |
 | V41 | `V41__conversation_summary.sql` | 会话历史摘要表 v5ai_conversation_summary + 修正用量列注释 |
 | V42 | `V42__message_reasoning_and_metadata.sql` | 助手消息思考列 reasoning（只回看不回放）+ 保留列 metadata |

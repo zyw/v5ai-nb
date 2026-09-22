@@ -230,7 +230,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         List<Msg> messages = buildMessages(agentDTO, request);
         var usage = new TokenUsageAccumulator();
         return Flux.concat(
-                Flux.just(new AgentTextEvent.ModelCall(model.getModelName()), estimatedUsage(messages)),
+                Flux.just(new AgentTextEvent.ModelCall(agentDTO.modelId(), model.getModelName(), model.getModelName()), estimatedUsage(messages)),
                 model.stream(messages, List.of(), generateOptions())
                         .map(response -> {
                             // 直连路径整个流就是一次模型调用：用量通常只出现在最后一块上，
@@ -349,7 +349,7 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
         List<Msg> messages = conversationMessages(request);
         var usage = new TokenUsageAccumulator();
         return Flux.concat(
-                        Flux.just(new AgentTextEvent.ModelCall(model.getModelName()), estimatedUsage(messages)),
+                        Flux.just(new AgentTextEvent.ModelCall(agentDTO.modelId(), model.getModelName(), model.getModelName()), estimatedUsage(messages)),
                         agent.streamEvents(messages, RuntimeContext.empty())
                                 .concatMap(event -> {
                                     // 每次模型调用结束都会带一条真实用量：工具循环下会有多轮，累加
@@ -598,4 +598,3 @@ public class ModelStreamTextExecutor implements AgentTextExecutor {
     }
 
 }
-

@@ -16,7 +16,7 @@ public interface EmbeddingClient {
      * 按指定嵌入模型与期望维度将文本编码为向量。
      *
      * @param text             输入文本
-     * @param embeddingModelId 嵌入模型 ID（可为 null：使用首个启用的 EMBEDDING 模型或本地回退）
+     * @param embeddingModelId 嵌入模型 ID（可为 null：使用默认 EMBEDDING 模型或最早启用模型）
      * @param frozenDimension  期望输出维度（KB 冻结维度；可调模型据此传 {@code dimensions} 参数，固定模型忽略）
      * @return 浮点向量
      */

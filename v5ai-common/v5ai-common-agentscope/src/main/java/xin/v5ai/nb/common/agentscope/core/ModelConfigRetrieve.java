@@ -3,7 +3,7 @@ package xin.v5ai.nb.common.agentscope.core;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
 
 /**
- * 模型运行时配置网关：为运行时提供"按模型 ID 查找配置"与"查找嵌入模型"的能力。
+ * 模型运行时配置网关：为运行时提供"按模型 ID 查找配置"与"按类型选择模型"的能力。
  * 由基础设施层实现（MyBatis），供 AgentDTO 模型解析器与 RAG Embedding 客户端使用。
  */
 public interface ModelConfigRetrieve {
@@ -16,9 +16,8 @@ public interface ModelConfigRetrieve {
     ModelRuntimeConfigDTO findRuntimeConfigByModelId(Long modelId);
 
     /**
-     * 查找第一个已启用的 EMBEDDING 模型。
-     *
-     * @return 嵌入模型运行时配置；未配置任何启用的嵌入模型时返回 {@code null}
+     * 按类型选择模型：优先启用的默认模型，其次按 ID 最早的启用模型。
+     * 没有可用模型时抛出配置异常。
      */
-    ModelRuntimeConfigDTO findFirstEmbeddingModel();
+    ModelRuntimeConfigDTO findDefaultOrFirstEnabledModel(String modelType);
 }

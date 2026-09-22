@@ -12,7 +12,8 @@ import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
 
 /**
  * <p>
- * 模型配置实体（v5ai_model）：providerId/modelKey/modelType 为唯一组合，
+ * 模型配置实体（v5ai_model）：id 是平台内模型配置身份，providerId/modelKey
+ * 可以重复以支持同一上游模型在多个账户、服务器或 Base URL 下的配置，
  * 凭据加密存储；modelName 为展示名称，config 保存模型扩展参数（JSON，
  * 对应 {@link ModelExtConfigAttrs}），
  * scope 区分全局/个人模型，ownerId 为个人模型的所有者。

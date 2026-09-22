@@ -88,7 +88,7 @@ public class AgentScopeHarnessExecutor implements AgentTextExecutor {
                 .build();
         return Flux.concat(
                         // 先发一个"模型调用开始"标记（供上层转为 MODEL_CALL 事件）
-                        Flux.just(new AgentTextEvent.ModelCall(model.getModelName())),
+                        Flux.just(new AgentTextEvent.ModelCall(application.modelId(), model.getModelName(), model.getModelName())),
                         // 执行 Agent，把返回的消息转换为文本事件流；消息上还带着这次调用的真实用量
                         agent.call(request.query(), RuntimeContext.empty())
                                 .flatMapMany(message -> {

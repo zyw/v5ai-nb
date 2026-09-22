@@ -29,6 +29,8 @@ public class ModelUsagePageVo implements Serializable {
      * 应用标识
      */
     private String agentKey;
+    /** 平台模型配置 ID；历史记录可能为空 */
+    private Long modelId;
     /**
      * 模型标识
      */

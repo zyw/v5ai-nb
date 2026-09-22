@@ -43,18 +43,19 @@ public class ModelConfigRetrieveImpl implements ModelConfigRetrieve {
     }
 
     @Override
-    public ModelRuntimeConfigDTO findFirstEmbeddingModel() {
+    public ModelRuntimeConfigDTO findDefaultOrFirstEnabledModel(String modelType) {
         var model = modelMapper.selectOne(new LambdaQueryWrapper<V5aiModel>()
-                .eq(V5aiModel::getModelType, "EMBEDDING")
+                .eq(V5aiModel::getModelType, modelType)
                 .eq(V5aiModel::getEnabled, true)
+                .orderByDesc(V5aiModel::getIsDefault)
                 .orderByAsc(V5aiModel::getId)
                 .last("LIMIT 1"));
         if (model == null) {
-            return null;
+            throw new IllegalStateException("未配置可用的 " + modelType + " 模型");
         }
         var provider = providerMapper.selectById(model.getProviderId());
         if (provider == null) {
-            return null;
+            throw new IllegalStateException("模型 " + model.getId() + " 的供应商不存在");
         }
         return toRuntimeConfig(model, provider);
     }

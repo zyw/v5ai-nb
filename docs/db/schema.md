@@ -583,7 +583,7 @@
 
 ## v5ai_model
 
-> 模型配置：provider_id/model_key/model_type 为唯一组合；凭据加密存储，config 为扩展参数 JSON
+> 模型配置以 id 作为平台身份；同一 provider 下允许多个相同 model_key 的配置，用于不同账户、Base URL 或服务器；凭据加密存储，config 为扩展参数 JSON
 
 | 列 | 类型 | 约束 | 默认值 | 注释 |
 |---|---|---|---|---|
@@ -628,6 +628,7 @@
 | `id` | bigint | NOT NULL | nextval('v5ai_model_usage_id_seq'::regclass) | 主键 |
 | `run_id` | character varying(64) | NULL | — | 关联运行（v5ai_run.id；非运行期调用为 NULL） |
 | `agent_key` | character varying(100) | NULL | — | Agent 对外运行标识（跨模块引用，不建外键） |
+| `model_id` | bigint | NULL | — | 平台模型配置 ID；历史记录可能为空，用于用量聚合区分重复 model_key |
 | `model_key` | character varying(200) | NULL | — | 被调用模型标识 |
 | `prompt_tokens` | bigint | NOT NULL | 0 | 输入 token（真实用量优先，服务端未回报时按平台规则估算） |
 | `completion_tokens` | bigint | NOT NULL | 0 | 输出 token（口径同 prompt_tokens） |

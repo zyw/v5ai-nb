@@ -58,6 +58,7 @@ public class V5aiModelUsageServiceImpl implements IV5aiModelUsageService, ModelU
                 .id(entity.getId())
                 .runId(entity.getRunId())
                 .agentKey(entity.getAgentKey())
+                .modelId(entity.getModelId())
                 .modelKey(entity.getModelKey())
                 .promptTokens(entity.getPromptTokens())
                 .completionTokens(entity.getCompletionTokens())
@@ -72,6 +73,7 @@ public class V5aiModelUsageServiceImpl implements IV5aiModelUsageService, ModelU
         var entity = new V5aiModelUsage();
         entity.setRunId(usage.runId());
         entity.setAgentKey(usage.agentKey());
+        entity.setModelId(usage.modelId());
         entity.setModelKey(usage.modelKey());
         entity.setPromptTokens(usage.promptTokens());
         entity.setCompletionTokens(usage.completionTokens());

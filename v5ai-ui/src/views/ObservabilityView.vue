@@ -49,7 +49,8 @@ const quotaForm = reactive({
 const usageColumns: DataTableColumns<UsageRecord> = [
   { title: 'ID', key: 'id', width: 70 },
   { title: 'App', key: 'agentKey' },
-  { title: '模型', key: 'modelKey' },
+  { title: '模型 ID', key: 'modelId', width: 90, render: (row) => row.modelId ?? '-' },
+  { title: '模型 Key', key: 'modelKey' },
   { title: '输入 Token', key: 'promptTokens' },
   { title: '输出 Token', key: 'completionTokens' },
   { title: '合计', key: 'totalTokens' },

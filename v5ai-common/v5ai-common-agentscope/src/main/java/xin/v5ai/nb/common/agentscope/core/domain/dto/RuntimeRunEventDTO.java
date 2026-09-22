@@ -33,9 +33,21 @@ public record RuntimeRunEventDTO(String runId, RuntimeEventType type, String pay
         return started(runId, "");
     }
 
-    /** 模型调用开始（携带模型名） */
+    /** 模型调用开始（兼容旧调用方，仅携带模型名） */
     public static RuntimeRunEventDTO modelCall(String runId, String modelName) {
         return new RuntimeRunEventDTO(runId, RuntimeEventType.MODEL_CALL, modelName, Instant.now());
+    }
+
+    /** 模型调用开始：模型名继续作为外部可读信息，模型 ID 作为内部用量归因信息。 */
+    public static RuntimeRunEventDTO modelCall(String runId, Long modelId, String modelName) {
+        return new RuntimeRunEventDTO(runId, RuntimeEventType.MODEL_CALL,
+                JSONUtil.createObj().set("modelId", modelId).set("modelName", modelName).toString(), Instant.now());
+    }
+
+    public static RuntimeRunEventDTO modelCall(String runId, Long modelId, String modelKey, String modelName) {
+        return new RuntimeRunEventDTO(runId, RuntimeEventType.MODEL_CALL,
+                JSONUtil.createObj().set("modelId", modelId).set("modelKey", modelKey)
+                        .set("modelName", modelName).toString(), Instant.now());
     }
 
     /**

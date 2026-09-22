@@ -9,14 +9,18 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticApplicationContext;
+import xin.v5ai.nb.common.core.domain.dto.OptionDTO;
 import xin.v5ai.nb.common.core.exception.V5aiException;
 import xin.v5ai.nb.common.encrypt.cipher.CredentialCipher;
 import xin.v5ai.nb.model.core.ModelConnectionTester;
 import xin.v5ai.nb.model.domain.V5aiModel;
 import xin.v5ai.nb.model.domain.V5aiModelProvider;
 import xin.v5ai.nb.model.domain.bo.ModelBo;
+import xin.v5ai.nb.model.domain.vo.V5aiModelVo;
 import xin.v5ai.nb.model.mapper.V5aiModelMapper;
 import xin.v5ai.nb.model.mapper.V5aiModelProviderMapper;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -262,6 +266,23 @@ class V5aiModelServiceImplTest {
 
         assertThat(service.insertByBo(bo)).isTrue();
         verify(mapper).clearModelTypeDefaults(any(), eq(42L));
+    }
+
+    @Test
+    void modelOptionsUseIdBasedLabels() {
+        var model = new V5aiModelVo();
+        model.setId(42L);
+        model.setProviderId(3L);
+        model.setModelKey("llama3");
+        model.setModelName("Ollama A");
+        model.setModelType("CHAT");
+        model.setIsDefault(false);
+        when(mapper.selectVoList(any())).thenReturn(java.util.List.of(model));
+
+        List<OptionDTO> options = service.queryOptionList(new ModelBo());
+
+        assertThat(options).singleElement().extracting(OptionDTO::label)
+                .isEqualTo("42/Ollama A (CHAT)");
     }
 
     // ---------- helpers ----------

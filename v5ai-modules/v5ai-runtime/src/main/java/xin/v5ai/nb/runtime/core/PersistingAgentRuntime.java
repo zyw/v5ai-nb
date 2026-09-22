@@ -290,7 +290,8 @@ public class PersistingAgentRuntime implements AgentRuntime {
             var citations = new ArrayList<RagHit>();
             // 用单元素数组持有 runId（lambda 里捕获可变值）
             var runId = new String[1];
-            // 用量埋点状态：模型名、开始时间
+            // 用量埋点状态：模型 ID/模型名、开始时间
+            var modelId = new Long[1];
             var modelName = new String[1];
             var startedAt = new java.time.Instant[1];
             // 执行器回报的用量（真实值优先、估算兜底）：见 AgentTextEvent.Usage
@@ -317,7 +318,9 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             cancellationRegistry.register(event.runId(), cancelSignal);
                         }
                         if (event.type() == RuntimeEventType.MODEL_CALL) {
-                            modelName[0] = event.payload();
+                            var call = parseModelCall(event.payload());
+                            modelId[0] = call.modelId();
+                            modelName[0] = call.modelKey();
                         }
                         // 引用累积：一次运行可能发多条 RETRIEVAL（智能调用下每次 rag_search 之后一条），
                         // 累加去重后随回答落库——历史回看与当时实时所见一致
@@ -352,12 +355,12 @@ public class PersistingAgentRuntime implements AgentRuntime {
                                     answerSaved, firstTurn);
                             runRecordService.complete(event.runId());
                             // attachUsage 已经算过：直接复用，保证载荷与账目一致
-                            recordUsage(normalizedRequest, runId[0], modelName[0], usage[0],
+                            recordUsage(normalizedRequest, runId[0], modelId[0], modelName[0], usage[0],
                                     RunStatus.COMPLETED);
                         }
                         if (event.type() == RuntimeEventType.RUN_FAILED) {
                             runRecordService.fail(event.runId(), event.payload());
-                            recordUsage(normalizedRequest, runId[0], modelName[0],
+                            recordUsage(normalizedRequest, runId[0], modelId[0], modelName[0],
                                     usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                     RunStatus.FAILED);
                         }
@@ -378,7 +381,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
                         runId[0] = failedRunId;
                         runEventService.save(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
                         runRecordService.fail(failedRunId, exception.getMessage());
-                        recordUsage(normalizedRequest, failedRunId, modelName[0],
+                        recordUsage(normalizedRequest, failedRunId, modelId[0], modelName[0],
                                 usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                 RunStatus.FAILED);
                         return Flux.just(RuntimeRunEventDTO.failed(failedRunId, exception.getMessage()));
@@ -390,13 +393,13 @@ public class PersistingAgentRuntime implements AgentRuntime {
                             saveAnswerOnce(normalizedRequest, answer, reasoning, citations,
                                     usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                     answerSaved, firstTurn);
-                            recordUsage(normalizedRequest, null, modelName[0],
+                            recordUsage(normalizedRequest, null, modelId[0], modelName[0],
                                     usageOf(normalizedRequest, startedAt[0], answer.toString(), reportedUsage),
                                     RunStatus.COMPLETED);
                         }
                     })
                     // 停止/断流：取消是正常收尾，不是异常——保留已生成的部分回答
-                    .doOnCancel(() -> finishCanceled(normalizedRequest, runId[0], modelName[0], startedAt[0],
+                    .doOnCancel(() -> finishCanceled(normalizedRequest, runId[0], modelId[0], modelName[0], startedAt[0],
                             answer, reasoning, citations, answerSaved, firstTurn, reportedUsage))
                     // 取消信号触发时取消上游（信号只在本实例登记过才会有值）
                     .takeUntilOther(cancelSignal.asMono())
@@ -408,7 +411,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
      * 取消收尾：标记 CANCELED（带 {@code WHERE status='RUNNING'} 条件，不会覆盖已落定的状态）、
      * 落库已生成的部分回答，并按已生成内容记用量。
      */
-    private void finishCanceled(AgentRunBo request, String runId, String modelName, Instant startedAt,
+    private void finishCanceled(AgentRunBo request, String runId, Long modelId, String modelName, Instant startedAt,
                                 StringBuilder answer, StringBuilder reasoning, List<RagHit> citations,
                                 AtomicBoolean answerSaved, boolean firstTurn, ReportedUsage reportedUsage) {
         try {
@@ -418,7 +421,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
             // 被停止时连思考与已发生的引用也一并保留：与「半截回答照常落库」同一口径
             saveAnswerOnce(request, answer, reasoning, citations,
                     usageOf(request, startedAt, answer.toString(), reportedUsage), answerSaved, firstTurn);
-            recordUsage(request, runId, modelName,
+            recordUsage(request, runId, modelId, modelName,
                     usageOf(request, startedAt, answer.toString(), reportedUsage), RunStatus.CANCELED);
             log.info("run {} canceled by caller, {} chars of partial answer kept", runId, answer.length());
         } catch (Exception exception) {
@@ -615,7 +618,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
     /**
      * 用量埋点：写 v5ai_model_usage 明细 + 递增应用配额记账。
      */
-    private void recordUsage(AgentRunBo request, String runId, String modelName,
+    private void recordUsage(AgentRunBo request, String runId, Long modelId, String modelName,
                              RunUsage usage, RunStatus status) {
         if (usageRecorder == null && quotaService == null) {
             return;
@@ -624,6 +627,7 @@ public class PersistingAgentRuntime implements AgentRuntime {
             if (usageRecorder != null) {
                 usageRecorder.record(new ModelUsageDTO(
                         null, runId, request.agentKey(),
+                        modelId,
                         modelName == null || modelName.isBlank() ? "unknown" : modelName,
                         usage.promptTokens(), usage.completionTokens(), usage.durationMs(),
                         status.name(), OffsetDateTime.now()));
@@ -634,6 +638,25 @@ public class PersistingAgentRuntime implements AgentRuntime {
         } catch (Exception exception) {
             log.warn("failed to record usage for run {}: {}", runId, exception.getMessage());
         }
+    }
+
+    private static ModelCallInfo parseModelCall(String payload) {
+        if (payload == null || payload.isBlank()) {
+            return new ModelCallInfo(null, payload);
+        }
+        try {
+            var json = JSONUtil.parseObj(payload);
+            if (json.containsKey("modelName")) {
+                return new ModelCallInfo(json.getLong("modelId"),
+                        json.getStr("modelKey", json.getStr("modelName")));
+            }
+        } catch (RuntimeException ignored) {
+            // Compatibility with pre-change MODEL_CALL events whose payload was plain text.
+        }
+        return new ModelCallInfo(null, payload);
+    }
+
+    private record ModelCallInfo(Long modelId, String modelKey) {
     }
 
     @Override

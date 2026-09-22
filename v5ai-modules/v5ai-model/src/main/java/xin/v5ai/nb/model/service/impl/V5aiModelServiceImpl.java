@@ -79,11 +79,13 @@ public class V5aiModelServiceImpl implements IV5aiModelService, Predicate<Long>,
         List<V5aiModelVo> models = mapper.selectVoList(QueryBuilder.lambda(V5aiModel.class)
                 .eq(V5aiModel::getEnabled, true)
                 .eq(bo.getModelType() != null, V5aiModel::getModelType, bo.getModelType() == null ? null : bo.getModelType().name())
+                .orderByDesc(V5aiModel::getIsDefault)
                 .orderByAsc(V5aiModel::getId)
                 .build());
         return models.stream()
                 .map(model -> new OptionDTO(model.getId(),
-                        model.getProviderId() + "/" + model.getModelKey() + " (" + model.getModelType() + ")",
+                        model.getId() + "/" + (StrUtil.isBlank(model.getModelName()) ? model.getModelKey() : model.getModelName())
+                                + " (" + model.getModelType() + ")",
                         model.getIsDefault()))
                 .toList();
     }

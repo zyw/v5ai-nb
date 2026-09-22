@@ -23,8 +23,7 @@ import java.util.List;
  * <p>
  * 按知识库绑定的嵌入模型（{@code embeddingModelId}）解析配置与凭据；请求按冻结维度执行：
  * 可调维度模型（config {@code dimensionAdjustable=true}）携带 {@code dimensions=frozenDimension}，
- * 固定维度模型不带该参数（输出维度以模型为准）。模型不可用/未配置 EMBEDDING 模型时回退
- * 确定性本地 Hash 嵌入（维度 = 冻结维度或默认 1536），保证开发环境可跑。
+ * 固定维度模型不带该参数（输出维度以模型为准）。模型不可用/未配置 EMBEDDING 模型时直接报配置错误。
  */
 @Slf4j
 @Component
@@ -45,9 +44,6 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
     @Override
     public List<Float> embed(String text, Long embeddingModelId, Integer frozenDimension) {
         var model = resolveModel(embeddingModelId);
-        if (model == null) {
-            return HashEmbedding.embed(text, frozenDimension == null ? DEFAULT_DIMENSIONS : frozenDimension);
-        }
         var credentials = AgentModelCredentialConfig.parse(credentialCipher.decrypt(model.credentialsCiphertext()));
         var baseUrl = credentials.baseUrl() == null || credentials.baseUrl().isBlank()
                 ? "https://api.openai.com/v1"
@@ -103,17 +99,21 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
     }
 
     /**
-     * 解析嵌入模型：优先按 KB 绑定 id；未指定时取首个启用的 EMBEDDING 模型；均不可得返回 null（本地回退）。
+     * 解析嵌入模型：优先按 KB 绑定 id；未指定时使用 EMBEDDING 默认模型，
+     * 其次使用最早启用模型；没有可用模型时直接报配置错误。
      */
     private ModelRuntimeConfigDTO resolveModel(Long embeddingModelId) {
         ModelRuntimeConfigDTO model = embeddingModelId == null
-                ? configRetrieve.findFirstEmbeddingModel()
+                ? configRetrieve.findDefaultOrFirstEnabledModel(TYPE_EMBEDDING)
                 : configRetrieve.findRuntimeConfigByModelId(embeddingModelId);
         if (model == null) {
-            return null;
+            throw new IllegalStateException("未配置可用的 EMBEDDING 模型");
         }
         // KB 绑定错误（非 EMBEDDING 模型）时按未配置处理，回退本地嵌入
-        return TYPE_EMBEDDING.equalsIgnoreCase(model.modelType()) ? model : null;
+        if (!TYPE_EMBEDDING.equalsIgnoreCase(model.modelType())) {
+            throw new IllegalStateException("模型 " + model.modelId() + " 不是 EMBEDDING 类型");
+        }
+        return model;
     }
 
     private static boolean isAdjustable(ModelExtConfigAttrs config) {

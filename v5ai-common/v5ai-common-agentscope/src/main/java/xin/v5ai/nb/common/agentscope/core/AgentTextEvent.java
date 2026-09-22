@@ -41,11 +41,16 @@ public sealed interface AgentTextEvent permits AgentTextEvent.Reasoning, AgentTe
     }
 
     /**
-     * 模型调用标记：标识一次模型调用开始（携带模型名）。
+     * 模型调用标记：标识一次模型调用开始（携带平台模型 ID、上游 key 和展示名称）。
      *
+     * @param modelId   本次调用使用的平台模型配置 ID
+     * @param modelKey  本次调用使用的上游模型 key
      * @param modelName 本次调用使用的模型名称
      */
-    record ModelCall(String modelName) implements AgentTextEvent {
+    record ModelCall(Long modelId, String modelKey, String modelName) implements AgentTextEvent {
+        public ModelCall(String modelName) {
+            this(null, null, modelName);
+        }
     }
 
     /**

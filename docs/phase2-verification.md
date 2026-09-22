@@ -46,7 +46,7 @@ cd v5ai-ui && npm run build
   `v5ai_knowledge_task`（attempt/max_attempts）、`v5ai_application_knowledge`（agent_key 绑定）。
 - 文档解析：TXT/Markdown/URL（UTF-8）、PDF（PDFBox 3）、DOCX（zip+XML 轻量解析）；固定 800/100 切片。
 - Embedding：优先第一个启用的 EMBEDDING 模型（OpenAI-compatible `/v1/embeddings`），
-  未配置时回退确定性 Hash 嵌入（1536 维）。
+  未配置时直接报错，要求先配置可用的 EMBEDDING 模型。
 - 向量存储：`PgVectorStore`（JdbcTemplate + `<=>` 余弦检索），空结果回退 `ILIKE` 关键词检索；
   检索保留 `documentId/chunkIndex/title` 引用元数据并格式化为引用上下文。
 - 运行时集成：`DBRagContextProvider` 注入 `AgentScopeRuntime`，检索命中时发 `RETRIEVAL` 事件，

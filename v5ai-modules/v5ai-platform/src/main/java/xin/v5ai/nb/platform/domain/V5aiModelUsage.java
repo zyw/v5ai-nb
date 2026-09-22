@@ -22,6 +22,8 @@ public class V5aiModelUsage implements Serializable {
     private String runId;
     /** Agent 标识（对外运行标识） */
     private String agentKey;
+    /** 平台模型配置 ID；历史记录可能为空 */
+    private Long modelId;
     /** 模型标识（供应商下模型配置的标识） */
     private String modelKey;
     /** 提示词 token 数 */

@@ -1945,6 +1945,7 @@ export interface UsageRecord {
   id: number
   runId?: string | null
   agentKey?: string | null
+  modelId?: number | null
   modelKey?: string | null
   promptTokens: number
   completionTokens: number
