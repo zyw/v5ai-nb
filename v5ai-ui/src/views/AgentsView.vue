@@ -15,12 +15,14 @@ import {
   NFormItem,
   NIcon,
   NInput,
+  NInputNumber,
   NModal,
   NPagination,
   NSelect,
   NSpace,
   NStep,
   NSteps,
+  NTag,
   useDialog,
   useMessage,
   type DataTableColumns
@@ -33,6 +35,8 @@ import {
   createAgent,
   deleteAgent,
   disableAgent,
+  getAppDailyUsage,
+  getAppQuota,
   generateAgentConfig,
   listAgents,
   listKnowledgeBaseOptions,
@@ -40,6 +44,7 @@ import {
   listModelOptions,
   listSkillOptions,
   publishAgent,
+  updateAppQuota,
   type AgentResponse,
   type OptionResponse, loadImagePreview
 } from '../api/client'
@@ -65,7 +70,9 @@ const skillOptions = ref<OptionResponse[]>([])
 
 const showModal = ref(false)
 const showPublishModal = ref(false)
+const showQuotaModal = ref(false)
 const saving = ref(false)
+const savingQuota = ref(false)
 
 // ---- 新建智能体向导：准备 → 生成 → 确认（创建成功后跳转独立编辑页） ----
 type WizardStep = 'prepare' | 'generating' | 'confirm'
@@ -87,6 +94,13 @@ const draft = reactive({
 })
 
 const publishForm = reactive({ agentKey: '', description: '' })
+const quotaForm = reactive({
+  agentKey: '',
+  dailyModelCalls: 0,
+  dailyTokens: 0,
+  ratePerMinute: 0
+})
+const dailyUsage = ref('')
 
 /** Agent 图标预览映射（id -> 可直接用于 <img> 的地址）。 */
 const agentIcons = reactive<Record<number, string>>({})
@@ -147,12 +161,13 @@ const columns: DataTableColumns<AgentResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 150,
+    width: 210,
     render: (row) =>
       h(RowActions, {
-        maxInline: 1,
+        maxInline: 2,
         actions: [
           { key: 'publish', label: '发布', type: 'primary', onClick: () => openPublish(row) },
+          { key: 'quota', label: '配额', secondary: true, type: 'info', onClick: () => openQuota(row) },
           { key: 'disable', label: '禁用', secondary: true, type: 'error', onClick: () => handleDisable(row) },
           { key: 'delete', label: '删除', secondary: true, type: 'error', onClick: () => handleDelete(row) }
         ]
@@ -373,6 +388,49 @@ async function handlePublish() {
   }
 }
 
+async function openQuota(row: AgentResponse) {
+  quotaForm.agentKey = row.agentKey
+  quotaForm.dailyModelCalls = 0
+  quotaForm.dailyTokens = 0
+  quotaForm.ratePerMinute = 0
+  dailyUsage.value = ''
+  showQuotaModal.value = true
+  await reloadQuota()
+}
+
+async function reloadQuota() {
+  if (!quotaForm.agentKey) return
+  try {
+    const [quota, usageToday] = await Promise.all([
+      getAppQuota(adminToken.value, quotaForm.agentKey),
+      getAppDailyUsage(adminToken.value, quotaForm.agentKey)
+    ])
+    quotaForm.dailyModelCalls = quota.dailyModelCalls
+    quotaForm.dailyTokens = quota.dailyTokens
+    quotaForm.ratePerMinute = quota.ratePerMinute
+    dailyUsage.value = `今日调用 ${usageToday.modelCalls} 次 / ${usageToday.tokens} tokens`
+  } catch {
+    dailyUsage.value = '今日暂无用量'
+  }
+}
+
+async function handleSaveQuota() {
+  savingQuota.value = true
+  try {
+    await updateAppQuota(adminToken.value, quotaForm.agentKey, {
+      dailyModelCalls: quotaForm.dailyModelCalls,
+      dailyTokens: quotaForm.dailyTokens,
+      ratePerMinute: quotaForm.ratePerMinute
+    })
+    message.success('配额已更新（0 = 不限）')
+    showQuotaModal.value = false
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '更新配额失败')
+  } finally {
+    savingQuota.value = false
+  }
+}
+
 async function handleDisable(row: AgentResponse) {
   dialog.warning({
     title: '禁用确认',
@@ -566,6 +624,39 @@ onMounted(reload)
         <n-space justify="end">
           <n-button @click="showPublishModal = false">取消</n-button>
           <n-button type="primary" :loading="saving" @click="handlePublish">发布</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <n-modal
+      :show="showQuotaModal"
+      preset="card"
+      title="Agent配额（0 = 不限）"
+      style="width: 560px"
+      :bordered="false"
+      @update:show="(v: boolean) => (showQuotaModal = v)"
+    >
+      <n-space vertical :size="16">
+        <n-alert type="info" :show-icon="false">
+          Agent：{{ quotaForm.agentKey }}。各项设置为 0 时表示不限制。
+        </n-alert>
+        <n-form label-placement="left" label-width="120">
+          <n-form-item label="每日调用次数">
+            <n-input-number v-model:value="quotaForm.dailyModelCalls" :min="0" style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="每日 Token">
+            <n-input-number v-model:value="quotaForm.dailyTokens" :min="0" style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="每分钟限流">
+            <n-input-number v-model:value="quotaForm.ratePerMinute" :min="0" style="width: 100%" />
+          </n-form-item>
+        </n-form>
+        <n-tag v-if="dailyUsage" type="info" size="small" :bordered="false">{{ dailyUsage }}</n-tag>
+      </n-space>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showQuotaModal = false">取消</n-button>
+          <n-button type="primary" :loading="savingQuota" @click="handleSaveQuota">保存配额</n-button>
         </n-space>
       </template>
     </n-modal>

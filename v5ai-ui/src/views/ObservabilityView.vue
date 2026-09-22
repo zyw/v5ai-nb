@@ -6,24 +6,19 @@ import {
   NDataTable,
   NGi,
   NGrid,
-  NInputNumber,
   NPagination,
   NSelect,
   NSpace,
   NStatistic,
-  NTag,
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
 import PageHeader from '../components/PageHeader.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
-  getAppDailyUsage,
-  getAppQuota,
   getStatsOverview,
   listAgents,
   listUsage,
-  updateAppQuota,
   type OverviewResponse,
   type UsageRecord
 } from '../api/client'
@@ -35,16 +30,7 @@ const overview = ref<OverviewResponse | null>(null)
 const usage = ref<UsageRecord[]>([])
 const apps = ref<{ agentKey: string }[]>([])
 const filterAppKey = ref('')
-const savingQuota = ref(false)
-const dailyUsage = ref('')
 const usagePagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
-
-const quotaForm = reactive({
-  agentKey: '',
-  dailyModelCalls: 0,
-  dailyTokens: 0,
-  ratePerMinute: 0
-})
 
 const usageColumns: DataTableColumns<UsageRecord> = [
   { title: 'ID', key: 'id', width: 70 },
@@ -67,10 +53,6 @@ async function reloadOverview() {
     ])
     overview.value = overviewData
     apps.value = appRows.rows
-    if (!quotaForm.agentKey && appRows.rows.length > 0) {
-      quotaForm.agentKey = appRows.rows[0].agentKey
-      await reloadQuota()
-    }
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载统计失败')
   }
@@ -106,42 +88,6 @@ function handleUsagePageSizeChange(pageSize: number) {
   void reloadUsage()
 }
 
-async function reloadQuota() {
-  if (!quotaForm.agentKey) return
-  try {
-    const [quota, usageToday] = await Promise.all([
-      getAppQuota(adminToken.value, quotaForm.agentKey),
-      getAppDailyUsage(adminToken.value, quotaForm.agentKey)
-    ])
-    quotaForm.dailyModelCalls = quota.dailyModelCalls
-    quotaForm.dailyTokens = quota.dailyTokens
-    quotaForm.ratePerMinute = quota.ratePerMinute
-    dailyUsage.value = `今日调用 ${usageToday.modelCalls} 次 / ${usageToday.tokens} tokens`
-  } catch {
-    quotaForm.dailyModelCalls = 0
-    quotaForm.dailyTokens = 0
-    quotaForm.ratePerMinute = 0
-    dailyUsage.value = '今日暂无用量'
-  }
-}
-
-async function handleSaveQuota() {
-  savingQuota.value = true
-  try {
-    await updateAppQuota(adminToken.value, quotaForm.agentKey, {
-      dailyModelCalls: quotaForm.dailyModelCalls,
-      dailyTokens: quotaForm.dailyTokens,
-      ratePerMinute: quotaForm.ratePerMinute
-    })
-    message.success('配额已更新（0 = 不限）')
-    await reloadQuota()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '更新配额失败')
-  } finally {
-    savingQuota.value = false
-  }
-}
-
 onMounted(async () => {
   await reloadOverview()
   await reloadUsage()
@@ -150,7 +96,7 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <PageHeader title="可观测性" description="查看平台运行统计、用量明细，并配置应用配额。（审计日志已迁移至 系统管理 → 日志管理）" />
+    <PageHeader title="可观测性" description="查看平台运行统计和用量明细。（审计日志已迁移至 系统管理 → 日志管理）" />
 
     <n-card title="平台总览" :bordered="true">
       <n-grid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
@@ -181,32 +127,6 @@ onMounted(async () => {
       </n-grid>
     </n-card>
 
-    <n-card title="应用配额（0 = 不限）" :bordered="true">
-      <div class="quota-form">
-        <n-select
-          v-model:value="quotaForm.agentKey"
-          filterable
-          style="min-width: 220px"
-          :options="apps.map((a) => ({ label: a.agentKey, value: a.agentKey }))"
-          @update:value="reloadQuota"
-        />
-        <div class="quota-numbers">
-          <label>每日调用次数</label>
-          <n-input-number v-model:value="quotaForm.dailyModelCalls" :min="0" />
-        </div>
-        <div class="quota-numbers">
-          <label>每日 Token</label>
-          <n-input-number v-model:value="quotaForm.dailyTokens" :min="0" />
-        </div>
-        <div class="quota-numbers">
-          <label>每分钟限流</label>
-          <n-input-number v-model:value="quotaForm.ratePerMinute" :min="0" />
-        </div>
-        <n-button type="primary" :loading="savingQuota" @click="handleSaveQuota">保存配额</n-button>
-      </div>
-      <n-tag v-if="dailyUsage" type="info" size="small" :bordered="false" style="margin-top: 12px">{{ dailyUsage }}</n-tag>
-    </n-card>
-
     <n-card title="用量明细" :bordered="true">
       <n-space style="margin-bottom: 12px" align="center">
         <n-select
@@ -233,23 +153,3 @@ onMounted(async () => {
     </n-card>
   </div>
 </template>
-
-<style scoped>
-.quota-form {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.quota-numbers {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.quota-numbers label {
-  font-size: 12px;
-  opacity: 0.6;
-}
-</style>
