@@ -17,8 +17,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link VectorStoreResolver} 分发/缓存/失效的单测：type1 回主数据源 PG 单例，
- * type3 构建并缓存 ES 存储，type4 未接线返回 null / 向量检索报错，invalidate 关闭缓存。
+ * {@link VectorStoreResolver} 分发/缓存/失效的单测：type1 用实例 config 建 PG 单例，
+ * type3 构建并缓存 ES 存储，type4 只给关键词后端（向量检索报错），invalidate 关闭缓存。
  */
 class VectorStoreResolverTest {
 
@@ -77,10 +77,14 @@ class VectorStoreResolverTest {
     }
 
     @Test
-    void pgFulltextTypeKeywordReturnsNullAndVectorThrows() {
+    void dbFulltextTypeIsKeywordOnlyAndCaches() {
+        // 类型 4（历史名 PG_FULLTEXT）已接线为「业务库原生 BM25」：只有关键词能力，不读 config
         when(mapper.selectById(4L)).thenReturn(instance(4L, 4));
 
-        assertThat(resolver.keywordStore(4L)).isNull();
+        var first = resolver.keywordStore(4L);
+        assertThat(first).isInstanceOf(DbNativeKeywordStore.class);
+        assertThat(resolver.keywordStore(4L)).isSameAs(first);
+        // 不能当向量库用：向量列已不在业务库，缺向量后端必须显式报错而不是静默降级
         assertThatThrownBy(() -> resolver.vectorStore(4L))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("不支持向量检索");

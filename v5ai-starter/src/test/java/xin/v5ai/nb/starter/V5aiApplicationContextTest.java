@@ -53,8 +53,11 @@ class V5aiApplicationContextTest {
 
     @Test
     void phase0InfrastructurePropertiesAreConfigured() {
+        // 方言占位符已解析：未设 V5AI_DB_DIALECT 时默认 postgresql，locations 指向 common + postgresql 两目录
+        assertThat(environment.getProperty("v5ai.db.dialect"))
+                .isEqualTo("postgresql");
         assertThat(environment.getProperty("spring.flyway.locations"))
-                .isEqualTo("classpath:db/migration");
+                .isEqualTo("classpath:db/migration/common,classpath:db/migration/postgresql");
         assertThat(environment.getProperty("v5ai.redisson.address"))
                 .isEqualTo("redis://localhost:6379");
         assertThat(environment.getProperty("v5ai.minio.bucket"))

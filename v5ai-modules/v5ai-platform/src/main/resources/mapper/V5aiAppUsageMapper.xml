@@ -2,12 +2,26 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="xin.v5ai.nb.platform.mapper.V5aiAppUsageMapper">
 
+    <!-- 按 (agent_key, usage_date) 累加用量。PG 用 ON CONFLICT + EXCLUDED；
+         MySQL 用 ON DUPLICATE KEY UPDATE，裸列名即「已存在行的旧值」、VALUES() 是「本行要写入的新值」。
+         VALUES() 在 8.0.20 起标记废弃但仍可用；本仓库 MySQL 基线下限是 8.0.17，
+         换成 AS new 别名语法需要 8.0.19+，故保留 VALUES() 写法。 -->
     <insert id="upsertUsage">
         INSERT INTO v5ai_app_usage (agent_key, usage_date, model_calls, tokens, updated_at)
         VALUES (#{agentKey}, #{usageDate}, 1, #{tokens}, now())
-            ON CONFLICT (agent_key, usage_date) DO UPDATE
-                                                       SET model_calls = v5ai_app_usage.model_calls + 1,
-                                                       tokens = v5ai_app_usage.tokens + EXCLUDED.tokens,
-                                                       updated_at = now()
+        <choose>
+            <when test="_databaseId == 'mysql'">
+                ON DUPLICATE KEY UPDATE
+                model_calls = model_calls + 1,
+                tokens      = tokens + VALUES(tokens),
+                updated_at  = now()
+            </when>
+            <otherwise>
+                ON CONFLICT (agent_key, usage_date) DO UPDATE
+                SET model_calls = v5ai_app_usage.model_calls + 1,
+                    tokens      = v5ai_app_usage.tokens + EXCLUDED.tokens,
+                    updated_at  = now()
+            </otherwise>
+        </choose>
     </insert>
 </mapper>

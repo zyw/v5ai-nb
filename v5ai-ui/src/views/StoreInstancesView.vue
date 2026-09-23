@@ -63,7 +63,8 @@ const typeOptions = [
   { label: 'PGVector', value: 1 },
   { label: 'Milvus', value: 2 },
   { label: 'ElasticSearch', value: 3 },
-  { label: 'PGFullText', value: 4 }
+  // 业务库原生 BM25（历史名 PGFullText）：分词存在业务库切片行上，无需任何连接参数
+  { label: '业务库 BM25', value: 4 }
 ]
 
 const statusOptions = [
@@ -93,7 +94,8 @@ const rules = computed<FormRules>(() => {
       { validator: validatePort, trigger: ['blur', 'change'] }
     ]
   }
-  if (form.type === 1 || form.type === 4) {
+  // 类型 4（业务库 BM25）不渲染任何连接参数项，也就不参与校验（Naive 只校验已挂载的 FormItem）
+  if (form.type === 1) {
     // common['configForm.database'] = [{ required: true, message: '请输入数据库名', trigger: 'blur' }]
     common['configForm.username'] = [{ required: true, message: '请输入用户名', trigger: 'blur' }]
   } else if (form.type === 2) {
@@ -240,7 +242,7 @@ const form = reactive<StoreInstanceRequest>({
   isDefault: false
 })
 
-/** 类型选项随分类联动：向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎支持 ELASTICSEARCH/PG_FULLTEXT */
+/** 类型选项随分类联动：向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎支持 ELASTICSEARCH/业务库 BM25 */
 const formTypeOptions = computed(() =>
   form.category === 1
     ? typeOptions.filter((o) => o.value === 1 || o.value === 2 || o.value === 3)
@@ -264,13 +266,12 @@ interface ConfigForm {
 
 /** 各类型连接参数默认值（与后端 DO 默认值一致） */
 const CONFIG_DEFAULTS: Record<number, ConfigForm> = {
-  // PG_VECTOR / PG_FULLTEXT → PgVectorConfigDO
+  // PG_VECTOR → PgVectorConfigDO（类型 4 无连接参数，故不在表内）
   1: { host: 'localhost', port: 5432, database: 'v5ai_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
   // MILVUS → MilvusVectorConfigDO
   2: { host: 'localhost', port: 19530, database: 'default', username: '', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
   // ELASTICSEARCH → ElasticsearchVectorConfigDO
-  3: { host: 'localhost', port: 9200, database: '', username: '', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false },
-  4: { host: 'localhost', port: 5432, database: 'v5ai_ai', username: 'postgres', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false }
+  3: { host: 'localhost', port: 9200, database: '', username: '', password: '', token: '', scheme: 'http', sslEnabled: false, sslVerificationDisabled: false }
 }
 
 const configForm = reactive<ConfigForm>({ ...CONFIG_DEFAULTS[1] })
@@ -336,11 +337,15 @@ function buildConfigJson(type: number): string {
     const t = v.trim()
     return t || undefined
   }
+  // 业务库 BM25：没有外部连接可配，直接落空对象
+  if (type === 4) {
+    return '{}'
+  }
   const defaults = CONFIG_DEFAULTS[type] ?? CONFIG_DEFAULTS[1]
   const base = { host: text(configForm.host) ?? 'localhost', port: configForm.port ?? defaults.port }
   let cfg: Record<string, unknown>
-  if (type === 1 || type === 4) {
-    // PgVectorConfigDO（PGFullText 同结构）
+  if (type === 1) {
+    // PgVectorConfigDO
     cfg = {
       ...base,
       database: text(configForm.database),
@@ -632,7 +637,15 @@ onMounted(reload)
             <n-divider title-placement="left" style="margin: 8px 0 16px">连接参数</n-divider>
           </n-grid-item>
           <!-- 连接参数：按类型动态渲染，保存时自动生成对应 DO 的 JSON -->
-          <template v-if="form.type === 1 || form.type === 4">
+          <template v-if="form.type === 4">
+            <n-grid-item :span="24">
+              <n-text depth="3" style="font-size: 12px">
+                该类型不连外部服务：分词与 BM25 统计都走应用自身的业务库（PostgreSQL / MySQL 均可），
+                因此无需连接参数，保存后 config 为空对象。
+              </n-text>
+            </n-grid-item>
+          </template>
+          <template v-else-if="form.type === 1">
             <n-form-item-gi :span="12" label="主机地址" path="configForm.host">
               <n-input v-model:value="configForm.host" placeholder="localhost" />
             </n-form-item-gi>

@@ -70,7 +70,7 @@ class PgBm25KeywordSearchTest {
 
     @Test
     void emptyHitsWhenNoCandidateMatches() {
-        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), anyInt())).thenReturn(List.of());
+        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), any(), anyInt())).thenReturn(List.of());
 
         assertThat(search.search(List.of(1L), "温度控制", 5)).contains(List.of());
         // 无候选时不再查询 df/avgdl（省两次往返）
@@ -82,7 +82,7 @@ class PgBm25KeywordSearchTest {
         var high = row(1L, 0, "高温", "温度", "温度", "温度", "控制", "a", "b", "c", "d", "e", "f");
         var low = row(2L, 0, "常温", "温度", "控制", "a", "b", "c", "d", "e", "f", "g", "h");
         var stale = row(3L, 0, "未重建", new String[0]);
-        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), anyInt()))
+        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), any(), anyInt()))
                 .thenReturn(List.of(low, stale, high));
         stubCorpus(10L, 10.0);
 
@@ -101,7 +101,7 @@ class PgBm25KeywordSearchTest {
     void truncatesToTopK() {
         var first = row(1L, 0, "一", "温度", "控制");
         var second = row(2L, 0, "二", "温度", "控制");
-        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), anyInt()))
+        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), any(), anyInt()))
                 .thenReturn(List.of(first, second));
         stubCorpus(10L, 10.0);
 
@@ -110,12 +110,12 @@ class PgBm25KeywordSearchTest {
 
     @Test
     void candidateLimitExceedsTopK() {
-        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), anyInt())).thenReturn(List.of());
+        when(chunkMapper.findChunksByKeywordTokens(anyList(), any(), any(), anyInt())).thenReturn(List.of());
 
         search.search(List.of(1L), "温度控制", 30);
 
         // 候选必须多于返回条数（截断先于计分会丢召回）：max(30×5, 200)
-        verify(chunkMapper).findChunksByKeywordTokens(anyList(), any(), eq(200));
+        verify(chunkMapper).findChunksByKeywordTokens(anyList(), any(), any(), eq(200));
     }
 
     @Test

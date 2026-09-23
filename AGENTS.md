@@ -20,7 +20,7 @@
 | JDK | 21（`maven.compiler.release=21`） |
 | Spring Boot | 4.1.0（Servlet MVC 栈，非 WebFlux；响应式仅用于运行时事件流/SSE） |
 | ORM | MyBatis-Plus 3.5.12（显式装配 `SqlSessionFactory` 以兼容 Spring Boot 4） |
-| 数据库 | PostgreSQL 14+ + pgvector（`vector(1536)` 余弦检索），Flyway 迁移 |
+| 数据库 | PostgreSQL 14+ + pgvector（默认）**或** MySQL 8.0.17+，由 `V5AI_DB_DIALECT` 切换（见 `docs/adr/0012`）。向量检索走独立「存储实例」（pgvector / Milvus / ES），MySQL 部署下不占业务库 |
 | 认证 | Sa-Token 1.44.0 + JWT（`is-concurrent: false`，token 前缀 `Bearer`） |
 | 加密 | BCrypt（API Key / 密码）、AES-GCM（模型凭据） |
 | 运行时 | AgentScope Java 2.0（`agentscope-harness`、`extensions-model-openai/dashscope`） |
@@ -188,12 +188,14 @@ flowchart LR
 
 ## 7. 数据库与迁移
 
-- 迁移脚本位于 `v5ai-platform/src/main/resources/db/migration/`，命名 `V<n>__<name>.sql`，Flyway 管理（表 `v5ai_flyway_schema_history`）。`spring.flyway.locations: classpath:db/migration` 扫描所有 classpath（v5ai-platform 为 starter 依赖）。
+- 迁移脚本位于 `v5ai-platform/src/main/resources/db/migration/`，**按方言分三个目录**：`common/`（两方言通用）、`postgresql/`（既有 V1–V49）、`mysql/`（`V1__baseline_schema.sql` + `V2__baseline_seed.sql`，从当前 head 全量基线起步）。加载哪套由 `V5AI_DB_DIALECT`（默认 postgresql）决定：`spring.flyway.locations: classpath:db/migration/common,classpath:db/migration/${v5ai.db.dialect}`。命名 `V<n>__<name>.sql`，Flyway 管理（表 `v5ai_flyway_schema_history`）。
+- **同一版本号在一个方言下只能出现一次**：要么只在 `common/`（写法必须 PG/MySQL 都成立），要么在 `postgresql/` 与 `mysql/` 各写一份同号。下一个新迁移从 **V51** 起号。运行时 SQL 的方言分支不用配置项——`_databaseId`（由 `VendorDatabaseIdProvider` 按连接元数据识别）与 `DataBaseHelper` 自动判定，mapper 里 `<when test="_databaseId == 'mysql'">`；**新增 PG 专有 SQL 时必须同时给 MySQL 分支**，否则 MySQL 部署静默走错方言。取舍与坑（as_cs 排序规则、DATETIME(3) 无时区、`ON DUPLICATE KEY UPDATE` 赋值顺序、InnoDB 外键自动建索引、8.0.17 下限）见 `docs/adr/0012-multi-dialect-database-support.md`。
 - **迁移历史已冻结于 V41**（2026-09-19）：V1–V41 只增不改，逐版本做了什么见 `v5ai-platform/src/main/resources/db/migration/README.md`；V42 起继续递增（V43 补齐列/表注释、V44 删除遗留死表 `v5ai_agent_model`）。
 - **想读懂当前 schema，不要 replay 历史文件**：直接看 `docs/db/schema.md`（迁移头的全貌 + 每列注释）。它是快照，新增迁移后按 `docs/db/dump-schema.sql` 重新生成；决策取舍见 `docs/adr/0008-migration-history-frozen.md`。
 - 所有表以 `v5ai_` 前缀。运行时表 UUID 列使用 VARCHAR（避免 `uuid = character varying` 报错）。
 - 需要 pgvector 扩展（`CREATE EXTENSION IF NOT EXISTS vector` 在迁移中幂等执行）。
 - 添加新表/改列时**必须新增一个递增的 V 版本迁移**，不要修改已应用的历史迁移。
+- Docker 部署按方言拆成两份 Compose（`script/docker/docker-compose-postgresql.yml` 装 postgres、`docker-compose-mysql.yml` 装 mysql，各自都带 redis + v5ai + nginx），同一时刻只跑一份，用法见 README「Docker Compose 部署」。
 
 ## 8. 前端（v5ai-ui）
 

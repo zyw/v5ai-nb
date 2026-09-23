@@ -13,9 +13,12 @@ spring:
       strict: true
       datasource:
         # 主库数据源
+        # 切换 MySQL：V5AI_DB_DIALECT=mysql、V5AI_DATASOURCE_DRIVER=com.mysql.cj.jdbc.Driver，
+        # V5AI_DATASOURCE_URL 例：jdbc:mysql://localhost:3306/v5ai_nb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+        # （dialect 决定 Flyway 加载哪个迁移目录，必须与 URL 配套）
         master:
           type: ${spring.datasource.type}
-          driverClassName: org.postgresql.Driver
+          driverClassName: ${V5AI_DATASOURCE_DRIVER:org.postgresql.Driver}
           # JDBC 参数可按部署环境补充
           url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}
           username: ${V5AI_DATASOURCE_USERNAME:v5ai}

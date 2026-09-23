@@ -12,8 +12,9 @@
 |---|---|---|
 | JDK | 21+ | 项目编译目标为 Java 21 |
 | Maven | 3.9+ | 多模块构建 |
-| PostgreSQL | 14+ | 业务数据库（含 pgvector 扩展） |
-| pgvector | 0.5+ | 向量检索扩展 |
+| PostgreSQL | 14+ | 业务数据库（默认方言，含 pgvector 扩展） |
+| pgvector | 0.5+ | 向量检索扩展（仅 PG 部署；MySQL 部署改用外部向量存储实例） |
+| MySQL | 8.0.17+ | **可选替代**：业务库方言，`V5AI_DB_DIALECT=mysql` 启用（见 2.1b） |
 | Node.js | `^20.19` 或 `>=22.12` | Vite 7 的 Node 版本要求 |
 | npm | 9+ | 随 Node 安装 |
 | Redis | 6+ | **必需**：Sa-Token 会话、刷新令牌、登录验证码校验都存在 Redis，登录与运行接口都依赖它 |
@@ -46,6 +47,50 @@ SQL
 > - `CREATE EXTENSION vector` 需要超级用户权限；若 DBA 已预装扩展，则普通用户可直接执行。
 > - 应用启动时 Flyway 会再次执行 `CREATE EXTENSION IF NOT EXISTS vector`（幂等）。
 > - 若 `vector` 类型不存在，报错形如 `type "vector" does not exist`，请先执行上面的扩展安装。
+
+### 2.1b MySQL 业务库（可选替代）
+
+业务库支持 PostgreSQL（默认）与 MySQL 两者，由一个配置项切换；**同一实例只能是其一**，
+完整取舍见 `docs/adr/0012-multi-dialect-database-support.md`。
+
+用仓库的 Compose 部署时直接换文件即可（`mysql` 服务已带下面这套服务器参数，方言/驱动/连接串的
+默认值也取好了 MySQL，`.env` 只需给库名与口令）：
+
+```bash
+cd script/docker
+docker compose -f docker-compose-mysql.yml --env-file ../../.env up -d --build
+```
+
+手工/已有 MySQL 时，服务器参数必须对齐下面两点（**排序规则必须是 `as_cs`**：区分大小写与重音，
+与 PostgreSQL 现网一致；MySQL 默认的 `_ai_ci` 会放宽唯一键与登录名的匹配）：
+
+```bash
+docker run -d --name v5ai-mysql -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=change-me -e MYSQL_DATABASE=v5ai_nb \
+  -e MYSQL_USER=v5ai -e MYSQL_PASSWORD=change-me \
+  mysql:8.0 --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_as_cs \
+             --default-time-zone=+08:00
+# 库已存在时（如用外部 RDS）需确认其字符集与排序规则：
+mysql -h 127.0.0.1 -u v5ai -pchange-me -e "CREATE DATABASE IF NOT EXISTS v5ai_nb CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs;"
+```
+
+非 Compose 部署时，三个变量成组设置（`V5AI_DB_DIALECT` 决定 Flyway 加载哪套迁移，必须与 URL 配套）：
+
+```bash
+export V5AI_DB_DIALECT=mysql
+export V5AI_DATASOURCE_DRIVER=com.mysql.cj.jdbc.Driver
+export V5AI_DATASOURCE_URL='jdbc:mysql://localhost:3306/v5ai_nb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
+```
+
+空库首次启动会由 Flyway 建出全部表与种子数据（`admin`/`admin`，与 PG 部署一致），
+MySQL 侧的迁移只有两个基线文件，不重放 PG 的 V1–V49 历史。
+
+> **向量检索要另配存储实例**：MySQL 没有 pgvector。在管理端「存储实例」里建一个
+> Milvus 或 Elasticsearch 实例并在知识库上绑定，向量这一路才可用（PG 部署可以直接用 pgvector 实例）。
+> 关键词这一路不依赖外部服务：把知识库的搜索引擎实例配成类型 4「业务库 BM25」即可
+> （PG/MySQL 都支持），或者干脆绑 Elasticsearch。
+> 类型 4 **不是**「需要另一个 PG 库」——它就用应用自己的业务库，无需连接参数。
+> 注意 `PG→MySQL 的存量数据搬迁不在支持范围内`，MySQL 只面向全新部署。
 
 ### 2.2 Redis（必需）
 

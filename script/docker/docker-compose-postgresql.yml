@@ -1,3 +1,6 @@
+# PostgreSQL 版部署：postgres + redis + v5ai + nginx（业务库方言 postgresql）。
+# MySQL 业务库请用同目录的 docker-compose-mysql.yml；两者只会装其中一个库。
+# 启动：docker compose -f docker-compose-postgresql.yml --env-file ../../.env up -d --build
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -46,9 +49,16 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      V5AI_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-v5ai_nb}
-      V5AI_DATASOURCE_USERNAME: ${POSTGRES_USER:-v5ai}
-      V5AI_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      # 本文件只装 PostgreSQL：方言/驱动/连接串都取 PG 默认值，无需在 .env 里改。
+      # 要用 MySQL 业务库请改用 docker-compose-mysql.yml（同一份 .env 即可）。
+      # 注：下面三行的「默认值里再套变量」写法需要 Docker Compose v2（compose-spec 的嵌套插值，
+      # podman-compose 不支持）。要指向外部 RDS/自建库时，直接在 .env 里给完整的
+      # V5AI_DATASOURCE_URL / USERNAME / PASSWORD 即可覆盖。
+      V5AI_DB_DIALECT: ${V5AI_DB_DIALECT:-postgresql}
+      V5AI_DATASOURCE_DRIVER: ${V5AI_DATASOURCE_DRIVER:-org.postgresql.Driver}
+      V5AI_DATASOURCE_URL: ${V5AI_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-v5ai_nb}}
+      V5AI_DATASOURCE_USERNAME: ${V5AI_DATASOURCE_USERNAME:-${POSTGRES_USER:-v5ai}}
+      V5AI_DATASOURCE_PASSWORD: ${V5AI_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD:-change-me}}
       V5AI_REDIS_HOST: redis
       V5AI_REDIS_PORT: 6379
       V5AI_REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
