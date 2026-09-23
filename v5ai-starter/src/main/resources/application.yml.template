@@ -1,0 +1,407 @@
+# =============================================================================
+# v5ai-nb 全量配置模板
+#
+# 内容 = 当前 application.yml（原样）+ 代码中全部可选配置项
+#        （来源：各模块 @ConfigurationProperties / @Value / @ConditionalOnProperty）。
+# 用法：cp application.yml.template application.yml
+#       profile 专属的连接配置（数据源 / Redis / Redisson / MinIO）见文件末尾说明，
+#       或参考 application-dev.yml.template / application-home.yml。
+#
+# 约定：
+#   ${ENV_VAR:default}  先读环境变量，未设置时用 default，环境变量清单见仓库根 .env.example
+#   @profiles.active@   Maven 资源过滤占位符（@...@），构建时替换，勿手工改
+#   「可选」标记的项：不配置即使用代码内默认值，写在这里只为显式可见
+# =============================================================================
+
+# 开发环境配置
+server:
+  # 服务器的HTTP端口，默认为8080
+  port: 8080
+  servlet:
+    # 应用的访问路径
+    context-path: /
+  # jetty 配置
+  jetty:
+    # HTTP post内容的最大大小。当值为-1时，默认值为大小是无限的
+    max-http-form-post-size: -1
+    threads:
+      # 最小线程数
+      min: 8
+      # 最大线程数
+      max: 256
+
+# 用户配置
+user:
+  password:
+    # 密码最大错误次数
+    maxRetryCount: 5
+    # 密码锁定时间（默认10分钟）
+    lockTime: 10
+
+spring:
+  application:
+    name: v5ai-nb
+  threads:
+    # 开启虚拟线程 仅jdk21可用
+    virtual:
+      enabled: true
+  task:
+    execution:
+      # 从 springboot 3.5 开始 spring自带线程池
+      # 不再需要 AsyncConfig与ThreadPoolConfig 可直接注入线程池使用
+      thread-name-prefix: async-
+      # 由spring自己初始化线程池
+      mode: force
+  # 资源信息
+  messages:
+    # 国际化资源文件路径
+    basename: i18n/messages
+  profiles:
+    active: @profiles.active@
+  # 文件上传
+  servlet:
+    multipart:
+      # 单个文件大小
+      max-file-size: ${V5AI_UPLOAD_MAX_FILE_SIZE:50MB}
+      # 设置总上传的文件大小
+      max-request-size: ${V5AI_UPLOAD_MAX_REQUEST_SIZE:60MB}
+  mvc:
+    # 设置静态资源路径 防止所有请求都去查静态资源
+    static-path-pattern: /static/**
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+  jackson:
+    serialization:
+      # 格式化输出
+      indent_output: false
+      # 忽略无法转换的对象
+      fail_on_empty_beans: false
+    deserialization:
+      # 允许对象忽略json中不存在的属性
+      fail_on_unknown_properties: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    table: v5ai_flyway_schema_history
+
+# Sa-Token配置
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: Authorization
+  # token前缀
+  token-prefix: Bearer
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
+  is-concurrent: false
+  # jwt秘钥
+  jwt-secret-key: ${V5AI_JWT_SECRET:PFIcuElmiVI4tHg1H7TbQjvWQm4zkz57}
+
+mybatis-plus:
+  mapperLocations: classpath*:mapper/**/*Mapper.xml
+  # 多包名使用 例如 org.dromara.**.mapper,org.xxx.**.mapper
+  mapperPackage: xin.v5ai.nb.**.mapper
+  configuration:
+    # MyBatis 配置
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+  sql-log:
+    # 完整 SQL 输出开关
+    enabled: true
+    # 输出方式，可选 console、log
+    output: console
+
+
+# 日志配置
+logging:
+  level:
+    xin.v5ai.nb: @logging.level@
+    org.springframework: warn
+    org.mybatis.spring.mapper: error
+    org.apache.fury: warn
+  config: classpath:logback-plus.xml
+
+# SSE 断开等 IOException 的日志豁免路径（GlobalExceptionHandler 读取 message.path，
+# 请求 URI 命中该子串时直接忽略，避免关闭浏览器/断流刷屏；代码未给默认值，建议显式配置）
+# message:
+#   path: /stream
+
+
+v5ai:
+  # security配置
+  security:
+    # 排除路径（无需登录即可访问）
+    excludes:
+      - /api/v1/agents/**
+
+  # 凭据加密（模型 API Key、MCP headers/env 等 AES-GCM 加解密所用）
+  crypto:
+    # 加密算法实现：aes（默认，AES-GCM）| sm4
+    type: aes
+    # 对称密钥（32 字节），生产必须通过环境变量替换；sm4 实现额外需要 iv
+    secret-key: ${V5AI_CREDENTIAL_CIPHER_KEY:tggsbeaGlYKF8JJ9eAaZixMkJIqaqhwe}
+    # SM4 初始化向量（仅 v5ai.crypto.type=sm4 时需要）
+    # iv:
+
+  # 数据加密（MyBatis 字段级加解密，@EncryptField）
+  mybatis-encryptor:
+    # 是否开启加密
+    enable: false
+    # 默认加密算法
+    algorithm: BASE64
+    # 编码方式 BASE64/HEX。默认BASE64
+    encode: BASE64
+    # 安全秘钥 对称算法的秘钥 如：AES，SM4
+    password:
+    # 公私钥 非对称算法的公私钥 如：SM2，RSA
+    publicKey:
+    privateKey:
+
+  # api接口加密
+  api-decrypt:
+    # 是否开启全局接口加密
+    enabled: true
+    # AES 加密头标识
+    headerFlag: encrypt-key
+    # 响应加密公钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+    # 对应前端解密私钥 MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAObq7yrxfvyieZtTjAYyrdvi59tYTXxjO5ajmPCRSXBY9M9wQ1tli297JN6mnY53UJMNyOFNSZVi8WSFoIXjpR87FmvChJlzeN/dZdd3SEs48Ee66XKeSePYqxa8oO5GKDsnajgpsOHKXSeeVSIysiIPS2/WsEqk0In9P4w3RsRFAgMBAAECgYBiMEWwce24SPICnRzuScBpvmsudrbEDIH7BOd0a6LZlcnLJwZNJ7mJlshPsHNQb+WgEf135+BBGEhioPtn0yuTdEuKP4kB9UdYUKiayWCoWhJpesv7sAD4RDClV7dhuV+gcd1AXD+YzyRIPbGm0VC2U+4q8/+UPRpVjqskbLVTgQJBAPRpou7g3S8n4XB527kq0D8I3+ZYwMxZhszwhrCDpJU319+ucmpLVwYIzDmZVeID2QQdUaDfIEViFHu95xDrGiUCQQDx3YOKn3yaEctk/ERVn7hDAyAXUbd8/pv2b24/M/l1ZevlsFem8U4Jk5Mu64t3z3YGJoymEjQmbucwT01iKhehAkEAxlnccsRmfFh/KkqauKE4M4++NTAd9zlInpUsmZ+cN8UEGnF2RTEzRKBrLOt1uWCqBB7PGiE6DVTVjr7FAQPrSQJAT5yeY87DcONSk9cFlzmPqV8p/QME5rvYEnHzVBKDlkUKNPyqnWToTvaoh9U4fyNmsfeWbEOprszqhFhWHG3GgQJAK8+ynmyFhaw63+Hx2KU5zR4hVuQso2IzrEurGxCxybV6mR7VBerb4502+EPx3PmOgxQL+niUFhcMWxcvBFP9+A==
+    publicKey: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDm6u8q8X78onmbU4wGMq3b4ufbWE18YzuWo5jwkUlwWPTPcENbZYtveyTepp2Od1CTDcjhTUmVYvFkhaCF46UfOxZrwoSZc3jf3WXXd0hLOPBHuulynknj2KsWvKDuRig7J2o4KbDhyl0nnlUiMrIiD0tv1rBKpNCJ/T+MN0bERQIDAQAB
+    # 请求解密私钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+    # 对应前端加密公钥 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDvEDuRIOM3oZPWj9Ukoc5pQklR4PFH6/clnjeFqjDLIgDyQvjxhgqAZQA+E9eD6qu6FsXPmK8djcL+nh3cFHz4pX473jDvO3Sve+8yL3VRQ0n2pRgQ2a01MJsy+WwTZCBYWf0VnLRIvANUoWQgy9vz94q7Va44dg7A1/3ICf+xAwIDAQAB
+    privateKey: MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw=
+
+  # 验证码配置
+  captcha:
+    # 是否启用验证码校验
+    enable: true
+    # 验证码类型 slider=图片滑块
+    type: slider
+    # 数字验证码位数（type=math 时生效）
+    # numberLength:
+    # 字符验证码长度（type=char 时生效）
+    # charLength:
+    # 登录错误次数达到该值后，再次登录需先通过滑块验证（需小于 user.password.maxRetryCount）
+    slider-threshold: 3
+    # 滑块拼图令牌有效期（分钟）
+    expire-minutes: 2
+
+  # 刷新令牌配置
+  auth:
+    # 刷新令牌有效期（分钟，默认 30 天）
+    refresh-token-ttl: 43200
+
+  # 跨域（ResourcesConfig，默认放行全部来源/方法/头）
+  web:
+    cors:
+      # 是否允许携带凭证
+      allowCredentials: true
+      # 允许的来源匹配规则
+      allowedOriginPatterns:
+        - "*"
+      # 允许的请求头
+      allowedHeaders:
+        - "*"
+      # 允许的请求方法
+      allowedMethods:
+        - "*"
+      # 预检请求缓存时间，单位秒
+      maxAge: 1800
+
+  # XSS 过滤（默认关闭：仅当 enabled=true 时注册 XssFilter）
+  xss:
+    enabled: false
+    # 跳过 XSS 过滤的请求路径
+    excludeUrls: []
+
+  # Agent 运行时（AgentScope）
+  agentscope:
+    # Agent 工作区（Skill 文件注入目录）
+    workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
+    # Agent 状态目录（本地 JsonFileAgentStateStore 使用）
+    state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}
+    # 联网搜索（Tavily）API Key；为空则不启用联网搜索工具
+    tavily-api-key: ${V5AI_TAVILY_API_KEY:}
+    # 用量估算里每张图片折算的 token 数（仅「模型未回报真实用量」时的兜底口径）
+    image-tokens-per-image: 1024
+    # 是否把模型思考过程随助手消息落库（关闭后照常流式推送，但不持久化；思考从不回放给模型）
+    reasoning-persist-enabled: true
+
+    # 同会话历史窗口：一次运行最多把多少历史发给模型
+    history:
+      # 是否启用窗口裁剪（关闭=整个会话历史全发，长会话会顶爆模型窗口，仅排查问题时临时关）
+      enabled: true
+      # 保留的历史条数上限（含首尾）
+      maxMessages: 40
+      # 保留的历史正文字符上限（不含图片字节）
+      maxChars: 8000
+      # 保底条数：预算再紧也要保留的最近消息条数
+      minMessages: 2
+      # 裁剪后首条若是助手回答则继续前丢，避免出现「没有提问的回答」
+      alignToUserTurn: true
+
+  # 对话门户（v5ai-ui-chat）
+  chat:
+    # 图片附件预算与频控（超出部分退化为 [图片] 文字占位）
+    attachment:
+      # 单张附件体积上限（字节），默认 5MB
+      maxFileSizeBytes: 5242880
+      # 每把 API Key 每分钟允许的上传次数（滑动窗口，进程内）
+      uploadsPerMinute: 20
+      # 每条消息允许携带的新图数量上限
+      maxPerMessage: 3
+      # 历史回放中图片的累计体积预算（字节），默认 16MB
+      historyBudgetBytes: 16777216
+
+    # 会话标题（模型改写，可选覆盖；失败/超时静默保留兜底名）
+    conversation-title:
+      # 是否启用模型改写标题
+      enabled: true
+      # 单次标题生成超时（毫秒）
+      timeoutMillis: 5000
+      # 标题长度上限（码点）
+      maxLength: 30
+
+    # 会话摘要（把历史窗口之外的旧内容压缩成一段文本，异步、失败静默、不记用量）
+    # 用哪个模型不在这里配：由 Agent 的「次要模型」决定（未配置则回退该 Agent 绑定的对话模型），
+    # 与标题改写共用同一个字段。原 v5ai.chat.conversation-summary.model-id 全局项已下线。
+    conversation-summary:
+      # 是否启用摘要（关闭后窗口外内容直接丢弃）
+      enabled: true
+      # 单次摘要生成超时（毫秒）
+      timeoutMillis: 20000
+      # 触发阈值：水位之后至少新增多少条「窗口外」消息才再压一次
+      minNewMessages: 10
+      # 一次最多喂给摘要模型的窗口外消息条数
+      maxInputMessages: 100
+      # 单条输入消息的截断长度（字符）
+      maxInputCharsPerMessage: 500
+      # 摘要长度上限（字符）
+      maxSummaryChars: 1000
+      # 距上一次摘要至少间隔多少秒才允许再生成（防抖）
+      minIntervalSeconds: 30
+
+  # 模型连通性测试（Agent 配置生成器复用同一超时）
+  model:
+    connection:
+      test:
+        # 超时（毫秒，默认 90000=90s；Ollama 冷启动加载大模型可能较慢）
+        timeout.ms: ${V5AI_MODEL_CONNECTION_TEST_TIMEOUT_MS:90000}
+
+  # 通用资源存储（plm_resource）：LOCAL=本地磁盘 MINIO=MinIO
+  storage:
+    type: ${V5AI_STORAGE_TYPE:LOCAL}
+    # LOCAL 模式的存储根目录
+    local-dir: ${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}
+
+  # MinIO（v5ai.storage.type=MINIO 时使用）
+  minio:
+    endpoint: ${V5AI_MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${V5AI_MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${V5AI_MINIO_SECRET_KEY:minioadmin}
+    bucket: ${V5AI_MINIO_BUCKET:v5ai}
+
+  # MCP
+  mcp:
+    # Stdio MCP 命令白名单（逗号分隔）；项可写纯文件名（node.exe）或完整路径（D:/nvm/v24.9.0/node.exe）；
+    # 为空表示开发模式不限制，生产环境必须配置
+    stdio-command-whitelist: ${V5AI_MCP_STDIO_COMMAND_WHITELIST:}
+
+  # 知识库索引 Worker（定时扫描 PENDING / 可重试 FAILED 任务）
+  worker:
+    # 扫描间隔（毫秒）
+    scan-interval-ms: 5000
+    # 首次扫描延迟（毫秒）
+    initial-delay-ms: 10000
+    # 单次扫描处理的任务数上限
+    batch-size: 5
+
+  # RAG
+  rag:
+    # 外部文档解析服务。知识库选择 docling/mineru 时，服务不可用、超时、异常或返回空结果，
+    # Worker 会记录 WARN 并自动回退到 default 内置解析器；default 解析失败才会使任务失败。
+    parser:
+      # Docling Serve 配置。服务地址和 API Key 只通过部署配置/环境变量提供，不进入知识库 JSON。
+      docling:
+        # 是否允许 Worker 调用 Docling；false 时选择 docling 仍会 WARN 并回退 default。
+        enabled: ${V5AI_DOCLING_ENABLED:false}
+        # Docling Serve 地址，例如 http://127.0.0.1:5001
+        base-url: ${V5AI_DOCLING_URL:http://127.0.0.1:5001}
+        # 可选的 X-Api-Key；不要把密钥提交到前端或写入知识库配置。
+        api-key: ${V5AI_DOCLING_API_KEY:}
+        # 建立 HTTP 连接超时（毫秒）。
+        connect-timeout-millis: ${V5AI_DOCLING_CONNECT_TIMEOUT_MS:5000}
+        # 单次健康检查、提交、轮询和结果请求的读取超时（毫秒）。
+        read-timeout-millis: ${V5AI_DOCLING_READ_TIMEOUT_MS:600000}
+        # Docling 异步任务轮询间隔（毫秒）。
+        poll-interval-millis: ${V5AI_DOCLING_POLL_INTERVAL_MS:2000}
+        # 单个 Docling 任务允许等待的最长时间（毫秒）。
+        poll-timeout-millis: ${V5AI_DOCLING_POLL_TIMEOUT_MS:1800000}
+        # Worker 进程内同时提交/处理的 Docling 任务数上限。
+        concurrency: ${V5AI_DOCLING_CONCURRENCY:3}
+
+      # MinerU Router 配置，接口契约对应 /health、/tasks、/tasks/{task_id} 和结果接口。
+      # MinerU 可选 headers 用于部署层认证时再配置；不要在知识库 JSON 或前端提交。
+      mineru:
+        # 是否允许 Worker 调用 MinerU；false 时选择 mineru 仍会 WARN 并回退 default。
+        enabled: ${V5AI_MINERU_ENABLED:false}
+        # MinerU Router 地址，例如 http://127.0.0.1:8000
+        base-url: ${V5AI_MINERU_URL:http://127.0.0.1:8000}
+        # 可选请求头，例如 X-Api-Key；敏感值建议通过独立部署配置注入并避免提交到代码仓库。
+        headers: {}
+        # 建立连接超时（毫秒）。
+        connect-timeout-millis: ${V5AI_MINERU_CONNECT_TIMEOUT_MS:5000}
+        # 单次健康检查、提交、轮询和结果请求的读取超时（毫秒）。
+        read-timeout-millis: ${V5AI_MINERU_READ_TIMEOUT_MS:600000}
+        # MinerU 异步任务轮询间隔（毫秒）。
+        poll-interval-millis: ${V5AI_MINERU_POLL_INTERVAL_MS:3000}
+        # 单个 MinerU 任务允许等待的最长时间（毫秒）。
+        poll-timeout-millis: ${V5AI_MINERU_POLL_TIMEOUT_MS:1800000}
+
+    smart-chunk:
+      # 智能切片调用模型生成切片方案的超时（秒）
+      timeout-seconds: 60
+
+  # Skill
+  skill:
+    ai:
+      # Skill 内容 AI 生成的调用超时（秒）
+      timeout-seconds: 90
+
+  # 向量库 / 检索存储连通性测试
+  store:
+    connection-test:
+      # 连通性测试超时（秒）
+      timeout-seconds: 5
+
+# =============================================================================
+# 以下为 profile 专属配置（当前 application.yml 中不存在，
+# 由 application-dev.yml / application-home.yml 提供；此处仅作文档用途，按需启用）
+# =============================================================================
+#
+# spring:
+#   datasource:
+#     url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}
+#     username: ${V5AI_DATASOURCE_USERNAME:v5ai}
+#     password: ${V5AI_DATASOURCE_PASSWORD:change-me}
+#     driver-class-name: org.postgresql.Driver
+#   data:
+#     redis:
+#       host: ${V5AI_REDIS_HOST:localhost}
+#       port: ${V5AI_REDIS_PORT:6379}
+#       password: ${V5AI_REDIS_PASSWORD:xxxxxxxxxx}
+#       database: ${V5AI_REDIS_DATABASE:11}
+#       timeout: 10000
+#       ssl.enabled: false
+#
+# v5ai:
+#   # Redisson 线程池与单机连接池（连接地址取自 spring.data.redis）
+#   redisson:
+#     keyPrefix: ${V5AI_REDIS_KEY_PREFIX:v5ai}
+#     threads: 4
+#     nettyThreads: 8
+#     singleServerConfig:
+#       clientName: ${spring.application.name}
+#       connectionMinimumIdleSize: 8
+#       connectionPoolSize: 32
+#       idleConnectionTimeout: 10000
+#       timeout: 3000
+#       subscriptionConnectionPoolSize: 50

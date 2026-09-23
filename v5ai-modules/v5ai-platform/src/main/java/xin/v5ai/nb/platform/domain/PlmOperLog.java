@@ -1,0 +1,136 @@
+package xin.v5ai.nb.platform.domain;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+
+/**
+ * <p>
+ * 操作日志记录
+ * </p>
+ *
+ * @author ZYW
+ * @since 2026-08-24
+ */
+@Getter
+@Setter
+@ToString
+@TableName("plm_oper_log")
+public class PlmOperLog implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 日志主键
+     */
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
+    /**
+     * 模块标题
+     */
+    private String title;
+
+    /**
+     * 客户端Key
+     */
+    private String clientKey;
+
+    /**
+     * 业务类型（0其它 1新增 2修改 3删除）
+     */
+    private Integer businessType;
+
+    /**
+     * 方法名称
+     */
+    private String method;
+
+    /**
+     * 请求方式
+     */
+    private String requestMethod;
+
+    /**
+     * 操作类别（0其它 1后台用户 2手机端用户）
+     */
+    private Integer operatorType;
+
+    /**
+     * 操作人员
+     */
+    private String operName;
+
+    /**
+     * 操作用户ID
+     */
+    private Long userId;
+
+    /**
+     * 设备类型
+     */
+    private String deviceType;
+
+    /**
+     * 浏览器类型
+     */
+    private String browser;
+
+    /**
+     * 操作系统
+     */
+    private String os;
+
+    /**
+     * 请求URL
+     */
+    private String operUrl;
+
+    /**
+     * 主机地址
+     */
+    private String operIp;
+
+    /**
+     * 操作地点
+     */
+    private String operLocation;
+
+    /**
+     * 请求参数
+     */
+    private String operParam;
+
+    /**
+     * 返回参数
+     */
+    private String jsonResult;
+
+    /**
+     * 操作状态（0正常 1异常）
+     */
+    private Integer status;
+
+    /**
+     * 错误消息
+     */
+    private String errorMsg;
+
+    /**
+     * 操作时间
+     */
+    private OffsetDateTime operTime;
+
+    /**
+     * 消耗时间
+     */
+    private Long costTime;
+}

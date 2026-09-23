@@ -1,0 +1,69 @@
+# 开发环境配置模板
+#
+# 复制为 application-dev.yml 后按实际环境调整，或直接通过环境变量覆盖 ${...} 占位符。
+# 本文件只保留配置结构和安全示例值，不要写入真实数据库、Redis、MinIO 凭据。
+spring:
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    # 动态数据源文档：https://www.kancloud.cn/tracy5546/dynamic-datasource/content
+    dynamic:
+      # 默认数据源或数据源组
+      primary: master
+      # 严格模式：匹配不到数据源时直接报错
+      strict: true
+      datasource:
+        # 主库数据源
+        master:
+          type: ${spring.datasource.type}
+          driverClassName: org.postgresql.Driver
+          # JDBC 参数可按部署环境补充
+          url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}
+          username: ${V5AI_DATASOURCE_USERNAME:v5ai}
+          password: ${V5AI_DATASOURCE_PASSWORD:change-me}
+    hikari:
+      # 最大连接池数量
+      maxPoolSize: 20
+      # 最小空闲连接数量
+      minIdle: 10
+      # 获取连接等待超时（毫秒）
+      connectionTimeout: 30000
+      # 连接校验超时（毫秒）
+      validationTimeout: 5000
+      # 空闲连接最大存活时间（毫秒）
+      idleTimeout: 600000
+      # 连接最长生命周期（毫秒），0 表示无限
+      maxLifetime: 1800000
+      # 连接活性检查间隔（毫秒）
+      keepaliveTime: 30000
+  data:
+    redis:
+      host: ${V5AI_REDIS_HOST:localhost}
+      port: ${V5AI_REDIS_PORT:6379}
+      password: ${V5AI_REDIS_PASSWORD:change-me}
+      database: ${V5AI_REDIS_DATABASE:0}
+      # 需要使用数字，单位毫秒
+      timeout: 10000
+      ssl.enabled: false
+
+v5ai:
+  # Redisson 配置
+  redisson:
+    keyPrefix: ${V5AI_REDIS_KEY_PREFIX:v5ai}
+    threads: 4
+    nettyThreads: 8
+    singleServerConfig:
+      clientName: ${spring.application.name}
+      connectionMinimumIdleSize: 8
+      connectionPoolSize: 32
+      idleConnectionTimeout: 10000
+      timeout: 3000
+      subscriptionConnectionPoolSize: 50
+  storage:
+    # 通用资源存储：LOCAL=本地磁盘，MINIO=MinIO
+    type: ${V5AI_STORAGE_TYPE:LOCAL}
+    local-dir: ${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}
+  minio:
+    endpoint: ${V5AI_MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${V5AI_MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${V5AI_MINIO_SECRET_KEY:change-me}
+    bucket: ${V5AI_MINIO_BUCKET:v5ai}

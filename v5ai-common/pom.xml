@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>xin.v5ai.nb</groupId>
+        <artifactId>v5ai-nb</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <artifactId>v5ai-common</artifactId>
+    <packaging>pom</packaging>
+    <modules>
+        <module>v5ai-common-core</module>
+        <module>v5ai-common-mybatis</module>
+        <module>v5ai-common-redis</module>
+        <module>v5ai-common-satoken</module>
+        <module>v5ai-common-bom</module>
+        <module>v5ai-common-security</module>
+        <module>v5ai-common-web</module>
+        <module>v5ai-common-json</module>
+        <module>v5ai-common-encrypt</module>
+        <module>v5ai-common-agentscope</module>
+        <module>v5ai-common-storage</module>
+        <module>v5ai-common-log</module>
+        <module>v5ai-common-translation</module>
+        <module>v5ai-common-sensitive</module>
+        <module>v5ai-common-elasticsearch</module>
+        <module>v5ai-common-milvus</module>
+    </modules>
+</project>

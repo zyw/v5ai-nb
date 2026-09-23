@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>xin.v5ai.nb</groupId>
+        <artifactId>v5ai-nb</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>v5ai-modules</artifactId>
+    <packaging>pom</packaging>
+    <modules>
+        <module>v5ai-code-generator</module>
+        <module>v5ai-model</module>
+        <module>v5ai-platform</module>
+        <module>v5ai-agent</module>
+        <module>v5ai-rag</module>
+        <module>v5ai-mcp</module>
+        <module>v5ai-skill</module>
+        <module>v5ai-workflow</module>
+        <module>v5ai-worker</module>
+        <module>v5ai-runtime</module>
+    </modules>
+
+</project>

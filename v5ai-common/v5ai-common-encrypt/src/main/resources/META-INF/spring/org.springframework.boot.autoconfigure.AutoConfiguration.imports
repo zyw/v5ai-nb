@@ -1,0 +1,4 @@
+xin.v5ai.nb.common.encrypt.config.EncryptorAutoConfiguration
+xin.v5ai.nb.common.encrypt.config.ApiDecryptAutoConfiguration
+xin.v5ai.nb.common.encrypt.config.CipherAutoConfiguration
+

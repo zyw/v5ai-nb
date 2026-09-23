@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.nb.model.mapper.V5aiModelMapper">
+
+    <!--
+      Agent 对模型的引用有两个落点：绑定的对话模型（model_id）与次要模型（secondary_model_id，
+      供会话标题改写与会话摘要压缩使用）。两个都要计入——只算前者的话，仅被当作次要模型引用的
+      模型可以被删除/禁用，随后该 Agent 的标题与摘要调用会**静默失败**（那条链路 fire-and-forget
+      且只打 debug 日志，不产生任何面向用户的报错）。
+    -->
+    <select id="countAgentUsage" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM v5ai_agent
+        WHERE model_id = #{modelId} OR secondary_model_id = #{modelId}
+    </select>
+
+    <select id="countKnowledgeBaseUsage" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM v5ai_knowledge_base
+        WHERE embedding_model_id = #{modelId} OR rerank_model_id = #{modelId}
+    </select>
+
+    <update id="clearModelTypeDefaults">
+        UPDATE v5ai_model
+        SET is_default = false
+        WHERE model_type = #{modelType} AND id &lt;&gt; #{keepId}
+    </update>
+</mapper>

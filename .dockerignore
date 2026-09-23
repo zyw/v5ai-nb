@@ -1,0 +1,16 @@
+.git
+.gitignore
+.idea
+.vscode
+.DS_Store
+
+**/target
+**/logs
+**/.flattened-pom.xml
+v5ai-ui/node_modules
+v5ai-ui/dist
+v5ai-ui-chat/node_modules
+v5ai-ui-chat/dist
+
+.env
+*.log

@@ -1,0 +1,3 @@
+xin.v5ai.nb.common.translation.config.TranslationConfig
+xin.v5ai.nb.common.translation.core.impl.NicknameTranslationImpl
+xin.v5ai.nb.common.translation.core.impl.UserNameTranslationImpl

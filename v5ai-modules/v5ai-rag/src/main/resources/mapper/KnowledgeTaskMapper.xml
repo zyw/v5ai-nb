@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.nb.rag.mapper.KnowledgeTaskMapper">
+    <select id="selectProcessable" resultType="xin.v5ai.nb.rag.domain.KnowledgeTask">
+        SELECT * FROM v5ai_knowledge_task
+        WHERE status = 'PENDING'
+        OR (status = 'FAILED' AND attempt_count &lt; max_attempts)
+        ORDER BY id
+        LIMIT #{limit}
+    </select>
+
+    <!--
+      卡死回收：PROCESSING 超过 staleMinutes 未推进（进程崩溃/重启残留，如 embed 被 kill 后状态停留在
+      PROCESSING 且 attempt 计数可能已超 max_attempts）→ 有剩余尝试次数则回 PENDING 重试，否则置 FAILED
+      终态并给可读原因，避免任务永久卡死不再被调度器拾取。
+    -->
+    <update id="recoverStaleProcessing">
+        UPDATE v5ai_knowledge_task
+        SET status = CASE WHEN attempt_count &lt; max_attempts THEN 'PENDING' ELSE 'FAILED' END,
+            error_message = CASE WHEN attempt_count &lt; max_attempts THEN error_message
+                                  ELSE '处理中断（进程重启/超时），且已达到最大尝试次数' END,
+            updated_at = now()
+        WHERE status = 'PROCESSING'
+          AND updated_at &lt; now() - (#{staleMinutes} * interval '1 minute')
+    </update>
+</mapper>

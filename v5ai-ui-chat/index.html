@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <title>%VITE_APP_TITLE%</title>
+    <style>
+      /* 首屏底色：与 base.css 的两套 --portal-bg 保持一致。
+         这里的字面值是为了在 JS/样式表到达前就上色，深色用户不会先看到一帧白屏。 */
+      html[data-theme='light'] {
+        background-color: #f2f5fb;
+      }
+
+      html[data-theme='dark'] {
+        background-color: #05060a;
+      }
+    </style>
+    <script>
+      // 主题必须在首屏渲染前落到 <html> 上（兜底默认跟随系统），否则深色用户会闪一下白屏
+      ;(function () {
+        try {
+          var mode = localStorage.getItem('v5ai_chat_theme') || 'system'
+          var dark =
+            mode === 'dark' ||
+            (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light'
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,233 @@
+package xin.v5ai.nb.workflow.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import xin.v5ai.nb.common.core.domain.PageResult;
+import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
+import xin.v5ai.nb.common.mybatis.core.query.QueryBuilder;
+import xin.v5ai.nb.workflow.core.*;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
+import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
+import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
+import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
+import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
+import xin.v5ai.nb.workflow.mapper.WorkflowMapper;
+import xin.v5ai.nb.workflow.mapper.WorkflowNodeRunMapper;
+import xin.v5ai.nb.workflow.mapper.WorkflowRunMapper;
+import xin.v5ai.nb.workflow.service.IWorkflowService;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/**
+ * Workflow 管理服务实现类。
+ *
+ * @author ZYW
+ * @since 2026-08-22
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class WorkflowServiceImpl implements IWorkflowService {
+
+    private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_PUBLISHED = "PUBLISHED";
+    private static final String STATUS_DISABLED = "DISABLED";
+
+    private final WorkflowMapper workflowMapper;
+    private final WorkflowRunMapper runMapper;
+    private final WorkflowNodeRunMapper nodeRunMapper;
+
+    @Override
+    public PageResult<WorkflowVo> queryPageList(WorkflowBo bo, PageQuery pageQuery) {
+        LambdaQueryWrapper<xin.v5ai.nb.workflow.domain.Workflow> lqw = buildQueryWrapper(bo);
+        Page<xin.v5ai.nb.workflow.domain.Workflow> page = pageQuery.build();
+        List<xin.v5ai.nb.workflow.domain.Workflow> list = workflowMapper.selectList(page, lqw);
+        List<WorkflowVo> vos = list.stream().map(this::toVo).toList();
+        return PageResult.build(vos, page.getTotal());
+    }
+
+    @Override
+    public List<WorkflowVo> queryList(WorkflowBo bo) {
+        return workflowMapper.selectList(buildQueryWrapper(bo)).stream().map(this::toVo).toList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public WorkflowVo create(WorkflowBo bo) {
+        if (bo.getWorkflowKey() == null || bo.getWorkflowKey().isBlank()) {
+            throw new IllegalArgumentException("workflowKey is required");
+        }
+        if (bo.getName() == null || bo.getName().isBlank()) {
+            throw new IllegalArgumentException("name is required");
+        }
+        if (workflowMapper.selectOne(new LambdaQueryWrapper<xin.v5ai.nb.workflow.domain.Workflow>()
+                .eq(xin.v5ai.nb.workflow.domain.Workflow::getWorkflowKey, bo.getWorkflowKey())) != null) {
+            throw new IllegalArgumentException("workflow already exists: " + bo.getWorkflowKey());
+        }
+        var entity = new xin.v5ai.nb.workflow.domain.Workflow();
+        entity.setWorkflowKey(bo.getWorkflowKey().trim());
+        entity.setName(bo.getName().trim());
+        entity.setDescription(bo.getDescription());
+        entity.setStatus(STATUS_DRAFT);
+        workflowMapper.insert(entity);
+        return toVo(entity);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public WorkflowVo update(String workflowKey, WorkflowBo bo) {
+        var existing = requireActive(workflowKey);
+        var update = new xin.v5ai.nb.workflow.domain.Workflow();
+        update.setId(existing.getId());
+        update.setWorkflowKey(existing.getWorkflowKey());
+        update.setName(bo.getName() == null || bo.getName().isBlank() ? existing.getName() : bo.getName().trim());
+        update.setDescription(bo.getDescription() == null ? existing.getDescription() : bo.getDescription());
+        update.setDraftDefinitionJson(bo.getDefinition() == null
+                ? existing.getDraftDefinitionJson()
+                : WorkflowJson.toJson(bo.getDefinition()));
+        update.setStatus(existing.getStatus());
+        update.setPublishedDefinitionJson(existing.getPublishedDefinitionJson());
+        update.setPublishedVersion(existing.getPublishedVersion());
+        update.setPublishedAt(existing.getPublishedAt());
+        workflowMapper.updateById(update);
+        return toVo(update);
+    }
+
+    @Override
+    public WorkflowVo get(String workflowKey) {
+        return toVo(requireWorkflow(workflowKey));
+    }
+
+    @Override
+    public void disable(String workflowKey) {
+        var existing = requireWorkflow(workflowKey);
+        var update = new xin.v5ai.nb.workflow.domain.Workflow();
+        update.setId(existing.getId());
+        update.setStatus(STATUS_DISABLED);
+        workflowMapper.updateById(update);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public WorkflowVo publish(String workflowKey) {
+        var existing = requireActive(workflowKey);
+        if (existing.getDraftDefinitionJson() == null || existing.getDraftDefinitionJson().isBlank()) {
+            throw new IllegalArgumentException("workflow has no draft definition to publish: " + workflowKey);
+        }
+        WorkflowDefinition draft = WorkflowJson.parseDefinition(existing.getDraftDefinitionJson());
+        WorkflowDefinitionValidator.validate(draft);
+        long version = existing.getPublishedVersion() == null ? 1 : existing.getPublishedVersion() + 1;
+        var update = new xin.v5ai.nb.workflow.domain.Workflow();
+        update.setId(existing.getId());
+        update.setStatus(STATUS_PUBLISHED);
+        update.setPublishedDefinitionJson(existing.getDraftDefinitionJson());
+        update.setPublishedVersion(version);
+        update.setPublishedAt(OffsetDateTime.now());
+        workflowMapper.updateById(update);
+        existing.setStatus(STATUS_PUBLISHED);
+        existing.setPublishedDefinitionJson(existing.getDraftDefinitionJson());
+        existing.setPublishedVersion(version);
+        existing.setPublishedAt(update.getPublishedAt());
+        return toVo(existing);
+    }
+
+    @Override
+    public List<WorkflowRun> listRuns(String workflowKey) {
+        requireWorkflow(workflowKey);
+        return runMapper.selectList(QueryBuilder.lambda(xin.v5ai.nb.workflow.domain.WorkflowRun.class)
+                        .eq(xin.v5ai.nb.workflow.domain.WorkflowRun::getWorkflowKey, workflowKey)
+                        .orderByDesc(xin.v5ai.nb.workflow.domain.WorkflowRun::getCreatedAt)
+                        .build())
+                .stream()
+                .map(this::toRunDomain)
+                .toList();
+    }
+
+    @Override
+    public WorkflowRun getRun(String runId) {
+        var run = toRunDomain(runMapper.selectById(runId));
+        if (run == null) {
+            throw new IllegalArgumentException("workflow run does not exist: " + runId);
+        }
+        return run;
+    }
+
+    @Override
+    public List<WorkflowNodeRun> getNodeRuns(String runId) {
+        return nodeRunMapper.selectList(QueryBuilder.lambda(xin.v5ai.nb.workflow.domain.WorkflowNodeRun.class)
+                        .eq(xin.v5ai.nb.workflow.domain.WorkflowNodeRun::getRunId, runId)
+                        .orderByAsc(xin.v5ai.nb.workflow.domain.WorkflowNodeRun::getId)
+                        .build())
+                .stream()
+                .map(this::toNodeRunDomain)
+                .toList();
+    }
+
+    private LambdaQueryWrapper<xin.v5ai.nb.workflow.domain.Workflow> buildQueryWrapper(WorkflowBo bo) {
+        return QueryBuilder.lambda(xin.v5ai.nb.workflow.domain.Workflow.class)
+                .likeIfText(xin.v5ai.nb.workflow.domain.Workflow::getWorkflowKey,
+                        bo == null ? null : bo.getWorkflowKey())
+                .likeIfText(xin.v5ai.nb.workflow.domain.Workflow::getName, bo == null ? null : bo.getName())
+                .eqIfText(xin.v5ai.nb.workflow.domain.Workflow::getStatus, bo == null ? null : bo.getStatus())
+                .orderByAsc(xin.v5ai.nb.workflow.domain.Workflow::getId)
+                .build();
+    }
+
+    private xin.v5ai.nb.workflow.domain.Workflow requireWorkflow(String workflowKey) {
+        var workflow = workflowMapper.selectOne(new LambdaQueryWrapper<xin.v5ai.nb.workflow.domain.Workflow>()
+                .eq(xin.v5ai.nb.workflow.domain.Workflow::getWorkflowKey, workflowKey));
+        if (workflow == null) {
+            throw new IllegalArgumentException("workflow does not exist: " + workflowKey);
+        }
+        return workflow;
+    }
+
+    private xin.v5ai.nb.workflow.domain.Workflow requireActive(String workflowKey) {
+        var workflow = requireWorkflow(workflowKey);
+        if (STATUS_DISABLED.equals(workflow.getStatus())) {
+            throw new IllegalArgumentException("workflow is disabled: " + workflowKey);
+        }
+        return workflow;
+    }
+
+    private WorkflowVo toVo(xin.v5ai.nb.workflow.domain.Workflow entity) {
+        var vo = new WorkflowVo();
+        vo.setId(entity.getId());
+        vo.setWorkflowKey(entity.getWorkflowKey());
+        vo.setName(entity.getName());
+        vo.setDescription(entity.getDescription());
+        vo.setStatus(entity.getStatus());
+        vo.setDraftDefinition(WorkflowJson.parseDefinition(entity.getDraftDefinitionJson()));
+        vo.setPublishedDefinition(WorkflowJson.parseDefinition(entity.getPublishedDefinitionJson()));
+        vo.setPublishedVersion(entity.getPublishedVersion());
+        vo.setPublishedAt(entity.getPublishedAt());
+        vo.setCreatedAt(entity.getCreatedAt());
+        vo.setUpdatedAt(entity.getUpdatedAt());
+        return vo;
+    }
+
+    private WorkflowRun toRunDomain(xin.v5ai.nb.workflow.domain.WorkflowRun entity) {
+        if (entity == null) {
+            return null;
+        }
+        return new WorkflowRun(entity.getRunId(), entity.getWorkflowKey(), entity.getWorkflowVersion(),
+                entity.getStatus() == null ? null : WorkflowRunStatus.valueOf(entity.getStatus()),
+                WorkflowJson.parseMap(entity.getInputsJson()),
+                WorkflowJson.parseMap(entity.getOutputsJson()),
+                entity.getError(), entity.getStartedAt(), entity.getFinishedAt(), entity.getCreatedAt());
+    }
+
+    private WorkflowNodeRun toNodeRunDomain(xin.v5ai.nb.workflow.domain.WorkflowNodeRun entity) {
+        return new WorkflowNodeRun(entity.getId(), entity.getRunId(), entity.getNodeId(),
+                entity.getNodeType() == null ? null : WorkflowNodeType.valueOf(entity.getNodeType()),
+                entity.getStatus() == null ? null : WorkflowNodeRunStatus.valueOf(entity.getStatus()),
+                WorkflowJson.parseMap(entity.getInputsJson()),
+                WorkflowJson.parseMap(entity.getOutputsJson()),
+                entity.getError(), entity.getStartedAt(), entity.getFinishedAt());
+    }
+}

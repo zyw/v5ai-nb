@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.nb.agent.mapper.AgentCleanupMapper">
+    <!-- 1) FK 子表：无 agent_key 直连列，通过子查询定位 -->
+    <delete id="deleteRunEvents">
+        DELETE FROM v5ai_run_event WHERE run_id IN (SELECT id FROM v5ai_run WHERE agent_key = #{agentKey})
+    </delete>
+    <delete id="deleteMcpToolCalls">
+        DELETE FROM v5ai_mcp_tool_call WHERE run_id IN (SELECT id FROM v5ai_run WHERE agent_key = #{agentKey})
+    </delete>
+    <delete id="deleteAgentStates">
+        DELETE FROM v5ai_agent_state WHERE conversation_id IN (SELECT id FROM v5ai_conversation WHERE agent_key = #{agentKey})
+    </delete>
+
+    <!-- 2) 直连 agent_key 表 -->
+    <delete id="deleteAgentVersions">
+        DELETE FROM v5ai_agent_version WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteAgentKnowledgeBindings">
+        DELETE FROM v5ai_agent_knowledge WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteAgentMcpBindings">
+        DELETE FROM v5ai_agent_mcp WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteAgentSkillBindings">
+        DELETE FROM v5ai_agent_skill WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteApiKeyBindings">
+        DELETE FROM v5ai_api_keys_agent WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteOrphanApiKeys">
+        DELETE FROM v5ai_api_keys
+        WHERE NOT EXISTS (SELECT 1 FROM v5ai_api_keys_agent b WHERE b.api_key_id = v5ai_api_keys.id)
+    </delete>
+    <delete id="deleteAppQuotas">
+        DELETE FROM v5ai_app_quota WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteAppUsages">
+        DELETE FROM v5ai_app_usage WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteModelUsages">
+        DELETE FROM v5ai_model_usage WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteRuns">
+        DELETE FROM v5ai_run WHERE agent_key = #{agentKey}
+    </delete>
+    <delete id="deleteMessages">
+        DELETE FROM v5ai_message WHERE agent_key = #{agentKey}
+    </delete>
+    <!-- 会话摘要与会话是一对一：按 conversation_id 子查询删除，先于会话本身 -->
+    <delete id="deleteConversationSummaries">
+        DELETE FROM v5ai_conversation_summary
+        WHERE conversation_id IN (SELECT id FROM v5ai_conversation WHERE agent_key = #{agentKey})
+    </delete>
+    <delete id="deleteConversations">
+        DELETE FROM v5ai_conversation WHERE agent_key = #{agentKey}
+    </delete>
+
+    <!-- 3) 主表：最后删除 -->
+    <delete id="deleteAgentByKey">
+        DELETE FROM v5ai_agent WHERE agent_key = #{agentKey}
+    </delete>
+</mapper>

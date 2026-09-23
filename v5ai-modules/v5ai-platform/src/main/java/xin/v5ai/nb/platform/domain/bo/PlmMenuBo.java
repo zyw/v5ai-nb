@@ -1,0 +1,106 @@
+package xin.v5ai.nb.platform.domain.bo;
+
+import io.github.linpeilie.annotations.AutoMapper;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import jakarta.validation.constraints.*;
+import xin.v5ai.nb.common.core.validate.AddGroup;
+import xin.v5ai.nb.common.core.validate.EditGroup;
+import xin.v5ai.nb.common.mybatis.core.domain.BaseEntity;
+import xin.v5ai.nb.platform.domain.PlmMenu;
+
+import java.io.Serial;
+import java.io.Serializable;
+
+/**
+ * 菜单权限业务对象 sys_menu
+ *
+ * @author zyw
+ * @date 2026-08-26
+ */
+@Data
+@AutoMapper(target = PlmMenu.class, reverseConvertGenerate = false)
+public class PlmMenuBo implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 菜单ID
+     */
+    @NotNull(message = "菜单ID不能为空", groups = { EditGroup.class })
+    private Long id;
+
+    /**
+     * 菜单名称
+     */
+    @NotBlank(message = "菜单名称不能为空", groups = { AddGroup.class, EditGroup.class })
+    private String menuName;
+
+    /**
+     * 父菜单ID
+     */
+    private Long parentId;
+
+    /**
+     * 显示顺序
+     */
+    private Long orderNum;
+
+    /**
+     * 路由地址
+     */
+    private String path;
+
+    /**
+     * 组件路径
+     */
+    private String component;
+
+    /**
+     * 路由参数
+     */
+    private String queryParam;
+
+    /**
+     * 是否为外链（Y是 N否）
+     */
+    private String isFrame;
+
+    /**
+     * 是否缓存（Y缓存 N不缓存）
+     */
+    private String isCache;
+
+    /**
+     * 菜单类型（M目录 C菜单 F按钮）
+     */
+    private String menuType;
+
+    /**
+     * 显示状态（0显示 1隐藏）
+     */
+    private String visible;
+
+    /**
+     * 菜单状态（0正常 1停用）
+     */
+    private String status;
+
+    /**
+     * 权限标识
+     */
+    private String perms;
+
+    /**
+     * 菜单图标
+     */
+    private String icon;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+
+}

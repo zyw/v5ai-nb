@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xin.v5ai.nb.runtime.mapper.ConversationSummaryMapper">
+
+    <!-- 滚动覆盖：水位只增不减。ON CONFLICT 的 WHERE 由数据库判定，天然避免并发把摘要改旧。 -->
+    <insert id="upsertIfNewer">
+        INSERT INTO v5ai_conversation_summary
+            (conversation_id, summary, covered_until_message_id, covered_messages, model_id,
+             created_at, updated_at)
+        VALUES (#{conversationId}, #{summary}, #{coveredUntilMessageId}, #{coveredMessages}, #{modelId},
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (conversation_id) DO UPDATE
+        SET summary                  = EXCLUDED.summary,
+            covered_until_message_id = EXCLUDED.covered_until_message_id,
+            covered_messages         = EXCLUDED.covered_messages,
+            model_id                 = EXCLUDED.model_id,
+            updated_at               = CURRENT_TIMESTAMP
+        WHERE v5ai_conversation_summary.covered_until_message_id &lt; EXCLUDED.covered_until_message_id
+    </insert>
+
+    <delete id="deleteIfCoveringAfter">
+        DELETE FROM v5ai_conversation_summary
+        WHERE conversation_id = #{conversationId}
+          AND covered_until_message_id &gt; #{messageId}
+    </delete>
+
+    <delete id="deleteByAgentKey">
+        DELETE FROM v5ai_conversation_summary
+        WHERE conversation_id IN (SELECT id FROM v5ai_conversation WHERE agent_key = #{agentKey})
+    </delete>
+
+</mapper>

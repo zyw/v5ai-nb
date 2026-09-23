@@ -1,0 +1,21 @@
+-- ============================================================
+-- V45：v5ai_message.metadata 的语义落地——助手消息的引用快照
+--
+-- 背景：门户实时流里能折叠展示「引用」（SSE RETRIEVAL 事件，载荷与知识库问答同构），
+--   但它只被写进 v5ai_run_event（运行事件流水，没有读取端），历史接口没有这个字段，
+--   刷新或重进会话就看不到了。本迁移与 docs/adr/0009 一起把它落到**所属助手消息**上。
+--
+-- 形状：{"citations":[{knowledgeBaseId,documentId,documentTitle,chunkIndex,content,score}, …]}
+--   - 与实时 SSE 载荷逐字一致（同一个 CitationPayload 编解码），单条内容同样截断 2000 字符；
+--   - NULL = 这一轮没有引用（未启用 RAG / 无命中 / V45 之前的历史数据）；
+--   - 同一轮检索多次时按 (knowledgeBaseId, documentId, chunkIndex) 保序去重（保留首次命中）。
+--
+-- 本迁移消费掉 V42 的保留列：metadata 不再是「语义待定、无写入方与读取方」的列。
+--   注意写入纪律——当前只有助手消息落库一处写它，采取整列覆盖；将来出现第二个写入方
+--   时必须改成读-改-写，否则会抹掉引用（见 ADR-0009）。
+--
+-- 记忆窗口与摘要的取数必须继续剔除该列（RuntimeMessageServiceImpl 的
+--   HOT_PATH_EXCLUDED_COLUMNS）：引用实测约 8.5KB/条消息，每一轮都读会白读一屏大文本。
+-- ============================================================
+
+COMMENT ON COLUMN v5ai_message.metadata IS '消息扩展元数据（JSON 文本）：当前语义为引用快照 {"citations":[...]}，仅助手消息有值；NULL=这一轮没有引用；供门户回看，不回放给模型';

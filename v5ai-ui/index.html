@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <title>%VITE_APP_TITLE%</title>
+    <!--
+      首屏主题预热：与 src/stores/theme.ts 的 detectInitial() 保持一致（同一个 storageKey）。
+      少了这段，暗色用户每次刷新都会先闪一帧亮色背景，再被 Vue 挂载后的 watchEffect 纠正。
+      这里用内联 <style> 而不是等 CSS 加载，否则仍会闪。
+    -->
+    <style>
+      html {
+        background-color: #f7f7fb;
+      }
+      html[data-theme='dark'] {
+        background-color: #0f1115;
+      }
+    </style>
+    <script>
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('v5ai.themeMode')
+          var mode =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          document.documentElement.dataset.theme = mode
+          document.documentElement.style.colorScheme = mode
+        } catch (e) {
+          /* 隐私模式下 localStorage 可能抛异常：保持默认亮色即可，不阻断渲染 */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

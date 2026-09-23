@@ -1,0 +1,226 @@
+# 开发环境配置
+server:
+  # 服务器的HTTP端口，默认为8080
+  port: 8080
+  servlet:
+    # 应用的访问路径
+    context-path: /
+  # jetty 配置
+  jetty:
+    # HTTP post内容的最大大小。当值为-1时，默认值为大小是无限的
+    max-http-form-post-size: -1
+    threads:
+      # 最小线程数
+      min: 8
+      # 最大线程数
+      max: 256
+
+# 用户配置
+user:
+  password:
+    # 密码最大错误次数
+    maxRetryCount: 5
+    # 密码锁定时间（默认10分钟）
+    lockTime: 10
+
+spring:
+  application:
+    name: v5ai-nb
+  threads:
+    # 开启虚拟线程 仅jdk21可用
+    virtual:
+      enabled: true
+  task:
+    execution:
+      # 从 springboot 3.5 开始 spring自带线程池
+      # 不再需要 AsyncConfig与ThreadPoolConfig 可直接注入线程池使用
+      thread-name-prefix: async-
+      # 由spring自己初始化线程池
+      mode: force
+  # 资源信息
+  messages:
+    # 国际化资源文件路径
+    basename: i18n/messages
+  profiles:
+    active: @profiles.active@
+  # 文件上传
+  servlet:
+    multipart:
+      # 单个文件大小
+      max-file-size: ${V5AI_UPLOAD_MAX_FILE_SIZE:50MB}
+      # 设置总上传的文件大小
+      max-request-size: ${V5AI_UPLOAD_MAX_REQUEST_SIZE:60MB}
+  mvc:
+    # 设置静态资源路径 防止所有请求都去查静态资源
+    static-path-pattern: /static/**
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+  jackson:
+    serialization:
+      # 格式化输出
+      indent_output: false
+      # 忽略无法转换的对象
+      fail_on_empty_beans: false
+    deserialization:
+      # 允许对象忽略json中不存在的属性
+      fail_on_unknown_properties: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    table: v5ai_flyway_schema_history
+
+# Sa-Token配置
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: Authorization
+  # token前缀
+  token-prefix: Bearer
+  # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录)
+  is-concurrent: false
+  # jwt秘钥
+  jwt-secret-key: ${V5AI_JWT_SECRET:PFIcuElmiVI4tHg1H7TbQjvWQm4zkz57}
+
+mybatis-plus:
+  mapperLocations: classpath*:mapper/**/*Mapper.xml
+  # 多包名使用 例如 org.dromara.**.mapper,org.xxx.**.mapper
+  mapperPackage: xin.v5ai.nb.**.mapper
+  configuration:
+    # MyBatis 配置
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+  sql-log:
+    # 完整 SQL 输出开关
+    enabled: true
+    # 输出方式，可选 console、log
+    output: console
+
+
+# 日志配置
+logging:
+  level:
+    xin.v5ai.nb: @logging.level@
+    org.springframework: warn
+    org.mybatis.spring.mapper: error
+    org.apache.fury: warn
+  config: classpath:logback-plus.xml
+
+
+
+v5ai:
+  rag:
+    parser:
+      # Docling Serve 配置。服务地址和 API Key 只通过部署配置/环境变量提供，不进入知识库 JSON。
+      docling:
+        # 是否允许 Worker 调用 Docling；关闭后选择 docling 会回退到 default 内置解析器。
+        enabled: ${V5AI_DOCLING_ENABLED:false}
+        # Docling Serve 地址。
+        base-url: ${V5AI_DOCLING_URL:http://127.0.0.1:5001}
+        # 可选的 X-Api-Key，不要提交到前端或写入知识库配置。
+        api-key: ${V5AI_DOCLING_API_KEY:}
+        # 建立 HTTP 连接超时（毫秒）。
+        connect-timeout-millis: ${V5AI_DOCLING_CONNECT_TIMEOUT_MS:5000}
+        # 单次健康检查、提交、轮询和结果请求的读取超时（毫秒）。
+        read-timeout-millis: ${V5AI_DOCLING_READ_TIMEOUT_MS:600000}
+        # Docling 异步任务轮询间隔（毫秒）。
+        poll-interval-millis: ${V5AI_DOCLING_POLL_INTERVAL_MS:2000}
+        # 单个 Docling 任务允许等待的最长时间（毫秒）。
+        poll-timeout-millis: ${V5AI_DOCLING_POLL_TIMEOUT_MS:1800000}
+        # Worker 进程内同时提交/处理的 Docling 任务数上限。
+        concurrency: ${V5AI_DOCLING_CONCURRENCY:3}
+      # MinerU Router 配置，服务地址和超时参数通过部署配置/环境变量提供。
+      mineru:
+        # 是否允许 Worker 调用 MinerU；关闭后选择 mineru 会回退到 default 内置解析器。
+        enabled: ${V5AI_MINERU_ENABLED:true}
+        # MinerU Router 地址。
+        base-url: ${V5AI_MINERU_URL:http://192.168.129.131:8002}
+        # 建立 HTTP 连接超时（毫秒）。
+        connect-timeout-millis: ${V5AI_MINERU_CONNECT_TIMEOUT_MS:5000}
+        # 单次健康检查、提交、轮询和结果请求的读取超时（毫秒）。
+        read-timeout-millis: ${V5AI_MINERU_READ_TIMEOUT_MS:600000}
+        # MinerU 异步任务轮询间隔（毫秒）。
+        poll-interval-millis: ${V5AI_MINERU_POLL_INTERVAL_MS:3000}
+        # 单个 MinerU 任务允许等待的最长时间（毫秒）。
+        poll-timeout-millis: ${V5AI_MINERU_POLL_TIMEOUT_MS:1800000}
+  # security配置
+  security:
+    # 排除路径
+    excludes:
+      - /api/v1/agents/**
+#      - /*.html
+#      - /**/*.html
+#      - /**/*.css
+#      - /**/*.js
+#      - /favicon.ico
+#      - /error
+#      - /*/api-docs
+#      - /*/api-docs/**
+#      - /warm-flow-ui/config
+#      - /snail-chat/**
+#      - /api/snail/chat/**
+  # 凭据加密（模型 API Key、MCP headers/env 等加解密所用）
+  crypto:
+    # 对称密钥（32 字节）；生产必须通过环境变量替换
+    secret-key: ${V5AI_CREDENTIAL_CIPHER_KEY:tggsbeaGlYKF8JJ9eAaZixMkJIqaqhwe}
+  # 数据加密
+  mybatis-encryptor:
+    # 是否开启加密
+    enable: false
+    # 默认加密算法
+    algorithm: BASE64
+    # 编码方式 BASE64/HEX。默认BASE64
+    encode: BASE64
+    # 安全秘钥 对称算法的秘钥 如：AES，SM4
+    password:
+    # 公私钥 非对称算法的公私钥 如：SM2，RSA
+    publicKey:
+    privateKey:
+
+  # api接口加密
+  api-decrypt:
+    # 是否开启全局接口加密
+    enabled: true
+    # AES 加密头标识
+    headerFlag: encrypt-key
+    # 响应加密公钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+    # 对应前端解密私钥 MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAObq7yrxfvyieZtTjAYyrdvi59tYTXxjO5ajmPCRSXBY9M9wQ1tli297JN6mnY53UJMNyOFNSZVi8WSFoIXjpR87FmvChJlzeN/dZdd3SEs48Ee66XKeSePYqxa8oO5GKDsnajgpsOHKXSeeVSIysiIPS2/WsEqk0In9P4w3RsRFAgMBAAECgYBiMEWwce24SPICnRzuScBpvmsudrbEDIH7BOd0a6LZlcnLJwZNJ7mJlshPsHNQb+WgEf135+BBGEhioPtn0yuTdEuKP4kB9UdYUKiayWCoWhJpesv7sAD4RDClV7dhuV+gcd1AXD+YzyRIPbGm0VC2U+4q8/+UPRpVjqskbLVTgQJBAPRpou7g3S8n4XB527kq0D8I3+ZYwMxZhszwhrCDpJU319+ucmpLVwYIzDmZVeID2QQdUaDfIEViFHu95xDrGiUCQQDx3YOKn3yaEctk/ERVn7hDAyAXUbd8/pv2b24/M/l1ZevlsFem8U4Jk5Mu64t3z3YGJoymEjQmbucwT01iKhehAkEAxlnccsRmfFh/KkqauKE4M4++NTAd9zlInpUsmZ+cN8UEGnF2RTEzRKBrLOt1uWCqBB7PGiE6DVTVjr7FAQPrSQJAT5yeY87DcONSk9cFlzmPqV8p/QME5rvYEnHzVBKDlkUKNPyqnWToTvaoh9U4fyNmsfeWbEOprszqhFhWHG3GgQJAK8+ynmyFhaw63+Hx2KU5zR4hVuQso2IzrEurGxCxybV6mR7VBerb4502+EPx3PmOgxQL+niUFhcMWxcvBFP9+A==
+    publicKey: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDm6u8q8X78onmbU4wGMq3b4ufbWE18YzuWo5jwkUlwWPTPcENbZYtveyTepp2Od1CTDcjhTUmVYvFkhaCF46UfOxZrwoSZc3jf3WXXd0hLOPBHuulynknj2KsWvKDuRig7J2o4KbDhyl0nnlUiMrIiD0tv1rBKpNCJ/T+MN0bERQIDAQAB
+    # 请求解密私钥 非对称算法的公私钥 如：SM2，RSA 使用者请自行更换
+    # 对应前端加密公钥 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDvEDuRIOM3oZPWj9Ukoc5pQklR4PFH6/clnjeFqjDLIgDyQvjxhgqAZQA+E9eD6qu6FsXPmK8djcL+nh3cFHz4pX473jDvO3Sve+8yL3VRQ0n2pRgQ2a01MJsy+WwTZCBYWf0VnLRIvANUoWQgy9vz94q7Va44dg7A1/3ICf+xAwIDAQAB
+    privateKey: MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAO8QO5Eg4zehk9aP1SShzmlCSVHg8Ufr9yWeN4WqMMsiAPJC+PGGCoBlAD4T14Pqq7oWxc+Yrx2Nwv6eHdwUfPilfjveMO87dK977zIvdVFDSfalGBDZrTUwmzL5bBNkIFhZ/RWctEi8A1ShZCDL2/P3irtVrjh2DsDX/cgJ/7EDAgMBAAECgYEAhNZAQyRDHWZq/45soS5Hw7VRiG21pIE5k22W7G7lLfp3DCaqrYoNy8pTmCruVh7PzVdaE0CEDaf38gNqFCBOT8iTFQiYV3am4W3hsEQM5wmVBeTvCM5P2jsaaBQbqmneRjiZVbs6ha205JSho1Oc85NbaZa8gFVjwZgZWJrbzgECQQD/iZWhkRPtbdeai/Xk7D/eIXKh1Gxid0rWKQq8ikxbaiergn47XzNKrpROVyka3Gn85o7jJphgxp99R3r8sH71AkEA738Dn7xs+I4Y+MLa2EcT78JG3f/VhlWS/ks3qGJ2dfqwS7ntnmf5Q+2Xw+9UcuiK/TxD8K/0inSCkIMeWBOFFwJBAIoTebq3faEJfTqQ7ekojsokIKC4+2epNdLKknaV8/RhQ9Y0yKikJD7yXkiGaDuPZeW1Xvf2XtfL+1niSd5IMBECQDCOOMbe5dzyuj9dCg+FQZZ/dey2XK0Slm22BD/ATrIWtD12IaXXAKNz/Sv9TsrJOLykxkV69wJHIt13p+RFeNsCQGn5XGRn4ZCRVCesJYXyx29MTqkl8sD/gzYcURTZYjHqX2EvtvAyC6gBm9H0EbxmHIi4Oq0tITzklCXj5SpvBEw=
+
+  # 验证码配置
+  captcha:
+    # 是否启用验证码校验
+    enable: true
+    # 验证码类型 slider=图片滑块
+    type: slider
+    # 登录错误次数达到该值后，再次登录需先通过滑块验证（需小于 user.password.maxRetryCount）
+    slider-threshold: 3
+    # 滑块拼图令牌有效期（分钟）
+    expire-minutes: 2
+
+  # 刷新令牌配置
+  auth:
+    # 刷新令牌有效期（分钟，默认 30 天）
+    refresh-token-ttl: 43200
+
+  agentscope:
+    workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
+    state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}
+    # 联网搜索（Tavily）API Key；为空则不启用联网搜索工具
+    tavily-api-key: ${V5AI_TAVILY_API_KEY:}
+  # 模型连通性测试与 Agent 配置生成超时（毫秒）
+  model:
+    connection:
+      test:
+        timeout.ms: ${V5AI_MODEL_CONNECTION_TEST_TIMEOUT_MS:90000}
+  storage:
+    # 通用资源存储（plm_resource）存储类型：LOCAL=本地磁盘 MINIO=MinIO
+    type: ${V5AI_STORAGE_TYPE:LOCAL}
+    # 通用资源存储（plm_resource）本地存储根目录
+    local-dir: ${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}
+  mcp:
+    # Stdio MCP 命令白名单（逗号分隔）；项可写纯文件名（node.exe）或完整路径（D:/nvm/v24.9.0/node.exe）；
+    # 为空表示开发模式不限制，生产环境必须配置
+    stdio-command-whitelist: ${V5AI_MCP_STDIO_COMMAND_WHITELIST:}
