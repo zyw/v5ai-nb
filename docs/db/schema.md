@@ -48,7 +48,7 @@
 - [`v5ai_conversation_summary`](#v5ai-conversation-summary) — 7 列
 - [`v5ai_knowledge_base`](#v5ai-knowledge-base) — 17 列
 - [`v5ai_knowledge_chunk`](#v5ai-knowledge-chunk) — 14 列
-- [`v5ai_knowledge_document`](#v5ai-knowledge-document) — 18 列
+- [`v5ai_knowledge_document`](#v5ai-knowledge-document) — 20 列
 - [`v5ai_knowledge_task`](#v5ai-knowledge-task) — 10 列
 - [`v5ai_mcp_server`](#v5ai-mcp-server) — 14 列
 - [`v5ai_mcp_tool`](#v5ai-mcp-tool) — 10 列
@@ -483,6 +483,8 @@
 | `parse_time` | integer | NOT NULL | 0 | 解析耗时（毫秒） |
 | `content_hash` | character varying(64) | NULL | — | 文件内容SHA-256哈希，用于去重 |
 | `resource_id` | bigint | NULL | — | 关联资源库 plm_resource.id |
+| `parse_engine` | character varying(32) | NULL | — | 实际使用的文档解析引擎，外部服务失败时为 default |
+| `parse_diagnostics` | text | NULL | — | 文档级解析结构化结果或诊断原文 |
 
 ## v5ai_knowledge_task
 

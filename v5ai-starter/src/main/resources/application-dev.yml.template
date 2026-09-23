@@ -7,20 +7,24 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     # 动态数据源文档：https://www.kancloud.cn/tracy5546/dynamic-datasource/content
     dynamic:
-      # 默认数据源或数据源组
-      primary: master
+      # 数据源名与 v5ai.db.dialect 取值一一对应，primary 即当前方言
+      primary: ${v5ai.db.dialect}
       # 严格模式：匹配不到数据源时直接报错
       strict: true
       datasource:
-        # 主库数据源
-        # 切换 MySQL：V5AI_DB_DIALECT=mysql、V5AI_DATASOURCE_DRIVER=com.mysql.cj.jdbc.Driver，
-        # V5AI_DATASOURCE_URL 例：jdbc:mysql://localhost:3306/v5ai_nb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-        # （dialect 决定 Flyway 加载哪个迁移目录，必须与 URL 配套）
-        master:
+        # 驱动按块写死，切库只需 V5AI_DB_DIALECT + V5AI_DATASOURCE_URL 两项（必须配套：
+        # dialect 决定 Flyway 加载哪个迁移目录，URL 决定实际连哪个库）。
+        # JDBC 参数可按部署环境补充；MySQL 串的 serverTimezone 必须与库的时区一致。
+        postgresql:
           type: ${spring.datasource.type}
-          driverClassName: ${V5AI_DATASOURCE_DRIVER:org.postgresql.Driver}
-          # JDBC 参数可按部署环境补充
+          driverClassName: org.postgresql.Driver
           url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}
+          username: ${V5AI_DATASOURCE_USERNAME:v5ai}
+          password: ${V5AI_DATASOURCE_PASSWORD:change-me}
+        mysql:
+          type: ${spring.datasource.type}
+          driverClassName: com.mysql.cj.jdbc.Driver
+          url: ${V5AI_DATASOURCE_URL:jdbc:mysql://localhost:3306/v5ai_nb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
           username: ${V5AI_DATASOURCE_USERNAME:v5ai}
           password: ${V5AI_DATASOURCE_PASSWORD:change-me}
     hikari:

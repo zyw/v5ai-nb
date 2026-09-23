@@ -23,7 +23,7 @@
 | 数据库 | PostgreSQL 14+ + pgvector（默认）**或** MySQL 8.0.17+，由 `V5AI_DB_DIALECT` 切换（见 `docs/adr/0012`）。向量检索走独立「存储实例」（pgvector / Milvus / ES），MySQL 部署下不占业务库 |
 | 认证 | Sa-Token 1.44.0 + JWT（`is-concurrent: false`，token 前缀 `Bearer`） |
 | 加密 | BCrypt（API Key / 密码）、AES-GCM（模型凭据） |
-| 运行时 | AgentScope Java 2.0（`agentscope-harness`、`extensions-model-openai/dashscope`） |
+| 运行时 | AgentScope Java 2.0（`agentscope-harness`、`extensions-model-openai/gemini/anthropic`） |
 | PDF 解析 | PDFBox 3.0.7 |
 | 前端 | Vue 3.5 + Vite 7 + TypeScript 5.9 + Naive UI 2.43 + Pinia + Vue Router 4 |
 | 可选中间件 | Redis（Redisson）、MinIO（当前业务未强制使用） |

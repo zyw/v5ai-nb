@@ -74,11 +74,11 @@ docker run -d --name v5ai-mysql -p 3306:3306 \
 mysql -h 127.0.0.1 -u v5ai -pchange-me -e "CREATE DATABASE IF NOT EXISTS v5ai_nb CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs;"
 ```
 
-非 Compose 部署时，三个变量成组设置（`V5AI_DB_DIALECT` 决定 Flyway 加载哪套迁移，必须与 URL 配套）：
+非 Compose 部署时，两个变量成组设置（`V5AI_DB_DIALECT` 决定 Flyway 加载哪套迁移、用哪个数据源块，
+必须与 URL 配套；每块的驱动已在 `application-dev.yml` 里写死，不需要环境变量）：
 
 ```bash
 export V5AI_DB_DIALECT=mysql
-export V5AI_DATASOURCE_DRIVER=com.mysql.cj.jdbc.Driver
 export V5AI_DATASOURCE_URL='jdbc:mysql://localhost:3306/v5ai_nb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
 ```
 
