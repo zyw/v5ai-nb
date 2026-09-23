@@ -130,15 +130,15 @@
     "mode": "auto"
   },
   "ai": {
-      "enabled": true,
-      "provider": "openai-compatible",
-      "base_url": "https://ark.cn-beijing.volces.com/api/v3",
-      "model": "deepseek-v4-pro-260425",
-      "api_key_env": "AOCI_AI_KEY",
-      "timeout_seconds": 0,
-      "max_concurrency": 0,
-      "max_input_tokens": 0,
-      "token_accounting": "auto",
-      "prompt_snapshot": "redacted"
-    }
+    "enabled": true,
+    "provider": "openai-compatible",
+    "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+    "model": "deepseek-v4-pro-260425",
+    "api_key_env": "AOCI_AI_KEY",
+    "timeout_seconds": 0,
+    "max_concurrency": 0,
+    "max_input_tokens": 0,
+    "token_accounting": "auto",
+    "prompt_snapshot": "redacted"
+  }
 }

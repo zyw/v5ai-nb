@@ -78,3 +78,15 @@
 
 「文件太多」是真实的观感问题，但压平（合并成单个 baseline）必须让现网库要么重建、要么 `repair`，
 风险与收益不成比例。取舍与备选方案见 [`docs/adr/0008-migration-history-frozen.md`](../../../../docs/adr/0008-migration-history-frozen.md)。
+
+## 新的数据库会初始化数据的表
+| 表 | 数据内容 | 来源迁移 |
+| --- | --- | --- |
+| `plm_user` | 管理员账号 admin（密码 BCrypt，明文 admin，见 docs/deploy/dev.md 4.3） | V18 |
+| `plm_role` | 2 个角色：超级管理员 ADMIN、普通用户 USER | V18 |
+| `plm_user_role` | 1 条绑定：admin → ADMIN | V18 |
+| `plm_client` | 1 个 PC 客户端（client_id e5cd7e48...，与前端 .env 的 VITE_APP_CLIENT_ID 对应） | V18 |
+| `plm_menu` | 完整菜单树 + 按钮级权限（V18 建 16 个初始菜单，V21/V22/V23/V24/V35 增量加菜单，V49 一次补 70 个按钮权限） | V18、V21、V22、V23、V24、V35、V49 |
+| `plm_role_menu` | 角色-菜单授权（ADMIN 全量、USER 部分，跟随各次菜单插入） | 同上 |
+| `v5ai_model_provider` | 12 个常用模型供应商：openai、anthropic、gemini、dashscope、deepseek、moonshot、zhipu、minimax、tencent、volcengine、siliconflow、ollama（ON CONFLICT DO NOTHING 幂等，只插供应商，不含具体模型 v5ai_model） | V27 |
+| `v5ai_flyway_schema_history` | Flyway 自身迁移记录（配置见 application.yml:70） | 框架自动 |
