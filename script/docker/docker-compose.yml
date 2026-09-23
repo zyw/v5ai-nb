@@ -70,6 +70,19 @@ services:
       - v5ai-agentscope-state:/data/agentscope/state
       - ${V5AI_CONFIG_DIR:-../../config}:/app/config:ro
 
+  nginx:
+    build:
+      context: ../..
+      dockerfile: script/docker/Dockerfile.ui
+    image: v5ai-nb-ui:latest
+    container_name: v5ai-nginx
+    restart: unless-stopped
+    depends_on:
+      v5ai:
+        condition: service_healthy
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+
 volumes:
   v5ai-postgres-data:
   v5ai-redis-data:

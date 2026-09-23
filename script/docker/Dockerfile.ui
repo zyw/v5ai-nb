@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1
+
+# 前端镜像：编译 v5ai-ui（管理端，部署在 /）与 v5ai-ui-chat（对话门户，部署在 /chat/），
+# 产物打包进 nginx，API 由 nginx 按 /prod-api/ 前缀转发到后端 v5ai 容器。
+# 构建上下文必须是仓库根目录：
+# docker build -f script/docker/Dockerfile.ui -t v5ai-nb-ui:latest .
+
+# ---------- 管理端 v5ai-ui ----------
+FROM node:22-alpine AS ui-builder
+
+WORKDIR /build
+
+# 先只拷贝依赖清单，命中 Docker 层缓存，源码变更时避免重复 npm ci
+COPY v5ai-ui/package.json v5ai-ui/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY v5ai-ui/ ./
+# 覆盖 .env.production：生产接口统一走 /prod-api，由 nginx 剥前缀转发后端
+ENV VITE_APP_BASE_API=/prod-api
+RUN npm run build
+
+# ---------- 对话门户 v5ai-ui-chat ----------
+FROM node:22-alpine AS chat-builder
+
+WORKDIR /build
+
+COPY v5ai-ui-chat/package.json v5ai-ui-chat/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY v5ai-ui-chat/ ./
+# VITE_APP_BASE=/chat/：门户部署在子路径，路由 base 由 vite 注入（见 vite.config.ts）
+ENV VITE_APP_BASE=/chat/ \
+    VITE_APP_BASE_API=/prod-api
+RUN npm run build
+
+# ---------- 运行阶段：nginx ----------
+FROM nginx:1.27-alpine
+
+ENV TZ=Asia/Shanghai
+
+COPY script/docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=ui-builder /build/dist /usr/share/nginx/html
+COPY --from=chat-builder /build/dist /usr/share/nginx/html/chat
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1/healthz || exit 1
