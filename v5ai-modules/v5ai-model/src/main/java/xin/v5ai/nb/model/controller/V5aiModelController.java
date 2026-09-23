@@ -1,5 +1,6 @@
 package xin.v5ai.nb.model.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -43,6 +44,7 @@ public class V5aiModelController extends BaseController {
      * @param bo 模型参数
      * @return 结果
      */
+    @SaCheckPermission("model:model:add")
     @PostMapping
     @Log(title = "创建模型", businessType = BusinessType.INSERT)
     public R<Void> createModel(@Validated(AddGroup.class) @RequestBody ModelBo bo) {
@@ -55,6 +57,7 @@ public class V5aiModelController extends BaseController {
      * @param pageQuery 分页参数
      * @return 模型列表
      */
+    @SaCheckPermission("model:model:list")
     @GetMapping
     public R<PageResult<V5aiModelVo>> listModels(ModelBo bo, PageQuery pageQuery) {
         return R.ok(service.queryPageList(bo, pageQuery));
@@ -65,6 +68,7 @@ public class V5aiModelController extends BaseController {
      * @param bo 模型参数
      * @return 模型列表
      */
+    @SaCheckPermission("model:model:list")
     @GetMapping("/options")
     public R<List<OptionDTO>> listModelOptions(ModelBo bo) {
         return R.ok(service.queryOptionList(bo));
@@ -75,6 +79,7 @@ public class V5aiModelController extends BaseController {
      * @param bo 模型参数
      * @return 结果
      */
+    @SaCheckPermission("model:model:edit")
     @PutMapping
     @Log(title = "编辑模型", businessType = BusinessType.UPDATE)
     public R<Void> updateModel(@Validated(EditGroup.class) @RequestBody ModelBo bo) {
@@ -84,6 +89,7 @@ public class V5aiModelController extends BaseController {
     /**
      * 删除模型
      */
+    @SaCheckPermission("model:model:remove")
     @DeleteMapping("/{id}")
     @Log(title = "删除模型", businessType = BusinessType.DELETE)
     public R<Void> deleteModel(@NotNull(message = "主键不能为空")
@@ -99,6 +105,7 @@ public class V5aiModelController extends BaseController {
      * @param bo 目标启用状态（enabled）
      * @return 结果
      */
+    @SaCheckPermission("model:model:changeStatus")
     @PutMapping("/{id}/enabled")
     @Log(title = "启停模型", businessType = BusinessType.UPDATE)
     public R<Void> setEnabled(@NotNull(message = "主键不能为空")
@@ -114,6 +121,7 @@ public class V5aiModelController extends BaseController {
      * @param bo 是否设为默认（isDefault）
      * @return 结果
      */
+    @SaCheckPermission("model:model:setDefault")
     @PutMapping("/{id}/default")
     @Log(title = "设置默认模型", businessType = BusinessType.UPDATE)
     public R<Void> setDefault(@NotNull(message = "主键不能为空")
@@ -122,6 +130,7 @@ public class V5aiModelController extends BaseController {
         return toAjax(service.updateDefault(id, bo.isDefault()));
     }
 
+    @SaCheckPermission("model:model:test")
     @PostMapping("/{id}/test")
     public R<TestModelConnectionVo> testConnection(@PathVariable("id") Long id) {
         try {;

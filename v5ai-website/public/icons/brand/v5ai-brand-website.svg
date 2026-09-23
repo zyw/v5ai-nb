@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 512" role="img" aria-labelledby="title desc">
+  <title id="title">v5ai-nb</title>
+  <desc id="desc">A rounded W mark with a central four-point star.</desc>
+  <defs>
+    <linearGradient id="left-ribbon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" />
+      <stop offset="1" stop-color="#DCE7F7" />
+    </linearGradient>
+    <linearGradient id="right-ribbon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B9BFF" />
+      <stop offset="1" stop-color="#2C6FE8" />
+    </linearGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#C8BEFF" />
+      <stop offset="1" stop-color="#8F78F5" />
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(-38 0) scale(1.15 1)">
+    <path fill="none" stroke="url(#left-ribbon)" stroke-width="94" stroke-linecap="round" stroke-linejoin="round" d="M82 112 210 371c15 32 34 45 63 45" />
+    <path fill="none" stroke="url(#right-ribbon)" stroke-width="94" stroke-linecap="round" stroke-linejoin="round" d="M430 112 302 371c-15 32-34 45-63 45" />
+    <path fill="url(#star)" d="M256 81c7 0 12 5 15 14 11 39 35 63 74 74 9 3 14 8 14 15s-5 12-14 15c-39 11-63 35-74 74-3 9-8 14-15 14s-12-5-15-14c-11-39-35-63-74-74-9-3-14-8-14-15s5-12 14-15c39-11 63-35 74-74 3-9 8-14 15-14Z" />
+  </g>
+</svg>

@@ -1,5 +1,7 @@
 package xin.v5ai.nb.agent.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +43,7 @@ public class AgentDebugController {
         this.modelImageSupportResolver = modelImageSupportResolver;
     }
 
+    @SaCheckPermission(value = {"monitor:debug:chat", "agent:agent:edit"}, mode = SaMode.OR)
     @PostMapping(value = "/stream", produces = "text/event-stream")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> stream(
             @PathVariable("agentKey") String agentKey,

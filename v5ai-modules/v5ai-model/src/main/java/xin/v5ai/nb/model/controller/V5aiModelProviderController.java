@@ -1,5 +1,6 @@
 package xin.v5ai.nb.model.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -32,21 +33,25 @@ public class V5aiModelProviderController extends BaseController {
 
     private final IV5aiModelProviderService service;
 
+    @SaCheckPermission("model:provider:query")
     @GetMapping
     public R<PageResult<V5aiModelProviderVo>> listProviders(ModelProviderBo bo, PageQuery pageQuery) {
         return R.ok(service.queryPageList(bo, pageQuery));
     }
 
+    @SaCheckPermission("model:provider:add")
     @PostMapping
     public R<Void> createProvider(@Validated(AddGroup.class) @RequestBody ModelProviderBo bo) {
         return toAjax(service.insertByBo(bo));
     }
 
+    @SaCheckPermission("model:provider:edit")
     @PutMapping
     public R<Void> updateProvider(@Validated(EditGroup.class) @RequestBody ModelProviderBo request) {
         return toAjax(service.updateByBo(request));
     }
 
+    @SaCheckPermission("model:provider:remove")
     @DeleteMapping("/{ids}")
     public R<Void> deleteProvider(
             @NotEmpty(message = "主键不能为空")

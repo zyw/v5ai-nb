@@ -19,3 +19,5 @@ dist/
 # 手写的宿主配置须在首次 scan 前忽略，否则会被纳入 Managed Scope 治理。
 /.dsh/mcp.json
 *。log
+/v5ai-website/.playwright-cli/console-2026-09-23T05-54-58-699Z.log
+/v5ai-website/.playwright-cli/

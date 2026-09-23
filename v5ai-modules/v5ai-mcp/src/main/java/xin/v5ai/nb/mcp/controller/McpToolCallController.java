@@ -1,5 +1,6 @@
 package xin.v5ai.nb.mcp.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +27,7 @@ public class McpToolCallController {
 
     private final IMcpServerService mcpServerService;
 
+    @SaCheckPermission("mcp:toolCall:list")
     @GetMapping
     public R<PageResult<McpToolCallAuditVo>> listToolCalls(
             PageQuery pageQuery,

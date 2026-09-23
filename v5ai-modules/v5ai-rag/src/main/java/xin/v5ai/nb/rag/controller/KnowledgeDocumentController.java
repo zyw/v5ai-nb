@@ -1,5 +1,6 @@
 package xin.v5ai.nb.rag.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -54,11 +55,13 @@ public class KnowledgeDocumentController extends BaseController {
     private final ResourceContentPort resourceContentPort;
     private final ParserHealthService parserHealthService;
 
+    @SaCheckPermission("rag:document:list")
     @GetMapping("/parser-engines/health")
     public R<java.util.Map<String, java.util.Map<String, Object>>> parserHealth() {
         return R.ok(parserHealthService.check());
     }
 
+    @SaCheckPermission("rag:document:add")
     @PostMapping(value = "/knowledge-bases/{kbId}/documents", consumes = "multipart/form-data")
     public R<KnowledgeDocumentVo> uploadDocument(
             @PathVariable("kbId") Long kbId,
@@ -76,6 +79,7 @@ public class KnowledgeDocumentController extends BaseController {
         }
     }
 
+    @SaCheckPermission("rag:document:add")
     @PostMapping("/knowledge-bases/{kbId}/documents/url")
     public R<KnowledgeDocumentVo> importUrl(@PathVariable("kbId") Long kbId, @RequestBody ImportUrlBo request) {
         if (request == null || request.url() == null || request.url().isBlank()) {
@@ -84,17 +88,20 @@ public class KnowledgeDocumentController extends BaseController {
         return R.ok(knowledgeBaseService.importUrl(kbId, request.title(), request.url()));
     }
 
+    @SaCheckPermission("rag:document:list")
     @GetMapping("/knowledge-bases/{kbId}/documents")
     public R<PageResult<KnowledgeDocumentVo>> listDocuments(@PathVariable("kbId") Long kbId, PageQuery pageQuery) {
         return R.ok(knowledgeBaseService.listDocuments(kbId, pageQuery));
     }
 
+    @SaCheckPermission("rag:document:remove")
     @DeleteMapping("/documents/{id}")
     public R<Void> deleteDocument(@PathVariable("id") Long id) {
         knowledgeBaseService.deleteDocument(id);
         return R.ok();
     }
 
+    @SaCheckPermission("rag:document:reparse")
     @PostMapping("/documents/{id}/retry")
     public R<Void> retryDocument(@PathVariable("id") Long id) {
         var tasks = knowledgeBaseService.listTasksByDocument(id);
@@ -104,11 +111,13 @@ public class KnowledgeDocumentController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("rag:document:reparse")
     @PostMapping("/documents/{id}/reparse")
     public R<Boolean> reparse(@PathVariable("id") Long id) {
         return R.ok(knowledgeBaseService.reparseDocument(id));
     }
 
+    @SaCheckPermission("rag:document:download")
     @GetMapping("/documents/{id}/preview")
     public ResponseEntity<byte[]> preview(@PathVariable("id") Long id) {
         var document = requireDocument(id);
@@ -125,6 +134,7 @@ public class KnowledgeDocumentController extends BaseController {
                 .body(contentOf(document));
     }
 
+    @SaCheckPermission("rag:document:download")
     @GetMapping("/documents/{id}/download")
     public ResponseEntity<byte[]> download(@PathVariable("id") Long id) {
         var document = requireDocument(id);
@@ -146,6 +156,7 @@ public class KnowledgeDocumentController extends BaseController {
                 .body(contentOf(document));
     }
 
+    @SaCheckPermission("rag:document:reparse")
     @PostMapping("/documents/batch-reparse")
     public R<DocumentBatchResultVo> batchReparse(@RequestBody DocumentIdsBo bo) {
         var failures = new ArrayList<DocumentBatchResultVo.Failure>();
@@ -165,6 +176,7 @@ public class KnowledgeDocumentController extends BaseController {
         return R.ok(new DocumentBatchResultVo(succeeded, skipped, failures));
     }
 
+    @SaCheckPermission("rag:document:remove")
     @PostMapping("/documents/batch-delete")
     public R<DocumentBatchResultVo> batchDelete(@RequestBody DocumentIdsBo bo) {
         var failures = new ArrayList<DocumentBatchResultVo.Failure>();

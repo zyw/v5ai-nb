@@ -1,5 +1,6 @@
 package xin.v5ai.nb.rag.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,12 +34,14 @@ public class KnowledgeDebugController {
     private final IKnowledgeRetrievalService retrievalService;
     private final IKnowledgeQaService qaService;
 
+    @SaCheckPermission("rag:knowledge:retrieve")
     @PostMapping("/retrieve")
     public R<List<KbHitVo>> retrieve(@PathVariable("kbId") Long kbId,
                                      @RequestBody(required = false) KbRetrieveBo request) {
         return R.ok(retrievalService.retrieve(kbId, request));
     }
 
+    @SaCheckPermission("rag:knowledge:retrieve")
     @PostMapping(value = "/chat/stream", produces = "text/event-stream")
     public Flux<ServerSentEvent<RuntimeRunEventDTO>> chatStream(@PathVariable("kbId") Long kbId,
                                                                 @RequestBody(required = false) KbChatBo request) {
