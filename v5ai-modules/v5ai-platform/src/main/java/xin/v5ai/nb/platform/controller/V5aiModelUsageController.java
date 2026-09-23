@@ -1,5 +1,6 @@
 package xin.v5ai.nb.platform.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +22,7 @@ public class V5aiModelUsageController {
 
     private final IV5aiModelUsageService service;
 
+    @SaCheckPermission("monitor:usage:list")
     @GetMapping
     public R<PageResult<ModelUsagePageVo>> list(ModelUsageListBo bo, PageQuery pageQuery) {
 //        var fromInstant = parseDayStart(from);

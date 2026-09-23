@@ -1,5 +1,6 @@
 package xin.v5ai.nb.rag.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -38,6 +39,7 @@ public class KnowledgeChunkController extends BaseController {
 
     private final IKnowledgeChunkAdminService chunkAdminService;
 
+    @SaCheckPermission("rag:chunk:list")
     @GetMapping
     public R<PageResult<KnowledgeChunkVo>> listChunks(
             @PathVariable("kbId") Long kbId,
@@ -49,6 +51,7 @@ public class KnowledgeChunkController extends BaseController {
         return R.ok(chunkAdminService.listChunks(kbId, documentId, chunkId, content, pageQuery));
     }
 
+    @SaCheckPermission("rag:chunk:add")
     @PostMapping
     @Log(title = "新增切片", businessType = BusinessType.INSERT)
     public R<KnowledgeChunkVo> addChunk(@PathVariable("kbId") Long kbId,
@@ -56,6 +59,7 @@ public class KnowledgeChunkController extends BaseController {
         return R.ok(chunkAdminService.addChunk(kbId, bo));
     }
 
+    @SaCheckPermission("rag:chunk:edit")
     @PutMapping("/{chunkId}")
     @Log(title = "编辑切片", businessType = BusinessType.UPDATE)
     public R<KnowledgeChunkVo> updateChunk(@PathVariable("kbId") Long kbId,
@@ -64,6 +68,7 @@ public class KnowledgeChunkController extends BaseController {
         return R.ok(chunkAdminService.updateChunk(kbId, chunkId, bo));
     }
 
+    @SaCheckPermission("rag:chunk:remove")
     @DeleteMapping("/{chunkId}")
     @Log(title = "删除切片", businessType = BusinessType.DELETE)
     public R<Void> deleteChunk(@PathVariable("kbId") Long kbId,

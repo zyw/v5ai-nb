@@ -1,5 +1,7 @@
 package xin.v5ai.nb.agent.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +41,7 @@ public class AgentController extends BaseController {
     /**
      * 新建智能体向导：根据描述调用模型生成配置（名称/描述/欢迎语/预设问题/系统提示词）。
      */
+    @SaCheckPermission("agent:agent:generate")
     @PostMapping("/generate")
     @Log(title = "生成智能体配置", businessType = BusinessType.GENCODE)
     public R<GenerateAgentConfigResponse> generateAgentConfig(@RequestBody GenerateAgentConfigRequest request) {
@@ -51,6 +54,7 @@ public class AgentController extends BaseController {
      * @param bo 新建智能体的请求参数
      * @return 新建智能体的响应结果
      */
+    @SaCheckPermission("agent:agent:add")
     @PostMapping
     @Log(title = "新建智能体", businessType = BusinessType.INSERT)
     public R<AgentVo> createAgent(@Validated(AddGroup.class) @RequestBody AgentBo bo) {
@@ -58,11 +62,13 @@ public class AgentController extends BaseController {
         return R.ok(created);
     }
 
+    @SaCheckPermission(value = {"agent:agent:list", "monitor:usage:list"}, mode = SaMode.OR)
     @GetMapping
     public R<PageResult<AgentVo>> listAgents(AgentBo bo, PageQuery pageQuery) {
         return R.ok(agentService.queryPageList(bo, pageQuery));
     }
 
+    @SaCheckPermission("agent:agent:query")
     @GetMapping("/{agentKey}")
     public R<AgentVo> getAgent(@PathVariable("agentKey") String agentKey) {
         return R.ok(agentService.getAgent(agentKey));
@@ -74,6 +80,7 @@ public class AgentController extends BaseController {
      * @param bo 更新智能体的请求参数
      * @return 更新智能体的响应结果
      */
+    @SaCheckPermission("agent:agent:edit")
     @PutMapping("/{agentKey}")
     @Log(title = "更新智能体", businessType = BusinessType.UPDATE)
     public R<AgentVo> updateAgent(@PathVariable("agentKey") String agentKey,
@@ -86,6 +93,7 @@ public class AgentController extends BaseController {
      * @param agentKey 智能体键
      * @return 禁用智能体的响应结果
      */
+    @SaCheckPermission("agent:agent:disable")
     @PostMapping("/{agentKey}/disable")
     @Log(title = "禁用智能体", businessType = BusinessType.DISABLE)
     public R<Void> disableAgent(@PathVariable("agentKey") String agentKey) {
@@ -97,6 +105,7 @@ public class AgentController extends BaseController {
      * @param agentKey 智能体键
      * @return 删除智能体的响应结果
      */
+    @SaCheckPermission("agent:agent:remove")
     @DeleteMapping("/{agentKey}")
     @Log(title = "删除智能体", businessType = BusinessType.DELETE)
     public R<Void> deleteAgent(@PathVariable("agentKey") String agentKey) {
@@ -110,6 +119,7 @@ public class AgentController extends BaseController {
      * @return 智能体版本列表的响应结果
      */
 
+    @SaCheckPermission("agent:agent:version")
     @GetMapping("/{agentKey}/versions")
     public R<PageResult<AgentVersionVo>> listVersions(@PathVariable("agentKey") String agentKey, PageQuery pageQuery) {
         List<AgentVersionVo> list = agentService.listVersions(agentKey);
@@ -122,6 +132,7 @@ public class AgentController extends BaseController {
      * @param request 发布智能体的请求参数
      * @return 发布智能体的响应结果
      */
+    @SaCheckPermission("agent:agent:publish")
     @PostMapping("/{agentKey}/publish")
     @Log(title = "发布智能体", businessType = BusinessType.PUBLISH)
     public R<Void> publishAgent(@PathVariable("agentKey") String agentKey,

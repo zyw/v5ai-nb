@@ -1,5 +1,6 @@
 package xin.v5ai.nb.mcp.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,6 +42,7 @@ public class McpServerController extends BaseController {
 
     private final IMcpServerService mcpServerService;
 
+    @SaCheckPermission("mcp:server:add")
     @PostMapping
     @Log(title = "新建MCP服务", businessType = BusinessType.INSERT)
     public R<McpServerVo> createServer(@Validated(AddGroup.class) @RequestBody McpServerBo bo) {
@@ -48,51 +50,60 @@ public class McpServerController extends BaseController {
         return R.ok(created);
     }
 
+    @SaCheckPermission("mcp:server:list")
     @GetMapping
     public R<PageResult<McpServerVo>> listServers(McpServerBo bo, PageQuery pageQuery) {
         return R.ok(mcpServerService.queryPageList(bo, pageQuery));
     }
 
+    @SaCheckPermission("mcp:server:list")
     @GetMapping("/options")
     public R<List<OptionDTO>> listServerOptions() {
         return R.ok(mcpServerService.queryOptionList());
     }
 
+    @SaCheckPermission("mcp:server:edit")
     @PutMapping
     @Log(title = "更新MCP服务", businessType = BusinessType.UPDATE)
     public R<McpServerVo> updateServer(@Validated(EditGroup.class) @RequestBody McpServerBo bo) {
         return R.ok(mcpServerService.updateServer(bo));
     }
 
+    @SaCheckPermission("mcp:server:changeStatus")
     @PutMapping("/{id}/disable")
     @Log(title = "禁用MCP服务", businessType = BusinessType.DISABLE)
     public R<Void> disableServer(@PathVariable("id") Long id) {
         return toAjax(mcpServerService.disableServer(id));
     }
 
+    @SaCheckPermission("mcp:server:changeStatus")
     @PutMapping("/{id}/enable")
     @Log(title = "启用MCP服务", businessType = BusinessType.ENABLE)
     public R<Void> enableServer(@PathVariable("id") Long id) {
         return toAjax(mcpServerService.enableServer(id));
     }
 
+    @SaCheckPermission("mcp:server:test")
     @PostMapping("/{id}/test-connection")
     public R<McpConnectionTestResponse> testConnection(@PathVariable("id") Long id) {
         var result = mcpServerService.testConnection(id);
         return R.ok(new McpConnectionTestResponse(id, result.ok(), result.message(), result.toolCount()));
     }
 
+    @SaCheckPermission("mcp:server:discover")
     @PostMapping("/{id}/discover-tools")
     public R<List<McpToolVo>> discoverTools(@PathVariable("id") Long id) {
         return R.ok(mcpServerService.discoverTools(id));
     }
 
+    @SaCheckPermission("mcp:tool:list")
     @GetMapping("/{id}/tools")
     public R<PageResult<McpToolVo>> listTools(@PathVariable("id") Long id, PageQuery pageQuery) {
         var list = mcpServerService.listTools(id);
         return R.ok(PageResult.build(list, list.size()));
     }
 
+    @SaCheckPermission("mcp:tool:edit")
     @PutMapping("/{id}/tools/{toolName}/permission")
     public R<McpToolVo> updateToolPermission(@PathVariable("id") Long id,
                                              @PathVariable("toolName") String toolName,
@@ -103,6 +114,7 @@ public class McpServerController extends BaseController {
         return R.ok(mcpServerService.updateToolPermission(id, toolName, request.permission()));
     }
 
+    @SaCheckPermission("mcp:toolCall:list")
     @GetMapping("/{id}/tool-calls")
     public R<PageResult<McpToolCallAuditVo>> listToolCallsByServer(@PathVariable("id") Long id,
                                                                    PageQuery pageQuery) {

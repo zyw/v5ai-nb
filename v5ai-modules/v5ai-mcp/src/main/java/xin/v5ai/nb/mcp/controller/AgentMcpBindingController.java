@@ -1,5 +1,6 @@
 package xin.v5ai.nb.mcp.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +26,7 @@ public class AgentMcpBindingController {
 
     private final IMcpServerService mcpServerService;
 
+    @SaCheckPermission("agent:agent:edit")
     @PostMapping
     public R<Void> bindServers(@PathVariable("agentKey") String agentKey,
                                @RequestBody McpBindRequest request) {
@@ -35,6 +37,7 @@ public class AgentMcpBindingController {
         return R.ok();
     }
 
+    @SaCheckPermission("agent:agent:query")
     @GetMapping
     public R<List<Long>> getBindings(@PathVariable("agentKey") String agentKey) {
         return R.ok(mcpServerService.getServerBindings(agentKey));

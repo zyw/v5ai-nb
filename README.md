@@ -2,10 +2,6 @@
 
 基于 JDK 21、Spring Boot 4.1.0、AgentScope Java、MyBatis-Plus、PostgreSQL + pgvector 和 Sa-Token + JWT 构建的中心化 AI 应用平台。
 
-## 许可证
-
-本项目采用 [Apache License 2.0](LICENSE) 许可证。除非另有说明，项目中的源代码、文档和前端代码均按该许可证发布；第三方依赖仍受其各自许可证约束。
-
 当前已完成 **Phase 1（模型与 Agent 闭环）**、**Phase 2（RAG 知识库）**、**Phase 3（MCP）**、**Phase 4（Skill）**、**Phase 5（平台增强）**及对话门户相关能力（Phase 6）；Workflow 已有管理 API 和基础运行模块，但可视化编排与完整运行时闭环仍在完善：
 
 - 认证（Sa-Token + JWT）、Provider/Model 管理与凭据 AES-GCM 加密、模型连通性测试；
@@ -462,7 +458,7 @@ V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef
 说明：
 
 - 未配置 EMBEDDING 模型时，向量化回退到确定性本地 Hash 嵌入（维度 1536），便于本地端到端验证；
-- 数据库迁移：`v5ai-modules/v5ai-platform/src/main/resources/db/migration/`，当前到 V48（V42–V48 包含思考与消息元数据、Schema 注释、遗留表清理、引用展示、Agent 次要模型、解析器元数据和模型身份注释）；迁移只增不改，改历史迁移必须 flyway repair；当前 schema 全貌见 `docs/db/schema.md`；
+- 数据库迁移：`v5ai-modules/v5ai-platform/src/main/resources/db/migration/`，当前到 V49（V42–V49 包含思考与消息元数据、Schema 注释、遗留表清理、引用展示、Agent 次要模型、解析器元数据、模型身份注释和菜单按钮权限）；迁移只增不改，改历史迁移必须 flyway repair；当前 schema 全貌见 `docs/db/schema.md`；
 - MCP 运行时使用已发现的 Tool 元数据：先"发现工具"再"绑定 + 发布"，运行时才会注册工具；
 - Skill 上传生成 DRAFT 版本，发布后成为"当前版本"，运行时注入当前版本文件（回滚改变当前版本）；
 - Stdio MCP 命令受白名单限制（`V5AI_MCP_STDIO_COMMAND_WHITELIST`，生产环境必须配置）；
@@ -485,3 +481,7 @@ V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef
 - `docs/phase3-verification.md`
 - `docs/phase4-verification.md`
 - `docs/phase5-verification.md`
+
+## 许可证
+
+本项目采用 [Apache License 2.0](LICENSE) 许可证。除非另有说明，项目中的源代码、文档和前端代码均按该许可证发布；第三方依赖仍受其各自许可证约束。

@@ -1,5 +1,6 @@
 package xin.v5ai.nb.rag.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,6 +44,7 @@ public class KnowledgeBaseController extends BaseController {
     private final IKnowledgeBaseService knowledgeBaseService;
     private final xin.v5ai.nb.rag.core.VectorDimensionService vectorDimensionService;
 
+    @SaCheckPermission("rag:knowledge:list")
     @GetMapping("/dimension-check")
     public R<xin.v5ai.nb.rag.core.VectorDimensionService.DimensionCapability> dimensionCheck(
             @RequestParam("embeddingModelId") Long embeddingModelId,
@@ -50,18 +52,21 @@ public class KnowledgeBaseController extends BaseController {
         return R.ok(vectorDimensionService.resolve(embeddingModelId, vectorStoreInstanceId));
     }
 
+    @SaCheckPermission("rag:knowledge:add")
     @PostMapping
     @Log(title = "新建知识库", businessType = BusinessType.INSERT)
     public R<KnowledgeBaseVo> createKnowledgeBase(@Validated(AddGroup.class) @RequestBody KnowledgeBaseBo bo) {
         return R.ok(knowledgeBaseService.createKnowledgeBase(bo));
     }
 
+    @SaCheckPermission("rag:knowledge:edit")
     @PutMapping
     @Log(title = "编辑知识库", businessType = BusinessType.UPDATE)
     public R<KnowledgeBaseVo> updateKnowledgeBase(@Validated(EditGroup.class) @RequestBody KnowledgeBaseBo bo) {
         return R.ok(knowledgeBaseService.updateKnowledgeBase(bo));
     }
 
+    @SaCheckPermission("rag:knowledge:edit")
     @PutMapping("/{id}/config")
     @Log(title = "更新知识库检索/问答配置", businessType = BusinessType.UPDATE)
     public R<Void> updateRagConfig(@PathVariable("id") Long id,
@@ -70,21 +75,25 @@ public class KnowledgeBaseController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("rag:knowledge:list")
     @GetMapping
     public R<PageResult<KnowledgeBaseVo>> listKnowledgeBases(KnowledgeBaseBo bo, PageQuery pageQuery) {
         return R.ok(knowledgeBaseService.queryPageList(bo, pageQuery));
     }
 
+    @SaCheckPermission("rag:knowledge:list")
     @GetMapping("/options")
     public R<List<OptionDTO>> listKnowledgeBaseOptions() {
         return R.ok(knowledgeBaseService.queryOptionList());
     }
 
+    @SaCheckPermission("rag:knowledge:query")
     @GetMapping("/{id}")
     public R<KnowledgeBaseVo> getKnowledgeBaseDetail(@PathVariable("id") Long id) {
         return R.ok(knowledgeBaseService.getKnowledgeBaseDetail(id));
     }
 
+    @SaCheckPermission("rag:knowledge:changeStatus")
     @PutMapping("/{id}/disable")
     @Log(title = "禁用知识库", businessType = BusinessType.DISABLE)
     public R<Void> disableKnowledgeBase(@PathVariable("id") Long id) {
@@ -92,6 +101,7 @@ public class KnowledgeBaseController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("rag:knowledge:changeStatus")
     @PutMapping("/{id}/enable")
     @Log(title = "启用知识库", businessType = BusinessType.ENABLE)
     public R<Void> enableKnowledgeBase(@PathVariable("id") Long id) {
@@ -99,6 +109,7 @@ public class KnowledgeBaseController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("rag:knowledge:remove")
     @DeleteMapping("/{id}")
     @Log(title = "删除知识库", businessType = BusinessType.DELETE)
     public R<Void> deleteKnowledgeBase(@PathVariable("id") Long id) {
@@ -106,6 +117,7 @@ public class KnowledgeBaseController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("rag:knowledge:query")
     @GetMapping("/{kbId}/tasks")
     public R<PageResult<KnowledgeTaskVo>> listTasks(@PathVariable("kbId") Long kbId, PageQuery pageQuery) {
         var list = knowledgeBaseService.listTasks(kbId);

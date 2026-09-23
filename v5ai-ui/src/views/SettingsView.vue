@@ -11,7 +11,7 @@ const baseline = [
   { label: '模型运行时', value: 'AgentScope Java 2.0' },
   { label: '认证安全', value: 'Sa-Token + JWT / AES-GCM' },
   { label: '前端', value: 'Vue 3.5 + Vite 7 + TypeScript 5.9' },
-  { label: '数据库迁移', value: 'Flyway（当前 V48）' }
+  { label: '数据库迁移', value: 'Flyway（当前 V49）' }
 ]
 /** 独立对话门户（v5ai-ui-chat）地址；未配置时不显示入口，避免死链。 */
 const chatPortalUrl = import.meta.env.VITE_CHAT_UI_URL ?? ''

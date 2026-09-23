@@ -1,5 +1,6 @@
 package xin.v5ai.nb.rag.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +28,7 @@ public class AgentKnowledgeBindingController extends BaseController {
 
     private final IKnowledgeBaseService knowledgeBaseService;
 
+    @SaCheckPermission("agent:agent:edit")
     @PostMapping
     public R<Void> bindKnowledgeBases(@PathVariable("agentKey") String agentKey,
                                       @RequestBody KnowledgeBindBo request) {
@@ -37,6 +39,7 @@ public class AgentKnowledgeBindingController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("agent:agent:query")
     @GetMapping
     public R<List<Long>> getKnowledgeBindings(@PathVariable("agentKey") String agentKey) {
         return R.ok(knowledgeBaseService.getKnowledgeBindings(agentKey));

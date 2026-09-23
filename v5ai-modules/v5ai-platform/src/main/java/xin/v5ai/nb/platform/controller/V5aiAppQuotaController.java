@@ -1,5 +1,6 @@
 package xin.v5ai.nb.platform.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import xin.v5ai.nb.common.core.domain.R;
@@ -25,11 +26,13 @@ public class V5aiAppQuotaController {
     public record UpdateQuotaRequest(Integer dailyModelCalls, Long dailyTokens, Integer ratePerMinute) {
     }
 
+    @SaCheckPermission("agent:quota:query")
     @GetMapping("/quota")
     public R<AppQuotaDTO> getQuota(@PathVariable("agentKey") String agentKey) {
         return R.ok(quotaService.getQuota(agentKey));
     }
 
+    @SaCheckPermission("agent:quota:edit")
     @PutMapping("/quota")
     @Log(title = "更新应用配额", businessType = BusinessType.UPDATE)
     public R<AppQuotaDTO> updateQuota(@PathVariable("agentKey") String agentKey, @RequestBody UpdateQuotaRequest request) {
@@ -38,11 +41,13 @@ public class V5aiAppQuotaController {
         return R.ok(quota);
     }
 
+    @SaCheckPermission("agent:quota:query")
     @GetMapping("/usage/daily")
     public R<AppUsageDTO> getDailyUsage(@PathVariable("agentKey") String agentKey) {
         return R.ok(quotaService.getDailyUsage(agentKey));
     }
 
+    @SaCheckPermission("agent:quota:query")
     @GetMapping("/usage/range")
     public R<List<AppUsageDTO>> getUsageRange(@PathVariable("agentKey") String agentKey,
                                               @RequestParam LocalDate from,

@@ -1,5 +1,6 @@
 package xin.v5ai.nb.workflow.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,11 +41,13 @@ public class WorkflowController extends BaseController {
     private final IWorkflowService workflowService;
     private final WorkflowEngine engine;
 
+    @SaCheckPermission("workflow:workflow:list")
     @GetMapping
     public R<PageResult<WorkflowVo>> list(WorkflowBo bo, PageQuery pageQuery) {
         return R.ok(workflowService.queryPageList(bo, pageQuery));
     }
 
+    @SaCheckPermission("workflow:workflow:add")
     @PostMapping
     @Log(title = "新建工作流", businessType = BusinessType.INSERT)
     public R<WorkflowVo> create(@Validated(AddGroup.class) @RequestBody WorkflowBo bo) {
@@ -52,17 +55,20 @@ public class WorkflowController extends BaseController {
         return R.ok(created);
     }
 
+    @SaCheckPermission("workflow:workflow:query")
     @GetMapping("/{key}")
     public R<WorkflowVo> get(@PathVariable("key") String key) {
         return R.ok(workflowService.get(key));
     }
 
+    @SaCheckPermission("workflow:workflow:edit")
     @PutMapping("/{key}")
     @Log(title = "更新工作流", businessType = BusinessType.UPDATE)
     public R<WorkflowVo> update(@PathVariable("key") String key, @RequestBody WorkflowBo bo) {
         return R.ok(workflowService.update(key, bo));
     }
 
+    @SaCheckPermission("workflow:workflow:remove")
     @DeleteMapping("/{key}")
     @Log(title = "禁用工作流", businessType = BusinessType.DISABLE)
     public R<Void> disable(@PathVariable("key") String key) {
@@ -70,12 +76,14 @@ public class WorkflowController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("workflow:workflow:publish")
     @PostMapping("/{key}/publish")
     @Log(title = "发布工作流", businessType = BusinessType.PUBLISH)
     public R<WorkflowVo> publish(@PathVariable("key") String key) {
         return R.ok(workflowService.publish(key));
     }
 
+    @SaCheckPermission("workflow:workflow:run")
     @PostMapping("/{key}/run")
     @Log(title = "运行工作流", businessType = BusinessType.RUN)
     public R<WorkflowRun> run(@PathVariable("key") String key,
@@ -84,12 +92,14 @@ public class WorkflowController extends BaseController {
         return R.ok(engine.execute(key, inputs));
     }
 
+    @SaCheckPermission("workflow:run:list")
     @GetMapping("/{key}/runs")
     public R<PageResult<WorkflowRun>> listRuns(@PathVariable("key") String key, PageQuery pageQuery) {
         var list = workflowService.listRuns(key);
         return R.ok(PageResult.build(list, (long) list.size()));
     }
 
+    @SaCheckPermission("workflow:run:list")
     @GetMapping("/runs/{runId}")
     public R<WorkflowRunDetailVo> getRun(@PathVariable("runId") String runId) {
         var run = workflowService.getRun(runId);

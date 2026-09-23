@@ -1,5 +1,6 @@
 package xin.v5ai.nb.skill.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +35,7 @@ public class SkillController extends BaseController {
 
     private final ISkillService skillService;
 
+    @SaCheckPermission("skill:skill:add")
     @PostMapping(consumes = "multipart/form-data")
     @Log(title = "上传技能", businessType = BusinessType.INSERT)
     public R<SkillVo> uploadSkill(
@@ -48,6 +50,7 @@ public class SkillController extends BaseController {
         }
     }
 
+    @SaCheckPermission("skill:skill:add")
     @PostMapping("/online")
     @Log(title = "在线新建技能", businessType = BusinessType.INSERT)
     public R<SkillVo> createOnline(@RequestBody CreateSkillBo request) {
@@ -57,11 +60,13 @@ public class SkillController extends BaseController {
         return R.ok(skillService.createSkillOnline(request.name(), request.description(), request.versionDescription()));
     }
 
+    @SaCheckPermission("skill:skill:query")
     @GetMapping("/{id}/editor")
     public R<SkillEditorVo> getEditor(@PathVariable("id") Long id) {
         return R.ok(skillService.getSkillEditor(id));
     }
 
+    @SaCheckPermission("skill:file:edit")
     @PostMapping("/{id}/files")
     @Log(title = "新建技能文件", businessType = BusinessType.INSERT)
     public R<Void> createFile(@PathVariable("id") Long id, @RequestBody SkillFileBo request) {
@@ -70,6 +75,7 @@ public class SkillController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("skill:file:edit")
     @PutMapping("/{id}/files")
     @Log(title = "更新技能文件", businessType = BusinessType.UPDATE)
     public R<Void> updateFile(@PathVariable("id") Long id, @RequestBody SkillFileBo request) {
@@ -78,6 +84,7 @@ public class SkillController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("skill:file:edit")
     @DeleteMapping("/{id}/files")
     @Log(title = "删除技能文件", businessType = BusinessType.DELETE)
     public R<Void> deleteFile(@PathVariable("id") Long id, @RequestParam("path") String path) {
@@ -85,6 +92,7 @@ public class SkillController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("skill:skill:ai")
     @PostMapping("/{id}/ai/generate")
     @Log(title = "AI 生成技能", businessType = BusinessType.UPDATE)
     public R<String> aiGenerate(@PathVariable("id") Long id, @RequestBody AiGenerateBo request) {
@@ -95,6 +103,7 @@ public class SkillController extends BaseController {
         return R.ok("Success Generated Markdown Content",skillService.generateSkillMd(id, request.modelId(), request.requirement().trim()));
     }
 
+    @SaCheckPermission("skill:skill:ai")
     @PostMapping("/{id}/files/ai/optimize")
     @Log(title = "AI 优化技能文件", businessType = BusinessType.UPDATE)
     public R<String> aiOptimize(@PathVariable("id") Long id, @RequestBody AiOptimizeBo request) {
@@ -113,34 +122,40 @@ public class SkillController extends BaseController {
         }
     }
 
+    @SaCheckPermission("skill:skill:list")
     @GetMapping
     public R<PageResult<SkillVo>> listSkills(SkillBo bo, PageQuery pageQuery) {
         return R.ok(skillService.queryPageList(bo, pageQuery));
     }
 
+    @SaCheckPermission("skill:skill:list")
     @GetMapping("/options")
     public R<List<OptionDTO>> listSkillOptions() {
         return R.ok(skillService.queryOptionList());
     }
 
+    @SaCheckPermission("skill:skill:changeStatus")
     @PutMapping("/{id}/disable")
     @Log(title = "禁用技能", businessType = BusinessType.DISABLE)
     public R<Void> disableSkill(@PathVariable("id") Long id) {
         return toAjax(skillService.disableSkill(id));
     }
 
+    @SaCheckPermission("skill:skill:changeStatus")
     @PutMapping("/{id}/enable")
     @Log(title = "启用技能", businessType = BusinessType.ENABLE)
     public R<Void> enableSkill(@PathVariable("id") Long id) {
         return toAjax(skillService.enableSkill(id));
     }
 
+    @SaCheckPermission("skill:skill:remove")
     @DeleteMapping("/{id}")
     @Log(title = "删除技能", businessType = BusinessType.DELETE)
     public R<Void> deleteSkill(@PathVariable("id") Long id) {
         return toAjax(skillService.deleteSkill(id));
     }
 
+    @SaCheckPermission("skill:version:remove")
     @DeleteMapping("/{id}/versions/{versionId}")
     @Log(title = "删除技能版本", businessType = BusinessType.DELETE)
     public R<Void> deleteSkillVersion(@PathVariable("id") Long id,
@@ -148,12 +163,14 @@ public class SkillController extends BaseController {
         return toAjax(skillService.deleteSkillVersion(id, versionId));
     }
 
+    @SaCheckPermission("skill:version:list")
     @GetMapping("/{id}/versions")
     public R<PageResult<SkillVersionVo>> listVersions(@PathVariable("id") Long id, PageQuery pageQuery) {
         var list = skillService.listVersions(id);
         return R.ok(PageResult.build(list, (long) list.size()));
     }
 
+    @SaCheckPermission("skill:version:publish")
     @PostMapping("/{id}/versions/{versionId}/publish")
     @Log(title = "发布技能", businessType = BusinessType.PUBLISH)
     public R<SkillVo> publishVersion(@PathVariable("id") Long id,
@@ -161,6 +178,7 @@ public class SkillController extends BaseController {
         return R.ok(skillService.publishVersion(id, versionId));
     }
 
+    @SaCheckPermission("skill:version:offline")
     @PostMapping("/{id}/versions/{versionId}/offline")
     @Log(title = "下线技能版本", businessType = BusinessType.UPDATE)
     public R<SkillVo> offlineVersion(@PathVariable("id") Long id,
@@ -168,11 +186,13 @@ public class SkillController extends BaseController {
         return R.ok(skillService.offlineVersion(id, versionId));
     }
 
+    @SaCheckPermission("skill:skill:query")
     @GetMapping("/{id}/usage")
     public R<SkillUsageVo> getUsage(@PathVariable("id") Long id) {
         return R.ok(skillService.getSkillUsage(id));
     }
 
+    @SaCheckPermission("skill:version:rollback")
     @PostMapping("/{id}/rollback")
     @Log(title = "回滚技能", businessType = BusinessType.UPDATE)
     public R<SkillVo> rollback(@PathVariable("id") Long id,

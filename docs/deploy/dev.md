@@ -394,7 +394,7 @@ TOKEN=$(curl -s http://localhost:8080/api/auth/login -H 'Content-Type: applicati
 | 上传文档报 `Maximum upload size exceeded` / `The field file exceeds its maximum permitted size of 1048576 bytes` | Tomcat/Spring 默认单文件上限 1MB。已在 `application.yml` 配置 `spring.servlet.multipart.max-file-size=50MB`（可用 `V5AI_UPLOAD_MAX_FILE_SIZE` 覆盖），**重新构建并重启即可**；超限时接口返回 400 `uploaded file exceeds the configured size limit` |
 | `knowledge base does not exist: <19 位大数字>` 等按 ID 查询失败的报错 | 旧版本使用 MyBatis-Plus 默认雪花 ID（19 位），超出 JavaScript 安全整数范围，前端回传 ID 时精度丢失。已改为数据库 `BIGSERIAL` 自增 ID（小数值、JS 安全），**重新构建并重启后重新创建知识库/模型即可**（旧数据中的雪花 ID 在 UI 中无法可靠回传，列表会打"旧数据"标签） |
 | `/admin/providers` 等管理接口返回 `INTERNAL_ERROR / internal server error` | 多为表/列与实体不一致。先看服务端日志（`Unhandled exception in request` 会打印真实堆栈），检查是否为旧版本构建：`provider_type` 列已由 V26 移除，旧实体/代码若仍引用会报错，请 `mvn clean verify` 后重启，Flyway 会自动应用 V26 |
-| 启动报 `relation "v5ai_knowledge_task" does not exist` 等表不存在错误 | Flyway 迁移未执行。Spring Boot 4 已把 Flyway 自动装配移出核心，必须引入 `spring-boot-starter-flyway` 才会执行 `spring.flyway.*`；本项目已内置该依赖与 `flyway-database-postgresql`，**请重新 `mvn clean verify` 后重启**，首次启动会自动建表（检查 `v5ai_flyway_schema_history` 中有 V1…V48 的记录，当前 47 个迁移文件） |
+| 启动报 `relation "v5ai_knowledge_task" does not exist` 等表不存在错误 | Flyway 迁移未执行。Spring Boot 4 已把 Flyway 自动装配移出核心，必须引入 `spring-boot-starter-flyway` 才会执行 `spring.flyway.*`；本项目已内置该依赖与 `flyway-database-postgresql`，**请重新 `mvn clean verify` 后重启**，首次启动会自动建表（检查 `v5ai_flyway_schema_history` 中有 V1…V49 的记录，当前 48 个迁移文件） |
 | 启动报 `Unsupported Database: PostgreSQL` | Flyway 10+ 的数据库方言拆分为独立模块，缺少 `flyway-database-postgresql`（本项目已内置）；若使用旧 jar 请重新构建 |
 | 启动报 `type "vector" does not exist` | pgvector 扩展未安装，见 2.1 |
 | 启动报 `credential cipher key must be 32 bytes` | `V5AI_CREDENTIAL_CIPHER_KEY` 长度必须 32 字节 |
@@ -423,7 +423,7 @@ TOKEN=$(curl -s http://localhost:8080/api/auth/login -H 'Content-Type: applicati
 | 生产接口前缀 | `/prod-api`（`v5ai-ui/.env.production`，由网关/Nginx 转发到后端） |
 | PostgreSQL | `jdbc:postgresql://localhost:5432/v5ai_nb`，用户 `v5ai`/`v5ai`（profile 里的默认值指向内网地址，本机请用 `V5AI_DATASOURCE_*` 覆盖） |
 | Redis | 必需；dev profile 默认 `192.168.10.13:6379`、库 `11`、key 前缀 `v5ai` |
-| Flyway 历史表 | `v5ai_flyway_schema_history`（迁移 V1 Phase1 … V48，当前 47 个文件，只增不改） |
+| Flyway 历史表 | `v5ai_flyway_schema_history`（迁移 V1 Phase1 … V49，当前 48 个文件，只增不改） |
 | Sa-Token | Header `Authorization: Bearer <access_token>`，JWT，默认单会话；会话存 Redis |
 | 管理员登录 | `admin` / `admin`（V18 种子），请求需带 `clientId` + `grantType=password` |
 | 向量维度 | `vector(1536)`（未配置 EMBEDDING 模型时使用本地 Hash 嵌入，同样 1536 维） |

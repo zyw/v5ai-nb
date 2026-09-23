@@ -24,6 +24,10 @@
             <groupId>xin.v5ai.nb</groupId>
             <artifactId>v5ai-common-web</artifactId>
         </dependency>
+        <dependency>
+            <groupId>xin.v5ai.nb</groupId>
+            <artifactId>v5ai-common-satoken</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>xin.v5ai.nb</groupId>
