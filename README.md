@@ -1,8 +1,8 @@
 # v5ai-nb
 
-基于 JDK 21、Spring Boot 4.1.0、AgentScope Java、MyBatis-Plus、PostgreSQL + pgvector 和 Sa-Token + JWT 构建的中心化 AI 应用平台（Dify 风格，不使用 Server-Agent/gRPC 架构）。
+基于 JDK 21、Spring Boot 4.1.0、AgentScope Java、MyBatis-Plus、PostgreSQL + pgvector 和 Sa-Token + JWT 构建的中心化 AI 应用平台。
 
-当前已完成 **Phase 1（模型与 Agent 闭环）**、**Phase 2（RAG 知识库）**、**Phase 3（MCP）**、**Phase 4（Skill）** 与 **Phase 5（平台增强）**：
+当前已完成 **Phase 1（模型与 Agent 闭环）**、**Phase 2（RAG 知识库）**、**Phase 3（MCP）**、**Phase 4（Skill）**、**Phase 5（平台增强）**及对话门户相关能力（Phase 6）；Workflow 已有管理 API 和基础运行模块，但可视化编排与完整运行时闭环仍在完善：
 
 - 认证（Sa-Token + JWT）、Provider/Model 管理与凭据 AES-GCM 加密、模型连通性测试；
 - **Agent**（原 Application 概念，V8 迁移重命名）：草稿/更新/禁用/发布版本、**系统提示词（systemPrompt）配置并随发布版本固化**、API Key 管理（BCrypt 存储）；
@@ -16,7 +16,7 @@
 ## 技术基线
 
 - JDK 21
-- Spring Boot 4.1.0 / WebFlux
+- Spring Boot 4.1.0 / Spring MVC Servlet 栈（SSE 使用响应式流）
 - MyBatis-Plus（显式装配 `SqlSessionFactory`，兼容 Spring Boot 4）
 - Flyway
 - Sa-Token + JWT
@@ -27,7 +27,7 @@
 
 ## 模块
 
-- `v5ai-common`: 公共响应、异常、分页、API Key 校验端口和平台领域（租户/用户/角色/配额/用量/审计/限流）
+- `v5ai-common`: 公共响应、异常、分页、API Key 校验端口和平台领域契约（用户/角色/菜单/配额/用量/审计/限流）
 - `v5ai-model`: 模型配置与凭证加密、连通性测试端口
 - `v5ai-agent`: Agent 草稿/更新/禁用/发布/版本解析核心
 - `v5ai-runtime`: Agent 运行时边界、事件模型、会话/消息/run/AgentState 持久化装饰器、历史窗口裁剪（`v5ai.agentscope.history`）、会话摘要（`ConversationSummaryWriter`）、用量埋点（真实用量优先）、RAG 上下文端口；会话标题/摘要的模型取自 Agent 的**次要模型**（未配置则回退绑定的对话模型，见 `AuxiliaryModel`）
@@ -35,15 +35,16 @@
 - `v5ai-mcp`: MCP Server/工具/审计领域模型、管理服务（连接测试、Tool 发现、Agent 绑定、权限）、连接与 Stdio 策略端口
 - `v5ai-skill`: Skill 包解析校验、版本发布/回滚、Agent 绑定、运行时 Workspace 注入端口
 - `v5ai-worker`: 文档索引 Worker（异步任务状态机 + `@Scheduled` 调度 + 重试）
-- `v5ai-infrastructure`: MyBatis-Plus、Sa-Token、BCrypt、AES-GCM、pgvector、MinIO/Redisson、AgentScope MCP/Skill 运行时实现、租户/用户/配额/用量/审计/限流实现、各端口实现
-- `v5ai-api`: 管理 API（含租户/用户/配额/用量/审计/统计/健康）、运行 API（SSE + 限流/配额）、API Key 过滤器、Sa-Token 管理拦截（RBAC）
+- `v5ai-platform`: 平台自包含模块，提供认证、API Key、用户/角色/菜单、配额/用量/审计、资源存储管理及 Flyway 迁移；同时承载 MyBatis-Plus、Sa-Token、BCrypt、AES-GCM、pgvector、MinIO/Redisson 等平台实现
+- `v5ai-api`: 跨模块 Web 装配、运行 API（SSE + API Key 限流/配额）、统计与健康接口、全局异常处理
 - `v5ai-starter`: Spring Boot 启动模块（`scanBasePackages="xin.v5ai.nb"` + `@MapperScan` + `@EnableScheduling`）
+- `v5ai-code-generator`: 独立的代码生成辅助模块，不参与默认启动链路
 - `v5ai-ui`: Vue 3 + Vite + TypeScript + Naive UI 管理前端
 - `v5ai-ui-chat`: 独立对话门户前端（终端用户侧，API Key 登录，独立部署）
 
 ## 运行时调用链路（RAG / MCP / Skill / Tool 装配）
 
-> 一次运行从 HTTP 进来到 SSE 逐条推回，所有中间步骤都是同一条 Reactor `Flux` 链上的惰性执行（`Flux.defer` 在订阅时才真正开始）。RAG 检索、MCP/Skill/Tool 装配都发生在「模型首 token 之前」。
+> 一次运行从 HTTP 进来到 SSE 逐条推回，所有中间步骤都是同一条 Reactor `Flux` 链上的惰性执行（`Flux.defer` 在订阅时才真正开始）。强制 RAG 检索和 MCP/Skill/Tool 装配发生在模型首 token 之前；智能 RAG 以 `rag_search` 工具形式按模型决定是否调用，检索可能发生在模型开始输出之后。
 
 ### 1. 在线流式调用全链路（`POST /api/v1/agents/{agentKey}/chat/stream`）
 
@@ -65,12 +66,12 @@ sequenceDiagram
     Note over P: Flux.defer 订阅才执行
     P->>P: normalize + ensureConversation + save用户提问
     P->>A: delegate.stream
-    A->>A: resolve Agent(发布快照) + withMemory
-    alt ragEnabled
+    A->>A: PublishedAgentResolver.resolve(发布快照) + withMemory
+    alt ragEnabled 且强制调用 RAG
         A->>R: buildContext
         R-->>A: RagContext 上下文 + hits
     end
-    A-->>U: SSE RUN_STARTED + RETRIEVAL
+    A-->>U: SSE RUN_STARTED（强制 RAG 命中时随后 RETRIEVAL）
     A->>E: streamText(agent, request+ragContext)
     Note over E: 能力装配：按开关解析→注册
     opt mcpEnabled
@@ -79,7 +80,7 @@ sequenceDiagram
     opt skillEnabled
         E->>E: AgentSkillWorkspaceResolver.resolveSkills<br/>读当前发布版本文件
     end
-    E->>E: new Toolkit + registerAgentTool<br/>PlatformMcpTool / WebSearchTool
+    E->>E: new Toolkit + registerAgentTool<br/>PlatformMcpTool / WebSearchTool / RagSearchTool(智能 RAG)
     E->>E: injectSkillsToWorkspace + HarnessAgent.build
     E->>M: model.stream / streamEvents
     M-->>E: 增量 token + 工具调用
@@ -220,7 +221,7 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 |---|---|---------------------------------------------------------------------|---|
 | 35 | `v5ai.security.excludes` | `[/api/v1/agents/**]`                                               | Sa-Token 免登录路径；运行 API 由 API Key 自行鉴权 |
 | 36 | `v5ai.crypto.type` | `aes`；可选 `aes` / `sm4`                                           | 凭据（模型 API Key、MCP headers/env）加密实现 |
-| 37 | `v5ai.crypto.secret-key` | `${V5AI_CREDENTIAL_CIPHER_KEY:xxxx}`                                | 对称密钥（32 字节），生产必须通过环境变量替换 |
+| 37 | `v5ai.crypto.secret-key` | `${V5AI_CREDENTIAL_CIPHER_KEY:tggsbeaGlYKF8JJ9eAaZixMkJIqaqhwe}` | 对称密钥（32 字节），生产必须通过环境变量替换 |
 | 38 | `v5ai.crypto.iv` | 无默认值（可选，`type=sm4` 时必填）                                 | SM4 初始化向量 |
 | 39 | `v5ai.mybatis-encryptor.enable` | `false`                                                             | MyBatis 字段级加解密开关（`@EncryptField`） |
 | 40 | `v5ai.mybatis-encryptor.algorithm` | `BASE64`；可选 `DEFAULT` / `BASE64` / `AES` / `RSA` / `SM2` / `SM4` | 默认加密算法 |
@@ -260,6 +261,157 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 | 74 | `v5ai.rag.smart-chunk.timeout-seconds` | `60`                                                                | 智能切片调用模型生成切片方案的超时（秒） |
 | 75 | `v5ai.skill.ai.timeout-seconds` | `90`                                                                | Skill 内容 AI 生成调用超时（秒） |
 | 76 | `v5ai.store.connection-test.timeout-seconds` | `5`                                                                 | 向量库 / 检索存储连通性测试超时（秒） |
+
+文档解析服务的配置也通过环境变量注入。选择 `docling` 或 `mineru` 时，外部服务不可用、超时或返回空结果会记录 WARN 并回退到内置解析器；内置解析器失败才会使索引任务失败。
+
+| 配置项 | 环境变量 | 默认值 |
+|---|---|---|
+| `v5ai.rag.parser.docling.enabled` | `V5AI_DOCLING_ENABLED` | `false` |
+| `v5ai.rag.parser.docling.base-url` | `V5AI_DOCLING_URL` | `http://127.0.0.1:5001` |
+| `v5ai.rag.parser.docling.api-key` | `V5AI_DOCLING_API_KEY` | 空 |
+| `v5ai.rag.parser.docling.connect-timeout-millis` | `V5AI_DOCLING_CONNECT_TIMEOUT_MS` | `5000` |
+| `v5ai.rag.parser.docling.read-timeout-millis` | `V5AI_DOCLING_READ_TIMEOUT_MS` | `600000` |
+| `v5ai.rag.parser.docling.poll-interval-millis` | `V5AI_DOCLING_POLL_INTERVAL_MS` | `2000` |
+| `v5ai.rag.parser.docling.poll-timeout-millis` | `V5AI_DOCLING_POLL_TIMEOUT_MS` | `1800000` |
+| `v5ai.rag.parser.docling.concurrency` | `V5AI_DOCLING_CONCURRENCY` | `3` |
+| `v5ai.rag.parser.mineru.enabled` | `V5AI_MINERU_ENABLED` | `false` |
+| `v5ai.rag.parser.mineru.base-url` | `V5AI_MINERU_URL` | `http://127.0.0.1:8000` |
+| `v5ai.rag.parser.mineru.connect-timeout-millis` | `V5AI_MINERU_CONNECT_TIMEOUT_MS` | `5000` |
+| `v5ai.rag.parser.mineru.read-timeout-millis` | `V5AI_MINERU_READ_TIMEOUT_MS` | `600000` |
+| `v5ai.rag.parser.mineru.poll-interval-millis` | `V5AI_MINERU_POLL_INTERVAL_MS` | `3000` |
+| `v5ai.rag.parser.mineru.poll-timeout-millis` | `V5AI_MINERU_POLL_TIMEOUT_MS` | `1800000` |
+
+`application.yml` 或 profile 专属配置可以覆盖上述模板默认值；生产部署请通过环境变量或外部配置文件设置服务地址，不要把凭据写入知识库配置或前端请求。
+
+## 部署方式
+
+### 1. 部署前准备
+
+- Docker 24+ 与 Docker Compose v2+（Compose 部署方式会同时启动 PostgreSQL、pgvector、Redis 和 v5ai-nb）；
+- 直接运行 jar 时，需要自行准备 PostgreSQL 14+（启用 pgvector）与 Redis；
+- 生产环境必须替换 `V5AI_JWT_SECRET`、`V5AI_CREDENTIAL_CIPHER_KEY` 等密钥。`V5AI_CREDENTIAL_CIPHER_KEY` 必须是 32 字节，修改已使用过的密钥会导致历史模型凭据无法解密；
+- 当前仓库内置的外部配置 profile 为 `dev`，可用 `SPRING_PROFILES_ACTIVE` 和环境变量覆盖。部署前请不要使用示例密码。
+
+### 2. Docker 单容器部署
+
+该方式只启动应用容器，PostgreSQL 与 Redis 使用已有的外部服务。构建上下文必须是仓库根目录：
+
+```bash
+docker build -f script/docker/Dockerfile -t v5ai-nb:latest .
+
+docker run -d \
+  --name v5ai-nb \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=dev \
+  -e V5AI_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/v5ai_nb \
+  -e V5AI_DATASOURCE_USERNAME=v5ai \
+  -e V5AI_DATASOURCE_PASSWORD=change-me \
+  -e V5AI_REDIS_HOST=host.docker.internal \
+  -e V5AI_REDIS_PORT=6379 \
+  -e V5AI_REDIS_PASSWORD=change-me \
+  -e V5AI_JWT_SECRET=change-this-in-production \
+  -e V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef \
+  -v "$(pwd)/config:/app/config:ro" \
+  -v v5ai-upload-data:/data/uploads \
+  v5ai-nb:latest
+```
+
+Linux Docker 主机如果不能解析 `host.docker.internal`，请改为数据库/Redis 的实际地址，或增加 `--add-host=host.docker.internal:host-gateway`。容器会自动读取挂载到 `/app/config` 的外部 Spring 配置。
+
+常用操作：
+
+```bash
+docker logs -f v5ai-nb
+curl http://127.0.0.1:8080/api/health
+docker stop v5ai-nb
+docker rm v5ai-nb
+```
+
+### 3. Docker Compose 部署
+
+仓库提供的 Compose 文件位于 `script/docker/docker-compose.yml`，默认会创建并持久化 PostgreSQL、Redis、上传文件和 AgentScope 工作目录。先准备 Compose 环境变量，再启动：
+
+```bash
+cp .env.example .env
+# 编辑 .env，至少替换 POSTGRES_PASSWORD、REDIS_PASSWORD、V5AI_JWT_SECRET、V5AI_CREDENTIAL_CIPHER_KEY
+cd script/docker
+docker compose --env-file ../../.env up -d --build
+docker compose ps
+docker compose logs -f v5ai
+curl http://127.0.0.1:8080/api/health
+```
+
+Compose 专用变量如下：
+
+```dotenv
+POSTGRES_DB=v5ai_nb
+POSTGRES_USER=v5ai
+POSTGRES_PASSWORD=change-me
+REDIS_PASSWORD=change-me
+V5AI_PORT=8080
+V5AI_JWT_SECRET=change-this-in-production
+V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef
+```
+
+停止应用但保留数据：
+
+```bash
+docker compose down
+```
+
+不要在生产环境随意执行 `docker compose down -v`，该命令会删除数据库、Redis、上传文件等命名卷。
+
+### 4. 直接使用 jar 与启动脚本
+
+不使用 Docker 时，可以使用 `script/shell/v5ai-nb.sh` 管理应用进程。脚本会优先查找发布目录下的 jar，其次查找 `v5ai-starter/target`，默认使用 `dev` profile、8080 端口，将日志写入 `logs/v5ai-nb.log`，并使用 `config/` 作为外部配置目录（目录存在时自动加载）。
+
+如果只构建运行镜像，可先构建 jar，再使用 `v5ai-starter/Dockerfile`；该文件不包含 Maven 构建阶段：
+
+```bash
+mvn -pl v5ai-starter -am package -DskipTests
+docker build -f v5ai-starter/Dockerfile -t v5ai-nb:latest v5ai-starter
+```
+
+需要一次完成编译和镜像构建时，使用 `script/docker/Dockerfile` 两阶段构建文件（见上面的 Docker 部署命令）。
+
+```bash
+mvn -pl v5ai-starter -am package -DskipTests
+chmod +x script/shell/v5ai-nb.sh
+
+./script/shell/v5ai-nb.sh start
+./script/shell/v5ai-nb.sh status
+./script/shell/v5ai-nb.sh restart
+./script/shell/v5ai-nb.sh stop
+```
+
+可通过环境变量覆盖默认行为：
+
+```bash
+PROFILE=dev PORT=8081 JAVA_OPTS='-Xms1g -Xmx2g' \
+  CONF_DIR=/etc/v5ai-nb JAR_PATH=/opt/v5ai-nb/v5ai-nb.jar \
+  ./script/shell/v5ai-nb.sh start
+```
+
+需要注册为 systemd 服务时，使用 root 安装并指定运行用户：
+
+```bash
+sudo USER_NAME="$USER" ./script/shell/v5ai-nb.sh install
+sudo systemctl start v5ai-nb
+sudo systemctl status v5ai-nb
+sudo journalctl -u v5ai-nb -f
+
+# 卸载 systemd 服务
+sudo ./script/shell/v5ai-nb.sh uninstall
+```
+
+### 5. 部署后检查
+
+1. 访问 `GET /api/health`，确认应用、数据库和迁移状态正常；
+2. 查看 `docker compose logs -f v5ai` 或 `logs/v5ai-nb.log`，确认 Flyway 没有失败；
+3. 通过 `POST /api/auth/login` 登录管理端，首次启动自动创建的 `admin/admin` 仅用于开发验证，生产环境必须修改密码；
+4. 配置 Provider、Model、Agent 与 API Key 后，再调用 `/api/v1/agents/{agentKey}/chat/stream` 验证运行链路。
+
 ## 本地验证
 
 ```bash
@@ -281,20 +433,20 @@ V5AI_DATASOURCE_URL=jdbc:postgresql://localhost:5432/v5ai_nb
 V5AI_DATASOURCE_USERNAME=v5ai
 V5AI_DATASOURCE_PASSWORD=change-me
 V5AI_JWT_SECRET=change-this-development-secret
-V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
+V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef
 ```
 
 启动后：
 
 1. `POST /api/auth/login`（无用户时启动自动创建默认管理员 `admin/admin`，生产务必改密）获取管理员 Token；
 2. 配置 Provider 与 Model（`POST /api/admin/providers`、`POST /api/admin/models`，可在 UI 上连通性测试）；
-3. 创建并发布 Agent，`POST /api/admin/agents/{agentKey}/api-keys` 生成运行 API Key；
+3. 创建并发布 Agent，再通过 `POST /api/admin/api-keys` 创建 API Key 并绑定可访问的 Agent；
 4. 创建知识库、上传文档（`POST /api/admin/knowledge-bases/{kbId}/documents`，multipart），Worker 异步索引；
 5. 将知识库绑定到 Agent（`POST /api/admin/agents/{agentKey}/knowledge-bindings`）；
 6. 创建 MCP Server（`POST /api/admin/mcp-servers`）→ 测试连接 → 发现工具（`POST /api/admin/mcp-servers/{id}/discover-tools`）→ 绑定到 Agent（`POST /api/admin/agents/{agentKey}/mcp-bindings`）；
 7. 上传 Skill 包（`POST /api/admin/skills`，multipart zip）→ 发布版本（`POST /api/admin/skills/{id}/versions/{versionId}/publish`）→ 绑定到 Agent（`POST /api/admin/agents/{agentKey}/skill-bindings`）；
 8. 通过 `POST /api/v1/agents/{agentKey}/chat/stream`（Agent API Key）发起流式对话：带 RAG 上下文，MCP 工具被动态注册（调用记录可查 `GET /api/admin/mcp-tool-calls?runId=<run-id>`），绑定 Skill 自动注入 Workspace；
-9. 可在 Platform 页配置应用配额/限流（`PUT /api/admin/agents/{agentKey}/quota`），在 Observability 页查看用量明细、审计日志与总览（`GET /api/admin/usage`、`GET /api/admin/audit-logs`、`GET /api/admin/stats/overview`）。
+9. 在 Agent 管理列表的「配额」操作中配置应用配额/限流（`GET|PUT /api/admin/apps/{agentKey}/quota`），在可观测性页查看用量明细与总览（`GET /api/admin/usage`、`GET /api/admin/stats/overview`）；系统日志页使用 `GET /api/admin/oper/log/list` 查看操作审计。
 10. 对话门户（`v5ai-ui-chat`）用 API Key 登录后可管理服务端会话并带图片提问：
     - `GET /api/v1/agents/auth/bootstrap` 拿到可用 Agent 与 `imageSupported`（所绑模型 `config.capabilities` 含 `image` 才为真）；
     - **附件入口的两个坑**：①判定用的是**发布快照**里的 `modelId`（`PublishedAgentResolver.resolve`），而能力本身按模型 ID 实时读——所以在「模型管理」里给模型开启「支持图片输入」无需重新发布即可生效，但**给 Agent 换了绑定模型必须重新发布**，否则门户仍按旧快照的模型判定；②`imageSupported` 只在进入页面时取一次，改完模型/能力后需**刷新页面（或重登）**才会重新取到；
@@ -306,13 +458,13 @@ V5AI_CREDENTIAL_CIPHER_KEY=replace-with-32-byte-secret-value
 说明：
 
 - 未配置 EMBEDDING 模型时，向量化回退到确定性本地 Hash 嵌入（维度 1536），便于本地端到端验证；
-- 数据库迁移：`v5ai-platform/src/main/resources/db/migration/`（V1 Phase 1 … V41 门户会话/附件/用量落库 + 历史摘要，V42–V46 继续递增：思考落库、列注释补齐、删遗留表、引用随消息落库、Agent 次要模型 + 引用展示开关；需 pgvector）；迁移只增不改，改历史迁移必须 flyway repair；当前 schema 全貌见 `docs/db/schema.md`；
+- 数据库迁移：`v5ai-modules/v5ai-platform/src/main/resources/db/migration/`，当前到 V48（V42–V48 包含思考与消息元数据、Schema 注释、遗留表清理、引用展示、Agent 次要模型、解析器元数据和模型身份注释）；迁移只增不改，改历史迁移必须 flyway repair；当前 schema 全貌见 `docs/db/schema.md`；
 - MCP 运行时使用已发现的 Tool 元数据：先"发现工具"再"绑定 + 发布"，运行时才会注册工具；
 - Skill 上传生成 DRAFT 版本，发布后成为"当前版本"，运行时注入当前版本文件（回滚改变当前版本）；
 - Stdio MCP 命令受白名单限制（`V5AI_MCP_STDIO_COMMAND_WHITELIST`，生产环境必须配置）；
 - 管理 API 现在强制登录（写操作需 admin 角色）；运行时 API 按应用配额/限流（超限 429）；
 - 限流器为进程内实现（单实例），多实例部署需替换 Redis；Token 用量以模型回报的真实值为准（直连路径读 `ChatResponse.getUsage()`、工具路径累加 `ModelCallEndEvent.getUsage()`），服务端未回报时回退为平台估算（CJK 1 字 1 token、其余 4 字符 1 token）；同会话历史上限默认 40 条 / 8000 字符，超出部分由 `ConversationSummaryWriter` 压缩成摘要继续参与上下文；
-- Workflow 仍属后续阶段。
+- Workflow 当前已有管理 API、节点/边定义和基础运行状态模型；可视化编辑器与完整运行时闭环仍在完善。
 
 更多说明见：
 

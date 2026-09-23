@@ -8,8 +8,9 @@ import java.nio.file.Paths;
 public class CodeGenerator {
     public static void main(String[] args) {
         // 通过环境变量获取数据库密码
+        String url = System.getenv("url");
         String pwd = System.getenv("pwd");
-        FastAutoGenerator.create("jdbc:postgresql://pg.v5ai.xin:15432/v5ai_nb",
+        FastAutoGenerator.create(url,
                         "mypgsql", pwd)
                 .globalConfig(builder -> builder
                         .author("ZYW")

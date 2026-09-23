@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: v5ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-v5ai_nb}
+      POSTGRES_USER: ${POSTGRES_USER:-v5ai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - v5ai-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: v5ai-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - v5ai-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '$${REDIS_PASSWORD:-change-me}' ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  v5ai:
+    build:
+      context: ../..
+      dockerfile: script/docker/Dockerfile
+    image: v5ai-nb:latest
+    container_name: v5ai-nb
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      V5AI_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-v5ai_nb}
+      V5AI_DATASOURCE_USERNAME: ${POSTGRES_USER:-v5ai}
+      V5AI_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      V5AI_REDIS_HOST: redis
+      V5AI_REDIS_PORT: 6379
+      V5AI_REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      V5AI_REDIS_DATABASE: ${V5AI_REDIS_DATABASE:-0}
+      V5AI_REDIS_KEY_PREFIX: ${V5AI_REDIS_KEY_PREFIX:-v5ai}
+      V5AI_JWT_SECRET: ${V5AI_JWT_SECRET:-change-this-development-secret}
+      V5AI_CREDENTIAL_CIPHER_KEY: ${V5AI_CREDENTIAL_CIPHER_KEY:-0123456789abcdef0123456789abcdef}
+      V5AI_STORAGE_TYPE: ${V5AI_STORAGE_TYPE:-LOCAL}
+      V5AI_STORAGE_LOCAL_DIR: /data/uploads
+      V5AI_AGENTSCOPE_WORKSPACE: /data/agentscope/workspace
+      V5AI_AGENTSCOPE_STATE_DIR: /data/agentscope/state
+      V5AI_TAVILY_API_KEY: ${V5AI_TAVILY_API_KEY:-}
+      V5AI_MCP_STDIO_COMMAND_WHITELIST: ${V5AI_MCP_STDIO_COMMAND_WHITELIST:-}
+    ports:
+      - "${V5AI_PORT:-8080}:8080"
+    volumes:
+      - v5ai-upload-data:/data/uploads
+      - v5ai-agentscope-workspace:/data/agentscope/workspace
+      - v5ai-agentscope-state:/data/agentscope/state
+      - ${V5AI_CONFIG_DIR:-../../config}:/app/config:ro
+
+volumes:
+  v5ai-postgres-data:
+  v5ai-redis-data:
+  v5ai-upload-data:
+  v5ai-agentscope-workspace:
+  v5ai-agentscope-state:
