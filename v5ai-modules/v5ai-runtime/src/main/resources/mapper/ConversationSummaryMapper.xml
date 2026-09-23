@@ -2,20 +2,36 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="xin.v5ai.nb.runtime.mapper.ConversationSummaryMapper">
 
-    <!-- 滚动覆盖：水位只增不减。ON CONFLICT 的 WHERE 由数据库判定，天然避免并发把摘要改旧。 -->
+    <!-- 滚动覆盖：水位只增不减。条件由数据库判定，天然避免并发把摘要改旧。
+         PG 用 ON CONFLICT ... WHERE；MySQL 的 ON DUPLICATE KEY UPDATE 没有条件 WHERE，
+         改用逐列 IF() 表达同一语义——关键是 covered_until_message_id 必须排在**最后一列**赋值：
+         MySQL 按从左到右求值，前面的 IF() 因此仍读到旧水位（顺序反了就会把摘要改旧）。
+         水位不前进时各列保持原值、updated_at 也不动，与 PG 侧「整行不更新」等价。 -->
     <insert id="upsertIfNewer">
         INSERT INTO v5ai_conversation_summary
             (conversation_id, summary, covered_until_message_id, covered_messages, model_id,
              created_at, updated_at)
         VALUES (#{conversationId}, #{summary}, #{coveredUntilMessageId}, #{coveredMessages}, #{modelId},
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (conversation_id) DO UPDATE
-        SET summary                  = EXCLUDED.summary,
-            covered_until_message_id = EXCLUDED.covered_until_message_id,
-            covered_messages         = EXCLUDED.covered_messages,
-            model_id                 = EXCLUDED.model_id,
-            updated_at               = CURRENT_TIMESTAMP
-        WHERE v5ai_conversation_summary.covered_until_message_id &lt; EXCLUDED.covered_until_message_id
+        <choose>
+            <when test="_databaseId == 'mysql'">
+                ON DUPLICATE KEY UPDATE
+                summary          = IF(VALUES(covered_until_message_id) &gt; covered_until_message_id, VALUES(summary), summary),
+                covered_messages = IF(VALUES(covered_until_message_id) &gt; covered_until_message_id, VALUES(covered_messages), covered_messages),
+                model_id         = IF(VALUES(covered_until_message_id) &gt; covered_until_message_id, VALUES(model_id), model_id),
+                updated_at       = IF(VALUES(covered_until_message_id) &gt; covered_until_message_id, CURRENT_TIMESTAMP, updated_at),
+                covered_until_message_id = IF(VALUES(covered_until_message_id) &gt; covered_until_message_id, VALUES(covered_until_message_id), covered_until_message_id)
+            </when>
+            <otherwise>
+                ON CONFLICT (conversation_id) DO UPDATE
+                SET summary                  = EXCLUDED.summary,
+                    covered_until_message_id = EXCLUDED.covered_until_message_id,
+                    covered_messages         = EXCLUDED.covered_messages,
+                    model_id                 = EXCLUDED.model_id,
+                    updated_at               = CURRENT_TIMESTAMP
+                WHERE v5ai_conversation_summary.covered_until_message_id &lt; EXCLUDED.covered_until_message_id
+            </otherwise>
+        </choose>
     </insert>
 
     <delete id="deleteIfCoveringAfter">

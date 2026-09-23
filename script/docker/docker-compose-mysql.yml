@@ -1,0 +1,115 @@
+# MySQL 版部署：mysql + redis + v5ai + nginx（业务库方言 mysql，Flyway 走 db/migration/mysql 基线）。
+# 要 PostgreSQL 业务库请用同目录的 docker-compose-postgresql.yml；两份只会装其中一个库。
+# 启动：docker compose -f docker-compose-mysql.yml --env-file ../../.env up -d --build
+#
+# 与 PG 版的两处实质差异（不是笔误）：
+#   1) 没有 pgvector —— 向量检索必须绑一个独立「存储实例」（Milvus / Elasticsearch /
+#      另一套 pgvector 库）。关键词这一路不依赖外部服务：把知识库的搜索引擎实例配成
+#      类型 4「业务库 BM25」即可。
+#   2) 排序规则取 utf8mb4_0900_as_cs（区分大小写与重音），与 PG 现网语义一致；
+#      MySQL 默认的 _ai_ci 会放宽唯一键与登录名的匹配。
+# 详见 docs/adr/0012-multi-dialect-database-support.md 与 docs/deploy/dev.md 2.1b。
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: v5ai-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_as_cs
+      - --default-time-zone=+08:00
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-v5ai_nb}
+      MYSQL_USER: ${MYSQL_USER:-v5ai}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - v5ai-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: v5ai-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - v5ai-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '$${REDIS_PASSWORD:-change-me}' ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  v5ai:
+    build:
+      context: ../..
+      dockerfile: script/docker/Dockerfile
+    image: v5ai-nb:latest
+    container_name: v5ai-nb
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      # 本文件只装 MySQL：方言/驱动/连接串都取 MySQL 默认值，无需在 .env 里改
+      # （三项成组生效；只改一项会让 Flyway 方言与连接串打架，启动即报错）。
+      # serverTimezone 必须与容器 --default-time-zone 一致：业务库时间列是 DATETIME(3)、不带时区。
+      # 注：下面三行的「默认值里再套变量」写法需要 Docker Compose v2（compose-spec 的嵌套插值，
+      # podman-compose 不支持）。要指向外部 RDS/自建库时，直接在 .env 里给完整的
+      # V5AI_DATASOURCE_URL / USERNAME / PASSWORD 即可覆盖。
+      V5AI_DB_DIALECT: ${V5AI_DB_DIALECT:-mysql}
+      V5AI_DATASOURCE_DRIVER: ${V5AI_DATASOURCE_DRIVER:-com.mysql.cj.jdbc.Driver}
+      V5AI_DATASOURCE_URL: ${V5AI_DATASOURCE_URL:-jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-v5ai_nb}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+      V5AI_DATASOURCE_USERNAME: ${V5AI_DATASOURCE_USERNAME:-${MYSQL_USER:-v5ai}}
+      V5AI_DATASOURCE_PASSWORD: ${V5AI_DATASOURCE_PASSWORD:-${MYSQL_PASSWORD:-change-me}}
+      V5AI_REDIS_HOST: redis
+      V5AI_REDIS_PORT: 6379
+      V5AI_REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      V5AI_REDIS_DATABASE: ${V5AI_REDIS_DATABASE:-0}
+      V5AI_REDIS_KEY_PREFIX: ${V5AI_REDIS_KEY_PREFIX:-v5ai}
+      V5AI_JWT_SECRET: ${V5AI_JWT_SECRET:-change-this-development-secret}
+      V5AI_CREDENTIAL_CIPHER_KEY: ${V5AI_CREDENTIAL_CIPHER_KEY:-0123456789abcdef0123456789abcdef}
+      V5AI_STORAGE_TYPE: ${V5AI_STORAGE_TYPE:-LOCAL}
+      V5AI_STORAGE_LOCAL_DIR: /data/uploads
+      V5AI_AGENTSCOPE_WORKSPACE: /data/agentscope/workspace
+      V5AI_AGENTSCOPE_STATE_DIR: /data/agentscope/state
+      V5AI_TAVILY_API_KEY: ${V5AI_TAVILY_API_KEY:-}
+      V5AI_MCP_STDIO_COMMAND_WHITELIST: ${V5AI_MCP_STDIO_COMMAND_WHITELIST:-}
+    ports:
+      - "${V5AI_PORT:-8080}:8080"
+    volumes:
+      - v5ai-upload-data:/data/uploads
+      - v5ai-agentscope-workspace:/data/agentscope/workspace
+      - v5ai-agentscope-state:/data/agentscope/state
+      - ${V5AI_CONFIG_DIR:-../../config}:/app/config:ro
+
+  nginx:
+    build:
+      context: ../..
+      dockerfile: script/docker/Dockerfile.ui
+    image: v5ai-nb-ui:latest
+    container_name: v5ai-nginx
+    restart: unless-stopped
+    depends_on:
+      v5ai:
+        condition: service_healthy
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+
+volumes:
+  v5ai-mysql-data:
+  v5ai-redis-data:
+  v5ai-upload-data:
+  v5ai-agentscope-workspace:
+  v5ai-agentscope-state:

@@ -81,7 +81,8 @@ spring:
       fail_on_unknown_properties: false
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    # 迁移脚本按方言分目录：common/ 放两方言通用的迁移，${v5ai.db.dialect} 放方言专用迁移。
+    locations: classpath:db/migration/common,classpath:db/migration/${v5ai.db.dialect}
     table: v5ai_flyway_schema_history
 
 # Sa-Token配置
@@ -127,6 +128,11 @@ logging:
 
 
 v5ai:
+  # 业务库方言
+  db:
+    # postgresql（默认）| mysql：决定 Flyway 加载哪个迁移目录，须与 V5AI_DATASOURCE_URL 配套
+    dialect: ${V5AI_DB_DIALECT:postgresql}
+
   # security配置
   security:
     # 排除路径（无需登录即可访问）
@@ -382,6 +388,7 @@ v5ai:
 #     url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}
 #     username: ${V5AI_DATASOURCE_USERNAME:v5ai}
 #     password: ${V5AI_DATASOURCE_PASSWORD:change-me}
+#     # 默认 PostgreSQL；切 MySQL 时同步改 v5ai.db.dialect=mysql 与此驱动，URL 见 application-dev.yml.template
 #     driver-class-name: org.postgresql.Driver
 #   data:
 #     redis:

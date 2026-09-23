@@ -16,6 +16,12 @@
 > 它的价值是「不用 replay 四十多个历史文件就能读懂现在长什么样」，不是取代迁移。
 >
 > **不含** `v5ai_flyway_schema_history`（Flyway 自己的记账表，不属于业务 schema）。
+>
+> **本文件描述 PostgreSQL 侧**（默认方言）。业务库支持 MySQL 后（`docs/adr/0012`），
+> MySQL 的等价 schema 是 `db/migration/mysql/V1__baseline_schema.sql`——同一套表与列，
+> 只有类型映射差异（`BIGSERIAL→BIGINT AUTO_INCREMENT`、`TIMESTAMPTZ→DATETIME(3)`、
+> `JSONB→JSON`、`BYTEA→LONGBLOB`、`text[]→JSON`）。两边对账用
+> `dump-schema.sql` 与 `dump-schema-mysql.sql`。
 
 ## 目录
 

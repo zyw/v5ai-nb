@@ -45,9 +45,9 @@ public class StatsController {
                 knowledgeBaseMapper.selectCount(null),
                 skillMapper.selectCount(null),
                 count("SELECT count(*) FROM v5ai_run"),
-                count("SELECT count(*) FROM v5ai_run WHERE started_at::date = ?", today),
-                count("SELECT count(*) FROM v5ai_model_usage WHERE created_at::date = ?", today),
-                count("SELECT COALESCE(SUM(total_tokens),0) FROM v5ai_model_usage WHERE created_at::date = ?", today)));
+                count("SELECT count(*) FROM v5ai_run WHERE CAST(started_at AS DATE) = ?", today),
+                count("SELECT count(*) FROM v5ai_model_usage WHERE CAST(created_at AS DATE) = ?", today),
+                count("SELECT COALESCE(SUM(total_tokens),0) FROM v5ai_model_usage WHERE CAST(created_at AS DATE) = ?", today)));
     }
 
     /**

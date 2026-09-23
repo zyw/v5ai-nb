@@ -21,6 +21,10 @@
                                   ELSE '处理中断（进程重启/超时），且已达到最大尝试次数' END,
             updated_at = now()
         WHERE status = 'PROCESSING'
-          AND updated_at &lt; now() - (#{staleMinutes} * interval '1 minute')
+          AND updated_at &lt;
+        <choose>
+            <when test="_databaseId == 'mysql'">DATE_SUB(NOW(), INTERVAL #{staleMinutes} MINUTE)</when>
+            <otherwise>now() - (#{staleMinutes} * interval '1 minute')</otherwise>
+        </choose>
     </update>
 </mapper>

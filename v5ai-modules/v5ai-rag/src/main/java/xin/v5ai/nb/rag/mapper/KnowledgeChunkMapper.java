@@ -53,17 +53,20 @@ public interface KnowledgeChunkMapper extends BaseMapperPlus<KnowledgeChunk, Kno
             @Param("limit") int limit);
 
     /**
-     * BM25 关键词候选召回：GIN 索引取「分词数组与查询词项有交集」的切片行
-     * （{@code keyword_tokens && terms}），按命中词覆盖度粗排后截断；
-     * 候选集的真实相关度排序由 BM25 计分侧决定，故候选数应大于返回条数。
+     * BM25 关键词候选召回：索引取「分词与查询词项有交集」的切片行
+     * （PG {@code keyword_tokens && terms} / MySQL {@code JSON_OVERLAPS}），
+     * 按命中词覆盖度粗排后截断；候选集的真实相关度排序由 BM25 计分侧决定，故候选数应大于返回条数。
      *
-     * @param ids   限定的知识库 ID 集合
-     * @param terms 查询词项（分词后去重，作为 {@code text[]} 绑定）
-     * @param limit 候选条数上限
+     * @param ids       限定的知识库 ID 集合
+     * @param terms     查询词项（分词后去重；PG 侧按 {@code text[]} 绑定，MySQL 侧逐词项计分）
+     * @param termsJson {@code terms} 的 JSON 数组字符串形式（仅 MySQL 分支用于 JSON_OVERLAPS；
+     *                  PG 分支忽略此参数）
+     * @param limit     候选条数上限
      * @return 候选切片行（含 {@code keyword_tokens}，用于现算词频与文档长度）
      */
     List<KnowledgeChunkDO> findChunksByKeywordTokens(@Param("ids") List<Long> ids,
                                                      @Param("terms") String[] terms,
+                                                     @Param("termsJson") String termsJson,
                                                      @Param("limit") int limit);
 
     /**

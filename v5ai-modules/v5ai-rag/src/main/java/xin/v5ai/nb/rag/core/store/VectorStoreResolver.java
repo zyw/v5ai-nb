@@ -28,6 +28,10 @@ public class VectorStoreResolver {
     private static final int TYPE_PG_VECTOR = 1;
     private static final int TYPE_MILVUS = 2;
     private static final int TYPE_ELASTICSEARCH = 3;
+    /**
+     * 业务库原生关键词检索（历史名 PG_FULLTEXT）：只实现 {@link KeywordStore}，不连外部服务。
+     */
+    private static final int TYPE_DB_FULLTEXT = 4;
 
     private final StoreInstanceMapper storeInstanceMapper;
     private final IKnowledgeChunkService chunkService;
@@ -48,7 +52,8 @@ public class VectorStoreResolver {
     }
 
     /**
-     * 返回关键词后端；实例不支持关键词（Milvus / PG_FULLTEXT 未实现）时返回 null，调用方跳过关键词降级。
+     * 返回关键词后端；实例本身不支持关键词（只有 Milvus——它只承载向量）时返回 null，
+     * 调用方跳过关键词这一路。PG_VECTOR / ELASTICSEARCH / DB_FULLTEXT 都有关键词能力。
      */
     public KeywordStore keywordStore(Long instanceId) {
         if (instanceId == null) {
@@ -78,8 +83,8 @@ public class VectorStoreResolver {
         if (type == null) {
             throw new ServiceException("存储实例缺少类型: " + instanceId);
         }
-        if (type != TYPE_PG_VECTOR && type != TYPE_MILVUS && type != TYPE_ELASTICSEARCH) {
-            // PG_FULLTEXT 等未接线的类型：无实现返回 null，由调用方跳过或报错
+        if (type != TYPE_PG_VECTOR && type != TYPE_MILVUS && type != TYPE_ELASTICSEARCH && type != TYPE_DB_FULLTEXT) {
+            // 尚未接线的类型：无实现返回 null，由调用方跳过或报错
             return null;
         }
         return resolved.computeIfAbsent(instanceId, id -> build(instance));
@@ -99,6 +104,8 @@ public class VectorStoreResolver {
                 var config = toConfig(instance.getConfig(), PgVectorConfigDO.class);
                 yield new PgVectorStore(pgDataSourceFactory.create(config), chunkService, pgBm25KeywordSearch);
             }
+            // 不读 config：分词就在业务库的切片行上，实例只是「按业务库做 BM25」的开关与归属标识
+            case TYPE_DB_FULLTEXT -> new DbNativeKeywordStore(pgBm25KeywordSearch);
             default -> null;
         };
     }

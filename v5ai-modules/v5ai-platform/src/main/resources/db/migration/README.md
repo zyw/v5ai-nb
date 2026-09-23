@@ -2,7 +2,7 @@
 
 本目录是**唯一权威**的 schema 来源；`docs/db/schema.md` 只是它的快照。
 
-## 两条规矩
+## 三条规矩
 
 **1. 历史只增不改。** Flyway 默认 `validate-on-migrate=true`，每个已应用文件的内容摘要（checksum）都记在
 `v5ai_flyway_schema_history` 里。改动任何**已被某个库应用过**的迁移文件一个字节，该库下次启动就会
@@ -11,7 +11,29 @@
 **2. 想读懂「现在长什么样」，不要 replay 这一堆文件。** 直接看 [`docs/db/schema.md`](../../../../../../../docs/db/schema.md)：
 那里有迁移头的完整 schema 与每一列的注释。
 
-## 索引
+**3. 同一版本号，在一个方言下只能出现一次。** 目录按方言分层（见下一节），某个库实际能看到的
+迁移集合是 `common/` + 它自己的方言目录。因此一个版本要么只在 `common/`（两方言通用、写法必须两边都成立），
+要么在 `postgresql/` 与 `mysql/` **各一份同版本号**（方言专用）。两边都有、或只在其中一个方言目录里放
+一半（另一方言永远等不到这个号）都是错的——前者 duplicate version，后者两库 schema 从此分叉。
+
+## 目录布局（双方言）
+
+业务库支持 PostgreSQL（默认）与 MySQL 8.0.17+，由 `V5AI_DB_DIALECT` 选择，
+`spring.flyway.locations = classpath:db/migration/common,classpath:db/migration/${v5ai.db.dialect}`
+（见 `v5ai-starter/src/main/resources/application.yml`）。
+
+| 目录 | 内容 |
+|---|---|
+| `common/` | 两方言通用的迁移。**目前是空的**（只有本说明），下一个新迁移若写法两边都成立才放这里 |
+| `postgresql/` | V1–V50 的 PostgreSQL 迁移（含 pgvector 扩展与 PG 专有 DDL），历史冻结、只增不改 |
+| `mysql/` | `V1__baseline_schema.sql` + `V2__baseline_seed.sql`：MySQL 侧从**当前 head 全量基线**起步，不重放 PG 的 49 步历史；V50 起与 PG 同号各一份 |
+
+MySQL 侧的版本号与 PG 侧**互不相干**：MySQL 库的 `v5ai_flyway_schema_history` 里是 `1, 2, 50, 51…`，
+PG 库是 `1…49, 50, 51…`。Flyway 只按「本方言可见的集合」校验，缺口（MySQL 没有 V3–V49）不是错误。
+新增迁移时从 **V51** 起号（下一个可用号），双方言各写一份或放 `common/`，见规矩 3。
+决策取舍与类型映射见 [`docs/adr/0012-multi-dialect-database-support.md`](../../../../../../docs/adr/0012-multi-dialect-database-support.md)。
+
+## 索引（postgresql/ 的 PG 历史）
 
 | 版本 | 文件 | 做了什么 |
 |---|---|---|
@@ -63,16 +85,22 @@
 | V47 | `V47__knowledge_document_parser_metadata.sql` | 保存文档实际解析引擎与结构化解析诊断 |
 | V48 | `V48__model_identity_comments.sql` | 移除模型 provider_id/model_key 联合唯一约束，新增用量 model_id、索引及相关注释 |
 | V49 | `V49__menu_full_button_perms.sql` | 菜单树补齐到按钮级：9 个二级菜单补 perms + 66 个按钮权限 + ADMIN/USER 授权 |
+| V50 | `postgresql/V50` + `mysql/V50` | 存储实例类型 4 转正为 DB_FULLTEXT（业务库原生 BM25，见 docs/adr/0012）；只改列注释 |
 
-> V1–V41 是历史（冻结于 2026-09-19）；V42 起为后续演进。**V33 从未创建**，属跳号，不是缺失。当前最大迁移版本为 V49。
+> V1–V41 是历史（冻结于 2026-09-19）；V42 起为后续演进。**V33 从未创建**，属跳号，不是缺失。当前最大迁移版本为 V50（V50 起为双方言同号各一份）。
 
 ## 新增一个迁移
 
-1. **取下一个递增号**（当前最大是 V49）——号一旦被任何库应用过就只能顺延，不能改名；
+1. **取下一个递增号**（当前最大是 V50，新迁移从 V51 起）——号一旦被任何库应用过就只能顺延，不能改名；
 2. 命名 `V<n>__snake_case_描述.sql`，与 Flyway 的默认命名规则一致；
-3. **写头注释**：说清背景（为什么现在要改）、边界（这个迁移**不做**什么）。V42/V43/V44 是现成的样板；
-4. 改现有表一律 `ALTER`，不要回头改历史文件；
-5. 有条件就重新生成一次 `docs/db/schema.md`（见 [`docs/db/dump-schema.sql`](../../../../../../../docs/db/dump-schema.sql)）。
+3. **先决定放哪**（规矩 3）：写法两方言都成立 → `common/` 一份；否则 `postgresql/` 与 `mysql/` **各写一份同版本号**。
+   MySQL 那份要显式写列名（`ALTER TABLE t ADD COLUMN a VARCHAR(64) NULL COMMENT '...'`），
+   不要用 PG 的 `ADD COLUMN IF NOT EXISTS`（MySQL 不支持）、`TIMESTAMPTZ`、`BIGSERIAL`、`COMMENT ON`；
+4. **写头注释**：说清背景（为什么现在要改）、边界（这个迁移**不做**什么）。V42/V43/V44 是现成的样板；
+5. 改现有表一律 `ALTER`，不要回头改历史文件；
+6. 有条件就重新生成一次 `docs/db/schema.md`（PG 见 [`docs/db/dump-schema.sql`](../../../../../../../docs/db/dump-schema.sql)，
+   MySQL 见 [`docs/db/dump-schema-mysql.sql`](../../../../../../../docs/db/dump-schema-mysql.sql)，
+   两份输出列一致，可直接对账）。
 
 ## 为什么没有把历史压平
 
@@ -89,4 +117,7 @@
 | `plm_menu` | 完整菜单树 + 按钮级权限（V18 建 16 个初始菜单，V21/V22/V23/V24/V35 增量加菜单，V49 一次补 70 个按钮权限） | V18、V21、V22、V23、V24、V35、V49 |
 | `plm_role_menu` | 角色-菜单授权（ADMIN 全量、USER 部分，跟随各次菜单插入） | 同上 |
 | `v5ai_model_provider` | 12 个常用模型供应商：openai、anthropic、gemini、dashscope、deepseek、moonshot、zhipu、minimax、tencent、volcengine、siliconflow、ollama（ON CONFLICT DO NOTHING 幂等，只插供应商，不含具体模型 v5ai_model） | V27 |
-| `v5ai_flyway_schema_history` | Flyway 自身迁移记录（配置见 application.yml:70） | 框架自动 |
+| `v5ai_flyway_schema_history` | Flyway 自身迁移记录（配置见 application.yml） | 框架自动 |
+
+MySQL 库的种子由 `mysql/V2__baseline_seed.sql` 按同一顺序重放上述 DML，**最终态与上表一致**
+（admin 账号、两个角色、一个客户端、同一棵菜单树含按钮权限、12 个供应商）。

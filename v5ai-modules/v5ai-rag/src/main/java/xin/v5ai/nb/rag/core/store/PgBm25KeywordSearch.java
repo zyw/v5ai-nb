@@ -2,6 +2,7 @@ package xin.v5ai.nb.rag.core.store;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import xin.v5ai.nb.rag.core.store.VectorStore.RetrievalHit;
@@ -17,12 +18,17 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * PG 原生关键词路的 Okapi BM25 计分（替代原 {@code ILIKE} 粗检的恒 1.0 分）。
+ * 业务库原生关键词路的 Okapi BM25 计分（替代原 {@code ILIKE} 粗检的恒 1.0 分）。
  * <p>
- * 流程：查询 jieba SEARCH 分词 → GIN 索引取候选行（{@code keyword_tokens && 词项}）→
- * Java 侧按 BM25 计分排序取前 topK。词频 tf / 文档长度 dl 由候选行的分词数组现算，
- * 语料规模 N / 平均长度 avgdl / 文档频率 df 按「查询涉及的知识库集合」查询时现算
- * （不做写时计数器；超大库再引入统计缓存）。
+ * 流程：查询 jieba SEARCH 分词 → 走业务库索引取候选行 → Java 侧按 BM25 计分排序取前 topK。
+ * 词频 tf / 文档长度 dl 由候选行的分词数组现算，语料规模 N / 平均长度 avgdl / 文档频率 df
+ * 按「查询涉及的知识库集合」查询时现算（不做写时计数器；超大库再引入统计缓存）。
+ * <p>
+ * 类名保留 {@code Pg} 前缀是历史原因：它最初只服务 PG_VECTOR 实例的关键词路。自业务库支持
+ * MySQL 后（见 docs/adr/0012），候选召回与统计 SQL 的方言差异全部收在
+ * {@code KnowledgeChunkMapper.xml} 的 {@code _databaseId} 分支里
+ * （PG：{@code text[]} + {@code &&} + GIN；MySQL：JSON 数组 + {@code JSON_OVERLAPS} + 多值函数索引），
+ * 本类的分词、计分与排序逻辑两方言共用、不做任何判断。
  * <p>
  * 公式：{@code score = Σ idf(t) × tf×(k1+1) / (tf + k1×(1-b+b×dl/avgdl))}，
  * {@code idf = ln(1 + (N - df + 0.5)/(df + 0.5))}，k1=1.2、b=0.75。
@@ -77,8 +83,10 @@ public class PgBm25KeywordSearch {
             return Optional.of(List.of());
         }
         String[] termArray = terms.toArray(String[]::new);
-        List<KnowledgeChunkDO> candidates =
-                chunkMapper.findChunksByKeywordTokens(knowledgeBaseIds, termArray, candidateLimit(topK));
+        // MySQL 分支用 JSON_OVERLAPS(keyword_tokens, CAST(? AS JSON)) 做候选召回，需要词项的 JSON 数组形式；
+        // PG 分支忽略该参数（走 text[] && 绑定）。见 KnowledgeChunkMapper.xml 的方言分支。
+        List<KnowledgeChunkDO> candidates = chunkMapper.findChunksByKeywordTokens(
+                knowledgeBaseIds, termArray, JSONUtil.toJsonStr(termArray), candidateLimit(topK));
         if (CollUtil.isEmpty(candidates)) {
             return Optional.of(List.of());
         }

@@ -41,7 +41,7 @@ public class StoreInstanceBo {
     private Integer category;
 
     /**
-     * 类型: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT
+     * 类型: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-DB_FULLTEXT（业务库原生 BM25，历史名 PG_FULLTEXT）
      */
     @NotNull(message = "类型不能为空")
     private Integer type;

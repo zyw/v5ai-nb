@@ -21,7 +21,7 @@
 - Flyway
 - Sa-Token + JWT
 - BCrypt / AES-GCM
-- PostgreSQL + pgvector（`vector(1536)` 余弦检索）
+- PostgreSQL + pgvector（默认方言）或 MySQL 8.0.17+，`V5AI_DB_DIALECT` 一键切换；向量检索走独立的「存储实例」（pgvector / Milvus / Elasticsearch）
 - AgentScope Java 2.0（`agentscope-harness`、`agentscope-extensions-model-openai/dashscope`）
 - PDFBox 3.0.7（PDF 解析）
 
@@ -330,17 +330,30 @@ docker rm v5ai-nb
 
 ### 3. Docker Compose 部署
 
-仓库提供的 Compose 文件位于 `script/docker/docker-compose.yml`，默认会创建并持久化 PostgreSQL、Redis、上传文件和 AgentScope 工作目录。先准备 Compose 环境变量，再启动：
+Compose 按业务库方言拆成**两份独立文件**，各自只装自己那个数据库（同一时刻只会跑一份）：
+
+| 文件 | 装什么 | 业务库 |
+|---|---|---|
+| `script/docker/docker-compose-postgresql.yml` | postgres + redis + v5ai + nginx | PostgreSQL + pgvector（默认） |
+| `script/docker/docker-compose-mysql.yml` | mysql + redis + v5ai + nginx | MySQL 8.0 |
+
+两份都会创建并持久化数据库、Redis、上传文件与 AgentScope 工作目录，并用 nginx 发布两个前端（管理端 `/`、对话门户 `/chat/`，API 经 `/prod-api` 转发到后端）。
+
+**PostgreSQL（默认）**——先准备环境变量，再启动：
 
 ```bash
 cp .env.example .env
 # 编辑 .env，至少替换 POSTGRES_PASSWORD、REDIS_PASSWORD、V5AI_JWT_SECRET、V5AI_CREDENTIAL_CIPHER_KEY
 cd script/docker
-docker compose --env-file ../../.env up -d --build
-docker compose ps
-docker compose logs -f v5ai
+docker compose -f docker-compose-postgresql.yml --env-file ../../.env up -d --build
+docker compose -f docker-compose-postgresql.yml ps
+docker compose -f docker-compose-postgresql.yml logs -f v5ai
 curl http://127.0.0.1:8080/api/health
+# 前端（nginx 服务，端口由 NGINX_HTTP_PORT 决定，默认 80）
+#   管理端 http://127.0.0.1/  对话门户 http://127.0.0.1/chat/
 ```
+
+只想跑后端、不要 nginx 时按服务点名启动：`docker compose -f docker-compose-postgresql.yml up -d --build postgres redis v5ai`。
 
 Compose 专用变量如下：
 
@@ -352,15 +365,38 @@ REDIS_PASSWORD=change-me
 V5AI_PORT=8080
 V5AI_JWT_SECRET=change-this-in-production
 V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef
+NGINX_HTTP_PORT=80
 ```
+
+**MySQL**——换另一份文件即可，方言/驱动/连接串已在文件内取好 MySQL 默认值，`.env` 里只需给库名与口令：
+
+```bash
+cd script/docker
+docker compose -f docker-compose-mysql.yml --env-file ../../.env up -d --build
+```
+
+```dotenv
+MYSQL_DATABASE=v5ai_nb
+MYSQL_USER=v5ai
+MYSQL_PASSWORD=change-me
+MYSQL_ROOT_PASSWORD=change-me
+MYSQL_PORT=3306
+# 与 postgres 版同名的这几项照旧：REDIS_PASSWORD / V5AI_JWT_SECRET / V5AI_CREDENTIAL_CIPHER_KEY …
+```
+
+> 空库首次启动会由 Flyway 建出全部表与种子数据（`admin` / `admin`），MySQL 侧只应用两个基线迁移文件，
+> 不重放 PG 的 V1–V49 历史。**MySQL 部署下向量检索必须另绑「存储实例」**（Milvus 或 Elasticsearch）——
+> MySQL 没有 pgvector；关键词检索不依赖外部服务，把知识库的搜索引擎实例配成类型 4「业务库 BM25」即可。
+> 存量数据从 PG 搬到 MySQL **不在支持范围内**，MySQL 只面向全新部署。
+> 取舍与差异见 `docs/adr/0012-multi-dialect-database-support.md`、`docs/deploy/dev.md` 2.1b。
 
 停止应用但保留数据：
 
 ```bash
-docker compose down
+docker compose -f docker-compose-postgresql.yml down          # 或 -f docker-compose-mysql.yml
 ```
 
-不要在生产环境随意执行 `docker compose down -v`，该命令会删除数据库、Redis、上传文件等命名卷。
+不要在生产环境随意执行 `docker compose ... down -v`，该命令会删除数据库、Redis、上传文件等命名卷。
 
 ### 4. 直接使用 jar 与启动脚本
 

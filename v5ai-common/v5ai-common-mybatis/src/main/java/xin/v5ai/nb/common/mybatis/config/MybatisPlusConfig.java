@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import org.apache.ibatis.mapping.DatabaseIdProvider;
+import org.apache.ibatis.mapping.VendorDatabaseIdProvider;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -24,6 +26,8 @@ import xin.v5ai.nb.common.mybatis.handler.MybatisExceptionHandler;
 import xin.v5ai.nb.common.mybatis.handler.PlusPostInitTableInfoHandler;
 import xin.v5ai.nb.common.mybatis.interceptor.PlusDataPermissionInterceptor;
 import xin.v5ai.nb.common.mybatis.interceptor.SqlLogInterceptor;
+
+import java.util.Properties;
 
 /**
  * mybatis-plus配置类(下方注释有插件介绍)
@@ -127,6 +131,25 @@ public class MybatisPlusConfig {
     @Bean
     public PostInitTableInfoHandler postInitTableInfoHandler() {
         return new PlusPostInitTableInfoHandler();
+    }
+
+    /**
+     * 方言标识提供者：按连接的 {@code DatabaseMetaData} 产品名解析出 {@code _databaseId}，
+     * 供 mapper XML 用 {@code <when test="_databaseId == 'mysql'">} 走方言分支
+     * （业务库支持 PostgreSQL / MySQL，见 docs/adr/0012）。
+     * <p>
+     * 与 {@link xin.v5ai.nb.common.mybatis.helper.DataBaseHelper} 的区别：后者给 Java 侧用，
+     * 本 Bean 给 MyBatis 动态 SQL 用，两者都从同一条连接自动识别，不需要额外配置项。
+     * 值用小写（{@code postgresql} / {@code mysql}），与 {@code db/migration} 的方言目录名一致。
+     */
+    @Bean
+    public DatabaseIdProvider databaseIdProvider() {
+        VendorDatabaseIdProvider provider = new VendorDatabaseIdProvider();
+        Properties properties = new Properties();
+        properties.setProperty("PostgreSQL", "postgresql");
+        properties.setProperty("MySQL", "mysql");
+        provider.setProperties(properties);
+        return provider;
     }
 
     /**

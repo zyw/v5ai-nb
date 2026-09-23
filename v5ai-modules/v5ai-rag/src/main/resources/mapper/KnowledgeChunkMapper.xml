@@ -2,6 +2,10 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="xin.v5ai.nb.rag.mapper.KnowledgeChunkMapper">
 
+    <!-- 方言分支说明（见 docs/adr/0012）：_databaseId 由连接的元数据自动识别，
+         postgresql 走数组/jsonb/ON CONFLICT，mysql 走 JSON/ON DUPLICATE KEY UPDATE。
+         两分支的结果集与语义一致，只有写法不同；未识别到方言时按 postgresql 处理。 -->
+
     <insert id="batchSaveChunks" parameterType="xin.v5ai.nb.rag.domain.KnowledgeChunk">
         INSERT INTO v5ai_knowledge_chunk
         (knowledge_base_id, document_id, chunk_index, content, metadata,
@@ -13,8 +17,16 @@
             #{item.documentId},
             #{item.chunkIndex},
             #{item.content},
-            -- 核心修复点：加上 jdbcType=OTHER，告诉 MyBatis 不要当字符串传
-            #{item.metadata, jdbcType=OTHER}::jsonb,
+            <choose>
+                <when test="_databaseId == 'mysql'">
+                    -- metadata 是 JSON 文本串（Worker 写入 "{}" 或对象序列化结果），MySQL 的 JSON 列直接吃字符串
+                    #{item.metadata, jdbcType=OTHER},
+                </when>
+                <otherwise>
+                    -- 核心修复点：加上 jdbcType=OTHER，告诉 MyBatis 不要当字符串传
+                    #{item.metadata, jdbcType=OTHER}::jsonb,
+                </otherwise>
+            </choose>
             #{item.tokenCount},
             #{item.contentHash},
             #{item.sourceType},
@@ -23,14 +35,31 @@
             current_timestamp
             )
         </foreach>
-        ON CONFLICT (vector_id) DO UPDATE
-        SET content = EXCLUDED.content,
-            metadata = EXCLUDED.metadata,
-            token_count = EXCLUDED.token_count,
-            content_hash = EXCLUDED.content_hash,
-            source_type = EXCLUDED.source_type,
-            keyword_tokens = EXCLUDED.keyword_tokens,
-            updated_at = current_timestamp
+        <choose>
+            <when test="_databaseId == 'mysql'">
+                <!-- 冲突只可能来自 uk_knowledge_chunk_vector_id（id 不自增传入、其余列无唯一键）。
+                     VALUES() 在 8.0.20 起标记废弃但仍可用；换成 AS new 别名语法需要 8.0.19+，
+                     本仓库基线下限是 8.0.17，故保留 VALUES() 写法。 -->
+                ON DUPLICATE KEY UPDATE
+                content        = VALUES(content),
+                metadata       = VALUES(metadata),
+                token_count    = VALUES(token_count),
+                content_hash   = VALUES(content_hash),
+                source_type    = VALUES(source_type),
+                keyword_tokens = VALUES(keyword_tokens),
+                updated_at     = current_timestamp
+            </when>
+            <otherwise>
+                ON CONFLICT (vector_id) DO UPDATE
+                SET content = EXCLUDED.content,
+                    metadata = EXCLUDED.metadata,
+                    token_count = EXCLUDED.token_count,
+                    content_hash = EXCLUDED.content_hash,
+                    source_type = EXCLUDED.source_type,
+                    keyword_tokens = EXCLUDED.keyword_tokens,
+                    updated_at = current_timestamp
+            </otherwise>
+        </choose>
     </insert>
 
     <!-- 检索回链：按向量标识批量取业务行（内容/元数据以业务表为准） -->
@@ -52,7 +81,8 @@
         <foreach collection="ids" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
-        AND content ILIKE #{keyword}
+        <!-- 两方言通吃的写法：PG 的 ILIKE 在 MySQL 无对应物，用 LOWER() 达到同样的大小写不敏感 -->
+        AND LOWER(content) LIKE LOWER(#{keyword})
         ORDER BY id
         LIMIT #{limit}
     </select>
@@ -65,22 +95,38 @@
         </foreach>
     </sql>
 
-    <!-- keyword_tokens(text[]) → String[]；其余列自动映射 -->
+    <!-- keyword_tokens(text[] / MySQL JSON 数组) → String[]；其余列自动映射 -->
     <resultMap id="chunkWithKeywordTokens" type="xin.v5ai.nb.rag.domain.KnowledgeChunkDO" autoMapping="true">
         <result column="keyword_tokens" property="keywordTokens"
                 typeHandler="xin.v5ai.nb.rag.core.store.TextArrayTypeHandler"/>
     </resultMap>
 
-    <!-- BM25 候选召回：GIN 索引取分词交集，按命中词覆盖度粗排截断；真实相关度排序在 Java 侧 BM25 -->
+    <!-- BM25 候选召回：索引取分词交集，按命中词覆盖度粗排截断；真实相关度排序在 Java 侧 BM25。
+         PG：text[] && + GIN；MySQL：JSON 数组 + JSON_OVERLAPS（走多值函数索引）。
+         排序用「逐词项 JSON_CONTAINS 求和」替代 PG 的 unnest INTERSECT 计数——两者都是
+         「命中了多少个查询词项」的粗排分，只是 MySQL 没有数组交集计数表达式。
+         termsJson 是 terms 的 JSON 数组字符串形式，仅 MySQL 分支需要。 -->
     <select id="findChunksByKeywordTokens" resultMap="chunkWithKeywordTokens">
         SELECT id, knowledge_base_id, document_id, chunk_index, content, metadata,
                vector_id, content_hash, source_type, keyword_tokens
         FROM v5ai_knowledge_chunk
         WHERE <include refid="kbScope"/>
-        AND keyword_tokens &amp;&amp; #{terms, typeHandler=xin.v5ai.nb.rag.core.store.TextArrayTypeHandler}
-        ORDER BY cardinality(ARRAY(SELECT unnest(keyword_tokens)
-                                   INTERSECT SELECT unnest(#{terms, typeHandler=xin.v5ai.nb.rag.core.store.TextArrayTypeHandler}))) DESC,
-                 id
+        <choose>
+            <when test="_databaseId == 'mysql'">
+                AND JSON_OVERLAPS(keyword_tokens, CAST(#{termsJson} AS JSON))
+                ORDER BY (
+                <foreach collection="terms" item="term" separator=" + ">
+                    JSON_CONTAINS(keyword_tokens, JSON_QUOTE(#{term}))
+                </foreach>
+                ) DESC, id
+            </when>
+            <otherwise>
+                AND keyword_tokens &amp;&amp; #{terms, typeHandler=xin.v5ai.nb.rag.core.store.TextArrayTypeHandler}
+                ORDER BY cardinality(ARRAY(SELECT unnest(keyword_tokens)
+                                           INTERSECT SELECT unnest(#{terms, typeHandler=xin.v5ai.nb.rag.core.store.TextArrayTypeHandler}))) DESC,
+                         id
+            </otherwise>
+        </choose>
         LIMIT #{limit}
     </select>
 
@@ -89,15 +135,26 @@
         SELECT count(*)
         FROM v5ai_knowledge_chunk
         WHERE <include refid="kbScope"/>
-        AND cardinality(keyword_tokens) &gt; 0
+        <choose>
+            <when test="_databaseId == 'mysql'">AND JSON_LENGTH(keyword_tokens) &gt; 0</when>
+            <otherwise>AND cardinality(keyword_tokens) &gt; 0</otherwise>
+        </choose>
     </select>
 
     <!-- 平均文档长度 avgdl -->
     <select id="avgKeywordTokenLength" resultType="double">
-        SELECT COALESCE(avg(cardinality(keyword_tokens)), 0)
+        SELECT COALESCE(avg(
+        <choose>
+            <when test="_databaseId == 'mysql'">JSON_LENGTH(keyword_tokens)</when>
+            <otherwise>cardinality(keyword_tokens)</otherwise>
+        </choose>
+        ), 0)
         FROM v5ai_knowledge_chunk
         WHERE <include refid="kbScope"/>
-        AND cardinality(keyword_tokens) &gt; 0
+        <choose>
+            <when test="_databaseId == 'mysql'">AND JSON_LENGTH(keyword_tokens) &gt; 0</when>
+            <otherwise>AND cardinality(keyword_tokens) &gt; 0</otherwise>
+        </choose>
     </select>
 
     <!-- 词项文档频率 df -->
@@ -105,6 +162,9 @@
         SELECT count(*)
         FROM v5ai_knowledge_chunk
         WHERE <include refid="kbScope"/>
-        AND keyword_tokens @&gt; ARRAY[#{term,jdbcType=VARCHAR}]::text[]
+        <choose>
+            <when test="_databaseId == 'mysql'">AND JSON_CONTAINS(keyword_tokens, JSON_QUOTE(#{term,jdbcType=VARCHAR}))</when>
+            <otherwise>AND keyword_tokens @&gt; ARRAY[#{term,jdbcType=VARCHAR}]::text[]</otherwise>
+        </choose>
     </select>
 </mapper>

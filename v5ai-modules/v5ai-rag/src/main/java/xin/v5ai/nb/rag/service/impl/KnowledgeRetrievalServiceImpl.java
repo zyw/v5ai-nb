@@ -121,9 +121,22 @@ public class KnowledgeRetrievalServiceImpl implements IKnowledgeRetrievalService
         }
     }
 
+    /**
+     * 关键词这一路的后端选择，与运行时 {@code RetrievalContextBuilder.keywordSearch} 同规则：
+     * 知识库显式配了搜索引擎实例时优先用它；否则退回向量实例自带的关键词能力
+     * （PG_VECTOR 走业务库 BM25、ES 走 match）。Milvus 只承载向量、没有关键词能力，
+     * 不配搜索引擎时这一路为空——融合退化为纯向量，不是错误。
+     */
     private List<VectorStore.RetrievalHit> keywordHits(KnowledgeBaseVo base, VectorStore store,
                                                        String keyword, int candidates) {
-        if (!(store instanceof KeywordStore keywordStore)) {
+        KeywordStore keywordStore = null;
+        if (Boolean.TRUE.equals(base.getSearchEngineEnable()) && base.getSearchEngineInstanceId() != null) {
+            keywordStore = vectorStoreResolver.keywordStore(base.getSearchEngineInstanceId());
+        }
+        if (keywordStore == null && store instanceof KeywordStore nativeStore) {
+            keywordStore = nativeStore;
+        }
+        if (keywordStore == null) {
             return List.of();
         }
         try {

@@ -73,9 +73,10 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
     private static final int TYPE_ELASTICSEARCH = 3;
 
     /**
-     * 类型: PG_FULLTEXT（搜索引擎）
+     * 类型: DB_FULLTEXT（搜索引擎）——业务库原生 BM25，不连外部服务；
+     * 存储实例表沿用历史编号 4（历史名 PG_FULLTEXT），MySQL 业务库同样适用（见 docs/adr/0012）。
      */
-    private static final int TYPE_PG_FULLTEXT = 4;
+    private static final int TYPE_DB_FULLTEXT = 4;
 
     /**
      * config JSON 中的敏感字段：查询时脱敏移除，编辑提交为空时保留库中原值。
@@ -200,8 +201,8 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
     @Override
     public StoreConnectionTestVo testConnection(StoreConnectionTestBo bo) {
         Integer type = bo.type();
-        if (type == null || type < TYPE_PG_VECTOR || type > TYPE_PG_FULLTEXT) {
-            return StoreConnectionTestVo.failure("类型不合法: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT");
+        if (type == null || type < TYPE_PG_VECTOR || type > TYPE_DB_FULLTEXT) {
+            return StoreConnectionTestVo.failure("类型不合法: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-DB_FULLTEXT（业务库原生 BM25）");
         }
         // 编辑态合并库中脱敏的敏感字段（password/token 留空时沿用原值），新建态直接用表单值
         String effectiveConfig = bo.config();
@@ -276,14 +277,14 @@ public class StoreInstanceServiceImpl implements IStoreInstanceService {
                 || (category != CATEGORY_VECTOR && category != CATEGORY_SEARCH)) {
             throw new ServiceException("分类不合法: 1-向量库 2-搜索引擎");
         }
-        if (type == null || (type < TYPE_PG_VECTOR || type > TYPE_PG_FULLTEXT)) {
-            throw new ServiceException("类型不合法: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT");
+        if (type == null || (type < TYPE_PG_VECTOR || type > TYPE_DB_FULLTEXT)) {
+            throw new ServiceException("类型不合法: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-DB_FULLTEXT（业务库原生 BM25）");
         }
         boolean categoryMatch = category == CATEGORY_VECTOR
                 ? (type == TYPE_PG_VECTOR || type == TYPE_MILVUS || type == TYPE_ELASTICSEARCH)
-                : (type == TYPE_ELASTICSEARCH || type == TYPE_PG_FULLTEXT);
+                : (type == TYPE_ELASTICSEARCH || type == TYPE_DB_FULLTEXT);
         if (!categoryMatch) {
-            throw new ServiceException("类型与分类不匹配: 向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎仅支持 ELASTICSEARCH/PG_FULLTEXT");
+            throw new ServiceException("类型与分类不匹配: 向量库支持 PG_VECTOR/MILVUS/ELASTICSEARCH，搜索引擎仅支持 ELASTICSEARCH/DB_FULLTEXT");
         }
         if (StrUtil.isNotBlank(bo.getConfig()) && !JSONUtil.isTypeJSON(bo.getConfig())) {
             throw new ServiceException("连接参数必须为合法 JSON");

@@ -43,7 +43,7 @@ public class StoreInstance extends BaseEntity {
     private Integer category;
 
     /**
-     * 类型: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-PG_FULLTEXT
+     * 类型: 1-PG_VECTOR 2-MILVUS 3-ELASTICSEARCH 4-DB_FULLTEXT（业务库原生 BM25，历史名 PG_FULLTEXT）
      */
     private Integer type;
 

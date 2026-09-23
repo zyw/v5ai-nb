@@ -36,7 +36,7 @@ public class ApiKeyUsageStatsService {
             LEFT JOIN v5ai_run r ON r.conversation_id = c.id
             LEFT JOIN v5ai_model_usage mu
                    ON mu.run_id = r.id
-                  AND mu.created_at::date BETWEEN ? AND ?
+                  AND CAST(mu.created_at AS DATE) BETWEEN ? AND ?
             GROUP BY k.id, k.name, k.tracking_id
             UNION ALL
             SELECT NULL AS api_key_id,
@@ -54,7 +54,7 @@ public class ApiKeyUsageStatsService {
             FROM v5ai_model_usage mu
             LEFT JOIN v5ai_run r ON r.id = mu.run_id
             LEFT JOIN v5ai_conversation c ON c.id = r.conversation_id
-            WHERE mu.created_at::date BETWEEN ? AND ?
+            WHERE CAST(mu.created_at AS DATE) BETWEEN ? AND ?
               AND c.api_key_id IS NULL
             ORDER BY total_tokens DESC, model_calls DESC
             """;
@@ -67,7 +67,7 @@ public class ApiKeyUsageStatsService {
         }
         List<Map<String, Object>> summaryRows = jdbcTemplate.queryForList(SUMMARY_SQL, from, to, from, to);
         String dailySql = """
-                SELECT mu.created_at::date AS usage_date,
+                SELECT CAST(mu.created_at AS DATE) AS usage_date,
                        COUNT(*) AS model_calls,
                        COALESCE(SUM(mu.total_tokens), 0) AS total_tokens,
                        COALESCE(SUM(CASE WHEN UPPER(COALESCE(mu.status, '')) = 'SUCCESS' THEN 1 ELSE 0 END), 0) AS success_calls,
@@ -75,9 +75,9 @@ public class ApiKeyUsageStatsService {
                 FROM v5ai_model_usage mu
                 LEFT JOIN v5ai_run r ON r.id = mu.run_id
                 LEFT JOIN v5ai_conversation c ON c.id = r.conversation_id
-                WHERE mu.created_at::date BETWEEN ? AND ?
+                WHERE CAST(mu.created_at AS DATE) BETWEEN ? AND ?
                 """ + (apiKeyId == null ? "" : " AND c.api_key_id = ?\n") + """
-                GROUP BY mu.created_at::date
+                GROUP BY CAST(mu.created_at AS DATE)
                 ORDER BY usage_date
                 """;
         List<Map<String, Object>> dailyRows = apiKeyId == null
