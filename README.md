@@ -2,6 +2,10 @@
 
 基于 JDK 21、Spring Boot 4.1.0、AgentScope Java、MyBatis-Plus、PostgreSQL + pgvector 和 Sa-Token + JWT 构建的中心化 AI 应用平台。
 
+## 许可证
+
+本项目采用 [Apache License 2.0](LICENSE) 许可证。除非另有说明，项目中的源代码、文档和前端代码均按该许可证发布；第三方依赖仍受其各自许可证约束。
+
 当前已完成 **Phase 1（模型与 Agent 闭环）**、**Phase 2（RAG 知识库）**、**Phase 3（MCP）**、**Phase 4（Skill）**、**Phase 5（平台增强）**及对话门户相关能力（Phase 6）；Workflow 已有管理 API 和基础运行模块，但可视化编排与完整运行时闭环仍在完善：
 
 - 认证（Sa-Token + JWT）、Provider/Model 管理与凭据 AES-GCM 加密、模型连通性测试；
