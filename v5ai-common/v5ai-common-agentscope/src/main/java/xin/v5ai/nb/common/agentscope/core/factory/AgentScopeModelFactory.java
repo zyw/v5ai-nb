@@ -3,7 +3,6 @@ package xin.v5ai.nb.common.agentscope.core.factory;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
 import io.agentscope.extensions.model.anthropic.AnthropicChatModel;
-import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
 import io.agentscope.extensions.model.gemini.GeminiChatModel;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import org.springframework.stereotype.Component;
@@ -22,7 +21,10 @@ public class AgentScopeModelFactory {
         return switch (runtimeConfig.providerKey()) {
             case "anthropic" -> anthropicModel(runtimeConfig, credentials, generateOptions);
             case "gemini" -> geminiModel(runtimeConfig, credentials, generateOptions);
-            case "dashscope" -> dashScopeModel(runtimeConfig, credentials, generateOptions);
+            // dashscope 走 OpenAI 兼容适配器：平台收集的 baseUrl 是 .../compatible-mode/v1，
+            // 原生适配器（DashScopeHttpClient）会把它与 /api/v1/services/aigc/... 直接字符串拼接，
+            // 该路径在 compatible-mode 前缀下不存在，必然 404。
+            case "dashscope" -> openAiModel(runtimeConfig, credentials, generateOptions);
             default -> {
                 if ("openai-compatible".equals(runtimeConfig.adapterKey())) {
                     yield openAiModel(runtimeConfig, credentials, generateOptions);
@@ -62,18 +64,6 @@ public class AgentScopeModelFactory {
                 .modelName(config.modelKey())
                 .stream(true)
                 .generateOptions(options);
-        if (credentials.baseUrl() != null && !credentials.baseUrl().isBlank()) {
-            builder.baseUrl(credentials.baseUrl());
-        }
-        return builder.build();
-    }
-
-    private Model dashScopeModel(ModelRuntimeConfigDTO config, AgentModelCredentialConfig credentials, GenerateOptions options) {
-        var builder = DashScopeChatModel.builder()
-                .apiKey(credentials.apiKey())
-                .modelName(config.modelKey())
-                .stream(true)
-                .defaultOptions(options);
         if (credentials.baseUrl() != null && !credentials.baseUrl().isBlank()) {
             builder.baseUrl(credentials.baseUrl());
         }

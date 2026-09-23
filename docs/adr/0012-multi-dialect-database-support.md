@@ -11,11 +11,12 @@
 **1. 一个配置项切方言，只决定 Flyway 加载哪套迁移。**
 `V5AI_DB_DIALECT=postgresql|mysql`（默认 `postgresql`，未设置时行为与本决策之前完全一致）→
 `v5ai.db.dialect` → `spring.flyway.locations = classpath:db/migration/common,classpath:db/migration/${v5ai.db.dialect}`。
-连接本身仍由 `V5AI_DATASOURCE_URL` 决定，驱动新增 `V5AI_DATASOURCE_DRIVER`（默认 PG 驱动）；
-三者必须配套，不配套时迁移期就会报错，不需要额外的启动校验。
+连接本身仍由 `V5AI_DATASOURCE_URL` 决定；驱动不进环境变量，而是在
+`spring.datasource.dynamic.datasource` 下按方言分成 `postgresql` / `mysql` 两块、各自写死驱动，
+`dynamic.primary` 取 `${v5ai.db.dialect}`。两者必须配套，不配套时迁移期就会报错，不需要额外的启动校验。
 Docker 部署因此**按方言拆成两份 Compose**（`script/docker/docker-compose-postgresql.yml` 装 postgres、
 `docker-compose-mysql.yml` 装 mysql，各自都带 redis + v5ai + nginx）：一份文件只装一个库、
-把方言三件套的默认值写死在自己这边，部署方换文件即可，不必在 `.env` 里凑齐三项。
+把方言两项的默认值写死在自己这边，部署方换文件即可，不必在 `.env` 里凑齐两项。
 不用「一个文件 + compose profile」的做法——那份 profile 里要同时维护两组默认值与两个 `depends_on`，
 `.env` 一旦只改一半就是启动失败，而出错的是部署方。
 **运行时 SQL 的方言分支不看这个配置**：由连接元数据自动识别（`DataBaseHelper` / 新注册的

@@ -12,13 +12,13 @@
 
 关键既有资产（不要重复造）：
 
-- `common-mybatis` 的 `DataBaseType` / `DataBaseHelper.getDataBaseType()`（按连接元数据自动识别方言，`findInSet` 已带 MySQL 分支）；`dynamic-datasource` 已配置成型（只有 master，未用 `@DS`）。
+- `common-mybatis` 的 `DataBaseType` / `DataBaseHelper.getDataBaseType()`（按连接元数据自动识别方言，`findInSet` 已带 MySQL 分支）；`dynamic-datasource` 已配置成型（按方言分 `postgresql`/`mysql` 两块，未用 `@DS`）。
 - 全部实体已是 `@TableId(type = IdType.AUTO)`，自增语义在 MySQL 天然成立，无需序列处理。
 - `VectorStore` / `KeywordStore` 端口、`VectorStoreResolver` 的类型 switch、`JiebaTextTokenizer` 分词与 `PgBm25KeywordSearch` 的 Java 侧 BM25 打分公式（k1=1.2/b=0.75）均可复用。
 
 ## 方案总览
 
-切换方式：新增 `V5AI_DB_DIALECT=postgresql|mysql`（默认 `postgresql`），它只决定 Flyway 方言目录；连接信息沿用既有 `V5AI_DATASOURCE_URL`，驱动新增 `V5AI_DATASOURCE_DRIVER`（默认 PG 驱动）。运行时 SQL 分支用 MyBatis `_databaseId` 自动识别（与 URL 一致，无需人工声明方言）。
+切换方式：新增 `V5AI_DB_DIALECT=postgresql|mysql`（默认 `postgresql`），它决定 Flyway 方言目录，同时作为 `spring.datasource.dynamic.primary` 选中同名数据源块；连接信息沿用既有 `V5AI_DATASOURCE_URL`，驱动不设环境变量——`postgresql`/`mysql` 两块各自写死。运行时 SQL 分支用 MyBatis `_databaseId` 自动识别（与 URL 一致，无需人工声明方言）。
 
 迁移目录改为按方言分层（`common/` 放两方言通用迁移，方言专用放各自目录，同一版本号在任一方言下只出现一次）：
 
@@ -36,10 +36,10 @@ MySQL 侧用「当前 head 全量基线」而不是重写 49 个历史迁移：�
 ## M1 配置与依赖切换（PG 行为不变）
 
 - **1.** `v5ai-starter/src/main/resources/application.yml`：新增 `v5ai.db.dialect: ${V5AI_DB_DIALECT:postgresql}`，`spring.flyway.locations` 改为上述双目录表达式。
-- **2.** `v5ai-starter/src/main/resources/application-dev.yml.template`（第 17–22 行）与 `application.yml.template`（第 381–385 行注释块）：`driverClassName: ${V5AI_DATASOURCE_DRIVER:org.postgresql.Driver}`，URL 保持 `${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}`，注释里给出 MySQL 示例串（`jdbc:mysql://host:3306/v5ai_nb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true`）。
+- **2.** `v5ai-starter/src/main/resources/application-dev.yml.template`（第 9–28 行）与 `application.yml.template`（第 381–385 行注释块）：`dynamic.primary: ${v5ai.db.dialect}` + `postgresql`/`mysql` 两块，驱动按块写死（`org.postgresql.Driver` / `com.mysql.cj.jdbc.Driver`），URL 仍取 `${V5AI_DATASOURCE_URL:...}`，每块保留自己方言的默认串（MySQL 块示例：`jdbc:mysql://localhost:3306/v5ai_nb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true`）。
 - **3.** `v5ai-starter/pom.xml`：新增 `com.mysql:mysql-connector-j`（runtime）、`org.flywaydb:flyway-mysql`（Flyway 10+ 方言模块，缺则 `Unsupported Database: MySQL`），与既有 `flyway-database-postgresql`、`org.postgresql:postgresql` 并列。
 - **4.** 迁移脚本搬迁：`db/migration/V*.sql` → `db/migration/postgresql/`；更新 `db/migration/README.md`（两条规矩 + 索引表 + 新增「方言分层与新增迁移该放哪」一节）。
-- **5.** `../script/docker/docker-compose-postgresql.yml`：新增 `mysql:8.0` 服务（放 `profiles: [mysql]`，含 healthcheck、数据卷、utf8mb4 参数），`v5ai` 服务补 `V5AI_DB_DIALECT`/`V5AI_DATASOURCE_DRIVER` 透传；`.env.example` 增补这两个变量与 MySQL 默认值；`docs/deploy/dev.md` 增加 MySQL 部署小节。
+- **5.** `../script/docker/docker-compose-postgresql.yml`：新增 `mysql:8.0` 服务（放 `profiles: [mysql]`，含 healthcheck、数据卷、utf8mb4 参数），`v5ai` 服务补 `V5AI_DB_DIALECT` 透传；`.env.example` 增补该变量与 MySQL 默认值；`docs/deploy/dev.md` 增加 MySQL 部署小节。
 - **6.** 测试修正：`v5ai-starter/src/test/java/xin/v5ai/nb/starter/V5aiApplicationContextTest.java:56` 断言 `spring.flyway.locations` 等于 `classpath:db/migration`，需改为新表达式（`FlywayMigrationTest` 自行覆盖 locations，不受影响）。
 
 ## M2 MySQL 基线迁移（本方案主要工作量）
@@ -70,7 +70,7 @@ MySQL 侧用「当前 head 全量基线」而不是重写 49 个历史迁移：�
 - 复用 `DataBaseHelper`/`DataBaseType`、`VectorStore`/`KeywordStore` 端口与 `VectorStoreResolver`、`JiebaTextTokenizer`、BM25 打分公式、`IdType.AUTO`。
 - PG 侧 V1–V49 内容一个字节不改（ADR-0008：只增不改、checksum 不能动；文件搬家安全已验证）；`docs/db/schema.md` 与 ADR-0008 作为历史记录保留，新增 `docs/adr/0012-multi-dialect-database-support.md` 记录本次决策（方言目录、基线策略、排序规则、向量仍走外部实例、不做存量数据迁移）。
 - 同步更新：`AGENTS.md` §2 技术基线与 §7 数据库与迁移、`docs/deploy/dev.md`、`.dsh/skills/v5ai-nb-ai-coding/references/database.md`（其 MySQL 字段约定已存在，补 `-Dsurefire.failIfNoSpecifiedTests=false`）。
-- MySQL 全新库：`docker compose -f docker-compose-mysql.yml up -d --build`（本机当前无 docker CLI，需在有 Docker/MySQL 的环境执行），以 `V5AI_DB_DIALECT=mysql` `V5AI_DATASOURCE_DRIVER=com.mysql.cj.jdbc.Driver` `V5AI_DATASOURCE_URL=jdbc:mysql://...` 启动 → 断言 42 张表 + 种子数据齐备（admin/admin 可登录、菜单树/角色/客户端/12 个供应商存在）。
+- MySQL 全新库：`docker compose -f docker-compose-mysql.yml up -d --build`（本机当前无 docker CLI，需在有 Docker/MySQL 的环境执行），以 `V5AI_DB_DIALECT=mysql` `V5AI_DATASOURCE_URL=jdbc:mysql://...` 启动 → 断言 42 张表 + 种子数据齐备（admin/admin 可登录、菜单树/角色/客户端/12 个供应商存在）。
 - Schema 等价性：分别执行 `docs/db/dump-schema.sql`（PG）与新增的 `docs/db/dump-schema-mysql.sql`（MySQL），比对表名与列名集合、可空性、唯一键；差异需解释到零计划外差异。
 - 功能端到端（MySQL）：登录 → 配模型（凭据 AES 加密）→ 建 Agent → 签发 API Key → 建知识库（向量实例绑 Milvus 或 ES）→ 文档索引（worker 写入向量实例，业务行落 MySQL）→ 知识检索/问答（含关键词通道）→ 门户 SSE 对话 → 会话改名/归档/重新生成（覆盖 3 处 upsert 分支）→ 用量统计页（覆盖 `CAST(... AS DATE)`）。
 - 可选自动化：`v5ai-starter` 增 Testcontainers（MySQL 8 + PG16）迁移 parity 测试，奢侈地覆盖「两方言 schema 集合一致」，无 Docker 时跳过。

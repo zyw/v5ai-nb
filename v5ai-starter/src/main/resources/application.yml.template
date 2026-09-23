@@ -388,7 +388,8 @@ v5ai:
 #     url: ${V5AI_DATASOURCE_URL:jdbc:postgresql://localhost:5432/v5ai_nb}
 #     username: ${V5AI_DATASOURCE_USERNAME:v5ai}
 #     password: ${V5AI_DATASOURCE_PASSWORD:change-me}
-#     # 默认 PostgreSQL；切 MySQL 时同步改 v5ai.db.dialect=mysql 与此驱动，URL 见 application-dev.yml.template
+#     # 默认 PostgreSQL；切 MySQL 时同步改 v5ai.db.dialect=mysql 与下列 driver/URL，
+#     # 完整的多数据源示例（驱动按方言写死在各自块里）见 application-dev.yml.template
 #     driver-class-name: org.postgresql.Driver
 #   data:
 #     redis:

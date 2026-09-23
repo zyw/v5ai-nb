@@ -1,6 +1,5 @@
 package xin.v5ai.nb.model.core;
 
-import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
 import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import org.junit.jupiter.api.Test;
 import xin.v5ai.nb.common.agentscope.core.domain.dto.ModelRuntimeConfigDTO;
@@ -22,15 +21,16 @@ class AgentScopeModelFactoryTest {
         assertThat(model.getModelName()).isEqualTo("gpt-4o");
     }
 
+    /** dashscope 供应商同样走 OpenAI 兼容适配器：原生适配器拼不出 compatible-mode 路径（404）。 */
     @Test
-    void createsDashScopeChatModel() {
+    void routesDashScopeProviderToOpenAiCompatibleModel() {
         var factory = new AgentScopeModelFactory();
 
         var model = factory.create(config("CHAT", "dashscope", "openai-compatible"), """
                 {"apiKey":"sk-test","baseUrl":"https://dashscope.aliyuncs.com/compatible-mode/v1"}
                 """);
 
-        assertThat(model).isInstanceOf(DashScopeChatModel.class);
+        assertThat(model).isInstanceOf(OpenAIChatModel.class);
         assertThat(model.getModelName()).isEqualTo("gpt-4o");
     }
 

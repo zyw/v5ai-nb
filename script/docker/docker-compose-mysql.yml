@@ -62,14 +62,13 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      # 本文件只装 MySQL：方言/驱动/连接串都取 MySQL 默认值，无需在 .env 里改
-      # （三项成组生效；只改一项会让 Flyway 方言与连接串打架，启动即报错）。
+      # 本文件只装 MySQL：方言/连接串都取 MySQL 默认值，无需在 .env 里改
+      # （两项成组生效；只改一项会让 Flyway 方言与连接串打架，启动即报错）。
       # serverTimezone 必须与容器 --default-time-zone 一致：业务库时间列是 DATETIME(3)、不带时区。
       # 注：下面三行的「默认值里再套变量」写法需要 Docker Compose v2（compose-spec 的嵌套插值，
       # podman-compose 不支持）。要指向外部 RDS/自建库时，直接在 .env 里给完整的
       # V5AI_DATASOURCE_URL / USERNAME / PASSWORD 即可覆盖。
       V5AI_DB_DIALECT: ${V5AI_DB_DIALECT:-mysql}
-      V5AI_DATASOURCE_DRIVER: ${V5AI_DATASOURCE_DRIVER:-com.mysql.cj.jdbc.Driver}
       V5AI_DATASOURCE_URL: ${V5AI_DATASOURCE_URL:-jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-v5ai_nb}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
       V5AI_DATASOURCE_USERNAME: ${V5AI_DATASOURCE_USERNAME:-${MYSQL_USER:-v5ai}}
       V5AI_DATASOURCE_PASSWORD: ${V5AI_DATASOURCE_PASSWORD:-${MYSQL_PASSWORD:-change-me}}

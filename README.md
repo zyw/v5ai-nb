@@ -22,7 +22,7 @@
 - Sa-Token + JWT
 - BCrypt / AES-GCM
 - PostgreSQL + pgvector（默认方言）或 MySQL 8.0.17+，`V5AI_DB_DIALECT` 一键切换；向量检索走独立的「存储实例」（pgvector / Milvus / Elasticsearch）
-- AgentScope Java 2.0（`agentscope-harness`、`agentscope-extensions-model-openai/dashscope`）
+- AgentScope Java 2.0（`agentscope-harness`、`agentscope-extensions-model-openai/gemini/anthropic`）
 - PDFBox 3.0.7（PDF 解析）
 
 ## 模块
@@ -368,7 +368,7 @@ V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef
 NGINX_HTTP_PORT=80
 ```
 
-**MySQL**——换另一份文件即可，方言/驱动/连接串已在文件内取好 MySQL 默认值，`.env` 里只需给库名与口令：
+**MySQL**——换另一份文件即可，方言/连接串已在文件内取好 MySQL 默认值（驱动按方言写死在数据源块里），`.env` 里只需给库名与口令：
 
 ```bash
 cd script/docker

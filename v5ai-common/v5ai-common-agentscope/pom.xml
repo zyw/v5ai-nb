@@ -34,10 +34,6 @@
         </dependency>
         <dependency>
             <groupId>io.agentscope</groupId>
-            <artifactId>agentscope-extensions-model-dashscope</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.agentscope</groupId>
             <artifactId>agentscope-extensions-model-gemini</artifactId>
         </dependency>
         <dependency>

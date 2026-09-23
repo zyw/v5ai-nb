@@ -524,6 +524,8 @@ CREATE TABLE IF NOT EXISTS `v5ai_knowledge_document` (
     `parse_time`        INT           NOT NULL DEFAULT 0 COMMENT '解析耗时（毫秒）',
     `content_hash`      VARCHAR(64)   NULL COMMENT '文件内容SHA-256哈希，用于去重',
     `resource_id`       BIGINT        NULL COMMENT '关联资源库 plm_resource.id',
+    `parse_engine`      VARCHAR(32)   NULL COMMENT '实际使用的文档解析引擎，外部服务失败时为 default',
+    `parse_diagnostics` TEXT          NULL COMMENT '文档级解析结构化结果或诊断原文',
     PRIMARY KEY (`id`),
     CONSTRAINT `v5ai_knowledge_document_knowledge_base_id_fkey` FOREIGN KEY (`knowledge_base_id`) REFERENCES `v5ai_knowledge_base` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs COMMENT='知识库文档：content 存原始内容（BYTEA）、parsed_text 为解析后纯文本；status 为索引状态（0 待处理 / 1 解析中 / 2 处理中 / 3 完成 / 4 失败）';
