@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NCard,
@@ -29,7 +29,7 @@ import {
   useMessage,
   type DataTableColumns
 } from 'naive-ui'
-import { CircleQuestionMark, Plus, RefreshCw, Search } from 'lucide-vue-next'
+import { BadgeCheck, CircleQuestionMark, Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import IconPicker from '../components/IconPicker.vue'
 import {
@@ -59,6 +59,9 @@ const providers = ref<ProviderResponse[]>([])
 const models = ref<ModelResponse[]>([])
 const allProviders = ref<ProviderResponse[]>([])
 const testingModelId = ref<number | null>(null)
+const modelTableContainer = ref<HTMLElement | null>(null)
+const modelTableWidth = ref(0)
+let modelTableResizeObserver: ResizeObserver | null = null
 
 const providerPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 const modelPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
@@ -333,20 +336,40 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   {
     title: '名称',
     key: 'modelName',
-    width: 180,
-    render: (row) =>
-      h('div', { style: 'display:flex;align-items:center;gap:6px;min-width:0' }, [
-        row.isDefault ? h(NTag, { size: 'small', type: 'warning', bordered: false }, { default: () => '默认' }) : null,
-        h('span', { style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap', title: row.modelName ?? row.modelKey }, row.modelName ?? row.modelKey)
+    width: 240,
+    render: (row) => {
+      const provider = allProviders.value.find((item) => item.id === row.providerId)
+      const providerName = provider?.name?.trim() || provider?.providerKey || `#${row.providerId}`
+      const providerNode = providerIcons[row.providerId]
+        ? h('img', {
+            src: providerIcons[row.providerId],
+            alt: providerName,
+            title: providerName,
+            style: 'width:20px;height:20px;border-radius:4px;object-fit:cover;flex:0 0 auto'
+          })
+        : h('span', { style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 0 auto;max-width:110px', title: providerName }, '(' + providerName + ')')
+      const modelName = row.modelName ?? row.modelKey
+      return h('div', { style: 'display:flex;align-items:center;gap:6px;min-width:0' }, [
+        providerNode,
+        h('span', { style: 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap', title: modelName }, modelName),
+        row.isDefault
+          ? h(BadgeCheck, {
+              size: 16,
+              'aria-label': '默认模型',
+              title: '默认模型',
+              style: 'color:var(--primary-color);flex:0 0 auto'
+            })
+          : null
       ])
+    }
   },
   { title: '模型ID', key: 'modelKey',width: 180 },
-  {
-    title: '供应商',
-    key: 'providerId',
-    width: 180,
-    render: (row) => providerLabel(row.providerId)
-  },
+  // {
+  //   title: '供应商',
+  //   key: 'providerId',
+  //   width: 180,
+  //   render: (row) => providerLabel(row.providerId)
+  // },
   { title: '描述', key: 'description', width: 200, ellipsis: { tooltip: true } },
   {
     title: '类型',
@@ -421,10 +444,12 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   }
 ]
 
-/** 表格横向滚动：列宽总和（auto 列按 240px 估算），窄屏时出现横向滚动条 */
-const modelScrollX = computed(() =>
-  modelColumns.reduce((sum, col) => sum + (typeof col.width === 'number' ? col.width : 240), 0)
-)
+/** 固定列的最小宽度；大屏下名称列自适应，不强制创建横向滚动条。 */
+const modelMinTableWidth = 1400
+const modelTableScrollX = computed<number | undefined>(() => {
+  if (!modelTableWidth.value) return undefined
+  return modelTableWidth.value >= modelMinTableWidth ? undefined : modelMinTableWidth
+})
 
 /** 供应商表格横向滚动：列宽总和（auto 列按 240px 估算） */
 const providerScrollX = computed(() =>
@@ -459,6 +484,7 @@ async function reload() {
     models.value = modelRows.rows
     modelPagination.itemCount = modelRows.total
     allProviders.value = (await listProviders(adminToken.value, { pageNum: 1, pageSize: 1000 })).rows
+    void refreshProviderIcons(allProviders.value)
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载模型配置失败')
   } finally {
@@ -835,7 +861,21 @@ async function handleTestModel(row: ModelResponse) {
   }
 }
 
-onMounted(reload)
+onMounted(() => {
+  void reload()
+  if (modelTableContainer.value) {
+    modelTableResizeObserver = new ResizeObserver(([entry]) => {
+      modelTableWidth.value = entry.contentRect.width
+    })
+    modelTableResizeObserver.observe(modelTableContainer.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  modelTableResizeObserver?.disconnect()
+  modelTableResizeObserver = null
+  revokeProviderIcons()
+})
 </script>
 
 <template>
@@ -866,7 +906,15 @@ onMounted(reload)
             刷新
           </n-button>
         </n-space>
-        <n-data-table :loading="loading" :columns="modelColumns" :data="models" :bordered="false" :scroll-x="modelScrollX" />
+        <div ref="modelTableContainer" class="model-table-container">
+          <n-data-table
+            :loading="loading"
+            :columns="modelColumns"
+            :data="models"
+            :bordered="false"
+            :scroll-x="modelTableScrollX"
+          />
+        </div>
         <n-pagination
           :page="modelPagination.page"
           :page-size="modelPagination.pageSize"

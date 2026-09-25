@@ -25,7 +25,7 @@ import {
   type FormInst,
   type FormRules
 } from 'naive-ui'
-import { Plus, RefreshCw, Search } from 'lucide-vue-next'
+import { BadgeCheck, Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import RowActions from '../components/RowActions.vue'
 import {
@@ -122,8 +122,15 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
     width: 180,
     render: (row) =>
       h('div', { style: 'display:flex;align-items:center;gap:6px;min-width:0' }, [
-        row.isDefault ? h(NTag, { size: 'small', type: 'warning', bordered: false }, { default: () => '默认' }) : null,
-        h('span', { style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap', title: row.name }, row.name)
+        h('span', { style: 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap', title: row.name }, row.name),
+        row.isDefault
+          ? h(BadgeCheck, {
+              size: 16,
+              'aria-label': '默认存储实例',
+              title: '默认存储实例',
+              style: 'color:var(--primary-color);flex:0 0 auto'
+            })
+          : null
       ])
   },
   { title: '描述', key: 'description', width: 200 },

@@ -2499,6 +2499,12 @@ export function disableWorkflow(adminToken: string, workflowKey: string): Promis
   }, adminToken)
 }
 
+export function enableWorkflow(adminToken: string, workflowKey: string): Promise<void> {
+  return requestJson<void>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/enable`, {
+    method: 'PUT'
+  }, adminToken)
+}
+
 export function runWorkflow(adminToken: string, workflowKey: string, inputs?: Record<string, unknown>, draft = true): Promise<WorkflowRunResponse> {
   return requestJson<WorkflowRunResponse>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/run`, {
     method: 'POST',
