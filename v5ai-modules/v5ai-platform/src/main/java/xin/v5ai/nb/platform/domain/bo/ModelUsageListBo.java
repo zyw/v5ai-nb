@@ -14,7 +14,7 @@ public class ModelUsageListBo implements Serializable {
 
     private String agentKey;
 
-    private OffsetDateTime form;
+    private OffsetDateTime from;
 
     private OffsetDateTime to;
 }
