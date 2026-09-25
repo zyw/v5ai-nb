@@ -328,7 +328,11 @@ onMounted(() => {
         </div>
       </n-layout-header>
 
-      <n-layout-content :native-scrollbar="false" content-style="padding: 20px 24px 32px;">
+      <n-layout-content
+        :native-scrollbar="false"
+        :scrollbar-props="{ trigger: 'none' }"
+        content-style="padding: 20px 24px 32px;"
+      >
         <router-view />
       </n-layout-content>
     </n-layout>
@@ -484,6 +488,13 @@ onMounted(() => {
      问答 tab）用 calc(100% - var(--app-topbar-height)) 就能拿到，不必各自写死 64px。
      变量挂在 .main 上，router-view 里的页面都是它的后代，能自然继承到。 */
   --app-topbar-height: 64px;
+}
+
+/* n-layout 的 .n-layout-scroll-container 是块级滚动容器。若 content 随页面内容自然增高，
+   溢出会落到它上面，导致顶栏也跟着滚动。把内容区限制在顶栏以下，让内层 scrollbar
+   的内容层保持自然高度，以便正确测量溢出并在 .n-scrollbar-container 显示滚动条。 */
+:global(.main .n-layout-content) {
+  height: calc(100% - var(--app-topbar-height, 64px));
 }
 
 .topbar {

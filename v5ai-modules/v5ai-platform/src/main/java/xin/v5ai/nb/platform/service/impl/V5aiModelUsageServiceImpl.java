@@ -46,7 +46,7 @@ public class V5aiModelUsageServiceImpl implements IV5aiModelUsageService, ModelU
     private LambdaQueryWrapper<V5aiModelUsage> buildQueryWrapper(ModelUsageListBo bo) {
         return QueryBuilder.lambda(V5aiModelUsage.class)
                 .eq(ObjectUtil.isNotNull(bo.getAgentKey()), V5aiModelUsage::getAgentKey, bo.getAgentKey())
-                .ge(ObjectUtil.isNotNull(bo.getForm()), V5aiModelUsage::getCreatedAt, bo.getForm())
+                .ge(ObjectUtil.isNotNull(bo.getFrom()), V5aiModelUsage::getCreatedAt, bo.getFrom())
                 .le(ObjectUtil.isNotNull(bo.getTo()), V5aiModelUsage::getCreatedAt, bo.getTo())
                 .orderByAsc(V5aiModelUsage::getCreatedAt)
                 .build();

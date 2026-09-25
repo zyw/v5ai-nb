@@ -86,8 +86,10 @@ PUT /api/admin/apps/{agentKey}/quota
 { "dailyModelCalls": 100, "dailyTokens": 50000, "ratePerMinute": 30 }   # 0 = 不限
 
 GET /api/admin/apps/{agentKey}/usage/daily   # 当日调用次数 + Token
-GET /api/admin/usage?agentKey=&from=&to=&limit=   # 用量明细（v5ai_model_usage）
+GET /api/admin/usage?agentKey=&from=&to=&pageNum=1&pageSize=10   # 用量明细（v5ai_model_usage）
 ```
+
+`from`、`to` 为可选 ISO-8601 带时区日期时间（如 `2026-09-01T00:00:00+08:00`），按 `created_at >= from` 与 `created_at <= to` 包含边界过滤；任一边界可单独传入，并可与 `agentKey` 组合使用。
 
 运行时 API（`/api/v1/agents/{agentKey}/chat/stream` 等）在 API Key 校验通过后：
 

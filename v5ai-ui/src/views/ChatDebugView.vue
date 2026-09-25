@@ -52,6 +52,7 @@ const uploading = ref(false)
 const pendingImages = ref<{ file: File; url: string }[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
+const inspectorRef = ref<HTMLElement | null>(null)
 const activeController = ref<AbortController | null>(null)
 const eventSequence = ref(0)
 const durationTick = ref(0)
@@ -141,8 +142,12 @@ function eventSummary(type: string, payload: unknown): string {
 }
 
 function addEvent(type: string, data: string): unknown {
+  /* 增长前先记下是否已在底部：只有原本就在底部时才跟随，向上翻阅旧事件时不被拽回 */
+  const el = eventScrollEl()
+  const wasNearBottom = el ? isNearBottom(el) : true
   const parsed = parseRuntimeEvent(data)
   events.value.push({ id: ++eventSequence.value, type, at: new Date().toLocaleTimeString('zh-CN', { hour12: false }), payload: parsed.payload, summary: eventSummary(type, parsed.payload) })
+  if (wasNearBottom) void nextTick(scrollInspectorToBottom)
   return parsed.payload
 }
 
@@ -209,7 +214,11 @@ function removePendingImage(index: number) {
   if (removed) URL.revokeObjectURL(removed.url)
 }
 
+function isNearBottom(el: HTMLElement): boolean { return el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD }
 function scrollToBottom() { if (listRef.value) listRef.value.scrollTop = listRef.value.scrollHeight }
+/* 事件时间线的滚动发生在事件卡内部的 .n-card-content 上（不是整个右栏 aside），保证「本次运行」卡片固定不动 */
+function eventScrollEl(): HTMLElement | null { return inspectorRef.value?.querySelector<HTMLElement>('.event-card > .n-card-content') ?? null }
+function scrollInspectorToBottom() { const el = eventScrollEl(); if (el) el.scrollTop = el.scrollHeight }
 
 async function runTurn(question: string, extras: { images?: string[]; attachments?: AttachmentRequest[] } = {}) {
   if (!selectedAgent.value) return
@@ -225,6 +234,7 @@ async function runTurn(question: string, extras: { images?: string[]; attachment
   try {
     await adminDebugStream(selectedAgent.value.agentKey, adminToken.value, { query: question, attachments: extras.attachments }, (event, data) => {
       resetWatchdog()
+      const wasChatNearBottom = listRef.value ? isNearBottom(listRef.value) : false
       const payload = addEvent(event, data)
       const decoded = parseRuntimeEvent(data)
       if (decoded.runId) runId.value = decoded.runId
@@ -236,8 +246,12 @@ async function runTurn(question: string, extras: { images?: string[]; attachment
       else if (event === 'RUN_FAILED') { target.error = typeof payload === 'string' ? payload : formatPayload(payload); runStatus.value = 'FAILED' }
       else if (event === 'RUN_COMPLETED') {
         runStatus.value = 'SUCCEEDED'
-        if (payload && typeof payload === 'object') { const body = payload as { usage?: Record<string, unknown> }; usage.value = body.usage ?? payload as Record<string, unknown> }
+        // RUN_COMPLETED 的 payload 是 JSON 串（RunUsage.toJson，字段平铺：promptTokens/completionTokens/totalTokens/durationMs），
+        // 不是对象——先解一层再 parse；漏了这一步「用量」永远显示为「—」
+        const usagePayload = typeof payload === 'string' ? parseJson(payload as string) : payload
+        if (usagePayload && typeof usagePayload === 'object') usage.value = usagePayload as Record<string, unknown>
       } else if (event === 'MESSAGE_COMPLETED' && !target.content) target.content = parseDelta(data)
+      if (wasChatNearBottom) void nextTick(scrollToBottom)
     }, controller.signal)
   } catch (e) {
     const target = messages.value[assistantIndex]
@@ -341,7 +355,7 @@ onBeforeUnmount(() => { activeController.value?.abort(); if (durationTimer) clea
         </div>
       </main>
 
-      <aside class="debug-inspector">
+      <aside ref="inspectorRef" class="debug-inspector">
         <n-card size="small" :bordered="false" class="inspector-card run-card"><template #header><span class="section-title tone-info"><n-icon :component="Activity" />本次运行</span></template><div class="run-state"><n-tag size="small" :type="statusType(runStatus)" :bordered="false">{{ runStatus }}</n-tag><span>{{ currentRunLabel }}</span><n-button v-if="runId" text size="tiny" aria-label="复制 Run ID" @click="copyRunId"><template #icon><n-icon :component="Copy" /></template></n-button></div><div class="run-metrics"><div><span><n-icon :component="Clock3" />耗时</span><strong>{{ runDuration }}</strong></div><div><span><n-icon :component="Sparkles" />用量</span><strong>{{ formatUsage(usage) }}</strong></div></div><n-button v-if="runStatus === 'FAILED' || runStatus === 'CANCELED'" block size="small" secondary type="primary" :disabled="loading" @click="messages.length ? regenerate(messages.length - 1) : undefined"><template #icon><n-icon :component="RotateCcw" /></template>重试本轮</n-button></n-card>
         <n-card size="small" :bordered="false" class="inspector-card event-card"><template #header><div class="event-header"><span class="section-title tone-info"><n-icon :component="Activity" />事件时间线</span><n-tag size="tiny" :bordered="false">{{ events.length }}</n-tag></div></template><div v-if="!events.length" class="event-empty"><n-icon :component="Play" size="18" /><span>运行后显示模型、工具和检索事件</span></div><div v-else class="event-list"><details v-for="event in events" :key="event.id" class="event-item"><summary><span class="event-dot" :class="event.type.toLowerCase()"></span><span class="event-main"><strong>{{ event.summary }}</strong><small>{{ event.type }}</small></span><time>{{ event.at }}</time></summary><pre v-if="event.payload !== undefined && event.payload !== null" class="event-payload">{{ formatPayload(event.payload) }}</pre></details></div></n-card>
       </aside>
@@ -362,7 +376,7 @@ onBeforeUnmount(() => { activeController.value?.abort(); if (durationTimer) clea
 .debug-toolbar { display:flex; align-items:center; justify-content:space-between; flex:none; gap:16px; padding:10px 14px; border:1px solid color-mix(in srgb,var(--debug-primary) 18%,var(--debug-border)); border-radius:12px; background:color-mix(in srgb,var(--debug-primary) 5%,var(--debug-surface)); box-shadow:0 4px 16px color-mix(in srgb,var(--debug-primary) 8%,transparent); }
 .toolbar-agent,.toolbar-note,.event-header,.section-title,.run-state,.run-metrics span,.agent-context,.capability-row { display:flex; align-items:center; }
 .toolbar-agent { gap:10px; min-width:0; } .toolbar-note { gap:6px; color:var(--debug-muted); font-size:12px; } .toolbar-note :deep(svg) { color:var(--debug-primary); }
-.debug-workbench { display:grid; grid-template-columns:238px minmax(0,1fr) 318px; flex:1; gap:12px; min-width:0; min-height:0; overflow:hidden; }
+.debug-workbench { display:grid; grid-template-columns:238px minmax(0,1fr) 318px; grid-template-rows:minmax(0,1fr); flex:1; gap:12px; min-width:0; min-height:0; overflow:hidden; }
 .debug-sidebar,.debug-inspector { min-width:0; min-height:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; } .debug-sidebar { display:flex; flex-direction:column; gap:12px; }
 /* 左栏：中性灰面板（上下文 / 能力配置） */
 .side-card { background:color-mix(in srgb,var(--debug-ink) 4%,var(--debug-surface)); border:1px solid var(--debug-border); border-radius:12px; box-shadow:0 2px 8px color-mix(in srgb,var(--debug-ink) 5%,transparent); }
@@ -384,10 +398,10 @@ onBeforeUnmount(() => { activeController.value?.abort(); if (durationTimer) clea
 .bubble-images { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:7px; } .bubble-images img { width:110px; height:82px; object-fit:cover; border-radius:7px; }
 .composer { flex:none; padding:10px 14px 12px; border-top:1px solid var(--debug-divider); background:color-mix(in srgb,var(--debug-primary) 2%,var(--debug-surface)); } .composer :deep(.n-input) { background:var(--debug-embedded); } .composer-footer { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; margin-top:8px; } .composer-hint { grid-column:2; text-align:center; color:var(--debug-muted); font-size:11px; } .composer-actions { grid-column:3; display:flex; justify-content:flex-end; align-items:center; gap:8px; } .hidden-file-input { display:none; }
 .pending-images { display:flex; gap:8px; margin-bottom:8px; } .pending-image { position:relative; width:48px; height:48px; } .pending-image img { width:100%; height:100%; border-radius:7px; object-fit:cover; } .pending-remove { position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; background:var(--debug-surface); box-shadow:0 1px 4px rgba(0,0,0,.18); }
-.debug-inspector { display:flex; flex-direction:column; gap:12px; } .inspector-card :deep(.n-card__content) { min-width:0; } .run-state { gap:8px; min-width:0; color:var(--debug-muted); font-size:11px; } .run-state span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .run-state .n-button { margin-left:auto; }
+.debug-inspector { display:flex; flex-direction:column; gap:12px; overflow:hidden; } .inspector-card :deep(.n-card-content) { min-width:0; } .run-state { gap:8px; min-width:0; color:var(--debug-muted); font-size:11px; } .run-state span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .run-state .n-button { margin-left:auto; }
 .run-metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; } .run-metrics > div { padding:9px; border-radius:8px; background:var(--debug-surface); } .run-metrics span { gap:5px; color:var(--debug-muted); font-size:11px; } .run-metrics strong { display:block; margin-top:4px; font-size:13px; font-weight:600; }
-.event-header { justify-content:space-between; } .event-card { flex:1; min-height:0; } .event-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:180px; color:var(--debug-muted); font-size:12px; text-align:center; } .event-list { max-height:100%; overflow:auto; } .event-item { border-bottom:1px solid var(--debug-divider); } .event-item summary { display:flex; align-items:center; gap:8px; min-height:48px; cursor:pointer; list-style:none; border-radius:7px; transition:background .18s ease; } .event-item summary:hover { background:color-mix(in srgb,var(--debug-info) 8%,transparent); } .event-item summary::-webkit-details-marker { display:none; } .event-dot { width:7px; height:7px; flex:none; border-radius:50%; background:var(--debug-info); } .event-dot.run_failed { background:var(--debug-error); } .event-dot.run_completed { background:var(--debug-success); } .event-dot.tool_call,.event-dot.tool_result { background:var(--debug-warning); } .event-main { display:flex; flex:1; flex-direction:column; min-width:0; } .event-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:500; } .event-main small { margin-top:2px; color:var(--debug-muted); font-size:10px; } .event-item time { color:var(--debug-muted); font-size:10px; } .event-payload { max-height:180px; margin:0 0 10px 15px; padding:9px; overflow:auto; border-radius:7px; background:var(--debug-embedded); color:var(--debug-ink-2); font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
-@media (max-width:1180px) { .debug-page { height:auto; min-height:calc(100dvh - var(--app-topbar-height) - 52px); overflow:visible; } .debug-workbench { grid-template-columns:220px minmax(0,1fr); flex:none; min-height:0; overflow:visible; } .debug-inspector { grid-column:1/-1; display:grid; grid-template-columns:minmax(240px,.8fr) minmax(0,1.2fr); height:300px; overflow:hidden; } }
+.event-header { justify-content:space-between; } .event-card { flex:1; min-height:0; } .event-card :deep(.n-card-content) { min-height:0; overflow-y:auto; overflow-x:hidden; } .event-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:180px; color:var(--debug-muted); font-size:12px; text-align:center; } .event-list { min-width:0; } .event-item { border-bottom:1px solid var(--debug-divider); } .event-item summary { display:flex; align-items:center; gap:8px; min-height:48px; cursor:pointer; list-style:none; border-radius:7px; transition:background .18s ease; } .event-item summary:hover { background:color-mix(in srgb,var(--debug-info) 8%,transparent); } .event-item summary::-webkit-details-marker { display:none; } .event-dot { width:7px; height:7px; flex:none; border-radius:50%; background:var(--debug-info); } .event-dot.run_failed { background:var(--debug-error); } .event-dot.run_completed { background:var(--debug-success); } .event-dot.tool_call,.event-dot.tool_result { background:var(--debug-warning); } .event-main { display:flex; flex:1; flex-direction:column; min-width:0; } .event-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:500; } .event-main small { margin-top:2px; color:var(--debug-muted); font-size:10px; } .event-item time { color:var(--debug-muted); font-size:10px; } .event-payload { max-height:180px; margin:0 0 10px 15px; padding:9px; overflow:auto; border-radius:7px; background:var(--debug-embedded); color:var(--debug-ink-2); font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+@media (max-width:1180px) { .debug-page { height:auto; min-height:calc(100dvh - var(--app-topbar-height) - 52px); overflow:visible; } .debug-workbench { grid-template-columns:220px minmax(0,1fr); flex:none; min-height:0; overflow:visible; } .debug-inspector { grid-column:1/-1; display:grid; grid-template-columns:minmax(240px,.8fr) minmax(0,1.2fr); max-height:300px; overflow-y:auto; } }
 @media (max-width:760px) { .debug-toolbar { align-items:stretch; flex-direction:column; } .toolbar-agent { flex-wrap:wrap; } .toolbar-agent .n-select { flex:1; min-width:180px !important; } .toolbar-note { font-size:11px; } .debug-workbench { display:flex; flex-direction:column; } .debug-sidebar { display:grid; grid-template-columns:1fr 1fr; overflow:visible; } .debug-inspector { display:flex; height:auto; overflow:visible; } .event-card { min-height:260px; } .debug-chat { min-height:640px; } .chat-content { padding:16px 12px; } .message-body { max-width:88%; } }
 @media (max-width:520px) { .debug-sidebar { display:flex; } .chat-header { padding:12px; } .composer { padding:8px 10px 10px; } }
 </style>

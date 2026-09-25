@@ -32,6 +32,7 @@ import {
 import { BadgeCheck, CircleQuestionMark, Plus, RefreshCw, Search } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import IconPicker from '../components/IconPicker.vue'
+import RowActions from '../components/RowActions.vue'
 import {
   createModel,
   createProvider,
@@ -325,11 +326,11 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
   }
 ]
 
-function providerLabel(providerId: number): string {
+/*function providerLabel(providerId: number): string {
   const provider = allProviders.value.find((item) => item.id === providerId)
   // return provider ? `${provider.name} (${provider.providerKey})` : `#${providerId}`
   return provider ? `${provider.name}` : `#${providerId}`
-}
+}*/
 
 const modelColumns: DataTableColumns<ModelResponse> = [
   { title: 'ID', key: 'id', width: 64 },
@@ -387,20 +388,6 @@ const modelColumns: DataTableColumns<ModelResponse> = [
       h(NTag, { size: 'small', type: row.scope === 'PERSONAL' ? 'warning' : 'default', bordered: false }, { default: () => (row.scope === 'PERSONAL' ? '个人' : '全局') })
   },
   {
-    title: '默认',
-    key: 'isDefault',
-    width: 90,
-    render: (row) =>
-      h(NSwitch, {
-        value: !!row.isDefault,
-        loading: defaultingModelId.value === row.id,
-        onUpdateValue: () => handleToggleModelDefault(row)
-      }, {
-        checked: () => h('span', '是'),
-        unchecked: () => h('span', '否')
-      })
-  },
-  {
     title: '状态',
     key: 'enabled',
     width: 90,
@@ -419,26 +406,15 @@ const modelColumns: DataTableColumns<ModelResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 210,
+    width: 200,
     render: (row) =>
-      h(NSpace, { size: 4 }, {
-        default: () => [
-          h(
-              NButton,
-              {
-                size: 'small',
-                secondary: true,
-                loading: testingModelId.value === row.id,
-                onClick: () => handleTestModel(row)
-              },
-              { default: () => '测试' }
-          ),
-          h(NButton, { size: 'small', quaternary: true, onClick: () => openEditModel(row) }, { default: () => '编辑' }),
-          h(
-            NButton,
-            { size: 'small', type: 'error', secondary: true, onClick: () => handleDeleteModel(row) },
-            { default: () => '删除' }
-          )
+      h(RowActions, {
+        maxInline: 2,
+        actions: [
+          { key: 'test', label: '测试', secondary: true, loading: testingModelId.value === row.id, onClick: () => handleTestModel(row) },
+          { key: 'edit', label: '编辑', quaternary: true, onClick: () => openEditModel(row) },
+          { key: 'default', label: row.isDefault ? '取消默认' : '设为默认', type: row.isDefault ? 'warning' : 'primary', secondary: true, loading: defaultingModelId.value === row.id, onClick: () => handleToggleModelDefault(row) },
+          { key: 'delete', label: '删除', type: 'error', secondary: true, onClick: () => handleDeleteModel(row) }
         ]
       })
   }
@@ -781,7 +757,7 @@ async function handleToggleModelEnabled(row: ModelResponse) {
   })
 }
 
-/** 模型行内「是否默认」开关：走专用端点（同类型唯一默认由后端保证）。 */
+/** 模型操作列「设为默认/取消默认」按钮：走专用端点（同类型唯一默认由后端保证）。 */
 async function handleToggleModelDefault(row: ModelResponse) {
   const next = row.isDefault ? '取消默认' : '设为默认'
   const label = row.modelName ?? row.modelKey

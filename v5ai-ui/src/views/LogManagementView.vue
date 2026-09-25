@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref } from 'vue'
 import {
   NButton,
   NCard,
@@ -50,6 +50,11 @@ const operRows = ref<OperLog[]>([])
 const operPagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 const operSearch = reactive({ title: '', operName: '', status: null as number | null })
 const operSelected = ref<number[]>([])
+const viewportWidth = ref(typeof window === 'undefined' ? 1440 : window.innerWidth)
+
+function updateViewportWidth() {
+  viewportWidth.value = window.innerWidth
+}
 
 const BUSINESS_TYPE_LABELS: Record<number, string> = {
   0: '其它', 1: '新增', 2: '修改', 3: '删除', 4: '授权', 5: '导出', 6: '导入', 7: '强退', 8: '生成代码', 9: '清空数据'
@@ -78,11 +83,14 @@ const loginColumns: DataTableColumns<LoginLog> = [
   {
     title: '操作',
     key: 'actions',
-    width: 80,
+    width: 150,
     render: (r) =>
-      r.status === '1'
-        ? h(NButton, { size: 'small', quaternary: true, onClick: () => handleUnlock(r) }, { default: () => '解锁' })
-        : null
+      h(NSpace, { size: 4 }, { default: () => [
+        h(NButton, { size: 'small', quaternary: true, onClick: () => openLoginDetail(r) }, { default: () => '详情' }),
+        r.status === '1'
+          ? h(NButton, { size: 'small', quaternary: true, onClick: () => handleUnlock(r) }, { default: () => '解锁' })
+          : null
+      ] })
   }
 ]
 
@@ -196,6 +204,21 @@ const operColumns: DataTableColumns<OperLog> = [
 
 const detailOper = ref<OperLog | null>(null)
 const showDetail = ref(false)
+const detailLogin = ref<LoginLog | null>(null)
+const showLoginDetail = ref(false)
+
+const operTableScrollX = computed<number | undefined>(() => {
+  // URL 列启用 ellipsis 后，Naive UI 需要 scroll-x 才能在窄容器内保留列宽；
+  // 宽屏则交给容器自适应，避免无意义的底部横向滚动条。
+  return viewportWidth.value < 1500
+    ? operColumns.reduce((sum, column) => sum + (typeof column.width === 'number' ? column.width : 240), 0)
+    : undefined
+})
+
+function openLoginDetail(row: LoginLog) {
+  detailLogin.value = row
+  showLoginDetail.value = true
+}
 
 function openDetail(row: OperLog) {
   detailOper.value = row
@@ -283,6 +306,8 @@ function handleTabChange(tab: string) {
 }
 
 onMounted(reloadLogin)
+onMounted(() => window.addEventListener('resize', updateViewportWidth))
+onUnmounted(() => window.removeEventListener('resize', updateViewportWidth))
 </script>
 
 <template>
@@ -388,7 +413,7 @@ onMounted(reloadLogin)
             :checked-row-keys="operSelected"
             @update:checked-row-keys="(keys: Array<string | number>) => (operSelected = keys as number[])"
             :bordered="false"
-            :scroll-x="operColumns.reduce((s, c) => s + (typeof c.width === 'number' ? c.width : 240), 0)"
+            :scroll-x="operTableScrollX"
           />
           <n-pagination
             :page="operPagination.page"
@@ -410,18 +435,30 @@ onMounted(reloadLogin)
         <n-descriptions-item label="模块" label-style="width: 85px;">{{ detailOper.title ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="类型">{{ BUSINESS_TYPE_LABELS[detailOper.businessType ?? 0] ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="操作人">{{ detailOper.operName ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="客户端 Key">{{ detailOper.clientKey ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="方法名">{{ detailOper.method ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="请求方式">{{ detailOper.requestMethod ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="设备类型">{{ detailOper.deviceType ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="浏览器">{{ detailOper.browser ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="操作系统">{{ detailOper.os ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="URL" :span="2">{{ detailOper.operUrl ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="请求参数" :span="2">
-          <pre style="white-space: pre-wrap; word-break: break-all; margin: 0">{{ detailOper.operParam ?? '-' }}</pre>
+          <pre class="log-detail-content">{{ detailOper.operParam ?? '-' }}</pre>
         </n-descriptions-item>
+
         <n-descriptions-item label="返回结果" :span="2">
-          <pre style="white-space: pre-wrap; word-break: break-all; margin: 0">{{ detailOper.jsonResult ?? '-' }}</pre>
+          <pre class="log-detail-content">{{ detailOper.jsonResult ?? '-' }}</pre>
         </n-descriptions-item>
         <n-descriptions-item v-if="detailOper.errorMsg" label="错误信息" :span="2">
-          <pre style="white-space: pre-wrap; word-break: break-all; margin: 0; color: #d03050">{{ detailOper.errorMsg }}</pre>
+          <pre class="log-detail-content log-detail-error">{{ detailOper.errorMsg }}</pre>
         </n-descriptions-item>
         <n-descriptions-item label="IP">{{ detailOper.operIp ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="IP 归属地">{{ detailOper.operLocation ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="状态">
+          <n-tag :type="detailOper.status === 0 ? 'success' : 'error'" size="small" :bordered="false" :round="true">
+            {{ detailOper.status === 0 ? '成功' : '失败' }}
+          </n-tag>
+        </n-descriptions-item>
         <n-descriptions-item label="耗时(ms)">{{ detailOper.costTime ?? '-' }}</n-descriptions-item>
         <n-descriptions-item label="操作时间" :span="2">{{ detailOper.operTime ? (formatDateTime(detailOper.operTime) ?? '-') : '-' }}</n-descriptions-item>
       </n-descriptions>
@@ -431,5 +468,46 @@ onMounted(reloadLogin)
         </n-space>
       </template>
     </n-modal>
+
+    <!-- 登录日志详情 -->
+    <n-modal v-model:show="showLoginDetail" preset="card" title="登录日志详情" style="width: 50%;" :bordered="false">
+      <n-descriptions v-if="detailLogin" :column="2" label-placement="left" bordered size="small">
+        <n-descriptions-item label="账号">{{ detailLogin.userName ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="客户端 Key">{{ detailLogin.clientKey ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="IP">{{ detailLogin.ipaddr ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="IP 归属地">{{ detailLogin.loginLocation ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="设备类型">{{ detailLogin.deviceType ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="浏览器">{{ detailLogin.browser ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="操作系统">{{ detailLogin.os ?? '-' }}</n-descriptions-item>
+        <n-descriptions-item label="状态">
+          <n-tag :type="detailLogin.status === '0' ? 'success' : 'error'" size="small" :bordered="false" :round="true">
+            {{ detailLogin.status === '0' ? '成功' : '失败' }}
+          </n-tag>
+        </n-descriptions-item>
+        <n-descriptions-item label="提示消息" :span="2">
+          <pre class="log-detail-content">{{ detailLogin.msg ?? '-' }}</pre>
+        </n-descriptions-item>
+        <n-descriptions-item label="登录时间" :span="2">{{ detailLogin.loginTime ? (formatDateTime(detailLogin.loginTime) ?? '-') : '-' }}</n-descriptions-item>
+      </n-descriptions>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showLoginDetail = false">关闭</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
+
+<style scoped>
+.log-detail-content {
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-detail-error {
+  color: var(--n-error-color, #d03050);
+}
+</style>

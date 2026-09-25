@@ -147,20 +147,6 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
     render: (row) => h(NTag, { size: 'small', type: 'info', bordered: false }, { default: () => typeLabel(row.type) })
   },
   {
-    title: '默认',
-    key: 'isDefault',
-    width: 90,
-    render: (row) =>
-        h(NSwitch, {
-          value: row.isDefault || false,
-          loading: defaultId.value === row.id,
-          onUpdateValue: () => handleToggleDefault(row)
-        }, {
-          checked: () => h('span', '是'),
-          unchecked: () => h('span', '否')
-        })
-  },
-  {
     title: '状态',
     key: 'status',
     width: 90,
@@ -179,11 +165,13 @@ const columns: DataTableColumns<StoreInstanceResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 130,
+    width: 220,
     render: (row) =>
       h(RowActions, {
+        maxInline: 1,
         actions: [
           { key: 'edit', label: '编辑', secondary: true, type: 'primary', onClick: () => openEdit(row) },
+          { key: 'default', label: row.isDefault ? '取消默认' : '设为默认', type: row.isDefault ? 'warning' : 'primary', secondary: true, loading: defaultId.value === row.id, onClick: () => handleToggleDefault(row) },
           { key: 'delete', label: '删除', secondary: true, type: 'error', confirm: `确认删除存储实例「${row.name}」？`, onClick: () => handleDelete(row) }
         ]
       })
@@ -478,7 +466,7 @@ async function handleTestConnection() {
 }
 
 function handleToggleDefault(row: StoreInstanceResponse) {
-  const next = row.isDefault ? '取消默认' : '设置为默认'
+  const next = row.isDefault ? '取消默认' : '设为默认'
   dialog.warning({
     title: `${next}确认`,
     content: `确认${next}存储实例「${row.name}」？`,

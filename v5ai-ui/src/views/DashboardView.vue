@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch, type Component } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NCard, NIcon, NSelect, NTag, useMessage } from 'naive-ui'
-import { Activity, Bot, Boxes, Database, MessageSquare, Sparkles } from 'lucide-vue-next'
+import { NButton, NCard, NIcon, NSelect, NTooltip, useMessage } from 'naive-ui'
+import { Activity, Bot, Boxes, Database, KeyRound, MessageSquare, Server, Sparkles, Workflow } from 'lucide-vue-next'
 import PageHeader from '../components/PageHeader.vue'
 import {
   getApiKeyUsageStats,
@@ -47,12 +47,23 @@ const stats: StatDef[] = [
 ]
 
 const quickLinks = [
-  { name: 'models', label: '配置模型', icon: Boxes },
-  { name: 'agents', label: '创建 Agent', icon: Bot },
-  { name: 'knowledge-bases', label: '构建知识库', icon: Database },
-  { name: 'skills', label: '上传 Skill', icon: Sparkles },
-  { name: 'chat', label: '调试运行', icon: MessageSquare }
+  { name: 'agents', label: '创建 Agent', fullLabel: '创建 Agent', icon: Bot },
+  { name: 'models', label: '配置模型', fullLabel: '配置 Provider 与模型', icon: Boxes },
+  { name: 'chat', label: '调试 Agent', fullLabel: '调试 Agent 对话', icon: MessageSquare },
+  { name: 'api-keys', label: 'API Key', fullLabel: '管理 Agent API Key', icon: KeyRound },
+  { name: 'knowledge-bases', label: '知识库', fullLabel: '管理知识库与文档', icon: Database },
+  { name: 'mcp-servers', label: 'MCP', fullLabel: '管理 MCP Server', icon: Server },
+  { name: 'skills', label: 'Skill', fullLabel: '管理 Skill', icon: Sparkles },
+  { name: 'workflows', label: '工作流', fullLabel: '工作流编排与管理', icon: Workflow }
 ]
+
+interface QuickStartStep {
+  label: string
+  description: string
+  route: string
+  action: string
+  done: boolean
+}
 
 async function reload() {
   loading.value = true
@@ -132,6 +143,21 @@ const apiKeyRanking = computed(() => (apiKeyStats.value?.summaries ?? [])
   .slice(0, 6))
 
 const apiKeyRankingMaxTokens = computed(() => Math.max(...apiKeyRanking.value.map((summary) => summary.totalTokens), 1))
+
+const quickStartSteps = computed<QuickStartStep[]>(() => {
+  const hasModel = (overview.value?.models ?? 0) > 0
+  const hasAgent = (overview.value?.agents ?? 0) > 0
+  const hasPublishedAgent = agents.value.some((agent) => agent.status.toUpperCase() === 'PUBLISHED')
+  const hasRun = (overview.value?.totalRuns ?? 0) > 0
+  const hasApiKey = (apiKeyStats.value?.summaries ?? []).some((summary) => summary.apiKeyId != null)
+
+  return [
+    { label: '配置模型', description: '先配置 Provider 和可用模型。', route: 'models', action: '去配置', done: hasModel },
+    { label: '创建 Agent', description: '填写提示词并绑定对话模型。', route: 'agents', action: '去创建', done: hasAgent },
+    { label: '发布并调试', description: '发布 Agent 后运行一轮对话验证。', route: hasPublishedAgent ? 'chat' : 'agents', action: hasPublishedAgent ? '去调试' : '去发布', done: hasRun },
+    { label: '创建 API Key', description: '为已发布 Agent 创建调用凭证。', route: 'api-keys', action: '去创建', done: hasApiKey }
+  ]
+})
 
 function apiKeyRankingWidth(summary: ApiKeyUsageStats['summaries'][number]): string {
   return `${Math.max((summary.totalTokens / apiKeyRankingMaxTokens.value) * 100, 3)}%`
@@ -383,19 +409,30 @@ onMounted(reload)
             @click="router.push({ name: link.name })"
           >
             <span class="quick-icon"><n-icon :component="link.icon" :size="18" /></span>
-            <span>{{ link.label }}</span>
+            <n-tooltip placement="top">
+              <template #trigger>
+                <span class="quick-label">{{ link.label }}</span>
+              </template>
+              {{ link.fullLabel }}
+            </n-tooltip>
           </button>
         </div>
       </n-card>
 
       <n-card title="快速开始" :bordered="true">
-        <ol class="steps">
-          <li>在「模型管理」中配置 Provider 与 Model。</li>
-          <li>在「知识库管理」中导入文档并等待索引完成。</li>
-          <li>创建 Agent，绑定模型 / 知识库 / MCP / Skill。</li>
-          <li>发布 Agent，在「调试工具」中运行验证。</li>
-        </ol>
-        <n-tag type="info" size="small" :bordered="false">默认管理员账号 admin / admin</n-tag>
+        <div class="steps">
+          <div v-for="(step, index) in quickStartSteps" :key="step.label" class="step-item">
+            <span class="step-marker" :class="{ done: step.done }">{{ step.done ? '✓' : index + 1 }}</span>
+            <div class="step-copy">
+              <strong>{{ step.label }}</strong>
+              <span>{{ step.description }}</span>
+            </div>
+            <n-button text size="small" :type="step.done ? 'default' : 'primary'" @click="router.push({ name: step.route })">
+              {{ step.done ? '查看' : step.action }}
+            </n-button>
+          </div>
+        </div>
+        <p class="optional-hint">知识库、MCP、Skill 和工作流是可选增强能力，可在 Agent 创建后按需配置。</p>
       </n-card>
     </div>
   </div>
@@ -651,14 +688,69 @@ onMounted(reload)
   color: var(--brand);
 }
 
+.quick-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .steps {
-  margin: 0 0 14px;
-  padding-left: 20px;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 14px;
-  line-height: 1.5;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+}
+
+.step-marker {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(128, 128, 128, 0.32);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.step-marker.done {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: white;
+}
+
+.step-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step-copy strong {
+  font-size: 13px;
+}
+
+.step-copy span,
+.optional-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.optional-hint {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(128, 128, 128, 0.22);
 }
 
 @media (max-width: 900px) {
