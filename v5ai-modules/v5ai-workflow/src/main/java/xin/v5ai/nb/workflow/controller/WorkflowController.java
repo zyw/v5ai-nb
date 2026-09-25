@@ -19,6 +19,8 @@ import xin.v5ai.nb.common.log.enums.BusinessType;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
 import xin.v5ai.nb.common.web.core.BaseController;
 import xin.v5ai.nb.workflow.core.WorkflowEngine;
+import xin.v5ai.nb.workflow.core.WorkflowDefinitionValidator;
+import xin.v5ai.nb.workflow.core.WorkflowValidationResult;
 import xin.v5ai.nb.workflow.core.WorkflowRun;
 import xin.v5ai.nb.workflow.domain.bo.RunWorkflowBo;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
@@ -83,12 +85,43 @@ public class WorkflowController extends BaseController {
         return R.ok(workflowService.publish(key));
     }
 
+    @SaCheckPermission("workflow:workflow:query")
+    @PostMapping("/{key}/validate")
+    public R<WorkflowValidationResult> validate(@PathVariable("key") String key) {
+        var workflow = workflowService.get(key);
+        return R.ok(WorkflowDefinitionValidator.validateDetailed(workflow.getDraftDefinition()));
+    }
+
+    @SaCheckPermission("workflow:workflow:query")
+    @GetMapping("/{key}/versions")
+    public R<java.util.List<xin.v5ai.nb.workflow.domain.WorkflowVersion>> versions(@PathVariable("key") String key) {
+        return R.ok(workflowService.listVersions(key));
+    }
+
+    @SaCheckPermission("workflow:workflow:query")
+    @GetMapping("/{key}/versions/{version}")
+    public R<xin.v5ai.nb.workflow.domain.WorkflowVersion> version(@PathVariable("key") String key,
+                                                                   @PathVariable("version") long version) {
+        return R.ok(workflowService.getVersion(key, version));
+    }
+
+    @SaCheckPermission("workflow:workflow:edit")
+    @PostMapping("/{key}/versions/{version}/restore")
+    public R<WorkflowVo> restore(@PathVariable("key") String key, @PathVariable("version") long version,
+                                 @RequestBody(required = false) WorkflowBo request) {
+        return R.ok(workflowService.restoreVersion(key, version, request == null ? null : request.getExpectedRevision()));
+    }
+
     @SaCheckPermission("workflow:workflow:run")
     @PostMapping("/{key}/run")
     @Log(title = "运行工作流", businessType = BusinessType.RUN)
     public R<WorkflowRun> run(@PathVariable("key") String key,
                               @RequestBody(required = false) RunWorkflowBo request) {
         var inputs = request == null ? null : request.inputs();
+        if (request != null && request.draft()) {
+            var workflow = workflowService.get(key);
+            return R.ok(engine.executeDraft(key, workflow.getDraftRevision(), workflow.getDraftDefinition(), inputs));
+        }
         return R.ok(engine.execute(key, inputs));
     }
 

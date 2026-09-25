@@ -40,4 +40,6 @@ public class WorkflowBo {
      * 草稿定义（nodes/edges），更新时提交
      */
     private WorkflowDefinition definition;
+
+    private Long expectedRevision;
 }

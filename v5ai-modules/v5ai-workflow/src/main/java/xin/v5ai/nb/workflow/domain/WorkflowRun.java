@@ -54,4 +54,10 @@ public class WorkflowRun {
     private Instant finishedAt;
 
     private Instant createdAt;
+
+    private String source;
+
+    private Long draftRevision;
+
+    private String definitionSnapshot;
 }

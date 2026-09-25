@@ -30,6 +30,7 @@ public class AgentApiKeysConfiguration {
         var registration = new FilterRegistrationBean<>(
                 new AgentApiKeysServletFilter(quotaService, apiKeyService));
         registration.addUrlPatterns("/api/v1/agents/*");
+        registration.addUrlPatterns("/api/v1/workflows/*");
         registration.setName("applicationApiKeyServletFilter");
         return registration;
     }

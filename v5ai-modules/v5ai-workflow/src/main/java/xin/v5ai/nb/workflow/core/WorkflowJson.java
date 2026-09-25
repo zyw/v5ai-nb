@@ -12,7 +12,7 @@ import java.util.Map;
  * 存储层（v5ai-infrastructure）将 JSON 作为 TEXT 落库，读取时经此还原为强类型。
  */
 public final class WorkflowJson {
-    static final ObjectMapper MAPPER = new ObjectMapper();
+    public static final ObjectMapper MAPPER = new ObjectMapper();
 
     private WorkflowJson() {
     }

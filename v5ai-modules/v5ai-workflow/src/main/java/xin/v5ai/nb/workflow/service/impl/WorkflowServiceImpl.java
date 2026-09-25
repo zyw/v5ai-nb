@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.common.core.domain.PageResult;
 import xin.v5ai.nb.common.mybatis.core.page.PageQuery;
@@ -18,6 +19,8 @@ import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
 import xin.v5ai.nb.workflow.mapper.WorkflowMapper;
 import xin.v5ai.nb.workflow.mapper.WorkflowNodeRunMapper;
 import xin.v5ai.nb.workflow.mapper.WorkflowRunMapper;
+import xin.v5ai.nb.workflow.mapper.WorkflowVersionMapper;
+import xin.v5ai.nb.workflow.domain.WorkflowVersion;
 import xin.v5ai.nb.workflow.service.IWorkflowService;
 
 import java.time.OffsetDateTime;
@@ -41,6 +44,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     private final WorkflowMapper workflowMapper;
     private final WorkflowRunMapper runMapper;
     private final WorkflowNodeRunMapper nodeRunMapper;
+    private WorkflowVersionMapper versionMapper;
+
+    @Autowired
+    public void setVersionMapper(WorkflowVersionMapper versionMapper) { this.versionMapper = versionMapper; }
 
     @Override
     public PageResult<WorkflowVo> queryPageList(WorkflowBo bo, PageQuery pageQuery) {
@@ -82,6 +89,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Transactional(rollbackFor = Exception.class)
     public WorkflowVo update(String workflowKey, WorkflowBo bo) {
         var existing = requireActive(workflowKey);
+        long currentRevision = existing.getDraftRevision() == null ? 0L : existing.getDraftRevision();
+        if (bo.getExpectedRevision() != null && !bo.getExpectedRevision().equals(currentRevision)) {
+            throw new IllegalStateException("workflow draft revision conflict; reload before saving");
+        }
         var update = new xin.v5ai.nb.workflow.domain.Workflow();
         update.setId(existing.getId());
         update.setWorkflowKey(existing.getWorkflowKey());
@@ -94,6 +105,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         update.setPublishedDefinitionJson(existing.getPublishedDefinitionJson());
         update.setPublishedVersion(existing.getPublishedVersion());
         update.setPublishedAt(existing.getPublishedAt());
+        update.setDraftRevision(bo.getDefinition() == null ? currentRevision : currentRevision + 1);
         workflowMapper.updateById(update);
         return toVo(update);
     }
@@ -122,6 +134,15 @@ public class WorkflowServiceImpl implements IWorkflowService {
         WorkflowDefinition draft = WorkflowJson.parseDefinition(existing.getDraftDefinitionJson());
         WorkflowDefinitionValidator.validate(draft);
         long version = existing.getPublishedVersion() == null ? 1 : existing.getPublishedVersion() + 1;
+        if (versionMapper != null) {
+            var snapshot = new WorkflowVersion();
+            snapshot.setWorkflowKey(workflowKey);
+            snapshot.setVersion(version);
+            snapshot.setDefinition(existing.getDraftDefinitionJson());
+            snapshot.setSchemaVersion(draft.schemaVersion());
+            snapshot.setPublishedAt(OffsetDateTime.now());
+            versionMapper.insert(snapshot);
+        }
         var update = new xin.v5ai.nb.workflow.domain.Workflow();
         update.setId(existing.getId());
         update.setStatus(STATUS_PUBLISHED);
@@ -146,6 +167,44 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 .stream()
                 .map(this::toRunDomain)
                 .toList();
+    }
+
+    @Override
+    public List<WorkflowVersion> listVersions(String workflowKey) {
+        requireWorkflow(workflowKey);
+        if (versionMapper == null) return List.of();
+        return versionMapper.selectList(new LambdaQueryWrapper<WorkflowVersion>()
+                .eq(WorkflowVersion::getWorkflowKey, workflowKey)
+                .orderByDesc(WorkflowVersion::getVersion));
+    }
+
+    @Override
+    public WorkflowVersion getVersion(String workflowKey, long version) {
+        if (versionMapper == null) throw new IllegalStateException("workflow version storage is unavailable");
+        WorkflowVersion found = versionMapper.selectOne(new LambdaQueryWrapper<WorkflowVersion>()
+                .eq(WorkflowVersion::getWorkflowKey, workflowKey).eq(WorkflowVersion::getVersion, version));
+        if (found == null) throw new IllegalArgumentException("workflow version does not exist");
+        return found;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public WorkflowVo restoreVersion(String workflowKey, long version, Long expectedRevision) {
+        var existing = requireActive(workflowKey);
+        long revision = existing.getDraftRevision() == null ? 0L : existing.getDraftRevision();
+        if (expectedRevision != null && !expectedRevision.equals(revision)) {
+            throw new IllegalStateException("workflow draft revision conflict; reload before restoring");
+        }
+        WorkflowVersion snapshot = getVersion(workflowKey, version);
+        WorkflowDefinition restored = WorkflowJson.parseDefinition(snapshot.getDefinition());
+        var update = new xin.v5ai.nb.workflow.domain.Workflow();
+        update.setId(existing.getId());
+        update.setDraftDefinitionJson(WorkflowJson.toJson(restored));
+        update.setDraftRevision(revision + 1);
+        workflowMapper.updateById(update);
+        existing.setDraftDefinitionJson(update.getDraftDefinitionJson());
+        existing.setDraftRevision(revision + 1);
+        return toVo(existing);
     }
 
     @Override
@@ -208,6 +267,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
         vo.setPublishedAt(entity.getPublishedAt());
         vo.setCreatedAt(entity.getCreatedAt());
         vo.setUpdatedAt(entity.getUpdatedAt());
+        vo.setDraftRevision(entity.getDraftRevision() == null ? 0L : entity.getDraftRevision());
         return vo;
     }
 
@@ -219,7 +279,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
                 entity.getStatus() == null ? null : WorkflowRunStatus.valueOf(entity.getStatus()),
                 WorkflowJson.parseMap(entity.getInputsJson()),
                 WorkflowJson.parseMap(entity.getOutputsJson()),
-                entity.getError(), entity.getStartedAt(), entity.getFinishedAt(), entity.getCreatedAt());
+                entity.getError(), entity.getStartedAt(), entity.getFinishedAt(), entity.getCreatedAt(),
+                entity.getSource() == null ? xin.v5ai.nb.workflow.core.enums.WorkflowRunSource.PUBLISHED
+                        : xin.v5ai.nb.workflow.core.enums.WorkflowRunSource.valueOf(entity.getSource()),
+                entity.getDraftRevision(), entity.getDefinitionSnapshot());
     }
 
     private WorkflowNodeRun toNodeRunDomain(xin.v5ai.nb.workflow.domain.WorkflowNodeRun entity) {

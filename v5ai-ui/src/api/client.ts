@@ -2375,13 +2375,14 @@ export function getApiKeyUsageStats(
 
 // ---- Workflows ----
 
-export type WorkflowNodeType = 'START' | 'AGENT' | 'CONDITION' | 'END'
+export type WorkflowNodeType = 'START' | 'AGENT' | 'CONDITION' | 'HTTP' | 'PYTHON' | 'VARIABLE' | 'END'
 
 export interface WorkflowNode {
   id: string
   type: WorkflowNodeType
   name: string
   config?: Record<string, unknown> | null
+  position?: { x: number; y: number } | null
 }
 
 export interface WorkflowEdge {
@@ -2392,9 +2393,14 @@ export interface WorkflowEdge {
 }
 
 export interface WorkflowDefinition {
+  schemaVersion?: number
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
 }
+
+export interface WorkflowDiagnostic { code: string; message: string; nodeId?: string | null; edgeId?: string | null }
+export interface WorkflowValidationResult { valid: boolean; diagnostics: WorkflowDiagnostic[] }
+export interface WorkflowVersionResponse { id: number; workflowKey: string; version: number; definitionJson: string; createdAt?: string | null }
 
 export interface WorkflowResponse {
   id: number
@@ -2405,6 +2411,7 @@ export interface WorkflowResponse {
   draftDefinition?: WorkflowDefinition | null
   publishedDefinition?: WorkflowDefinition | null
   publishedVersion?: number | null
+  draftRevision?: number | null
   publishedAt?: string | null
   createdAt?: string | null
   updatedAt?: string | null
@@ -2420,6 +2427,7 @@ export interface UpdateWorkflowRequest {
   name?: string
   description?: string
   definition?: WorkflowDefinition
+  expectedRevision?: number
 }
 
 export interface WorkflowRunResponse {
@@ -2490,10 +2498,24 @@ export function disableWorkflow(adminToken: string, workflowKey: string): Promis
   }, adminToken)
 }
 
-export function runWorkflow(adminToken: string, workflowKey: string, inputs?: Record<string, unknown>): Promise<WorkflowRunResponse> {
+export function runWorkflow(adminToken: string, workflowKey: string, inputs?: Record<string, unknown>, draft = true): Promise<WorkflowRunResponse> {
   return requestJson<WorkflowRunResponse>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/run`, {
     method: 'POST',
-    body: JSON.stringify({ inputs: inputs ?? {} })
+    body: JSON.stringify({ inputs: inputs ?? {}, draft })
+  }, adminToken)
+}
+
+export function validateWorkflow(adminToken: string, workflowKey: string): Promise<WorkflowValidationResult> {
+  return requestJson<WorkflowValidationResult>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/validate`, { method: 'POST' }, adminToken)
+}
+
+export function listWorkflowVersions(adminToken: string, workflowKey: string): Promise<WorkflowVersionResponse[]> {
+  return requestJson<WorkflowVersionResponse[]>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/versions`, {}, adminToken)
+}
+
+export function restoreWorkflowVersion(adminToken: string, workflowKey: string, version: number, expectedRevision?: number): Promise<WorkflowResponse> {
+  return requestJson<WorkflowResponse>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/versions/${version}/restore`, {
+    method: 'POST', body: JSON.stringify({ expectedRevision })
   }, adminToken)
 }
 
