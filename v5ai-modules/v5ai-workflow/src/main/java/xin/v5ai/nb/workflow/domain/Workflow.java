@@ -66,4 +66,6 @@ public class Workflow extends BaseEntity {
      * 发布时间
      */
     private OffsetDateTime publishedAt;
+
+    private Long draftRevision;
 }

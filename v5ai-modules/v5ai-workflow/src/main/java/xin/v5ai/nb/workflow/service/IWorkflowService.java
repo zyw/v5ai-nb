@@ -7,6 +7,7 @@ import xin.v5ai.nb.workflow.core.WorkflowRun;
 import xin.v5ai.nb.workflow.core.WorkflowEngine;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
+import xin.v5ai.nb.workflow.domain.WorkflowVersion;
 
 import java.util.List;
 
@@ -53,6 +54,12 @@ public interface IWorkflowService {
      * 发布：校验 DAG 后快照草稿为已发布版本。
      */
     WorkflowVo publish(String workflowKey);
+
+    List<WorkflowVersion> listVersions(String workflowKey);
+
+    WorkflowVersion getVersion(String workflowKey, long version);
+
+    WorkflowVo restoreVersion(String workflowKey, long version, Long expectedRevision);
 
     /**
      * 查询某 Workflow 的运行记录（新在前）。

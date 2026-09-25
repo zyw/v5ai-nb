@@ -69,6 +69,30 @@ public class MyBatisWorkflowRunRepository implements WorkflowRunRepository {
     }
 
     @Override
+    public void startNodeRun(WorkflowNodeRun nodeRun) {
+        saveNodeRun(nodeRun);
+    }
+
+    @Override
+    public void finishNodeRun(WorkflowNodeRun nodeRun) {
+        var entity = nodeRunMapper.selectOne(new LambdaQueryWrapper<xin.v5ai.nb.workflow.domain.WorkflowNodeRun>()
+                .eq(xin.v5ai.nb.workflow.domain.WorkflowNodeRun::getRunId, nodeRun.runId())
+                .eq(xin.v5ai.nb.workflow.domain.WorkflowNodeRun::getNodeId, nodeRun.nodeId())
+                .eq(xin.v5ai.nb.workflow.domain.WorkflowNodeRun::getStatus, WorkflowNodeRunStatus.RUNNING.name())
+                .orderByDesc(xin.v5ai.nb.workflow.domain.WorkflowNodeRun::getId)
+                .last("LIMIT 1"));
+        if (entity == null) {
+            saveNodeRun(nodeRun);
+            return;
+        }
+        entity.setStatus(nodeRun.status().name());
+        entity.setOutputsJson(WorkflowJson.toJson(nodeRun.outputs()));
+        entity.setError(nodeRun.error());
+        entity.setFinishedAt(nodeRun.finishedAt());
+        nodeRunMapper.updateById(entity);
+    }
+
+    @Override
     public WorkflowRun findRun(String runId) {
         return toDomain(runMapper.selectById(runId));
     }
@@ -101,7 +125,10 @@ public class MyBatisWorkflowRunRepository implements WorkflowRunRepository {
                 entity.getStatus() == null ? null : WorkflowRunStatus.valueOf(entity.getStatus()),
                 WorkflowJson.parseMap(entity.getInputsJson()),
                 WorkflowJson.parseMap(entity.getOutputsJson()),
-                entity.getError(), entity.getStartedAt(), entity.getFinishedAt(), entity.getCreatedAt());
+                entity.getError(), entity.getStartedAt(), entity.getFinishedAt(), entity.getCreatedAt(),
+                entity.getSource() == null ? xin.v5ai.nb.workflow.core.enums.WorkflowRunSource.PUBLISHED
+                        : xin.v5ai.nb.workflow.core.enums.WorkflowRunSource.valueOf(entity.getSource()),
+                entity.getDraftRevision(), entity.getDefinitionSnapshot());
     }
 
     private WorkflowNodeRun toNodeRunDomain(xin.v5ai.nb.workflow.domain.WorkflowNodeRun entity) {
@@ -125,6 +152,9 @@ public class MyBatisWorkflowRunRepository implements WorkflowRunRepository {
         entity.setStartedAt(run.startedAt());
         entity.setFinishedAt(run.finishedAt());
         entity.setCreatedAt(run.createdAt() == null ? Instant.now() : run.createdAt());
+        entity.setSource(run.source() == null ? "PUBLISHED" : run.source().name());
+        entity.setDraftRevision(run.draftRevision());
+        entity.setDefinitionSnapshot(run.definitionSnapshot());
         return entity;
     }
 }

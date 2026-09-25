@@ -13,6 +13,10 @@ public interface WorkflowRunRepository {
 
     void saveNodeRun(WorkflowNodeRun nodeRun);
 
+    default void startNodeRun(WorkflowNodeRun nodeRun) { saveNodeRun(nodeRun); }
+
+    default void finishNodeRun(WorkflowNodeRun nodeRun) { saveNodeRun(nodeRun); }
+
     WorkflowRun findRun(String runId);
 
     List<WorkflowNodeRun> findNodeRuns(String runId);

@@ -29,12 +29,16 @@ import {
   listAgents,
   publishWorkflow,
   runWorkflow,
+  validateWorkflow,
+  listWorkflowVersions,
+  restoreWorkflowVersion,
   updateWorkflow,
   type AgentResponse,
   type WorkflowDefinition,
   type WorkflowNode,
   type WorkflowNodeRunResponse,
   type WorkflowNodeType,
+  type WorkflowValidationResult,
   type WorkflowResponse,
   type WorkflowRunResponse
 } from '../api/client'
@@ -55,6 +59,9 @@ const TYPE_LABELS: Record<WorkflowNodeType, string> = {
   START: '开始',
   AGENT: 'Agent',
   CONDITION: '条件',
+  HTTP: 'HTTP 请求',
+  PYTHON: 'Python 脚本',
+  VARIABLE: '变量赋值',
   END: '结束'
 }
 
@@ -81,6 +88,12 @@ function defaultConfig(type: WorkflowNodeType): Record<string, any> {
       return { left: '', operator: '==', right: '' }
     case 'END':
       return { outputs: [] }
+    case 'HTTP':
+      return { method: 'GET', url: '', headers: {}, body: '', outputVar: '' }
+    case 'PYTHON':
+      return { code: 'result = inputs', outputVar: 'result' }
+    case 'VARIABLE':
+      return { name: '', value: '' }
   }
 }
 
@@ -106,6 +119,9 @@ const runInputs = reactive<Record<string, string>>({})
 const running = ref(false)
 const lastRun = ref<WorkflowRunResponse | null>(null)
 const lastNodeRuns = ref<WorkflowNodeRunResponse[]>([])
+const validation = ref<WorkflowValidationResult | null>(null)
+const versions = ref<Array<{ label: string; value: number }>>([])
+const selectedVersion = ref<number | null>(null)
 
 const selectedNode = computed<any>(() => nodes.value.find((n) => n.id === selectedNodeId.value))
 const selectedData = computed<WFNodeData | null>(() => (selectedNode.value?.data as WFNodeData) ?? null)
@@ -125,10 +141,12 @@ function wfData(node: any): WFNodeData {
 }
 
 function buildDefinition(): WorkflowDefinition {
+  const positions = new Map(nodes.value.map((node) => [node.id, node.position]))
   return {
+    schemaVersion: 2,
     nodes: nodes.value.map((n) => {
       const d = wfData(n)
-      return { id: n.id, type: d.nodeType, name: d.name, config: d.config }
+      return { id: n.id, type: d.nodeType, name: d.name, config: d.config, position: positions.get(n.id) }
     }),
     edges: edges.value.map((e) => ({
       id: e.id,
@@ -191,7 +209,7 @@ async function load() {
     const domainEdges = def?.edges ?? []
     const pos = layout(domainNodes, domainEdges)
     nodes.value = domainNodes.map((n) => {
-      const p = pos.get(n.id) ?? { x: 40, y: 60 }
+      const p = n.position ?? pos.get(n.id) ?? { x: 40, y: 60 }
       return {
         id: n.id,
         type: 'workflow',
@@ -207,6 +225,7 @@ async function load() {
       targetHandle: 'in'
     }))
     agents.value = (await listAgents(adminToken.value)).rows
+    versions.value = (await listWorkflowVersions(adminToken.value, workflowKey)).map((v) => ({ label: `v${v.version}`, value: v.version }))
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载工作流失败')
   } finally {
@@ -282,13 +301,23 @@ function removeOutput(index: number) {
   if (config && Array.isArray(config.outputs)) config.outputs.splice(index, 1)
 }
 
+function setHttpHeaders(value: string) {
+  if (!selectedData.value) return
+  try {
+    selectedData.value.config.headers = value.trim() ? JSON.parse(value) : {}
+  } catch {
+    // Keep the last valid value; publishing will be blocked by server-side validation.
+  }
+}
+
 async function saveDraft() {
   saving.value = true
   try {
     workflow.value = await updateWorkflow(adminToken.value, workflowKey, {
       name: workflow.value?.name ?? undefined,
       description: workflow.value?.description ?? undefined,
-      definition: buildDefinition()
+      definition: buildDefinition(),
+      expectedRevision: workflow.value?.draftRevision ?? 0
     })
     message.success('草稿已保存')
   } catch (e) {
@@ -301,6 +330,16 @@ async function saveDraft() {
 async function publish() {
   saving.value = true
   try {
+    workflow.value = await updateWorkflow(adminToken.value, workflowKey, {
+      definition: buildDefinition(),
+      expectedRevision: workflow.value?.draftRevision ?? 0
+    })
+    const result = await validateWorkflow(adminToken.value, workflowKey)
+    validation.value = result
+    if (!result.valid) {
+      message.error(`校验未通过：${result.diagnostics.map((d) => d.message).join('；')}`)
+      return
+    }
     workflow.value = await publishWorkflow(adminToken.value, workflowKey)
     message.success(`已发布 v${workflow.value.publishedVersion}`)
   } catch (e) {
@@ -328,10 +367,16 @@ async function executeRun() {
   lastNodeRuns.value = []
   try {
     const inputs: Record<string, unknown> = {}
+    const start = nodes.value.find((n) => wfData(n).nodeType === 'START')
+    const declarations = Array.isArray(start?.data?.config?.variables) ? start.data.config.variables : []
     for (const [k, v] of Object.entries(runInputs)) {
-      if (k) inputs[k] = v
+      if (!k) continue
+      const type = declarations.find((item: any) => item.name === k)?.type
+      if (type === 'number' && v.trim() !== '' && Number.isFinite(Number(v))) inputs[k] = Number(v)
+      else if (type === 'boolean') inputs[k] = v === 'true'
+      else inputs[k] = v
     }
-    const run = await runWorkflow(adminToken.value, workflowKey, inputs)
+    const run = await runWorkflow(adminToken.value, workflowKey, inputs, true)
     lastRun.value = run
     try {
       const detail = await getWorkflowRun(adminToken.value, run.runId)
@@ -344,6 +389,17 @@ async function executeRun() {
     message.error(e instanceof Error ? e.message : '运行失败')
   } finally {
     running.value = false
+  }
+}
+
+async function restoreVersion() {
+  if (selectedVersion.value == null) return
+  try {
+    workflow.value = await restoreWorkflowVersion(adminToken.value, workflowKey, selectedVersion.value, workflow.value?.draftRevision ?? undefined)
+    message.success(`已将 v${selectedVersion.value} 恢复为草稿`)
+    await load()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '恢复版本失败')
   }
 }
 
@@ -366,6 +422,8 @@ onMounted(load)
         <n-tag v-else-if="workflow?.status === 'DRAFT'" size="small" type="info" :bordered="false">草稿</n-tag>
       </div>
       <n-space :size="8">
+        <n-select v-model:value="selectedVersion" :options="versions" placeholder="版本历史" size="small" clearable style="width: 110px" />
+        <n-button size="small" :disabled="selectedVersion == null" @click="restoreVersion">恢复版本</n-button>
         <n-button size="small" :loading="saving" @click="saveDraft">
           <template #icon><n-icon :component="Save" /></template>
           保存草稿
@@ -384,7 +442,7 @@ onMounted(load)
     <div class="editor-body">
       <aside class="palette">
         <div class="panel-title">节点类型（点击添加）</div>
-        <button v-for="type in (['START', 'AGENT', 'CONDITION', 'END'] as WorkflowNodeType[])" :key="type" type="button" class="palette-item" @click="addNode(type)">
+        <button v-for="type in (['START', 'AGENT', 'CONDITION', 'HTTP', 'PYTHON', 'VARIABLE', 'END'] as WorkflowNodeType[])" :key="type" type="button" class="palette-item" @click="addNode(type)">
           {{ TYPE_LABELS[type] }}
           <span class="palette-type">{{ type }}</span>
         </button>
@@ -456,6 +514,24 @@ onMounted(load)
               </n-form-item>
             </template>
 
+            <template v-else-if="selectedData.nodeType === 'HTTP'">
+              <n-form-item label="HTTP 方法"><n-select v-model:value="selectedData.config.method" :options="['GET','POST','PUT','PATCH','DELETE'].map(v => ({ label: v, value: v }))" /></n-form-item>
+              <n-form-item label="URL"><n-input v-model:value="selectedData.config.url" placeholder="https://api.example.com/resource" /></n-form-item>
+              <n-form-item label="请求头 JSON"><n-input :value="JSON.stringify(selectedData.config.headers ?? {}, null, 2)" type="textarea" placeholder="{}" @update:value="setHttpHeaders" /></n-form-item>
+              <n-form-item label="请求体模板"><n-input v-model:value="selectedData.config.body" type="textarea" /></n-form-item>
+              <n-form-item label="输出变量"><n-input v-model:value="selectedData.config.outputVar" /></n-form-item>
+            </template>
+
+            <template v-else-if="selectedData.nodeType === 'PYTHON'">
+              <n-form-item label="Python 代码（需配置隔离 Runner）"><n-input v-model:value="selectedData.config.code" type="textarea" :autosize="{ minRows: 8, maxRows: 16 }" /></n-form-item>
+              <n-form-item label="输出变量"><n-input v-model:value="selectedData.config.outputVar" /></n-form-item>
+            </template>
+
+            <template v-else-if="selectedData.nodeType === 'VARIABLE'">
+              <n-form-item label="变量名"><n-input v-model:value="selectedData.config.name" /></n-form-item>
+              <n-form-item label="值模板"><n-input v-model:value="selectedData.config.value" /></n-form-item>
+            </template>
+
             <template v-else-if="selectedData.nodeType === 'END'">
               <div class="panel-section">输出</div>
               <div v-for="(o, i) in selectedOutputs" :key="i" class="var-block">
@@ -470,6 +546,7 @@ onMounted(load)
               <n-button size="tiny" dashed block @click="addOutput">+ 添加输出</n-button>
             </template>
           </n-form>
+          <div v-if="validation && !validation.valid" class="run-error">{{ validation.diagnostics.map(d => d.message).join('；') }}</div>
 
           <n-button size="small" type="error" secondary block style="margin-top: 12px" @click="deleteSelected">
             <template #icon><n-icon :component="Trash2" /></template>
