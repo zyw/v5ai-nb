@@ -7,6 +7,7 @@ import xin.v5ai.nb.workflow.core.WorkflowRun;
 import xin.v5ai.nb.workflow.core.WorkflowEngine;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
+import xin.v5ai.nb.workflow.domain.vo.WorkflowRunDetailVo;
 import xin.v5ai.nb.workflow.domain.WorkflowVersion;
 
 import java.util.List;
@@ -70,6 +71,9 @@ public interface IWorkflowService {
      * 查询单个运行记录。
      */
     WorkflowRun getRun(String runId);
+
+    /** 查询运行记录及其节点名称（来自本次运行的定义快照）。 */
+    WorkflowRunDetailVo getRunDetail(String runId);
 
     /**
      * 查询某运行的节点记录。

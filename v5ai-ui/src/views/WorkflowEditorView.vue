@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { computed, markRaw, onMounted, reactive, ref } from 'vue'
+import { computed, markRaw, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { VueFlow } from '@vue-flow/core'
+import { useVueFlow, VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
-import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
-import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 import {
   NButton,
@@ -21,7 +19,11 @@ import {
   NTag,
   useMessage
 } from 'naive-ui'
-import { ArrowLeft, Play, Save, Send, Trash2 } from 'lucide-vue-next'
+import {
+  ArrowLeft, Bot, CirclePlay, CircleStop, Code2, Eye, GitBranch, Globe,
+  LayoutGrid, Maximize, Play, Save, Scan, Send, ShieldCheck, Trash2,
+  Variable as VariableIcon, ZoomIn, ZoomOut
+} from 'lucide-vue-next'
 import WorkflowNodeCard from '../components/workflow/WorkflowNodeCard.vue'
 import {
   getWorkflow,
@@ -63,6 +65,23 @@ const TYPE_LABELS: Record<WorkflowNodeType, string> = {
   PYTHON: 'Python 脚本',
   VARIABLE: '变量赋值',
   END: '结束'
+}
+
+const NODE_GROUPS: Array<{ title: string; types: WorkflowNodeType[] }> = [
+  { title: '基础', types: ['START', 'END'] },
+  { title: 'AI', types: ['AGENT'] },
+  { title: '执行器', types: ['HTTP', 'PYTHON', 'VARIABLE'] },
+  { title: '控制', types: ['CONDITION'] }
+]
+
+const NODE_ICONS: Record<WorkflowNodeType, any> = {
+  START: CirclePlay,
+  END: CircleStop,
+  AGENT: Bot,
+  CONDITION: GitBranch,
+  HTTP: Globe,
+  PYTHON: Code2,
+  VARIABLE: VariableIcon
 }
 
 const OPERATOR_OPTIONS = [
@@ -113,6 +132,8 @@ const edges = ref<any[]>([])
 const selectedNodeId = ref<string | null>(null)
 
 const nodeTypes: Record<string, any> = { workflow: markRaw(WorkflowNodeCard) }
+const { zoomIn, zoomOut, fitView, viewport } = useVueFlow()
+const showMiniMap = ref(true)
 
 const showRunModal = ref(false)
 const runInputs = reactive<Record<string, string>>({})
@@ -140,6 +161,12 @@ function wfData(node: any): WFNodeData {
   return node.data as WFNodeData
 }
 
+function runNodeLabel(nodeId: string): string {
+  const node = nodes.value.find((item) => item.id === nodeId)
+  const name = node ? wfData(node).name?.trim() : ''
+  return name ? `${name} (${nodeId})` : nodeId
+}
+
 function buildDefinition(): WorkflowDefinition {
   const positions = new Map(nodes.value.map((node) => [node.id, node.position]))
   return {
@@ -157,7 +184,7 @@ function buildDefinition(): WorkflowDefinition {
   }
 }
 
-function layout(domainNodes: WorkflowNode[], domainEdges: { source: string; target: string }[]): Map<string, { x: number; y: number }> {
+function layout(domainNodes: Array<{ id: string }>, domainEdges: { source: string; target: string }[]): Map<string, { x: number; y: number }> {
   const incoming = new Map<string, number>()
   const adj = new Map<string, string[]>()
   for (const e of domainEdges) {
@@ -327,6 +354,39 @@ async function saveDraft() {
   }
 }
 
+async function validateDraft() {
+  saving.value = true
+  try {
+    workflow.value = await updateWorkflow(adminToken.value, workflowKey, {
+      definition: buildDefinition(),
+      expectedRevision: workflow.value?.draftRevision ?? 0
+    })
+    validation.value = await validateWorkflow(adminToken.value, workflowKey)
+    if (validation.value.valid) message.success('校验通过')
+    else message.error(`校验未通过：${validation.value.diagnostics.map((d) => d.message).join('；')}`)
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '校验失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function autoLayout() {
+  const positions = layout(
+    nodes.value.map((node) => ({ id: node.id })),
+    edges.value.map((edge) => ({ source: edge.source, target: edge.target }))
+  )
+  nodes.value = nodes.value.map((node) => ({ ...node, position: positions.get(node.id) ?? node.position }))
+  await nextTick()
+  await fitView({ padding: 0.18, duration: 250 })
+}
+
+async function runWithDefaults() {
+  openRunModal()
+  await nextTick()
+  await executeRun()
+}
+
 async function publish() {
   saving.value = true
   try {
@@ -424,28 +484,26 @@ onMounted(load)
       <n-space :size="8">
         <n-select v-model:value="selectedVersion" :options="versions" placeholder="版本历史" size="small" clearable style="width: 110px" />
         <n-button size="small" :disabled="selectedVersion == null" @click="restoreVersion">恢复版本</n-button>
-        <n-button size="small" :loading="saving" @click="saveDraft">
-          <template #icon><n-icon :component="Save" /></template>
-          保存草稿
-        </n-button>
         <n-button size="small" type="primary" :loading="saving" @click="publish">
           <template #icon><n-icon :component="Send" /></template>
           发布
-        </n-button>
-        <n-button size="small" type="info" @click="openRunModal">
-          <template #icon><n-icon :component="Play" /></template>
-          测试运行
         </n-button>
       </n-space>
     </div>
 
     <div class="editor-body">
       <aside class="palette">
-        <div class="panel-title">节点类型（点击添加）</div>
-        <button v-for="type in (['START', 'AGENT', 'CONDITION', 'HTTP', 'PYTHON', 'VARIABLE', 'END'] as WorkflowNodeType[])" :key="type" type="button" class="palette-item" @click="addNode(type)">
-          {{ TYPE_LABELS[type] }}
-          <span class="palette-type">{{ type }}</span>
-        </button>
+        <div class="panel-title">节点类型</div>
+        <section v-for="group in NODE_GROUPS" :key="group.title" class="palette-group" :aria-label="group.title">
+          <div class="palette-group-title">{{ group.title }}</div>
+          <button v-for="type in group.types" :key="type" type="button" class="palette-item" @click="addNode(type)">
+            <n-icon :component="NODE_ICONS[type]" class="palette-icon" aria-hidden="true" />
+            <span class="palette-item-copy">
+              <span>{{ TYPE_LABELS[type] }}</span>
+              <span class="palette-type">{{ type }}</span>
+            </span>
+          </button>
+        </section>
         <div class="panel-tip">连线：从节点右侧圆点拖到下一节点左侧圆点；条件节点有「真/假」两个出口。</div>
       </aside>
 
@@ -461,10 +519,48 @@ onMounted(load)
           @pane-click="onPaneClick"
         >
           <Background />
-          <Controls />
-          <MiniMap />
+          <MiniMap v-if="showMiniMap" />
         </VueFlow>
         <div v-if="!nodes.length" class="canvas-hint">从左侧点击添加节点，开始编排工作流。</div>
+        <div class="canvas-toolbar" role="toolbar" aria-label="画布工具栏" @click.stop>
+          <div class="toolbar-cluster" aria-label="缩放与视图">
+            <n-button quaternary circle size="small" title="缩小" aria-label="缩小" @click="zoomOut()">
+              <template #icon><n-icon :component="ZoomOut" /></template>
+            </n-button>
+            <span class="zoom-level" aria-live="polite">{{ Math.round(viewport.zoom * 100) }}%</span>
+            <n-button quaternary circle size="small" title="放大" aria-label="放大" @click="zoomIn()">
+              <template #icon><n-icon :component="ZoomIn" /></template>
+            </n-button>
+            <n-button quaternary circle size="small" title="适应画布" aria-label="适应画布" @click="fitView({ padding: 0.18, duration: 200 })">
+              <template #icon><n-icon :component="Maximize" /></template>
+            </n-button>
+            <n-button quaternary circle size="small" title="自动布局" aria-label="自动布局" @click="autoLayout">
+              <template #icon><n-icon :component="LayoutGrid" /></template>
+            </n-button>
+            <n-button quaternary circle size="small" :title="showMiniMap ? '隐藏小地图' : '显示小地图'" :aria-label="showMiniMap ? '隐藏小地图' : '显示小地图'" :aria-pressed="showMiniMap" @click="showMiniMap = !showMiniMap">
+              <template #icon><n-icon :component="Scan" /></template>
+            </n-button>
+          </div>
+          <span class="toolbar-divider" aria-hidden="true" />
+          <div class="toolbar-cluster toolbar-actions">
+            <n-button size="small" :loading="saving" title="校验工作流" @click="validateDraft">
+              <template #icon><n-icon :component="ShieldCheck" /></template>
+              校验
+            </n-button>
+            <n-button size="small" :loading="saving" title="保存草稿" @click="saveDraft">
+              <template #icon><n-icon :component="Save" /></template>
+              保存
+            </n-button>
+            <n-button size="small" title="预览并填写试运行参数" @click="openRunModal">
+              <template #icon><n-icon :component="Eye" /></template>
+              预览
+            </n-button>
+            <n-button size="small" type="primary" :loading="running" title="使用默认输入运行草稿" @click="runWithDefaults">
+              <template #icon><n-icon :component="Play" /></template>
+              运行
+            </n-button>
+          </div>
+        </div>
       </div>
 
       <aside class="inspector">
@@ -576,7 +672,7 @@ onMounted(load)
         <pre class="run-json">{{ fmt(lastRun.outputs) }}</pre>
         <div v-if="lastNodeRuns.length" class="panel-section">节点执行情况</div>
         <div v-for="nr in lastNodeRuns" :key="nr.id" class="node-run-row">
-          <span class="nr-node">{{ nr.nodeId }}</span>
+          <span class="nr-node">{{ runNodeLabel(nr.nodeId) }}</span>
           <n-tag size="tiny" :bordered="false" :type="nr.status === 'SUCCEEDED' ? 'success' : nr.status === 'SKIPPED' ? 'default' : nr.status === 'FAILED' ? 'error' : 'info'">{{ nr.status }}</n-tag>
         </div>
       </div>
@@ -656,6 +752,49 @@ onMounted(load)
   overflow: hidden;
 }
 
+.canvas-toolbar {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 7px 9px;
+  border: 1px solid var(--n-border-color, rgba(128, 128, 128, 0.2));
+  border-radius: 12px;
+  background: var(--n-color, #fff);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.14);
+  transform: translateX(-50%);
+}
+
+.toolbar-cluster {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.toolbar-actions {
+  gap: 6px;
+}
+
+.zoom-level {
+  min-width: 42px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  flex-shrink: 0;
+  background: var(--n-border-color, rgba(128, 128, 128, 0.2));
+}
+
 .canvas-hint {
   position: absolute;
   top: 50%;
@@ -675,6 +814,18 @@ onMounted(load)
   margin-bottom: 10px;
 }
 
+.palette-group {
+  margin-top: 14px;
+}
+
+.palette-group-title {
+  margin: 0 0 7px 2px;
+  color: var(--n-text-color-3, #7b7b86);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .panel-section {
   font-size: 12px;
   font-weight: 600;
@@ -692,7 +843,8 @@ onMounted(load)
 .palette-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
   width: 100%;
   margin-bottom: 8px;
   padding: 10px 12px;
@@ -702,6 +854,27 @@ onMounted(load)
   cursor: pointer;
   font: inherit;
   color: inherit;
+}
+
+.palette-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  padding: 7px;
+  border-radius: 8px;
+  color: var(--n-primary-color, #6d5ce8);
+  background: var(--n-primary-color-suppl, rgba(109, 92, 232, 0.1));
+  box-sizing: content-box;
+}
+
+.palette-item-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
 }
 
 .palette-item:hover {
@@ -779,5 +952,28 @@ onMounted(load)
 .muted {
   font-size: 13px;
   opacity: 0.55;
+}
+
+@media (max-width: 900px) {
+  .canvas-toolbar {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .toolbar-actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 700px) {
+  .canvas-toolbar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    justify-content: center;
+    max-width: none;
+    flex-wrap: wrap;
+    transform: none;
+  }
 }
 </style>

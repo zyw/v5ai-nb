@@ -117,7 +117,7 @@ const serverColumns: DataTableColumns<McpServerResponse> = [
   },
   { title: '测试状态', key: 'lastTestStatus', width: 100, render: (row) => h(StatusTag, { status: row.lastTestStatus === 'ok' ? 'success' : row.lastTestStatus }) },
   { title: '测试时间', key: 'lastTestedAt', width: 182, render: (row) => fmtTime(row.lastTestedAt) },
-  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  // { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',

@@ -480,7 +480,7 @@ const kbColumns: DataTableColumns<KnowledgeBaseResponse> = [
         unchecked: () => h('span', '禁')
       })
   },
-  { title: '修改时间', key: 'updatedAt', width: 185, render: (row) => formatDateTime(row.updatedAt) ?? '—' },
+  { title: '更新时间', key: 'updatedAt', width: 185, render: (row) => formatDateTime(row.updatedAt) ?? '—' },
   {
     title: '操作',
     key: 'actions',

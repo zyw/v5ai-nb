@@ -65,6 +65,8 @@ const form = reactive({
 })
 
 const workflowColumns: DataTableColumns<WorkflowResponse> = [
+  { type: 'selection' },
+  { title: 'ID', key: 'id', width: 64 },
   { title: '名称', key: 'name', width: 200 },
   { title: 'Key', key: 'workflowKey', width: 200 },
   { title: '简介', key: 'description', width: 'auto', ellipsis: { tooltip: true }, render: (row) => row.description || '—' },
@@ -77,11 +79,11 @@ const workflowColumns: DataTableColumns<WorkflowResponse> = [
   {
     title: '发布版本',
     key: 'publishedVersion',
-    width: 80,
+    width: 85,
     render: (row) => (row.publishedVersion ? `v${row.publishedVersion}` : '—')
   },
   { title: '发布时间', key: 'publishedAt', width: 182, render: (row) => fmtTime(row.publishedAt) },
-  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  // { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
@@ -125,7 +127,12 @@ const runColumns: DataTableColumns<WorkflowRunResponse> = [
 ]
 
 const nodeRunColumns: DataTableColumns<WorkflowNodeRunResponse> = [
-  { title: '节点', key: 'nodeId', width: 150 },
+  {
+    title: '节点',
+    key: 'nodeName',
+    width: 190,
+    render: (row) => (row.nodeName ? `${row.nodeName} (${row.nodeId})` : row.nodeId)
+  },
   { title: '类型', key: 'nodeType', width: 90 },
   { title: '状态', key: 'status', width: 90, render: (row) => h(StatusTag, { status: row.status }) },
   {
