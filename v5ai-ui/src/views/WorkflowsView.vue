@@ -107,8 +107,8 @@ const workflowColumns: DataTableColumns<WorkflowResponse> = [
       h(RowActions, {
         actions: [
           { key: 'edit', label: '编排', secondary: true, type: 'primary', onClick: () => handleEdit(row) },
-          { key: 'metadata', label: '编辑', secondary: true, type: 'default', onClick: () => openEditModal(row) },
           { key: 'publish', label: '发布', secondary: true, type: 'info', disabled: row.status === 'DISABLED', onClick: () => handlePublish(row) },
+          { key: 'metadata', label: '编辑', secondary: true, type: 'default', onClick: () => openEditModal(row) },
           { key: 'runs', label: '运行记录', secondary: true, type: 'warning', onClick: () => openRuns(row) },
           {
             key: 'toggle-status',
