@@ -55,4 +55,6 @@ public class WorkflowVo implements Serializable {
     private OffsetDateTime createdAt;
 
     private OffsetDateTime updatedAt;
+
+    private Long draftRevision;
 }

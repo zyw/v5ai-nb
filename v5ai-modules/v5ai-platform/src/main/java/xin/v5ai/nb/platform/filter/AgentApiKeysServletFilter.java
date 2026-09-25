@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 public class AgentApiKeysServletFilter implements Filter {
 
     private static final String RUNTIME_PREFIX = "/api/v1/agents/";
+    private static final String WORKFLOW_RUNTIME_PREFIX = "/api/v1/workflows/";
     /** 门户附件上传：位于 /api/v1/agents 前缀下但不带 agentKey，只验 Key */
     private static final String RESOURCE_UPLOAD_PATH = RUNTIME_PREFIX + "resource/upload";
     /** 门户附件读取前缀，其后应为纯数字资源 id */
@@ -70,8 +71,9 @@ public class AgentApiKeysServletFilter implements Filter {
         boolean authResource = path.startsWith(AUTH_PREFIX) && path.endsWith(AUTH_RESOURCE_SUFFIX);
         boolean portalResource = isPortalResourcePath(path);
         boolean runtime = !bootstrap && !portalResource && path.startsWith(RUNTIME_PREFIX);
+        boolean workflowRuntime = path.startsWith(WORKFLOW_RUNTIME_PREFIX);
         // 非运行期路径不拦截，直接放行
-        if (!runtime && !bootstrap && !portalResource) {
+        if (!runtime && !workflowRuntime && !bootstrap && !portalResource) {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
@@ -89,6 +91,12 @@ public class AgentApiKeysServletFilter implements Filter {
             return;
         }
         request.setAttribute(ApiKeyAuthAttributes.REQUEST_ATTRIBUTE, auth);
+
+        // Workflow controller authorizes and charges every Agent referenced by the published definition.
+        if (workflowRuntime) {
+            chain.doFilter(servletRequest, servletResponse);
+            return;
+        }
 
         // 门户初始化与门户附件端点只要求 Key 有效：没有 agentKey，也就没有绑定与配额
         if (bootstrap || portalResource) {

@@ -60,4 +60,14 @@ public class WorkflowNodeRun {
     private Instant finishedAt;
 
     private Instant createdAt;
+
+    private Integer attempt;
+
+    private Long durationMs;
+
+    private String errorCode;
+
+    private String executorType;
+
+    private String agentRunId;
 }

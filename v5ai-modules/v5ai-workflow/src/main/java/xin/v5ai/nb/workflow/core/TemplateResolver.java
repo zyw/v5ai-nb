@@ -42,18 +42,41 @@ public final class TemplateResolver {
         return resolve(expression, variables);
     }
 
-    private static Object lookup(String dottedPath, Map<String, Object> variables) {
-        if (variables == null) {
-            return null;
+    public static String resolve(String template, WorkflowExecutionContext context) {
+        if (template == null) return null;
+        Matcher matcher = TEMPLATE.matcher(template);
+        StringBuilder out = new StringBuilder();
+        while (matcher.find()) {
+            Object value = context.resolve(matcher.group(1));
+            matcher.appendReplacement(out, Matcher.quoteReplacement(value == null ? "" : String.valueOf(value)));
         }
+        matcher.appendTail(out);
+        return out.toString();
+    }
+
+    public static Object resolveRefOrLiteral(String expression, WorkflowExecutionContext context) {
+        if (expression == null) return null;
+        Matcher matcher = TEMPLATE.matcher(expression.trim());
+        if (matcher.matches()) return context.resolve(matcher.group(1));
+        return resolve(expression, context);
+    }
+
+    public static Object lookupPath(String dottedPath, Map<String, ?> variables) {
+        return toObject(lookupNode(dottedPath, variables));
+    }
+
+    private static Object lookup(String dottedPath, Map<String, Object> variables) {
+        return lookupPath(dottedPath, variables);
+    }
+
+    private static JsonNode lookupNode(String dottedPath, Map<String, ?> variables) {
+        if (variables == null) return null;
         JsonNode node = WorkflowJson.MAPPER.valueToTree(variables);
         for (String part : dottedPath.split("\\.")) {
-            if (node == null) {
-                return null;
-            }
+            if (node == null) return null;
             node = node.get(part);
         }
-        return toObject(node);
+        return node;
     }
 
     private static Object toObject(JsonNode node) {
