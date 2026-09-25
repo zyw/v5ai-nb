@@ -3,6 +3,7 @@ package xin.v5ai.nb.workflow.mapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import xin.v5ai.nb.workflow.core.WorkflowJson;
 import xin.v5ai.nb.workflow.core.WorkflowNodeRun;
 import xin.v5ai.nb.workflow.core.WorkflowRun;
@@ -26,9 +27,14 @@ public class MyBatisWorkflowRunRepository implements WorkflowRunRepository {
 
     private final WorkflowRunMapper runMapper;
     private final WorkflowNodeRunMapper nodeRunMapper;
+    private final WorkflowMapper workflowMapper;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void start(WorkflowRun run) {
+        if (workflowMapper.selectForRunAdmission(run.workflowKey()) == null) {
+            throw new IllegalArgumentException("workflow does not exist: " + run.workflowKey());
+        }
         runMapper.insert(toEntity(run));
     }
 

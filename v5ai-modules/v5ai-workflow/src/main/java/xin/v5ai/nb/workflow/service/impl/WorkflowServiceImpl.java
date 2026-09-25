@@ -1,6 +1,7 @@
 package xin.v5ai.nb.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,8 +28,11 @@ import xin.v5ai.nb.workflow.domain.WorkflowVersion;
 import xin.v5ai.nb.workflow.service.IWorkflowService;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +49,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
     private static final String STATUS_DRAFT = "DRAFT";
     private static final String STATUS_PUBLISHED = "PUBLISHED";
     private static final String STATUS_DISABLED = "DISABLED";
+    private static final int MAX_BATCH_DELETE_SIZE = 100;
 
     private final WorkflowMapper workflowMapper;
     private final WorkflowRunMapper runMapper;
@@ -127,6 +132,52 @@ public class WorkflowServiceImpl implements IWorkflowService {
         update.setId(existing.getId());
         update.setStatus(STATUS_DISABLED);
         workflowMapper.updateById(update);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteBatch(List<String> workflowKeys) {
+        if (workflowKeys == null || workflowKeys.isEmpty()) {
+            throw new IllegalArgumentException("workflowKeys must not be empty");
+        }
+        if (workflowKeys.stream().anyMatch(key -> key == null || key.isBlank())) {
+            throw new IllegalArgumentException("workflowKeys must not contain blank values");
+        }
+        Set<String> distinctKeys = workflowKeys.stream()
+                .map(String::trim)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (distinctKeys.size() > MAX_BATCH_DELETE_SIZE) {
+            throw new IllegalArgumentException("at most 100 workflows can be deleted at once");
+        }
+
+        List<String> keys = new ArrayList<>(distinctKeys);
+        List<xin.v5ai.nb.workflow.domain.Workflow> found = workflowMapper.selectBatchForUpdate(keys);
+        if (found.size() != keys.size()) {
+            throw new IllegalArgumentException("one or more workflows do not exist");
+        }
+        if (found.stream().anyMatch(workflow -> !STATUS_DRAFT.equals(workflow.getStatus())
+                && !STATUS_DISABLED.equals(workflow.getStatus()))) {
+            throw new IllegalArgumentException("only draft or disabled workflows can be deleted");
+        }
+
+        List<xin.v5ai.nb.workflow.domain.WorkflowRun> runs = runMapper.selectList(
+                new QueryWrapper<xin.v5ai.nb.workflow.domain.WorkflowRun>().in("workflow_key", keys));
+        if (runs.stream().anyMatch(run -> "RUNNING".equals(run.getStatus()))) {
+            throw new IllegalArgumentException("workflows with running workflow runs cannot be deleted");
+        }
+        List<String> runIds = runs.stream()
+                .map(xin.v5ai.nb.workflow.domain.WorkflowRun::getRunId)
+                .toList();
+        if (!runIds.isEmpty()) {
+            nodeRunMapper.delete(new QueryWrapper<xin.v5ai.nb.workflow.domain.WorkflowNodeRun>()
+                    .in("run_id", runIds));
+        }
+        runMapper.delete(new QueryWrapper<xin.v5ai.nb.workflow.domain.WorkflowRun>().in("workflow_key", keys));
+        if (versionMapper != null) {
+            versionMapper.delete(new QueryWrapper<WorkflowVersion>().in("workflow_key", keys));
+        }
+        workflowMapper.delete(new QueryWrapper<xin.v5ai.nb.workflow.domain.Workflow>()
+                .in("workflow_key", keys));
     }
 
     @Override

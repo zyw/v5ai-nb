@@ -23,6 +23,7 @@ import xin.v5ai.nb.workflow.core.WorkflowDefinitionValidator;
 import xin.v5ai.nb.workflow.core.WorkflowValidationResult;
 import xin.v5ai.nb.workflow.core.WorkflowRun;
 import xin.v5ai.nb.workflow.domain.bo.RunWorkflowBo;
+import xin.v5ai.nb.workflow.domain.bo.WorkflowBatchDeleteBo;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowRunDetailVo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
@@ -61,6 +62,14 @@ public class WorkflowController extends BaseController {
     @GetMapping("/{key}")
     public R<WorkflowVo> get(@PathVariable("key") String key) {
         return R.ok(workflowService.get(key));
+    }
+
+    @SaCheckPermission("workflow:workflow:remove")
+    @DeleteMapping("/batch")
+    @Log(title = "批量删除工作流", businessType = BusinessType.DELETE)
+    public R<Void> deleteBatch(@Validated @RequestBody WorkflowBatchDeleteBo request) {
+        workflowService.deleteBatch(request.getWorkflowKeys());
+        return R.ok();
     }
 
     @SaCheckPermission("workflow:workflow:edit")

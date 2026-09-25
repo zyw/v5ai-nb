@@ -22,10 +22,13 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class WorkflowServiceImplTest {
@@ -33,15 +36,18 @@ class WorkflowServiceImplTest {
     private final List<Workflow> workflows = new ArrayList<>();
     private final List<WorkflowRun> runs = new ArrayList<>();
     private final List<WorkflowNodeRun> nodeRuns = new ArrayList<>();
+    private WorkflowMapper workflowMapper;
+    private WorkflowRunMapper runMapper;
+    private WorkflowNodeRunMapper nodeRunMapper;
     private WorkflowVersionMapper versionMapper;
 
     private WorkflowServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        WorkflowMapper workflowMapper = mock(WorkflowMapper.class);
-        WorkflowRunMapper runMapper = mock(WorkflowRunMapper.class);
-        WorkflowNodeRunMapper nodeRunMapper = mock(WorkflowNodeRunMapper.class);
+        workflowMapper = mock(WorkflowMapper.class);
+        runMapper = mock(WorkflowRunMapper.class);
+        nodeRunMapper = mock(WorkflowNodeRunMapper.class);
         versionMapper = mock(WorkflowVersionMapper.class);
 
         when(workflowMapper.selectOne(any(Wrapper.class))).thenAnswer(inv -> workflows.stream().findFirst().orElse(null));
@@ -193,6 +199,109 @@ class WorkflowServiceImplTest {
     }
 
     @Test
+    void deleteBatchRemovesDraftAndDisabledWorkflowsWithTheirRunHistory() {
+        Workflow draft = workflow("wf-draft", "DRAFT");
+        Workflow disabled = workflow("wf-disabled", "DISABLED");
+        workflows.addAll(List.of(draft, disabled));
+        when(workflowMapper.selectBatchForUpdate(anyList())).thenReturn(List.of(draft, disabled));
+        runs.addAll(List.of(run("r-draft", "wf-draft"), run("r-disabled", "wf-disabled")));
+
+        service.deleteBatch(List.of("wf-draft", "wf-disabled"));
+
+        verify(nodeRunMapper).delete(any(Wrapper.class));
+        verify(runMapper).delete(any(Wrapper.class));
+        verify(versionMapper).delete(any(Wrapper.class));
+        verify(workflowMapper).delete(any(Wrapper.class));
+    }
+
+    @Test
+    void deleteBatchRejectsPublishedWorkflowBeforeDeletingAnything() {
+        Workflow draft = workflow("wf-draft", "DRAFT");
+        Workflow published = workflow("wf-published", "PUBLISHED");
+        when(workflowMapper.selectBatchForUpdate(anyList())).thenReturn(List.of(draft, published));
+
+        assertThatThrownBy(() -> service.deleteBatch(List.of("wf-draft", "wf-published")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("only draft or disabled");
+
+        verify(nodeRunMapper, never()).delete(any(Wrapper.class));
+        verify(runMapper, never()).delete(any(Wrapper.class));
+        verify(versionMapper, never()).delete(any(Wrapper.class));
+        verify(workflowMapper, never()).delete(any(Wrapper.class));
+    }
+
+    @Test
+    void deleteBatchRejectsUnexpectedWorkflowStatusBeforeDeletingAnything() {
+        Workflow archived = workflow("wf-archived", "ARCHIVED");
+        when(workflowMapper.selectBatchForUpdate(anyList())).thenReturn(List.of(archived));
+
+        assertThatThrownBy(() -> service.deleteBatch(List.of("wf-archived")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("only draft or disabled");
+
+        verify(runMapper, never()).delete(any(Wrapper.class));
+        verify(versionMapper, never()).delete(any(Wrapper.class));
+        verify(workflowMapper, never()).delete(any(Wrapper.class));
+    }
+
+    @Test
+    void deleteBatchRejectsUnknownWorkflowBeforeDeletingAnything() {
+        when(workflowMapper.selectBatchForUpdate(anyList())).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.deleteBatch(List.of("missing")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("do not exist");
+
+        verify(workflowMapper, never()).delete(any(Wrapper.class));
+    }
+
+    @Test
+    void deleteBatchRejectsWorkflowWithRunningExecutionsBeforeDeletingAnything() {
+        Workflow disabled = workflow("wf-disabled", "DISABLED");
+        when(workflowMapper.selectBatchForUpdate(anyList())).thenReturn(List.of(disabled));
+        WorkflowRun activeRun = run("r-active", "wf-disabled");
+        activeRun.setStatus("RUNNING");
+        runs.add(activeRun);
+
+        assertThatThrownBy(() -> service.deleteBatch(List.of("wf-disabled")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("running workflow runs");
+
+        verify(nodeRunMapper, never()).delete(any(Wrapper.class));
+        verify(runMapper, never()).delete(any(Wrapper.class));
+        verify(versionMapper, never()).delete(any(Wrapper.class));
+        verify(workflowMapper, never()).delete(any(Wrapper.class));
+    }
+
+    @Test
+    void deleteBatchRejectsEmptyBlankAndOversizedRequests() {
+        assertThatThrownBy(() -> service.deleteBatch(List.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.deleteBatch(List.of(" ")))
+                .isInstanceOf(IllegalArgumentException.class);
+        List<String> tooMany = java.util.stream.IntStream.range(0, 101).mapToObj(i -> "wf-" + i).toList();
+        assertThatThrownBy(() -> service.deleteBatch(tooMany))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(workflowMapper, never()).selectBatchForUpdate(anyList());
+    }
+
+    @Test
+    void deleteBatchDeduplicatesWorkflowKeysBeforeLocking() {
+        Workflow draft = workflow("wf-draft", "DRAFT");
+        when(workflowMapper.selectBatchForUpdate(List.of("wf-draft"))).thenReturn(List.of(draft));
+        when(runMapper.selectList(any(Wrapper.class))).thenReturn(List.of());
+
+        service.deleteBatch(List.of("wf-draft", "wf-draft"));
+
+        verify(workflowMapper).selectBatchForUpdate(List.of("wf-draft"));
+        verify(nodeRunMapper, never()).delete(any(Wrapper.class));
+        verify(runMapper).delete(any(Wrapper.class));
+        verify(versionMapper).delete(any(Wrapper.class));
+        verify(workflowMapper).delete(any(Wrapper.class));
+    }
+
+    @Test
     void listRunsAndNodeRuns() {
         service.create(bo("wf-demo", "Demo"));
         var run = new WorkflowRun();
@@ -261,6 +370,20 @@ class WorkflowServiceImplTest {
         bo.setWorkflowKey(key);
         bo.setName(name);
         return bo;
+    }
+
+    private static Workflow workflow(String key, String status) {
+        Workflow workflow = new Workflow();
+        workflow.setWorkflowKey(key);
+        workflow.setStatus(status);
+        return workflow;
+    }
+
+    private static WorkflowRun run(String runId, String workflowKey) {
+        WorkflowRun run = new WorkflowRun();
+        run.setRunId(runId);
+        run.setWorkflowKey(workflowKey);
+        return run;
     }
 
     private static WorkflowBo updateWithDefinition() {

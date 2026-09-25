@@ -24,6 +24,7 @@ import RowActions from '../components/RowActions.vue'
 import StatusTag from '../components/StatusTag.vue'
 import {
   createWorkflow,
+  deleteWorkflows,
   disableWorkflow,
   enableWorkflow,
   getWorkflowRun,
@@ -44,6 +45,7 @@ const dialog = useDialog()
 const loading = ref(false)
 const workflows = ref<WorkflowResponse[]>([])
 const selectedWorkflowIds = ref<number[]>([])
+const selectedWorkflowKeyById = ref(new Map<number, string>())
 const workflowTableContainer = ref<HTMLElement | null>(null)
 const workflowTableWidth = ref(0)
 let workflowTableResizeObserver: ResizeObserver | null = null
@@ -62,6 +64,7 @@ const showRunsModal = ref(false)
 const showRunDetailModal = ref(false)
 const saving = ref(false)
 const editSaving = ref(false)
+const batchDeleting = ref(false)
 const activeWorkflow = ref<WorkflowResponse | null>(null)
 const runs = ref<WorkflowRunResponse[]>([])
 const runDetail = ref<{ run: WorkflowRunResponse; nodeRuns: WorkflowNodeRunResponse[] } | null>(null)
@@ -187,6 +190,11 @@ async function reload() {
       status: search.status ?? undefined
     })
     workflows.value = rows.rows
+    for (const row of rows.rows) {
+      if (selectedWorkflowIds.value.includes(row.id)) {
+        selectedWorkflowKeyById.value.set(row.id, row.workflowKey)
+      }
+    }
     pagination.itemCount = rows.total
   } catch (e) {
     message.error(e instanceof Error ? e.message : '加载工作流失败')
@@ -212,7 +220,46 @@ function handlePageSizeChange(pageSize: number) {
 }
 
 function handleWorkflowSelection(keys: Array<string | number>) {
-  selectedWorkflowIds.value = keys.map(Number)
+  const nextKeys = keys.map(Number)
+  const visibleIds = new Set(workflows.value.map((row) => row.id))
+  const selectedSet = new Set(nextKeys)
+  for (const row of workflows.value) {
+    if (selectedSet.has(row.id)) selectedWorkflowKeyById.value.set(row.id, row.workflowKey)
+    else selectedWorkflowKeyById.value.delete(row.id)
+  }
+  const selectedOnOtherPages = selectedWorkflowIds.value.filter((id) => !visibleIds.has(id))
+  selectedWorkflowIds.value = [...new Set([...selectedOnOtherPages, ...nextKeys])]
+}
+
+function handleBatchDelete() {
+  const workflowKeys = selectedWorkflowIds.value
+    .map((id) => selectedWorkflowKeyById.value.get(id))
+    .filter((key): key is string => Boolean(key))
+  if (workflowKeys.length !== selectedWorkflowIds.value.length) {
+    message.error('无法解析所选工作流，请刷新列表后重新勾选')
+    return
+  }
+
+  dialog.warning({
+    title: '批量删除确认',
+    content: `确认永久删除选中的 ${workflowKeys.length} 个未发布工作流？关联的发布版本、运行记录和节点运行明细也会一并永久删除；已发布工作流不能删除，请先禁用。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      batchDeleting.value = true
+      try {
+        await deleteWorkflows(adminToken.value, workflowKeys)
+        message.success('已删除所选工作流及其运行历史')
+        selectedWorkflowIds.value = []
+        selectedWorkflowKeyById.value.clear()
+        await reload()
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '批量删除工作流失败')
+      } finally {
+        batchDeleting.value = false
+      }
+    }
+  })
 }
 
 function resetForm() {
@@ -375,6 +422,16 @@ onBeforeUnmount(() => {
         <n-button size="small" quaternary @click="handleSearch">
           <template #icon><n-icon :component="RefreshCw" /></template>
           刷新
+        </n-button>
+        <n-button
+          v-if="selectedWorkflowIds.length > 0"
+          size="small"
+          type="error"
+          secondary
+          :loading="batchDeleting"
+          @click="handleBatchDelete"
+        >
+          删除所选（{{ selectedWorkflowIds.length }}）
         </n-button>
       </n-space>
 
