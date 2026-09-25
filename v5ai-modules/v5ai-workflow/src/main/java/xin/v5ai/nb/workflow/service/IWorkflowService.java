@@ -51,6 +51,9 @@ public interface IWorkflowService {
      */
     void disable(String workflowKey);
 
+    /** Physically deletes a batch of unpublished workflows and their version/run history. */
+    void deleteBatch(List<String> workflowKeys);
+
     /**
      * 启用 Workflow；有已发布版本时恢复为 PUBLISHED，否则恢复为 DRAFT。
      */

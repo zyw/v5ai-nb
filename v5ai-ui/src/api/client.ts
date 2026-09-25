@@ -2499,6 +2499,13 @@ export function disableWorkflow(adminToken: string, workflowKey: string): Promis
   }, adminToken)
 }
 
+export function deleteWorkflows(adminToken: string, workflowKeys: string[]): Promise<void> {
+  return requestJson<void>('/api/admin/workflows/batch', {
+    method: 'DELETE',
+    body: JSON.stringify({ workflowKeys })
+  }, adminToken)
+}
+
 export function enableWorkflow(adminToken: string, workflowKey: string): Promise<void> {
   return requestJson<void>(`/api/admin/workflows/${encodeURIComponent(workflowKey)}/enable`, {
     method: 'PUT'
