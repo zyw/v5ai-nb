@@ -52,6 +52,11 @@ public interface IWorkflowService {
     void disable(String workflowKey);
 
     /**
+     * 启用 Workflow；有已发布版本时恢复为 PUBLISHED，否则恢复为 DRAFT。
+     */
+    void enable(String workflowKey);
+
+    /**
      * 发布：校验 DAG 后快照草稿为已发布版本。
      */
     WorkflowVo publish(String workflowKey);

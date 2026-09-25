@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NButton,
@@ -25,10 +25,12 @@ import StatusTag from '../components/StatusTag.vue'
 import {
   createWorkflow,
   disableWorkflow,
+  enableWorkflow,
   getWorkflowRun,
   listWorkflowRuns,
   listWorkflows,
   publishWorkflow,
+  updateWorkflow,
   type WorkflowNodeRunResponse,
   type WorkflowResponse,
   type WorkflowRunResponse
@@ -41,6 +43,10 @@ const message = useMessage()
 const dialog = useDialog()
 const loading = ref(false)
 const workflows = ref<WorkflowResponse[]>([])
+const selectedWorkflowIds = ref<number[]>([])
+const workflowTableContainer = ref<HTMLElement | null>(null)
+const workflowTableWidth = ref(0)
+let workflowTableResizeObserver: ResizeObserver | null = null
 const pagination = reactive({ page: 1, pageSize: 10, itemCount: 0 })
 const search = reactive({ name: '', workflowKey: '', status: null as string | null })
 
@@ -51,9 +57,11 @@ const statusOptions = [
 ]
 
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
 const showRunsModal = ref(false)
 const showRunDetailModal = ref(false)
 const saving = ref(false)
+const editSaving = ref(false)
 const activeWorkflow = ref<WorkflowResponse | null>(null)
 const runs = ref<WorkflowRunResponse[]>([])
 const runDetail = ref<{ run: WorkflowRunResponse; nodeRuns: WorkflowNodeRunResponse[] } | null>(null)
@@ -64,16 +72,22 @@ const form = reactive({
   description: ''
 })
 
+const editForm = reactive({
+  workflowKey: '',
+  name: '',
+  description: ''
+})
+
 const workflowColumns: DataTableColumns<WorkflowResponse> = [
   { type: 'selection' },
   { title: 'ID', key: 'id', width: 64 },
-  { title: '名称', key: 'name', width: 200 },
-  { title: 'Key', key: 'workflowKey', width: 200 },
-  { title: '简介', key: 'description', width: 'auto', ellipsis: { tooltip: true }, render: (row) => row.description || '—' },
+  { title: '名称', key: 'name', width: 180 },
+  { title: 'Key', key: 'workflowKey', width: 180 },
+  { title: '描述', key: 'description',  ellipsis: { tooltip: true }, render: (row) => row.description || '—' },
   {
     title: '状态',
     key: 'status',
-    width: 100,
+    width: 90,
     render: (row) => h(StatusTag, { status: row.status })
   },
   {
@@ -88,23 +102,32 @@ const workflowColumns: DataTableColumns<WorkflowResponse> = [
   {
     title: '操作',
     key: 'actions',
-    width: 220,
+    width: 270,
     render: (row) =>
       h(RowActions, {
         actions: [
           { key: 'edit', label: '编排', secondary: true, type: 'primary', onClick: () => handleEdit(row) },
+          { key: 'metadata', label: '编辑', secondary: true, type: 'default', onClick: () => openEditModal(row) },
           { key: 'publish', label: '发布', secondary: true, type: 'info', disabled: row.status === 'DISABLED', onClick: () => handlePublish(row) },
           { key: 'runs', label: '运行记录', secondary: true, type: 'warning', onClick: () => openRuns(row) },
-          { key: 'disable', label: '禁用', secondary: true, type: 'error', disabled: row.status === 'DISABLED', onClick: () => handleDisable(row) }
+          {
+            key: 'toggle-status',
+            label: row.status === 'DISABLED' ? '启用' : '禁用',
+            secondary: true,
+            type: row.status === 'DISABLED' ? 'success' : 'error',
+            onClick: () => handleToggleStatus(row)
+          }
         ]
       })
   }
 ]
 
-/** 表格横向滚动：列宽总和（auto 列按 240px 估算），窄屏时与 MCP 列表一样出现横向滚动条 */
-const workflowScrollX = computed(() =>
-  workflowColumns.reduce((sum, col) => sum + (typeof col.width === 'number' ? col.width : 240), 0)
-)
+/** 固定列的最小宽度；描述列在有足够空间时自适应填充，不参与滚动阈值计算。 */
+const workflowMinTableWidth = 1300
+const workflowTableScrollX = computed<number | undefined>(() => {
+  if (!workflowTableWidth.value) return undefined
+  return workflowTableWidth.value >= workflowMinTableWidth ? undefined : workflowMinTableWidth
+})
 
 const runColumns: DataTableColumns<WorkflowRunResponse> = [
   {
@@ -130,10 +153,10 @@ const nodeRunColumns: DataTableColumns<WorkflowNodeRunResponse> = [
   {
     title: '节点',
     key: 'nodeName',
-    width: 190,
+    width: 'auto',
     render: (row) => (row.nodeName ? `${row.nodeName} (${row.nodeId})` : row.nodeId)
   },
-  { title: '类型', key: 'nodeType', width: 90 },
+  { title: '类型', key: 'nodeType', width: 110 },
   { title: '状态', key: 'status', width: 90, render: (row) => h(StatusTag, { status: row.status }) },
   {
     title: '输出',
@@ -188,6 +211,10 @@ function handlePageSizeChange(pageSize: number) {
   void reload()
 }
 
+function handleWorkflowSelection(keys: Array<string | number>) {
+  selectedWorkflowIds.value = keys.map(Number)
+}
+
 function resetForm() {
   form.workflowKey = ''
   form.name = ''
@@ -218,6 +245,35 @@ function handleEdit(row: WorkflowResponse) {
   router.push({ name: 'workflow-editor', params: { key: row.workflowKey } })
 }
 
+function openEditModal(row: WorkflowResponse) {
+  editForm.workflowKey = row.workflowKey
+  editForm.name = row.name
+  editForm.description = row.description ?? ''
+  showEditModal.value = true
+}
+
+async function handleSaveEdit() {
+  const name = editForm.name.trim()
+  if (!name) {
+    message.warning('请输入工作流名称')
+    return
+  }
+  editSaving.value = true
+  try {
+    await updateWorkflow(adminToken.value, editForm.workflowKey, {
+      name,
+      description: editForm.description
+    })
+    message.success('工作流信息已更新')
+    showEditModal.value = false
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '更新工作流失败')
+  } finally {
+    editSaving.value = false
+  }
+}
+
 async function handlePublish(row: WorkflowResponse) {
   try {
     const published = await publishWorkflow(adminToken.value, row.workflowKey)
@@ -228,19 +284,26 @@ async function handlePublish(row: WorkflowResponse) {
   }
 }
 
-function handleDisable(row: WorkflowResponse) {
+function handleToggleStatus(row: WorkflowResponse) {
+  const enabling = row.status === 'DISABLED'
   dialog.warning({
-    title: '禁用确认',
-    content: `确认禁用工作流「${row.name}」？禁用后无法运行。`,
-    positiveText: '禁用',
+    title: enabling ? '启用确认' : '禁用确认',
+    content: enabling
+      ? `确认启用工作流「${row.name}」？启用后将恢复为可用状态。`
+      : `确认禁用工作流「${row.name}」？禁用后无法运行。`,
+    positiveText: enabling ? '启用' : '禁用',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        await disableWorkflow(adminToken.value, row.workflowKey)
-        message.success(`${row.name} 已禁用`)
+        if (enabling) {
+          await enableWorkflow(adminToken.value, row.workflowKey)
+        } else {
+          await disableWorkflow(adminToken.value, row.workflowKey)
+        }
+        message.success(`${row.name} 已${enabling ? '启用' : '禁用'}`)
         await reload()
       } catch (e) {
-        message.error(e instanceof Error ? e.message : '禁用失败')
+        message.error(e instanceof Error ? e.message : `${enabling ? '启用' : '禁用'}失败`)
       }
     }
   })
@@ -267,7 +330,20 @@ async function openRunDetail(runId: string) {
   }
 }
 
-onMounted(reload)
+onMounted(() => {
+  void reload()
+  if (workflowTableContainer.value) {
+    workflowTableResizeObserver = new ResizeObserver(([entry]) => {
+      workflowTableWidth.value = entry.contentRect.width
+    })
+    workflowTableResizeObserver.observe(workflowTableContainer.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  workflowTableResizeObserver?.disconnect()
+  workflowTableResizeObserver = null
+})
 </script>
 
 <template>
@@ -302,7 +378,18 @@ onMounted(reload)
         </n-button>
       </n-space>
 
-      <n-data-table :loading="loading" :columns="workflowColumns" :data="workflows" :bordered="false" :scroll-x="workflowScrollX" />
+      <div ref="workflowTableContainer" class="workflow-table-container">
+        <n-data-table
+          :loading="loading"
+          :columns="workflowColumns"
+          :data="workflows"
+          :bordered="false"
+          :scroll-x="workflowTableScrollX"
+          :row-key="(row: WorkflowResponse) => row.id"
+          :checked-row-keys="selectedWorkflowIds"
+          @update:checked-row-keys="handleWorkflowSelection"
+        />
+      </div>
       <n-pagination
         :page="pagination.page"
         :page-size="pagination.pageSize"
@@ -337,11 +424,31 @@ onMounted(reload)
       </template>
     </n-modal>
 
+    <n-modal v-model:show="showEditModal" preset="card" title="编辑工作流" style="width: 520px" :bordered="false">
+      <n-form label-placement="top">
+        <n-form-item label="工作流 Key">
+          <n-input v-model:value="editForm.workflowKey" disabled />
+        </n-form-item>
+        <n-form-item label="名称">
+          <n-input v-model:value="editForm.name" placeholder="工作流显示名称" />
+        </n-form-item>
+        <n-form-item label="描述">
+          <n-input v-model:value="editForm.description" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" placeholder="可选" />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showEditModal = false">取消</n-button>
+          <n-button type="primary" :loading="editSaving" @click="handleSaveEdit">保存</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
     <n-modal v-model:show="showRunsModal" preset="card" :title="`运行记录（${activeWorkflow?.name ?? ''}）`" style="width: 50%" :bordered="false">
       <n-data-table :columns="runColumns" :data="runs" :bordered="false" />
     </n-modal>
 
-    <n-modal v-model:show="showRunDetailModal" preset="card" :title="`运行详情（${runDetail?.run.runId.slice(0, 8) ?? ''}）`" style="width: 50%" :bordered="false">
+    <n-modal v-model:show="showRunDetailModal" preset="card" :title="`运行详情（${runDetail?.run.runId.slice(0, 8) ?? ''}）`" style="width: 60%" :bordered="false">
       <n-data-table
         v-if="runDetail"
         :columns="nodeRunColumns"

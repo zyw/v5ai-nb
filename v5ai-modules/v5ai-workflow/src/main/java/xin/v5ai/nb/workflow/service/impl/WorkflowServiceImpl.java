@@ -93,7 +93,7 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public WorkflowVo update(String workflowKey, WorkflowBo bo) {
-        var existing = requireActive(workflowKey);
+        var existing = requireWorkflow(workflowKey);
         long currentRevision = existing.getDraftRevision() == null ? 0L : existing.getDraftRevision();
         if (bo.getExpectedRevision() != null && !bo.getExpectedRevision().equals(currentRevision)) {
             throw new IllegalStateException("workflow draft revision conflict; reload before saving");
@@ -126,6 +126,18 @@ public class WorkflowServiceImpl implements IWorkflowService {
         var update = new xin.v5ai.nb.workflow.domain.Workflow();
         update.setId(existing.getId());
         update.setStatus(STATUS_DISABLED);
+        workflowMapper.updateById(update);
+    }
+
+    @Override
+    public void enable(String workflowKey) {
+        var existing = requireWorkflow(workflowKey);
+        if (!STATUS_DISABLED.equals(existing.getStatus())) {
+            return;
+        }
+        var update = new xin.v5ai.nb.workflow.domain.Workflow();
+        update.setId(existing.getId());
+        update.setStatus(existing.getPublishedVersion() == null ? STATUS_DRAFT : STATUS_PUBLISHED);
         workflowMapper.updateById(update);
     }
 

@@ -78,6 +78,14 @@ public class WorkflowController extends BaseController {
         return R.ok();
     }
 
+    @SaCheckPermission("workflow:workflow:remove")
+    @PutMapping("/{key}/enable")
+    @Log(title = "启用工作流", businessType = BusinessType.ENABLE)
+    public R<Void> enable(@PathVariable("key") String key) {
+        workflowService.enable(key);
+        return R.ok();
+    }
+
     @SaCheckPermission("workflow:workflow:publish")
     @PostMapping("/{key}/publish")
     @Log(title = "发布工作流", businessType = BusinessType.PUBLISH)

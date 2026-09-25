@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, markRaw, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, markRaw, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVueFlow, VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -20,8 +20,8 @@ import {
   useMessage
 } from 'naive-ui'
 import {
-  ArrowLeft, Bot, CirclePlay, CircleStop, Code2, Eye, GitBranch, Globe,
-  LayoutGrid, Maximize, Play, Save, Scan, Send, ShieldCheck, Trash2,
+  ArrowLeft, Bot, CirclePlay, CircleStop, Code2, Eye, Focus, GitBranch, Globe,
+  LayoutGrid, Map as MapIcon, Play, Save, Send, ShieldCheck, Trash2,
   Variable as VariableIcon, ZoomIn, ZoomOut
 } from 'lucide-vue-next'
 import WorkflowNodeCard from '../components/workflow/WorkflowNodeCard.vue'
@@ -130,10 +130,13 @@ const agents = ref<AgentResponse[]>([])
 const nodes = ref<any[]>([])
 const edges = ref<any[]>([])
 const selectedNodeId = ref<string | null>(null)
+const nodeIdDraft = ref('')
+const nodeIdError = ref('')
 
 const nodeTypes: Record<string, any> = { workflow: markRaw(WorkflowNodeCard) }
-const { zoomIn, zoomOut, fitView, viewport } = useVueFlow()
+const { zoomIn, zoomOut, fitView, screenToFlowCoordinate, viewport } = useVueFlow()
 const showMiniMap = ref(true)
+const initialViewportFitted = ref(false)
 
 const showRunModal = ref(false)
 const runInputs = reactive<Record<string, string>>({})
@@ -146,6 +149,10 @@ const selectedVersion = ref<number | null>(null)
 
 const selectedNode = computed<any>(() => nodes.value.find((n) => n.id === selectedNodeId.value))
 const selectedData = computed<WFNodeData | null>(() => (selectedNode.value?.data as WFNodeData) ?? null)
+watch(selectedNodeId, (id) => {
+  nodeIdDraft.value = id ?? ''
+  nodeIdError.value = ''
+}, { immediate: true })
 const selectedVariables = computed(
   () => (Array.isArray(selectedData.value?.config?.variables) ? selectedData.value.config.variables : []) as Array<{ name: string; type: string; default: string }>
 )
@@ -260,7 +267,7 @@ async function load() {
   }
 }
 
-function addNode(type: WorkflowNodeType) {
+function addNode(type: WorkflowNodeType, position?: { x: number; y: number }) {
   const count = nodes.value.filter((n) => wfData(n).nodeType === type).length
   const id = uid('node')
   nodes.value = [
@@ -268,11 +275,44 @@ function addNode(type: WorkflowNodeType) {
     {
       id,
       type: 'workflow',
-      position: { x: 120 + (count % 3) * 220, y: 80 + count * 48 },
+      position: position ?? { x: 120 + (count % 3) * 220, y: 80 + count * 48 },
       data: { nodeType: type, name: `${TYPE_LABELS[type]} ${count + 1}`, config: defaultConfig(type) } as WFNodeData
     }
   ]
   selectedNodeId.value = id
+}
+
+const NODE_DRAG_MIME = 'application/x-v5ai-workflow-node'
+
+function onNodeDragStart(event: DragEvent, type: WorkflowNodeType) {
+  if (!event.dataTransfer) return
+  event.dataTransfer.setData(NODE_DRAG_MIME, type)
+  event.dataTransfer.effectAllowed = 'copy'
+}
+
+function onCanvasDragOver(event: DragEvent) {
+  if (event.dataTransfer?.types.includes(NODE_DRAG_MIME)) {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+function onCanvasDrop(event: DragEvent) {
+  const target = event.target
+  if (!(target instanceof HTMLElement) || !target.closest('.vue-flow')) return
+
+  const type = event.dataTransfer?.getData(NODE_DRAG_MIME) as WorkflowNodeType | undefined
+  if (!type || !Object.hasOwn(TYPE_LABELS, type)) return
+
+  event.preventDefault()
+  const position = screenToFlowCoordinate({ x: event.clientX, y: event.clientY })
+  addNode(type, position)
+}
+
+async function fitInitialViewport() {
+  if (initialViewportFitted.value || !nodes.value.length) return
+  await fitView({ padding: 0.18, maxZoom: 0.9 })
+  initialViewportFitted.value = true
 }
 
 function onConnect(connection: any) {
@@ -294,6 +334,33 @@ function onNodeClick(event: any) {
 
 function onPaneClick() {
   selectedNodeId.value = null
+}
+
+function applyNodeId() {
+  const currentId = selectedNodeId.value
+  const newId = nodeIdDraft.value.trim()
+  if (!currentId || !selectedNode.value || newId === currentId) {
+    nodeIdError.value = ''
+    return
+  }
+  if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(newId)) {
+    nodeIdError.value = 'ID 须以字母开头，且只能包含字母、数字、_、-，长度不超过 64。'
+    return
+  }
+  if (nodes.value.some((node) => node.id === newId)) {
+    nodeIdError.value = '该节点 ID 已存在。'
+    return
+  }
+
+  nodes.value = nodes.value.map((node) => node.id === currentId ? { ...node, id: newId } : node)
+  edges.value = edges.value.map((edge) => ({
+    ...edge,
+    source: edge.source === currentId ? newId : edge.source,
+    target: edge.target === currentId ? newId : edge.target
+  }))
+  selectedNodeId.value = newId
+  nodeIdDraft.value = newId
+  nodeIdError.value = ''
 }
 
 function deleteSelected() {
@@ -379,12 +446,6 @@ async function autoLayout() {
   nodes.value = nodes.value.map((node) => ({ ...node, position: positions.get(node.id) ?? node.position }))
   await nextTick()
   await fitView({ padding: 0.18, duration: 250 })
-}
-
-async function runWithDefaults() {
-  openRunModal()
-  await nextTick()
-  await executeRun()
 }
 
 async function publish() {
@@ -496,7 +557,15 @@ onMounted(load)
         <div class="panel-title">节点类型</div>
         <section v-for="group in NODE_GROUPS" :key="group.title" class="palette-group" :aria-label="group.title">
           <div class="palette-group-title">{{ group.title }}</div>
-          <button v-for="type in group.types" :key="type" type="button" class="palette-item" @click="addNode(type)">
+          <button
+            v-for="type in group.types"
+            :key="type"
+            type="button"
+            class="palette-item"
+            draggable="true"
+            @click="addNode(type)"
+            @dragstart="onNodeDragStart($event, type)"
+          >
             <n-icon :component="NODE_ICONS[type]" class="palette-icon" aria-hidden="true" />
             <span class="palette-item-copy">
               <span>{{ TYPE_LABELS[type] }}</span>
@@ -504,19 +573,19 @@ onMounted(load)
             </span>
           </button>
         </section>
-        <div class="panel-tip">连线：从节点右侧圆点拖到下一节点左侧圆点；条件节点有「真/假」两个出口。</div>
+        <div class="panel-tip">拖拽或点击节点可添加；连线：从右侧圆点拖到下一节点左侧圆点。</div>
       </aside>
 
-      <div class="canvas">
+      <div class="canvas" @dragover="onCanvasDragOver" @drop="onCanvasDrop">
         <VueFlow
           v-model:nodes="nodes"
           v-model:edges="edges"
           :node-types="nodeTypes"
-          :default-viewport="{ zoom: 1, x: 0, y: 0 }"
-          fit-view-on-init
+          :default-viewport="{ zoom: 0.9, x: 0, y: 0 }"
           @connect="onConnect"
           @node-click="onNodeClick"
           @pane-click="onPaneClick"
+          @nodes-initialized="fitInitialViewport"
         >
           <Background />
           <MiniMap v-if="showMiniMap" />
@@ -532,13 +601,13 @@ onMounted(load)
               <template #icon><n-icon :component="ZoomIn" /></template>
             </n-button>
             <n-button quaternary circle size="small" title="适应画布" aria-label="适应画布" @click="fitView({ padding: 0.18, duration: 200 })">
-              <template #icon><n-icon :component="Maximize" /></template>
+              <template #icon><n-icon :component="Focus" /></template>
             </n-button>
             <n-button quaternary circle size="small" title="自动布局" aria-label="自动布局" @click="autoLayout">
               <template #icon><n-icon :component="LayoutGrid" /></template>
             </n-button>
             <n-button quaternary circle size="small" :title="showMiniMap ? '隐藏小地图' : '显示小地图'" :aria-label="showMiniMap ? '隐藏小地图' : '显示小地图'" :aria-pressed="showMiniMap" @click="showMiniMap = !showMiniMap">
-              <template #icon><n-icon :component="Scan" /></template>
+              <template #icon><n-icon :component="MapIcon" /></template>
             </n-button>
           </div>
           <span class="toolbar-divider" aria-hidden="true" />
@@ -555,7 +624,7 @@ onMounted(load)
               <template #icon><n-icon :component="Eye" /></template>
               预览
             </n-button>
-            <n-button size="small" type="primary" :loading="running" title="使用默认输入运行草稿" @click="runWithDefaults">
+            <n-button size="small" type="primary" :loading="running" title="填写参数并运行草稿" @click="openRunModal">
               <template #icon><n-icon :component="Play" /></template>
               运行
             </n-button>
@@ -567,6 +636,16 @@ onMounted(load)
         <template v-if="selectedData">
           <div class="panel-title">属性面板</div>
           <n-form label-placement="top" size="small">
+            <n-form-item label="节点 ID">
+              <n-input
+                v-model:value="nodeIdDraft"
+                placeholder="字母开头，支持字母、数字、_、-"
+                maxlength="64"
+                @blur="applyNodeId"
+                @keyup.enter="applyNodeId"
+              />
+              <div v-if="nodeIdError" class="run-error">{{ nodeIdError }}</div>
+            </n-form-item>
             <n-form-item label="节点名称">
               <n-input v-model:value="selectedData.name" />
             </n-form-item>
@@ -726,9 +805,9 @@ onMounted(load)
 }
 
 .palette {
-  width: 190px;
+  width: 164px;
   flex-shrink: 0;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--n-border-color, rgba(128, 128, 128, 0.16));
   border-radius: 10px;
   overflow-y: auto;
@@ -815,7 +894,7 @@ onMounted(load)
 }
 
 .palette-group {
-  margin-top: 14px;
+  margin-top: 11px;
 }
 
 .palette-group-title {
@@ -844,10 +923,11 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  gap: 7px;
   width: 100%;
-  margin-bottom: 8px;
-  padding: 10px 12px;
+  min-height: 40px;
+  margin-bottom: 5px;
+  padding: 5px 7px;
   border: 1px solid var(--n-border-color, rgba(128, 128, 128, 0.16));
   border-radius: 8px;
   background: transparent;
@@ -857,11 +937,11 @@ onMounted(load)
 }
 
 .palette-icon {
-  width: 30px;
-  height: 30px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  padding: 7px;
-  border-radius: 8px;
+  padding: 5px;
+  border-radius: 7px;
   color: var(--n-primary-color, #6d5ce8);
   background: var(--n-primary-color-suppl, rgba(109, 92, 232, 0.1));
   box-sizing: content-box;
@@ -875,6 +955,8 @@ onMounted(load)
   gap: 2px;
   min-width: 0;
   text-align: left;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .palette-item:hover {
@@ -883,7 +965,7 @@ onMounted(load)
 }
 
 .palette-type {
-  font-size: 11px;
+  font-size: 10px;
   opacity: 0.5;
   letter-spacing: 0.5px;
 }

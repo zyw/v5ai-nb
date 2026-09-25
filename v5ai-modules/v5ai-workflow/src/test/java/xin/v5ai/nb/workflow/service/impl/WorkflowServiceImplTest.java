@@ -171,6 +171,28 @@ class WorkflowServiceImplTest {
     }
 
     @Test
+    void enableRestoresPublishedWorkflow() {
+        service.create(bo("wf-demo", "Demo"));
+        service.update("wf-demo", updateWithDefinition());
+        service.publish("wf-demo");
+        service.disable("wf-demo");
+
+        service.enable("wf-demo");
+
+        assertThat(service.get("wf-demo").getStatus()).isEqualTo("PUBLISHED");
+    }
+
+    @Test
+    void enableRestoresDraftWorkflow() {
+        service.create(bo("wf-demo", "Demo"));
+        service.disable("wf-demo");
+
+        service.enable("wf-demo");
+
+        assertThat(service.get("wf-demo").getStatus()).isEqualTo("DRAFT");
+    }
+
+    @Test
     void listRunsAndNodeRuns() {
         service.create(bo("wf-demo", "Demo"));
         var run = new WorkflowRun();
