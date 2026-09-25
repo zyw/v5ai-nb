@@ -135,8 +135,6 @@ public class WorkflowController extends BaseController {
     @SaCheckPermission("workflow:run:list")
     @GetMapping("/runs/{runId}")
     public R<WorkflowRunDetailVo> getRun(@PathVariable("runId") String runId) {
-        var run = workflowService.getRun(runId);
-        var nodeRuns = workflowService.getNodeRuns(runId);
-        return R.ok(new WorkflowRunDetailVo(run, nodeRuns));
+        return R.ok(workflowService.getRunDetail(runId));
     }
 }

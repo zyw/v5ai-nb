@@ -10,10 +10,12 @@ import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
 import xin.v5ai.nb.workflow.domain.Workflow;
 import xin.v5ai.nb.workflow.domain.WorkflowNodeRun;
 import xin.v5ai.nb.workflow.domain.WorkflowRun;
+import xin.v5ai.nb.workflow.domain.WorkflowVersion;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
 import xin.v5ai.nb.workflow.mapper.WorkflowMapper;
 import xin.v5ai.nb.workflow.mapper.WorkflowNodeRunMapper;
 import xin.v5ai.nb.workflow.mapper.WorkflowRunMapper;
+import xin.v5ai.nb.workflow.mapper.WorkflowVersionMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +33,7 @@ class WorkflowServiceImplTest {
     private final List<Workflow> workflows = new ArrayList<>();
     private final List<WorkflowRun> runs = new ArrayList<>();
     private final List<WorkflowNodeRun> nodeRuns = new ArrayList<>();
+    private WorkflowVersionMapper versionMapper;
 
     private WorkflowServiceImpl service;
 
@@ -39,6 +42,7 @@ class WorkflowServiceImplTest {
         WorkflowMapper workflowMapper = mock(WorkflowMapper.class);
         WorkflowRunMapper runMapper = mock(WorkflowRunMapper.class);
         WorkflowNodeRunMapper nodeRunMapper = mock(WorkflowNodeRunMapper.class);
+        versionMapper = mock(WorkflowVersionMapper.class);
 
         when(workflowMapper.selectOne(any(Wrapper.class))).thenAnswer(inv -> workflows.stream().findFirst().orElse(null));
         when(workflowMapper.selectList(any(Wrapper.class))).thenAnswer(inv -> new ArrayList<>(workflows));
@@ -88,6 +92,7 @@ class WorkflowServiceImplTest {
         when(nodeRunMapper.selectList(any(Wrapper.class))).thenAnswer(inv -> new ArrayList<>(nodeRuns));
 
         service = new WorkflowServiceImpl(workflowMapper, runMapper, nodeRunMapper);
+        service.setVersionMapper(versionMapper);
     }
 
     @Test
@@ -179,6 +184,54 @@ class WorkflowServiceImplTest {
         assertThat(service.listRuns("wf-demo")).hasSize(1);
         assertThat(service.getRun("r1").runId()).isEqualTo("r1");
         assertThat(service.getNodeRuns("r1")).hasSize(1);
+    }
+
+    @Test
+    void runDetailIncludesNodeNameFromDraftRunSnapshot() {
+        var run = new WorkflowRun();
+        run.setRunId("draft-run");
+        run.setWorkflowKey("wf-demo");
+        run.setSource("DRAFT_TEST");
+        run.setDefinitionSnapshot(xin.v5ai.nb.workflow.core.WorkflowJson.toJson(
+                new WorkflowDefinition(List.of(new WorkflowNode("node-1", WorkflowNodeType.START,
+                        "接收订单", null)), List.of())));
+        runs.add(run);
+        var nodeRun = new WorkflowNodeRun();
+        nodeRun.setRunId("draft-run");
+        nodeRun.setNodeId("node-1");
+        nodeRun.setNodeType("START");
+        nodeRuns.add(nodeRun);
+
+        var detail = service.getRunDetail("draft-run");
+
+        assertThat(detail.nodeRuns()).singleElement()
+                .extracting("nodeName").isEqualTo("接收订单");
+        assertThat(detail.nodeRuns().getFirst().nodeId()).isEqualTo("node-1");
+    }
+
+    @Test
+    void runDetailUsesPublishedVersionSnapshotForNodeName() {
+        var run = new WorkflowRun();
+        run.setRunId("published-run");
+        run.setWorkflowKey("wf-demo");
+        run.setWorkflowVersion(2L);
+        run.setSource("PUBLISHED");
+        runs.add(run);
+        var nodeRun = new WorkflowNodeRun();
+        nodeRun.setRunId("published-run");
+        nodeRun.setNodeId("node-1");
+        nodeRun.setNodeType("START");
+        nodeRuns.add(nodeRun);
+        var version = new WorkflowVersion();
+        version.setDefinition(xin.v5ai.nb.workflow.core.WorkflowJson.toJson(
+                new WorkflowDefinition(List.of(new WorkflowNode("node-1", WorkflowNodeType.START,
+                        "发布时的名称", null)), List.of())));
+        when(versionMapper.selectOne(any(Wrapper.class))).thenReturn(version);
+
+        var detail = service.getRunDetail("published-run");
+
+        assertThat(detail.nodeRuns()).singleElement()
+                .extracting("nodeName").isEqualTo("发布时的名称");
     }
 
     private static WorkflowBo bo(String key, String name) {

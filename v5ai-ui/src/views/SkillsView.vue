@@ -86,7 +86,7 @@ const skillColumns: DataTableColumns<SkillResponse> = [
       })
   },
   { title: '当前版本', key: 'currentVersion', width: 100, render: (row) => (row.currentVersion ? `v${row.currentVersion}` : '-') },
-  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  // { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',

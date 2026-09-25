@@ -302,7 +302,7 @@ const providerColumns: DataTableColumns<ProviderResponse> = [
         }
       )
   },
-  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  // { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',
@@ -391,7 +391,7 @@ const modelColumns: DataTableColumns<ModelResponse> = [
         unchecked: () => h('span', '停')
       })
   },
-  { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
+  // { title: '创建时间', key: 'createdAt', width: 182, render: (row) => fmtTime(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 182, render: (row) => fmtTime(row.updatedAt) },
   {
     title: '操作',

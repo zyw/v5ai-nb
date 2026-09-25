@@ -200,7 +200,7 @@ const columns: DataTableColumns<ApiKeyRecord> = [
     ellipsis: { tooltip: true },
     render: (r) => (r.lastUsedAt ? (formatDateTime(r.lastUsedAt) ?? '—') : '从未使用')
   },
-  { title: '创建时间', key: 'createdAt', width: 185, render: (r) => formatDateTime(r.createdAt) ?? '—' },
+  { title: '更新时间', key: 'updatedAt', width: 185, render: (r) => formatDateTime(r.updatedAt) ?? '—' },
   {
     title: '操作',
     key: 'actions',

@@ -14,7 +14,10 @@ import xin.v5ai.nb.workflow.core.*;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeRunStatus;
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
 import xin.v5ai.nb.workflow.core.enums.WorkflowRunStatus;
+import xin.v5ai.nb.workflow.core.enums.WorkflowRunSource;
 import xin.v5ai.nb.workflow.domain.bo.WorkflowBo;
+import xin.v5ai.nb.workflow.domain.vo.WorkflowNodeRunDetailVo;
+import xin.v5ai.nb.workflow.domain.vo.WorkflowRunDetailVo;
 import xin.v5ai.nb.workflow.domain.vo.WorkflowVo;
 import xin.v5ai.nb.workflow.mapper.WorkflowMapper;
 import xin.v5ai.nb.workflow.mapper.WorkflowNodeRunMapper;
@@ -25,6 +28,8 @@ import xin.v5ai.nb.workflow.service.IWorkflowService;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Workflow 管理服务实现类。
@@ -214,6 +219,37 @@ public class WorkflowServiceImpl implements IWorkflowService {
             throw new IllegalArgumentException("workflow run does not exist: " + runId);
         }
         return run;
+    }
+
+    @Override
+    public WorkflowRunDetailVo getRunDetail(String runId) {
+        WorkflowRun run = getRun(runId);
+        WorkflowDefinition definition = resolveRunDefinition(run);
+        Map<String, String> nodeNames = definition == null ? Map.of() : definition.nodes().stream()
+                .filter(node -> node.id() != null && node.name() != null && !node.name().isBlank())
+                .collect(Collectors.toMap(WorkflowNode::id, WorkflowNode::name, (first, ignored) -> first));
+        List<WorkflowNodeRunDetailVo> details = getNodeRuns(runId).stream()
+                .map(nodeRun -> new WorkflowNodeRunDetailVo(nodeRun.id(), nodeRun.runId(), nodeRun.nodeId(),
+                        nodeNames.get(nodeRun.nodeId()), nodeRun.nodeType(), nodeRun.status(), nodeRun.inputs(),
+                        nodeRun.outputs(), nodeRun.error(), nodeRun.startedAt(), nodeRun.finishedAt()))
+                .toList();
+        return new WorkflowRunDetailVo(run, details);
+    }
+
+    private WorkflowDefinition resolveRunDefinition(WorkflowRun run) {
+        if (run.source() == WorkflowRunSource.DRAFT_TEST) {
+            return WorkflowJson.parseDefinition(run.definitionSnapshot());
+        }
+        if (run.workflowVersion() != null && versionMapper != null) {
+            WorkflowVersion version = versionMapper.selectOne(new LambdaQueryWrapper<WorkflowVersion>()
+                    .eq(WorkflowVersion::getWorkflowKey, run.workflowKey())
+                    .eq(WorkflowVersion::getVersion, run.workflowVersion()));
+            if (version != null) {
+                return WorkflowJson.parseDefinition(version.getDefinition());
+            }
+        }
+        // Legacy runs may lack a version snapshot; use their own snapshot when available.
+        return WorkflowJson.parseDefinition(run.definitionSnapshot());
     }
 
     @Override

@@ -2447,6 +2447,7 @@ export interface WorkflowNodeRunResponse {
   id: number
   runId: string
   nodeId: string
+  nodeName?: string | null
   nodeType: string
   status: string // PENDING | RUNNING | SUCCEEDED | FAILED | SKIPPED
   inputs?: Record<string, unknown> | null
