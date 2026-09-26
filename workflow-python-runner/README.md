@@ -1,5 +1,7 @@
 # v5ai Workflow Python Runner
 
+[简体中文](README-zh.md)
+
 This directory contains the authenticated FastAPI control plane and the fixed one-shot Python executor image. The Runner never evaluates workflow code inside its API process. Each execution is a fresh container with no network, a read-only root filesystem, non-root UID, dropped capabilities, `no-new-privileges`, bounded CPU/memory/PIDs/tmpfs/logs, and the runtime's default seccomp profile.
 
 ## Development and tests
