@@ -2375,7 +2375,7 @@ export function getApiKeyUsageStats(
 
 // ---- Workflows ----
 
-export type WorkflowNodeType = 'START' | 'AGENT' | 'CONDITION' | 'HTTP' | 'PYTHON' | 'VARIABLE' | 'END'
+export type WorkflowNodeType = 'START' | 'AGENT' | 'CONDITION' | 'HTTP' | 'PYTHON' | 'JSON_TRANSFORM' | 'VARIABLE' | 'END'
 
 export interface WorkflowNode {
   id: string

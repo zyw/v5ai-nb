@@ -1,6 +1,8 @@
 package xin.v5ai.nb.workflow.core;
 
 import xin.v5ai.nb.workflow.core.enums.WorkflowNodeType;
+import xin.v5ai.nb.workflow.core.executor.JsonTransformNodeExecutor;
+import xin.v5ai.nb.workflow.core.executor.HttpNodeExecutor;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +30,12 @@ public final class WorkflowDefinitionValidator {
                 throw new IllegalArgumentException("node id is required");
             }
             if (node.type() == null) throw new IllegalArgumentException("node type is required: " + node.id());
+            if (node.type() == WorkflowNodeType.JSON_TRANSFORM) {
+                JsonTransformNodeExecutor.validateConfig(node.config());
+            }
+            if (node.type() == WorkflowNodeType.HTTP) {
+                HttpNodeExecutor.validateConfig(node.config());
+            }
             if (byId.putIfAbsent(node.id(), node) != null) throw new IllegalArgumentException("duplicate node id: " + node.id());
         }
         long startCount = definition.nodes().stream().filter(n -> n.type() == WorkflowNodeType.START).count();

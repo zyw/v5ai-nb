@@ -2,6 +2,12 @@
 
 The v5ai-nb 平台统一管理模型、Agent、知识库（RAG）、MCP Server、Skill、会话与运行记录。本上下文收录平台内独有的领域术语。
 
+## 平台配置
+
+**`v5ai.*` 配置项**:
+平台运行与部署行为的配置项。唯一配置参考为 `v5ai-starter/src/main/resources/v5ai-nb-配置文件详情.yml`；新增、修改或下线配置项时，配置详情必须同步更新，注明有效默认值、可选值或范围及适用条件。
+_Avoid_: 把 `application.yml.template` 当作配置项参考（该模板已删除）
+
 ## Skill（技能）
 
 **Skill**:

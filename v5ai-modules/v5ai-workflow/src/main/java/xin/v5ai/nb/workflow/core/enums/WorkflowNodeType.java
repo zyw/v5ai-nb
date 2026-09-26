@@ -6,6 +6,7 @@ public enum WorkflowNodeType {
     CONDITION,
     HTTP,
     PYTHON,
+    JSON_TRANSFORM,
     VARIABLE,
     END
 }

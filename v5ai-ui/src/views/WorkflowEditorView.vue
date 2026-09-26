@@ -63,6 +63,7 @@ const TYPE_LABELS: Record<WorkflowNodeType, string> = {
   CONDITION: '条件',
   HTTP: 'HTTP 请求',
   PYTHON: 'Python 脚本',
+  JSON_TRANSFORM: 'JSON 转换',
   VARIABLE: '变量赋值',
   END: '结束'
 }
@@ -70,7 +71,7 @@ const TYPE_LABELS: Record<WorkflowNodeType, string> = {
 const NODE_GROUPS: Array<{ title: string; types: WorkflowNodeType[] }> = [
   { title: '基础', types: ['START', 'END'] },
   { title: 'AI', types: ['AGENT'] },
-  { title: '执行器', types: ['HTTP', 'PYTHON', 'VARIABLE'] },
+  { title: '执行器', types: ['HTTP', 'PYTHON', 'JSON_TRANSFORM', 'VARIABLE'] },
   { title: '控制', types: ['CONDITION'] }
 ]
 
@@ -81,6 +82,7 @@ const NODE_ICONS: Record<WorkflowNodeType, any> = {
   CONDITION: GitBranch,
   HTTP: Globe,
   PYTHON: Code2,
+  JSON_TRANSFORM: Code2,
   VARIABLE: VariableIcon
 }
 
@@ -111,9 +113,36 @@ function defaultConfig(type: WorkflowNodeType): Record<string, any> {
       return { method: 'GET', url: '', headers: {}, body: '', outputVar: '' }
     case 'PYTHON':
       return { code: 'result = inputs', outputVar: 'result' }
+    case 'JSON_TRANSFORM':
+      return { source: '{{inputs}}', outputVar: 'transformed', mappings: [{ target: 'data', mode: 'PATH', path: '$' }] }
     case 'VARIABLE':
       return { name: '', value: '' }
   }
+}
+
+const TRANSFORM_MODE_OPTIONS = [
+  { label: '路径取值', value: 'PATH' },
+  { label: 'JSON 常量', value: 'CONSTANT' },
+  { label: '数组映射', value: 'ARRAY_MAP' }
+]
+
+function addTransformMapping() {
+  if (!selectedData.value) return
+  selectedData.value.config.mappings ??= []
+  selectedData.value.config.mappings.push({ target: '', mode: 'PATH', path: '' })
+}
+
+function removeTransformMapping(index: number) {
+  selectedData.value?.config.mappings?.splice(index, 1)
+}
+
+function addTransformArrayField(mapping: Record<string, any>) {
+  mapping.fields ??= []
+  mapping.fields.push({ target: '', path: '' })
+}
+
+function removeTransformArrayField(mapping: Record<string, any>, index: number) {
+  mapping.fields?.splice(index, 1)
 }
 
 let seq = 0
@@ -692,7 +721,7 @@ onMounted(load)
             <template v-else-if="selectedData.nodeType === 'HTTP'">
               <n-form-item label="HTTP 方法"><n-select v-model:value="selectedData.config.method" :options="['GET','POST','PUT','PATCH','DELETE'].map(v => ({ label: v, value: v }))" /></n-form-item>
               <n-form-item label="URL"><n-input v-model:value="selectedData.config.url" placeholder="https://api.example.com/resource" /></n-form-item>
-              <n-form-item label="请求头 JSON"><n-input :value="JSON.stringify(selectedData.config.headers ?? {}, null, 2)" type="textarea" placeholder="{}" @update:value="setHttpHeaders" /></n-form-item>
+              <n-form-item label="请求头 JSON"><n-input :value="JSON.stringify(selectedData.config.headers ?? {}, null, 2)" type="textarea" placeholder="{}" @update:value="setHttpHeaders" /><small>敏感头引用示例：<code>{"Authorization":{"$secretRef":"inventory_api_key"}}</code>。密钥由部署配置注入，工作流定义中不保存明文。</small></n-form-item>
               <n-form-item label="请求体模板"><n-input v-model:value="selectedData.config.body" type="textarea" /></n-form-item>
               <n-form-item label="输出变量"><n-input v-model:value="selectedData.config.outputVar" /></n-form-item>
             </template>
@@ -700,6 +729,51 @@ onMounted(load)
             <template v-else-if="selectedData.nodeType === 'PYTHON'">
               <n-form-item label="Python 代码（需配置隔离 Runner）"><n-input v-model:value="selectedData.config.code" type="textarea" :autosize="{ minRows: 8, maxRows: 16 }" /></n-form-item>
               <n-form-item label="输出变量"><n-input v-model:value="selectedData.config.outputVar" /></n-form-item>
+            </template>
+
+            <template v-else-if="selectedData.nodeType === 'JSON_TRANSFORM'">
+              <n-form-item label="源 JSON（支持 {{变量路径}}）">
+                <n-input v-model:value="selectedData.config.source" placeholder="{{inputs}} 或 {{nodes.http.body}}" />
+              </n-form-item>
+              <div class="panel-section">输出字段</div>
+              <div v-for="(mapping, index) in selectedData.config.mappings" :key="index" class="var-block">
+                <div class="row-item">
+                  <n-input v-model:value="mapping.target" placeholder="输出字段名" style="flex: 1; min-width: 0" />
+                  <n-select v-model:value="mapping.mode" :options="TRANSFORM_MODE_OPTIONS" style="width: 130px" />
+                  <n-button quaternary circle size="tiny" type="error" @click="removeTransformMapping(Number(index))">
+                    <template #icon><n-icon :component="Trash2" /></template>
+                  </n-button>
+                </div>
+                <n-input
+                  v-if="mapping.mode === 'PATH'"
+                  v-model:value="mapping.path"
+                  placeholder="源路径，如 user.name 或 items[0].sku"
+                  style="margin-top: 8px"
+                />
+                <n-input
+                  v-else-if="mapping.mode === 'CONSTANT'"
+                  v-model:value="mapping.valueJson"
+                  type="textarea"
+                  placeholder='合法 JSON，如 "active"、12、true 或 {"enabled":true}'
+                  style="margin-top: 8px"
+                />
+                <template v-else-if="mapping.mode === 'ARRAY_MAP'">
+                  <n-input v-model:value="mapping.path" placeholder="数组路径，如 items" style="margin-top: 8px" />
+                  <div v-for="(field, fieldIndex) in mapping.fields" :key="fieldIndex" class="row-item" style="margin-top: 6px">
+                    <n-input v-model:value="field.target" placeholder="输出字段" style="flex: 1; min-width: 0" />
+                    <n-input v-model:value="field.path" placeholder="数组项路径" style="flex: 1; min-width: 0" />
+                    <n-button quaternary circle size="tiny" type="error" @click="removeTransformArrayField(mapping, Number(fieldIndex))">
+                      <template #icon><n-icon :component="Trash2" /></template>
+                    </n-button>
+                  </div>
+                  <n-button size="tiny" dashed style="margin-top: 8px" @click="addTransformArrayField(mapping)">+ 添加数组字段</n-button>
+                </template>
+              </div>
+              <n-button size="tiny" dashed block @click="addTransformMapping">+ 添加输出字段</n-button>
+              <n-form-item label="输出变量" style="margin-top: 12px">
+                <n-input v-model:value="selectedData.config.outputVar" placeholder="transformed" />
+              </n-form-item>
+              <p class="form-hint">仅支持字段路径、JSON 常量和数组字段投影，不执行任意表达式。路径段使用字母、数字和下划线，可用点号或数组下标。</p>
             </template>
 
             <template v-else-if="selectedData.nodeType === 'VARIABLE'">
@@ -916,6 +990,13 @@ onMounted(load)
   margin-top: 14px;
   font-size: 12px;
   opacity: 0.55;
+  line-height: 1.5;
+}
+
+.form-hint {
+  margin: 4px 0 12px;
+  color: var(--n-text-color-3, #7b7b86);
+  font-size: 11px;
   line-height: 1.5;
 }
 
