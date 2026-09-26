@@ -247,10 +247,18 @@ v5ai:
       # 例如请求头 Authorization: {"$secretRef":"inventory_api_key"} 对应部署侧属性
       # v5ai.workflow.http.secrets.inventory_api_key=${INVENTORY_API_KEY}。
     python:
-      # 可选隔离 Runner 的基础 URL。默认：空（Python 节点禁用）；启用时必须走受限沙箱服务。
+      # 隔离 Runner 的基础 URL。默认：空（Python 节点 fail-closed）；可选 HTTP/HTTPS，生产限私网 HTTPS/mTLS；不能指向用户可控地址。
       runner-url: ${V5AI_WORKFLOW_PYTHON_RUNNER_URL:}
-      # Runner 调用认证令牌。默认：空；配置 Runner 时需与 Runner 侧一致，通过密钥源注入。
+      # Runner 调用 Bearer 令牌。默认：空；启用时必须与 Runner 的 API_TOKEN 一致，至少 32 字符并通过密钥源注入；禁止写入工作流/日志。
       runner-token: ${V5AI_WORKFLOW_PYTHON_RUNNER_TOKEN:}
+      # Runner HTTP 请求上限（毫秒），需大于服务端执行上限并留启动/清理余量；默认：35000，代码夹限 1000..360000。
+      request-timeout-millis: ${V5AI_WORKFLOW_PYTHON_REQUEST_TIMEOUT_MS:35000}
+      # 成功 readiness 缓存时长（秒），减少额外探活；默认：10，范围 0..300，0 关闭缓存；健康失败不会缓存。
+      readiness-cache-seconds: ${V5AI_WORKFLOW_PYTHON_READINESS_CACHE_SECONDS:10}
+      # Java 调用端最大请求体；超限时不会发送给 Runner。默认：1048576（1 MiB），代码夹限 128..8388608 字节。
+      max-request-bytes: ${V5AI_WORKFLOW_PYTHON_MAX_REQUEST_BYTES:1048576}
+      # Runner 响应体最大字节数；超限按节点失败处理。默认：1048576（1 MiB），代码夹限 128..8388608 字节。
+      max-response-bytes: ${V5AI_WORKFLOW_PYTHON_MAX_RESPONSE_BYTES:1048576}
 
   redisson:
     # Redis key 前缀。默认：${V5AI_REDIS_KEY_PREFIX:v5ai}。

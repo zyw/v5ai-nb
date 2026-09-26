@@ -727,7 +727,8 @@ onMounted(load)
             </template>
 
             <template v-else-if="selectedData.nodeType === 'PYTHON'">
-              <n-form-item label="Python 代码（需配置隔离 Runner）"><n-input v-model:value="selectedData.config.code" type="textarea" :autosize="{ minRows: 8, maxRows: 16 }" /></n-form-item>
+              <n-form-item label="Python 脚本（需配置隔离 Runner）"><n-input v-model:value="selectedData.config.code" type="textarea" :autosize="{ minRows: 8, maxRows: 16 }" /></n-form-item>
+              <small class="field-hint">可读取 <code>inputs</code>，必须设置 JSON 对象 <code>result</code>，例如 <code>result = {'value': inputs.get('value')}</code>。执行上限 30 秒；只能使用 Runner 镜像预装依赖，默认无网络，不支持运行时 pip 安装。未配置或 Runner 不可用时节点会失败，不会在主机本地执行。</small>
               <n-form-item label="输出变量"><n-input v-model:value="selectedData.config.outputVar" /></n-form-item>
             </template>
 

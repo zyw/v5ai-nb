@@ -20,3 +20,5 @@ dist/
 *。log
 /v5ai-website/.playwright-cli/console-2026-09-23T05-54-58-699Z.log
 /v5ai-website/.playwright-cli/
+/script/docker/secrets/python-runner/*
+!/script/docker/secrets/python-runner/.gitkeep

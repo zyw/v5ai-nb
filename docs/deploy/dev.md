@@ -191,6 +191,17 @@ Workflow 的 HTTP 节点只允许访问上述白名单中的 DNS 主机，并拒
 
 `$secretRef` 的值从部署配置属性 `v5ai.workflow.http.secrets.inventory_api_key` 解析；例如在仅部署侧管理的配置文件中设置 `v5ai.workflow.http.secrets.inventory_api_key: ${INVENTORY_API_KEY}`，并通过密钥管理系统注入 `INVENTORY_API_KEY`。不要将实际密钥放入仓库、工作流 JSON 或前端。未配置的引用会在运行时拒绝执行。发布校验会检查引用格式、拒绝明文敏感头和不允许的 Host/代理头。
 
+Python 节点现通过独立 Runner 执行，运行契约、沙箱镜像和部署见 [`Workflow Python Runner 部署指南`](workflow-python-runner.md)。本地单元测试：
+
+```bash
+cd workflow-python-runner
+python -m venv .venv && . .venv/bin/activate
+pip install -e '.[test]'
+python -m pytest -q
+```
+
+Compose 中 Runner 默认 fail-closed：没有固定执行镜像和可用的独立 Linux gVisor daemon 时，健康检查失败，Python 节点不会回退到本机解释器。macOS/Docker Desktop 仅适用于 API/协议开发，不代表生产沙箱验收。
+
 > ⚠️ `V5AI_CREDENTIAL_CIPHER_KEY` 必须是 **32 字节**，否则启动即抛
 > `credential cipher key must be 32 bytes for AES-256`。
 > 该密钥用于加密模型 API Key 等凭据；**更换密钥后旧凭据无法解密**，需重新录入模型配置。
