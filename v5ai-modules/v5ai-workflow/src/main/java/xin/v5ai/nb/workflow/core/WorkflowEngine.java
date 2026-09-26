@@ -43,7 +43,7 @@ public class WorkflowEngine {
     public WorkflowEngine(WorkflowRepository repository, WorkflowRunRepository runRepository, AgentRuntime agentRuntime) {
         this(repository, runRepository, List.of(new StartNodeExecutor(), new AgentNodeExecutor(agentRuntime),
                 new ConditionNodeExecutor(), new VariableNodeExecutor(), new EndNodeExecutor(),
-                new HttpNodeExecutor(""), new PythonNodeExecutor("", "")));
+                new HttpNodeExecutor(""), new PythonNodeExecutor("", ""), new JsonTransformNodeExecutor()));
     }
 
     public WorkflowRun execute(String workflowKey, Map<String, Object> inputs) {

@@ -1,0 +1,291 @@
+# =============================================================================
+# v5ai-nb 配置详情（参考文档，不会被 Spring Boot 自动加载）
+#
+# 此文件集中说明代码中所有以 v5ai. 开头的配置项。实际运行配置位于
+# application.yml、application-{profile}.yml、环境变量或部署平台的外部配置中。
+# 本文件列出的值是代码与基础 application.yml 的有效默认值；application-{profile}.yml
+# 可以覆盖它们（例如当前 profile 的 storage/minio 地址）。 “未设置”表示没有代码默认，
+# 是否必需取决于使用的功能。不要把生产密钥、私钥或真实凭据提交到仓库。
+#
+# 环境变量写法为 ${ENV:默认值}；无冒号默认值（${ENV:}）表示未设置时为空字符串。
+# 属性名遵循 Spring Boot relaxed binding；YAML 下划线/驼峰名与文中规范 kebab-case 等价。
+# =============================================================================
+
+# 业务数据库方言。
+# 默认：postgresql；可选：postgresql、mysql。必须与 V5AI_DATASOURCE_URL 及驱动配置相匹配。
+v5ai:
+  db:
+    dialect: postgresql
+
+  # 管理 API 免 Sa-Token 登录路径。运行 API 仍需 Agent API Key 鉴权。
+  # 默认：[/api/v1/agents/**]。
+  security:
+    excludes: [/api/v1/agents/**]
+
+  # 模型/MCP 凭据加密。
+  crypto:
+    # 默认：aes（AES-GCM）；可选：aes、sm4。SM4 需要配置 iv。
+    type: aes
+    # AES 默认值仅供开发启动；生产必须用 V5AI_CREDENTIAL_CIPHER_KEY 替换，要求 32 字节。
+    # 更换已使用的密钥会导致历史密文不可解密。SM4 下该键同样需按所选实现提供。
+    secret-key: ${V5AI_CREDENTIAL_CIPHER_KEY:tggsbeaGlYKF8JJ9eAaZixMkJIqaqhwe}
+    # 默认：未设置；仅 crypto.type=sm4 时需要。勿写入公开仓库。
+    # iv: ${V5AI_CREDENTIAL_CIPHER_IV:}
+
+  # MyBatis @EncryptField 字段加解密；与 v5ai.crypto 的凭据加密用途不同。
+  mybatis-encryptor:
+    # 默认：false；可选：true、false。
+    enable: false
+    # 默认：BASE64；可选：DEFAULT、BASE64、AES、RSA、SM2、SM4（依赖加密实现）。
+    algorithm: BASE64
+    # 默认：BASE64；可选：BASE64、HEX。
+    encode: BASE64
+    # 默认：未设置；对称算法使用的密钥，启用字段加密后按算法配置。
+    password: ${V5AI_MYBATIS_ENCRYPT_PASSWORD:}
+    # 默认：未设置；RSA/SM2 等非对称算法使用。妥善保管并保护文件权限。
+    public-key: ${V5AI_MYBATIS_ENCRYPT_PUBLIC_KEY:}
+    private-key: ${V5AI_MYBATIS_ENCRYPT_PRIVATE_KEY:}
+
+  # 全局 API 请求/响应加解密。属性默认值来自配置属性类；部署若启用，必须配置自己的密钥对。
+  api-decrypt:
+    # 默认：true（应用配置默认）；可选：true、false。
+    enabled: true
+    # 默认：encrypt-key。
+    header-flag: encrypt-key
+    # 默认：application.yml 中配置了内置示例公钥（本参考文档不复述密钥内容）；生产必须替换。
+    public-key: ${V5AI_API_DECRYPT_PUBLIC_KEY:}
+    # 默认：application.yml 中配置了内置示例私钥（本参考文档不复述密钥内容）；生产必须替换。
+    private-key: ${V5AI_API_DECRYPT_PRIVATE_KEY:}
+
+  captcha:
+    # 验证码开关。默认：true（应用配置）；可选：true、false。
+    enable: true
+    # 默认：slider；可选：slider、math、char（math/char 的长度属性按类型生效）。
+    type: slider
+    # 默认：未设置；type=math 时生效，数字验证码位数。
+    # number-length: 4
+    # 默认：未设置；type=char 时生效，字符验证码长度。
+    # char-length: 4
+    # 默认：3；登录失败达到该次数后要求滑块验证，需小于 user.password.maxRetryCount。
+    slider-threshold: 3
+    # 默认：2 分钟；滑块拼图令牌有效期。
+    expire-minutes: 2
+
+  auth:
+    # 刷新令牌 TTL，单位分钟。默认：43200（30 天）；必须为正数。
+    refresh-token-ttl: 43200
+
+  web:
+    cors:
+      # 默认：true；可选：true、false。跨域携带凭据时不应将来源配置为通配符。
+      allow-credentials: true
+      # 默认：["*"]；来源匹配模式列表。生产建议限制为门户/管理端实际域名。
+      allowed-origin-patterns: ["*"]
+      # 默认：["*"]；允许的请求头列表。
+      allowed-headers: ["*"]
+      # 默认：["*"]；允许的 HTTP 方法列表。
+      allowed-methods: ["*"]
+      # 默认：1800 秒；预检请求缓存时间，非负整数。
+      max-age: 1800
+
+  xss:
+    # 默认：false；可选：true、false。true 时注册 XSS 请求过滤器。
+    enabled: false
+    # 默认：[]；跳过 XSS 过滤的请求路径列表。
+    exclude-urls: []
+
+  agentscope:
+    # Agent 工作区。默认：${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}。
+    workspace: ${V5AI_AGENTSCOPE_WORKSPACE:.agentscope/workspace}
+    # Agent 状态目录。默认：${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}。
+    state-directory: ${V5AI_AGENTSCOPE_STATE_DIR:.agentscope/state}
+    # Tavily API Key。默认：空；空时联网搜索不可用。敏感值由部署环境注入。
+    tavily-api-key: ${V5AI_TAVILY_API_KEY:}
+    # 用量估算兜底时每张图片折算 token 数。默认：1024；正整数。
+    image-tokens-per-image: 1024
+    # 思考内容是否随助手消息持久化。默认：true；可选：true、false；关闭不影响实时流式展示。
+    reasoning-persist-enabled: true
+    history:
+      # 是否裁剪同会话历史窗口。默认：true；false 会把更长历史交给模型，可能超出上下文。
+      enabled: true
+      # 单次运行最大历史消息数。默认：40；正整数。
+      max-messages: 40
+      # 单次运行最大历史正文字符数。默认：8000；正整数，不含图片字节。
+      max-chars: 8000
+      # 预算紧张时保留的最近消息数。默认：2；正整数，建议不大于 max-messages。
+      min-messages: 2
+      # 裁剪后首条若为助手消息，继续向前裁剪以对齐用户轮次。默认：true。
+      align-to-user-turn: true
+
+  chat:
+    attachment:
+      # 单张图片最大字节数。默认：5242880（5 MiB）；正整数。
+      max-file-size-bytes: 5242880
+      # 每个 API Key 每分钟上传次数。默认：20；正整数，进程内滑动窗口。
+      uploads-per-minute: 20
+      # 每条消息允许的新图片数。默认：3；正整数。
+      max-per-message: 3
+      # 历史回放图片累计字节预算。默认：16777216（16 MiB）；超出转为 [图片] 占位。
+      history-budget-bytes: 16777216
+    conversation-title:
+      # 是否异步用模型改写会话标题。默认：true；可选：true、false。
+      enabled: true
+      # 标题生成超时。默认：5000 毫秒；正整数。
+      timeout-millis: 5000
+      # 标题最大长度。默认：30 个 Unicode 码点；正整数。
+      max-length: 30
+    conversation-summary:
+      # 是否生成滚动会话摘要。默认：true；false 时窗口外历史不再被摘要保留。
+      enabled: true
+      # 单次摘要生成超时。默认：20000 毫秒；正整数。
+      timeout-millis: 20000
+      # 摘要水位之后至少新增的窗口外消息数。默认：10；正整数。
+      min-new-messages: 10
+      # 单次摘要最多读取的消息数。默认：100；正整数。
+      max-input-messages: 100
+      # 单条摘要输入最大字符数。默认：500；正整数。
+      max-input-chars-per-message: 500
+      # 摘要最大字符数。默认：1000；正整数。
+      max-summary-chars: 1000
+      # 同会话两次摘要生成的最小间隔。默认：30 秒；非负整数。
+      min-interval-seconds: 30
+      # 摘要模型不在平台全局配置；取 Agent 次要模型，未设置时回退 Agent 对话模型。
+
+  model:
+    connection:
+      test:
+        # 模型连通性测试及 Agent 配置生成调用超时。默认：90000 毫秒；正整数。
+        timeout:
+          ms: ${V5AI_MODEL_CONNECTION_TEST_TIMEOUT_MS:90000}
+
+  storage:
+    # 通用资源存储后端。默认：LOCAL；可选：LOCAL、MINIO。
+    type: ${V5AI_STORAGE_TYPE:LOCAL}
+    # LOCAL 文件根目录。默认：${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}。
+    local-dir: ${V5AI_STORAGE_LOCAL_DIR:./v5ai-upload}
+
+  minio:
+    # 仅 storage.type=MINIO 时使用。默认：${V5AI_MINIO_ENDPOINT:http://localhost:9000}。
+    endpoint: ${V5AI_MINIO_ENDPOINT:http://localhost:9000}
+    # 默认：${V5AI_MINIO_ACCESS_KEY:minioadmin}；生产应替换。
+    access-key: ${V5AI_MINIO_ACCESS_KEY:minioadmin}
+    # 默认：${V5AI_MINIO_SECRET_KEY:minioadmin}；生产必须通过密钥管理注入。
+    secret-key: ${V5AI_MINIO_SECRET_KEY:minioadmin}
+    # 默认：${V5AI_MINIO_BUCKET:v5ai}。
+    bucket: ${V5AI_MINIO_BUCKET:v5ai}
+
+  mcp:
+    # Stdio MCP 可执行命令白名单，逗号分隔，可使用命令名或绝对路径。
+    # 默认：${V5AI_MCP_STDIO_COMMAND_WHITELIST:}（空=不限制，仅适合开发；生产必须配置）。
+    stdio-command-whitelist: ${V5AI_MCP_STDIO_COMMAND_WHITELIST:}
+
+  worker:
+    # 知识索引 Worker 扫描间隔。默认：5000 毫秒；正整数。
+    scan-interval-ms: 5000
+    # 应用启动后首次扫描延迟。默认：10000 毫秒；非负整数。
+    initial-delay-ms: 10000
+    # 每次扫描最多认领的任务数。默认：5；正整数。
+    batch-size: 5
+
+  rag:
+    parser:
+      # 外部解析服务可选；失败时回退内置解析器。密钥/服务地址通过部署配置注入。
+      docling:
+        # 默认：false；可选：true、false。
+        enabled: ${V5AI_DOCLING_ENABLED:false}
+        # 默认：http://127.0.0.1:5001。
+        base-url: ${V5AI_DOCLING_URL:http://127.0.0.1:5001}
+        # 默认：空；可选 API Key，敏感。
+        api-key: ${V5AI_DOCLING_API_KEY:}
+        # 默认：5000 毫秒；正整数。
+        connect-timeout-millis: ${V5AI_DOCLING_CONNECT_TIMEOUT_MS:5000}
+        # 默认：600000 毫秒；正整数，每次 HTTP 读取超时。
+        read-timeout-millis: ${V5AI_DOCLING_READ_TIMEOUT_MS:600000}
+        # 默认：2000 毫秒；正整数。
+        poll-interval-millis: ${V5AI_DOCLING_POLL_INTERVAL_MS:2000}
+        # 默认：1800000 毫秒；正整数，解析任务总等待上限。
+        poll-timeout-millis: ${V5AI_DOCLING_POLL_TIMEOUT_MS:1800000}
+        # 默认：3；正整数，Worker 并发度。
+        concurrency: ${V5AI_DOCLING_CONCURRENCY:3}
+      mineru:
+        # 当前 application.yml 默认：true；可选：true、false。不可用时回退内置解析器。
+        enabled: ${V5AI_MINERU_ENABLED:true}
+        # 当前 application.yml 默认：http://192.168.129.131:8002；建议按部署环境显式覆盖。
+        base-url: ${V5AI_MINERU_URL:http://192.168.129.131:8002}
+        # 默认：{}；部署层认证头映射。不得将真实密钥提交到仓库或工作流配置。
+        headers: {}
+        # 默认：5000 毫秒；正整数。
+        connect-timeout-millis: ${V5AI_MINERU_CONNECT_TIMEOUT_MS:5000}
+        # 默认：600000 毫秒；正整数，每次 HTTP 读取超时。
+        read-timeout-millis: ${V5AI_MINERU_READ_TIMEOUT_MS:600000}
+        # 默认：3000 毫秒；正整数。
+        poll-interval-millis: ${V5AI_MINERU_POLL_INTERVAL_MS:3000}
+        # 默认：1800000 毫秒；正整数，解析任务总等待上限。
+        poll-timeout-millis: ${V5AI_MINERU_POLL_TIMEOUT_MS:1800000}
+    smart-chunk:
+      # 智能切片方案生成超时。默认：60 秒；正整数。
+      timeout-seconds: 60
+
+  skill:
+    ai:
+      # Skill 内容 AI 生成调用超时。默认：90 秒；正整数。
+      timeout-seconds: 90
+
+  store:
+    connection-test:
+      # 向量库/检索存储连通性测试超时。默认：5 秒；正整数。
+      timeout-seconds: 5
+
+  workflow:
+    http:
+      # HTTP 节点允许访问的精确 DNS 主机名，逗号分隔；默认：空（完全禁用 HTTP 节点）。
+      # 会校验全部 DNS 地址并拒绝私网/本机/特殊用途地址，连接固定到已校验 IP，不跟随重定向。
+      allowed-hosts: ${V5AI_WORKFLOW_HTTP_ALLOWED_HOSTS:}
+      # HTTP 节点允许的 TCP 端口。默认：80,443；逗号分隔的 1..65535 端口。
+      allowed-ports: ${V5AI_WORKFLOW_HTTP_ALLOWED_PORTS:80,443}
+      # 密钥通过外部配置属性 v5ai.workflow.http.secrets.<name> 提供；不要写进工作流。
+      # 例如请求头 Authorization: {"$secretRef":"inventory_api_key"} 对应部署侧属性
+      # v5ai.workflow.http.secrets.inventory_api_key=${INVENTORY_API_KEY}。
+    python:
+      # 可选隔离 Runner 的基础 URL。默认：空（Python 节点禁用）；启用时必须走受限沙箱服务。
+      runner-url: ${V5AI_WORKFLOW_PYTHON_RUNNER_URL:}
+      # Runner 调用认证令牌。默认：空；配置 Runner 时需与 Runner 侧一致，通过密钥源注入。
+      runner-token: ${V5AI_WORKFLOW_PYTHON_RUNNER_TOKEN:}
+
+  redisson:
+    # Redis key 前缀。默认：${V5AI_REDIS_KEY_PREFIX:v5ai}。
+    key-prefix: ${V5AI_REDIS_KEY_PREFIX:v5ai}
+    # 默认：CPU 核心数 * 2；正整数，Redisson 普通线程池。
+    threads: 4
+    # 默认：CPU 核心数 * 2；正整数，Netty I/O 线程池。
+    netty-threads: 8
+    # 单机模式：Redis 连接地址取 spring.data.redis 配置。
+    single-server-config:
+      # 默认：spring.application.name。
+      client-name: ${spring.application.name:v5ai-nb}
+      # 默认：8；正整数。
+      connection-minimum-idle-size: 8
+      # 默认：32；正整数，连接池大小。
+      connection-pool-size: 32
+      # 默认：10000 毫秒；正整数。
+      idle-connection-timeout: 10000
+      # 默认：3000 毫秒；正整数。
+      timeout: 3000
+      # 默认：50；正整数，Pub/Sub 连接池大小。
+      subscription-connection-pool-size: 50
+    # 集群模式可选，与 single-server-config 二选一；字段详情和枚举来自 Redisson。
+    # cluster-servers-config:
+    #   client-name: ${spring.application.name:v5ai-nb}
+    #   master-connection-minimum-idle-size: 8
+    #   master-connection-pool-size: 32
+    #   slave-connection-minimum-idle-size: 8
+    #   slave-connection-pool-size: 32
+    #   idle-connection-timeout: 10000
+    #   timeout: 3000
+    #   subscription-connection-pool-size: 50
+    #   read-mode: SLAVE（可选 MASTER、SLAVE、MASTER_SLAVE）
+    #   subscription-mode: SLAVE（可选 MASTER、SLAVE）
+
+# 其他可调项（非 v5ai 前缀，不属于本文件的覆盖范围）：
+# 模型连通性测试的完整属性名为 v5ai.model.connection.test.timeout.ms，见上方。
+# 服务端口、数据库/Redis 地址、JWT、上传限制等分别使用 server.*、spring.*、sa-token.* 等命名空间。

@@ -236,6 +236,7 @@ cd v5ai-ui && npm install && npm run build
 
 ## 11. 代码风格与约定
 
+- **`v5ai.*` 配置文档同步（必须）**：新增、修改或删除任何以 `v5ai.` 开头的配置项时，必须在同一改动中同步更新 `v5ai-starter/src/main/resources/v5ai-nb-配置文件详情.yml`。逐项核对配置键、有效默认值（区分代码默认与 profile 覆盖）、可选值/取值范围、用途、对应环境变量及安全/启用条件；配置项下线时同步移除或标记已废弃。完成前检查文档无遗漏，不能把 `application.yml.template` 当作配置文档或重新引入该模板。
 - 包结构：`xin.v5ai.nb.<module>`，业务模块内部按 `domain`（实体）/`domain.bo`/`domain.vo`/`mapper`/`service`/`service.impl`/`controller` 组织（参考 `v5ai-model`，代码生成器在 `v5ai-modules/v5ai-code-generator`）；`v5ai-platform` 按 `auth`/`apiKey`/`security`/`domain`/`mapper`/`service.impl`/`controller` 组织；基础设施按 `infrastructure/<能力>` 组织（mybatis、redis、storage、runtime、agent、mcp、rag、skill、reactor）。
 - 业务模块的 CRUD 采用 MyBatis-Plus 风格：实体继承 `common.mybatis.core.domain.BaseEntity`（`@TableName`/`@TableId`），BO 用 `@AutoMapper(target = Entity.class, reverseConvertGenerate = false)`，VO 用 `@AutoMapper(target = Entity.class)`，Mapper 继承 `BaseMapperPlus<Entity, Vo>`，查询用 `QueryBuilder.lambda(...)` + `selectVoPage/selectVoList`，分页统一 `PageQuery`/`PageResult`，转换用 `MapstructUtils.convert`，控制器继承 `common.web.core.BaseController` 并返回 `R<T>`。
 - 跨模块的运行时/平台实现仍放 `v5ai-infrastructure`，通过 Spring 依赖注入装配。
@@ -259,6 +260,7 @@ cd v5ai-ui && npm install && npm run build
 | `docs/api/phase1.md` ~ `phase6.md` | 各阶段 API 契约（phase6 = 对话门户） |
 | `docs/phase*-verification*.md` | 各阶段验证报告 |
 | `docs/deploy/dev.md` | 开发环境部署（PostgreSQL/pgvector/Redis/MinIO 安装与配置） |
+| `v5ai-starter/src/main/resources/v5ai-nb-配置文件详情.yml` | 全部 `v5ai.*` 配置项的唯一参考：默认值、可选值、环境变量与安全注意事项；配置变更时必须同步 |
 
 ## 13. 工作流约定（重要）
 

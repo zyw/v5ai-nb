@@ -115,6 +115,12 @@ v5ai:
     # 连接串仍由 V5AI_DATASOURCE_URL 决定，两者必须配套（不一致时迁移会直接报错）。
     # 运行时 SQL 的方言分支由连接元数据自动识别（DataBaseHelper / MyBatis _databaseId），不读本配置。
     dialect: ${V5AI_DB_DIALECT:postgresql}
+  workflow:
+    http:
+      # Empty by default disables outbound HTTP workflow nodes. Use exact DNS hostnames, comma-separated.
+      allowed-hosts: ${V5AI_WORKFLOW_HTTP_ALLOWED_HOSTS:}
+      allowed-ports: ${V5AI_WORKFLOW_HTTP_ALLOWED_PORTS:80,443}
+      # Secret references resolve from v5ai.workflow.http.secrets.<name>; inject values via deployment secrets.
   rag:
     parser:
       # Docling Serve 配置。服务地址和 API Key 只通过部署配置/环境变量提供，不进入知识库 JSON。

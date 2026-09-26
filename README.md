@@ -172,9 +172,7 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 
 ## 配置项一览（`v5ai.*`）
 
-配置项按使用频率分两张表：**常用**是部署与日常运行会调的项；**高级**多为安全、加解密、连接池与超时微调，多数场景保持默认即可。两表覆盖代码中全部 `v5ai.*` 配置项。
-
-默认值取自 `v5ai-starter/src/main/resources/application.yml.template` 以及各 `@ConfigurationProperties` / `@Value` 的代码默认值；`${ENV:default}` 表示「优先读环境变量 `ENV`，未设置时用 `default`」，环境变量清单见仓库根 `.env.example`。
+代码中全部 `v5ai.*` 配置项、默认值、可选值和安全注意事项统一见 [`v5ai-nb-配置文件详情.yml`](v5ai-starter/src/main/resources/v5ai-nb-配置文件详情.yml)。`${ENV:default}` 表示优先读环境变量 `ENV`，未设置时用 `default`；环境变量清单见仓库根 `.env.example`。各 `application-{profile}.yml` 可进一步覆盖默认值。
 
 ### 常用配置
 

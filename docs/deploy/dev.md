@@ -179,7 +179,17 @@ export V5AI_REDIS_KEY_PREFIX=v5ai
 # export V5AI_AGENTSCOPE_STATE_DIR=.agentscope/state
 # export V5AI_TAVILY_API_KEY=                      # 联网搜索，空=不启用
 # export V5AI_MCP_STDIO_COMMAND_WHITELIST=         # Stdio MCP 白名单，生产必配
+# export V5AI_WORKFLOW_HTTP_ALLOWED_HOSTS=api.example.com,inventory.example.com # Workflow HTTP 精确域名白名单；默认空=禁用
+# export V5AI_WORKFLOW_HTTP_ALLOWED_PORTS=443       # Workflow HTTP 允许端口；按最小权限配置
 ```
+
+Workflow 的 HTTP 节点只允许访问上述白名单中的 DNS 主机，并拒绝解析到私网/本机/特殊用途地址的主机；请求连接固定到校验过的 DNS 地址，不跟随重定向。HTTPS 保留原主机名做 SNI 与证书主机名校验。敏感请求头不能写入工作流明文，使用如下引用：
+
+```json
+{"Authorization":{"$secretRef":"inventory_api_key"}}
+```
+
+`$secretRef` 的值从部署配置属性 `v5ai.workflow.http.secrets.inventory_api_key` 解析；例如在仅部署侧管理的配置文件中设置 `v5ai.workflow.http.secrets.inventory_api_key: ${INVENTORY_API_KEY}`，并通过密钥管理系统注入 `INVENTORY_API_KEY`。不要将实际密钥放入仓库、工作流 JSON 或前端。未配置的引用会在运行时拒绝执行。发布校验会检查引用格式、拒绝明文敏感头和不允许的 Host/代理头。
 
 > ⚠️ `V5AI_CREDENTIAL_CIPHER_KEY` 必须是 **32 字节**，否则启动即抛
 > `credential cipher key must be 32 bytes for AES-256`。

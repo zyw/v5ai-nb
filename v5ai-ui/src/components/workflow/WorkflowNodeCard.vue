@@ -7,6 +7,10 @@ const TYPE_LABELS: Record<string, string> = {
   START: '开始',
   AGENT: 'Agent',
   CONDITION: '条件',
+  HTTP: 'HTTP 请求',
+  PYTHON: 'Python 脚本',
+  JSON_TRANSFORM: 'JSON 转换',
+  VARIABLE: '变量赋值',
   END: '结束'
 }
 </script>
@@ -26,6 +30,9 @@ const TYPE_LABELS: Record<string, string> = {
     </div>
     <div v-else-if="data.nodeType === 'CONDITION'" class="wf-card-sub">
       {{ data.config?.left || '…' }} {{ data.config?.operator || '==' }} {{ data.config?.right || '…' }}
+    </div>
+    <div v-else-if="data.nodeType === 'JSON_TRANSFORM'" class="wf-card-sub">
+      {{ data.config?.mappings?.length ?? 0 }} 个输出字段
     </div>
 
     <template v-if="data.nodeType === 'CONDITION'">
