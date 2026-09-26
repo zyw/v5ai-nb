@@ -85,6 +85,8 @@ services:
       V5AI_AGENTSCOPE_STATE_DIR: /data/agentscope/state
       V5AI_TAVILY_API_KEY: ${V5AI_TAVILY_API_KEY:-}
       V5AI_MCP_STDIO_COMMAND_WHITELIST: ${V5AI_MCP_STDIO_COMMAND_WHITELIST:-}
+      V5AI_WORKFLOW_PYTHON_RUNNER_URL: ${V5AI_WORKFLOW_PYTHON_RUNNER_URL:-http://python-runner:8081}
+      V5AI_WORKFLOW_PYTHON_RUNNER_TOKEN: ${V5AI_WORKFLOW_PYTHON_RUNNER_TOKEN:-}
     ports:
       - "${V5AI_PORT:-8080}:8080"
     volumes:
@@ -92,6 +94,38 @@ services:
       - v5ai-agentscope-workspace:/data/agentscope/workspace
       - v5ai-agentscope-state:/data/agentscope/state
       - ${V5AI_CONFIG_DIR:-../../config}:/app/config:ro
+    networks:
+      - default
+      - python-runner-control
+
+  python-runner:
+    build:
+      context: ../../workflow-python-runner
+      dockerfile: Dockerfile
+    image: v5ai-workflow-python-runner:local
+    restart: unless-stopped
+    environment:
+      V5AI_PYTHON_RUNNER_API_TOKEN: ${V5AI_WORKFLOW_PYTHON_RUNNER_TOKEN:-}
+      V5AI_PYTHON_RUNNER_RUNTIME_ENDPOINT: ${V5AI_PYTHON_RUNNER_RUNTIME_ENDPOINT:-unix:///run/docker.sock}
+      V5AI_PYTHON_RUNNER_EXECUTOR_IMAGE: ${V5AI_PYTHON_RUNNER_EXECUTOR_IMAGE:-}
+      V5AI_PYTHON_RUNNER_PRODUCTION_MODE: ${V5AI_PYTHON_RUNNER_PRODUCTION_MODE:-true}
+      V5AI_PYTHON_RUNNER_RUNTIME_NAME: ${V5AI_PYTHON_RUNNER_RUNTIME_NAME:-runsc}
+      V5AI_PYTHON_RUNNER_RUNTIME_CA_CERT: ${V5AI_PYTHON_RUNNER_RUNTIME_CA_CERT:-}
+      V5AI_PYTHON_RUNNER_RUNTIME_CLIENT_CERT: ${V5AI_PYTHON_RUNNER_RUNTIME_CLIENT_CERT:-}
+      V5AI_PYTHON_RUNNER_RUNTIME_CLIENT_KEY: ${V5AI_PYTHON_RUNNER_RUNTIME_CLIENT_KEY:-}
+    volumes:
+      - ${V5AI_PYTHON_RUNNER_CERT_DIR:-./secrets/python-runner}:/run/runtime-certs:ro
+    expose:
+      - "8081"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request; r=urllib.request.Request('http://127.0.0.1:8081/health',headers={'Authorization':'Bearer '+os.environ['V5AI_PYTHON_RUNNER_API_TOKEN']}); urllib.request.urlopen(r,timeout=7)"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - python-runner-control
+      - python-runner-runtime
 
   nginx:
     build:
@@ -112,3 +146,8 @@ volumes:
   v5ai-upload-data:
   v5ai-agentscope-workspace:
   v5ai-agentscope-state:
+
+networks:
+  python-runner-control:
+    internal: true
+  python-runner-runtime: {}

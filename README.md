@@ -11,6 +11,8 @@
 - MCP：Server 注册（Streamable HTTP / SSE / Stdio，headers/env 加密存储）、连接测试、Tool 发现与缓存、Agent 绑定、运行时动态 Tool 注册（AgentScope Toolkit）、Tool 权限三态（ALLOW/APPROVE/DENY）与调用审计（runId/工具名/参数摘要/状态/耗时）、Stdio 命令白名单；
 - Skill：zip 包上传与结构校验（SKILL.md frontmatter、路径穿越/大小/编码）、版本发布与回滚（当前版本指针）、Agent 绑定、运行时 Workspace 注入（`skills/<name>/` + 只读 Skill 仓库注入 `<available_skills>`）、禁用；
 - 平台增强：RBAC（角色 admin/user + 管理 API 登录拦截与写操作 admin 校验）、按应用配额与每分钟限流（超限 429）、模型调用用量记录与统计、管理操作审计日志、`/api/health` 与总览统计（可观测性）、启动自动种子默认管理员；
+- Workflow Python Runner：独立 FastAPI 控制面、每次执行的一次性 OCI 沙箱、生产 gVisor 准入与 Compose 内网接线；Linux gVisor 真实隔离验收需由部署方完成，见 [`Runner 部署指南`](docs/deploy/workflow-python-runner.md)；
+- Python 节点可复制案例：见 [`Python 节点脚本案例`](docs/workflow/python-node-examples.md)，含 Java ↔ Runner 冒烟、数据清洗、HTTP 结果、条件分支和日期处理示例；
 - 管理前端：登录、Provider/Model（凭据表单化 + 连通性测试）、Agent（模型下拉 + 知识库/MCP/Skill 绑定 + 生成 Key）、知识库管理、MCP Server 管理、Skill 管理、Platform（用户/角色/菜单）、Observability（统计/用量/审计）、Chat Debug。
 
 ## 技术基线
@@ -212,6 +214,11 @@ RUN_STARTED → RETRIEVAL(有 RAG 命中；强制调用在模型前，智能调�
 | 32 | `v5ai.worker.scan-interval-ms` | `5000` | 知识库索引任务扫描间隔（毫秒） |
 | 33 | `v5ai.worker.initial-delay-ms` | `10000` | 首次扫描延迟（毫秒） |
 | 34 | `v5ai.worker.batch-size` | `5` | 单次扫描处理的任务数上限 |
+| WF-1 | `v5ai.workflow.python.runner-url` / `runner-token` | 默认均为空；未配置时 Python 节点 fail-closed | 独立 Runner URL 与 Bearer 密钥；完整配置见配置详情 |
+| WF-2 | `v5ai.workflow.python.request-timeout-millis` | `${V5AI_WORKFLOW_PYTHON_REQUEST_TIMEOUT_MS:35000}` | Runner 调用总超时 |
+| WF-3 | `v5ai.workflow.python.readiness-cache-seconds` | `${V5AI_WORKFLOW_PYTHON_READINESS_CACHE_SECONDS:10}` | 成功 readiness 缓存时长 |
+| WF-4 | `v5ai.workflow.python.max-request-bytes` | `${V5AI_WORKFLOW_PYTHON_MAX_REQUEST_BYTES:1048576}` | Runner 请求体上限 |
+| WF-5 | `v5ai.workflow.python.max-response-bytes` | `${V5AI_WORKFLOW_PYTHON_MAX_RESPONSE_BYTES:1048576}` | Runner 响应体上限 |
 
 ### 高级配置
 
@@ -332,16 +339,17 @@ Compose 按业务库方言拆成**两份独立文件**，各自只装自己那�
 
 | 文件 | 装什么 | 业务库 |
 |---|---|---|
-| `script/docker/docker-compose-postgresql.yml` | postgres + redis + v5ai + nginx | PostgreSQL + pgvector（默认） |
-| `script/docker/docker-compose-mysql.yml` | mysql + redis + v5ai + nginx | MySQL 8.0 |
+| `script/docker/docker-compose-postgresql.yml` | postgres + redis + v5ai + Python Runner + nginx | PostgreSQL + pgvector（默认） |
+| `script/docker/docker-compose-mysql.yml` | mysql + redis + v5ai + Python Runner + nginx | MySQL 8.0 |
 
 两份都会创建并持久化数据库、Redis、上传文件与 AgentScope 工作目录，并用 nginx 发布两个前端（管理端 `/`、对话门户 `/chat/`，API 经 `/prod-api` 转发到后端）。
+Runner API 没有宿主端口映射，也不挂载运行时 socket；默认未配置镜像/远端 gVisor 时保持未就绪、Python 节点失败关闭。生产启用步骤见 [`Workflow Python Runner 部署指南`](docs/deploy/workflow-python-runner.md)。
 
 **PostgreSQL（默认）**——先准备环境变量，再启动：
 
 ```bash
 cp .env.example .env
-# 编辑 .env，至少替换 POSTGRES_PASSWORD、REDIS_PASSWORD、V5AI_JWT_SECRET、V5AI_CREDENTIAL_CIPHER_KEY
+# 编辑 .env，至少替换 POSTGRES_PASSWORD、REDIS_PASSWORD、V5AI_JWT_SECRET、V5AI_CREDENTIAL_CIPHER_KEY；如启用 Python Runner，还必须配置随机 V5AI_WORKFLOW_PYTHON_RUNNER_TOKEN 和专用 Linux gVisor endpoint/image
 cd script/docker
 docker compose -f docker-compose-postgresql.yml --env-file ../../.env up -d --build
 docker compose -f docker-compose-postgresql.yml ps

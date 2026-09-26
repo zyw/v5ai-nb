@@ -121,6 +121,13 @@ v5ai:
       allowed-hosts: ${V5AI_WORKFLOW_HTTP_ALLOWED_HOSTS:}
       allowed-ports: ${V5AI_WORKFLOW_HTTP_ALLOWED_PORTS:80,443}
       # Secret references resolve from v5ai.workflow.http.secrets.<name>; inject values via deployment secrets.
+    python:
+      runner-url: ${V5AI_WORKFLOW_PYTHON_RUNNER_URL:}
+      runner-token: ${V5AI_WORKFLOW_PYTHON_RUNNER_TOKEN:}
+      request-timeout-millis: ${V5AI_WORKFLOW_PYTHON_REQUEST_TIMEOUT_MS:35000}
+      readiness-cache-seconds: ${V5AI_WORKFLOW_PYTHON_READINESS_CACHE_SECONDS:10}
+      max-request-bytes: ${V5AI_WORKFLOW_PYTHON_MAX_REQUEST_BYTES:1048576}
+      max-response-bytes: ${V5AI_WORKFLOW_PYTHON_MAX_RESPONSE_BYTES:1048576}
   rag:
     parser:
       # Docling Serve 配置。服务地址和 API Key 只通过部署配置/环境变量提供，不进入知识库 JSON。
