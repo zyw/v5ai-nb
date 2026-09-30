@@ -8,7 +8,7 @@
 
 **Tech Stack:** Existing JDK 21, Spring Boot, MyBatis-Plus, Flyway, AgentScope Java, Vue 3, TypeScript, Vue Flow, Naive UI. No new third-party Java libraries.
 
-**Spec:** `workflow实现设计文档.md`
+**Spec:** `../../workflow实现设计文档.md`
 
 ## Global Constraints
 
