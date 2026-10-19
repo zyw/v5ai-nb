@@ -9,4 +9,4 @@ npm run dev
 npm run build
 ```
 
-`npm run build` 的静态产物位于 `.vitepress/dist/`，可部署到 `https://ai-docs.v5ai.xin` 的站点根路径。图片资源放在 `public/images/`。VitePress 的本地搜索不需要外部搜索服务。
+`npm run build` 的静态产物位于 `dist/`，可部署到 `https://ai-docs.v5ai.xin` 的站点根路径。图片资源放在 `public/images/`。VitePress 的本地搜索不需要外部搜索服务。
