@@ -527,3 +527,15 @@ V5AI_CREDENTIAL_CIPHER_KEY=0123456789abcdef0123456789abcdef
 ## 许可证
 
 本项目采用 [Apache License 2.0](LICENSE) 许可证。除非另有说明，项目中的源代码、文档和前端代码均按该许可证发布；第三方依赖仍受其各自许可证约束。
+
+## ⭐ Star 趋势
+
+如果你喜欢这个项目，欢迎点个 ⭐ 支持一下！增长趋势如下：
+
+<!-- 请将下方 URL 中的 `OWNER/REPO` 替换为你实际的 GitHub 仓库路径，例如 `yourname/v5xs` -->
+<p align="center">
+  <a href="https://star-history.com/#zyw/v5ai-nb&Date">
+    <img src="https://api.star-history.com/svg?repos=zyw/v5ai-nb&type=Date" alt="v5xs Star History" width="80%">
+  </a>
+</p>
+
